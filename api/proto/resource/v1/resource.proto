@@ -1,0 +1,4 @@
+syntax = "proto3";
+
+package resource.v1;
+option go_package="resource/v1;resource";

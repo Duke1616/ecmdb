@@ -1,0 +1,13 @@
+version: '3'
+tasks:
+  default:
+    desc: 命令提示
+    cmds:
+      - task --list-all
+
+  gen:
+    desc: 代码生成
+    cmds:
+      - buf generate api/proto
+
+

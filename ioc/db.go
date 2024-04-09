@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 	"time"
 )
 
@@ -26,5 +27,10 @@ func InitMongoDB() *mongo.Client {
 	if err != nil {
 		panic(err)
 	}
+
+	if err = client.Ping(ctx, nil); err != nil {
+		log.Panicf("ping mongodb server error, %s", err)
+	}
+
 	return client
 }

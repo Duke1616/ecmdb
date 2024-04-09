@@ -8,16 +8,22 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/internal/model"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
 func InitApp() (*App, error) {
 	v := InitGinMiddlewares()
-	handler := model.InitHandler()
+	client := InitMongoDB()
+	handler := model.InitHandler(client)
 	engine := InitWebServer(v, handler)
 	app := &App{
 		Web: engine,
 	}
 	return app, nil
 }
+
+// wire.go:
+
+var BaseSet = wire.NewSet(InitMongoDB)

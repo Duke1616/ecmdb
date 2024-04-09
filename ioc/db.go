@@ -1,0 +1,30 @@
+package ioc
+
+import (
+	"context"
+	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
+)
+
+func InitMongoDB() *mongo.Client {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	monitor := &event.CommandMonitor{
+		Started: func(ctx context.Context, evt *event.CommandStartedEvent) {
+			//fmt.Println(evt.Command)
+		},
+	}
+
+	opts := options.Client().
+		ApplyURI("mongodb://cmdb:123456@10.31.0.200:47017/cmdb").
+		SetMonitor(monitor)
+	client, err := mongo.Connect(ctx, opts)
+
+	if err != nil {
+		panic(err)
+	}
+	return client
+}

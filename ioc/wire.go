@@ -7,8 +7,11 @@ import (
 	"github.com/google/wire"
 )
 
+var BaseSet = wire.NewSet(InitMongoDB)
+
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
+		BaseSet,
 		model.InitHandler,
 		InitWebServer,
 		InitGinMiddlewares)

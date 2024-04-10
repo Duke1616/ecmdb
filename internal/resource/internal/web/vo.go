@@ -1,5 +1,7 @@
 package web
 
+import "github.com/Duke1616/ecmdb/pkg/mongox"
+
 type CreateResourceReq struct {
-	Data map[string]interface{} `json:"data"`
+	Data mongox.MapStr `json:"data"`
 }

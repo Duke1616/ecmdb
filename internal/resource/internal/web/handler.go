@@ -33,6 +33,7 @@ func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.
 
 	id, err := h.svc.CreateResource(ctx, domain.Resource{
 		ModelID: modelID,
+		Data:    req.Data,
 	})
 
 	if err != nil {

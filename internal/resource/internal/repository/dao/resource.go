@@ -8,7 +8,7 @@ import (
 )
 
 type ResourceDAO interface {
-	CreateResource(ctx context.Context, ab Resource) (int64, error)
+	CreateResource(ctx context.Context, data mongox.MapStr, ab Resource) (int64, error)
 }
 
 type resourceDAO struct {
@@ -21,25 +21,25 @@ func NewResourceDAO(client *mongo.Client) ResourceDAO {
 	}
 }
 
-func (dao *resourceDAO) CreateResource(ctx context.Context, resource Resource) (int64, error) {
+func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, resource Resource) (int64, error) {
 	now := time.Now()
-	resource.Ctime, resource.Utime = now.UnixMilli(), now.UnixMilli()
-	resource.Id = mongox.GetDataID(dao.db, "c_resources")
+	id := mongox.GetDataID(dao.db, "c_resources")
 
 	col := dao.db.Collection("c_resources")
-	_, err := col.InsertMany(ctx, []interface{}{resource})
+
+	data["id"] = id
+	data["model_id"] = resource.ModelID
+	data["ctime"] = now.UnixMilli()
+	data["utime"] = now.UnixMilli()
+	_, err := col.InsertMany(ctx, []interface{}{data})
 
 	if err != nil {
 		return 0, err
 	}
 
-	return resource.Id, nil
+	return id, nil
 }
 
 type Resource struct {
-	Id      int64                  `bson:"id"`
-	ModelID int64                  `bson:"model_id"`
-	Ctime   int64                  `bson:"ctime"`
-	Utime   int64                  `bson:"utime"`
-	Data    map[string]interface{} `bson:"-"`
+	ModelID int64
 }

@@ -36,10 +36,16 @@ func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.R
 	}, nil
 }
 
-func (h *Handler) DeleteGroup(ctx *gin.Context) {
+func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result, error) {
+	id, err := h.svc.CreateModel(ctx, domain.Model{
+		Name:    req.Name,
+		GroupId: req.GroupId,
+	})
 
-}
-
-func (h *Handler) CreateModel(*gin.Context) {
-
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: id,
+	}, nil
 }

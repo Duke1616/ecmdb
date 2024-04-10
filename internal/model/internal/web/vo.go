@@ -6,7 +6,8 @@ type CreateModelGroupReq struct {
 }
 
 type CreateModelReq struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	GroupId int64  `json:"group_id"`
 }
 
 type CreateModelAttrReq struct {

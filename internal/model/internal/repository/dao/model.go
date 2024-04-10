@@ -9,6 +9,7 @@ import (
 
 type ModelDAO interface {
 	CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error)
+	CreateModel(ctx context.Context, m Model) (int64, error)
 }
 
 func NewModelDAO(client *mongo.Client) ModelDAO {
@@ -36,9 +37,32 @@ func (m *modelDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, 
 	return mg.Id, nil
 }
 
+func (m *modelDAO) CreateModel(ctx context.Context, md Model) (int64, error) {
+	now := time.Now()
+	md.Ctime, md.Utime = now.UnixMilli(), now.UnixMilli()
+	md.Id = mongox.GetDataID(m.db, "c_model")
+
+	col := m.db.Collection("c_model")
+	_, err := col.InsertMany(ctx, []interface{}{md})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return md.Id, nil
+}
+
 type ModelGroup struct {
 	Id    int64  `bson:"id"`
 	Name  string `bson:"name"`
 	Ctime int64  `bson:"ctime"`
 	Utime int64  `bson:"utime"`
+}
+
+type Model struct {
+	Id           int64  `bson:"id"`
+	ModelGroupId int64  `bson:"group_id"`
+	Name         string `bson:"name"`
+	Ctime        int64  `bson:"ctime"`
+	Utime        int64  `bson:"utime"`
 }

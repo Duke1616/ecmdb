@@ -8,6 +8,7 @@ import (
 
 type Service interface {
 	CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error)
+	CreateModel(ctx context.Context, req domain.Model) (int64, error)
 }
 
 type service struct {
@@ -22,4 +23,8 @@ func NewService(repo repository.ModelRepository) Service {
 
 func (s *service) CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error) {
 	return s.repo.CreateModelGroup(ctx, req)
+}
+
+func (s *service) CreateModel(ctx context.Context, req domain.Model) (int64, error) {
+	return s.repo.CreateModel(ctx, req)
 }

@@ -1,8 +1,9 @@
 package domain
 
 type Model struct {
-	ID   string
-	Name string
+	ID      int64
+	GroupId int64
+	Name    string
 }
 
 type ModelGroup struct {

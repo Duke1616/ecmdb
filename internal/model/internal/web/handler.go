@@ -21,6 +21,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/model")
 
 	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateGroup))
+	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
 }
 
 func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
@@ -33,6 +34,7 @@ func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.R
 	}
 	return ginx.Result{
 		Data: id,
+		Msg:  "添加模型分组成功",
 	}, nil
 }
 
@@ -47,5 +49,6 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 	}
 	return ginx.Result{
 		Data: id,
+		Msg:  "添加模型成功",
 	}, nil
 }

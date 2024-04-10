@@ -20,7 +20,7 @@ func InitApp() (*App, error) {
 	client := InitMongoDB()
 	handler := model.InitHandler(client)
 	webHandler := attribute.InitHandler(client)
-	handler2 := resource.InitHandler()
+	handler2 := resource.InitHandler(client)
 	engine := InitWebServer(v, handler, webHandler, handler2)
 	app := &App{
 		Web: engine,

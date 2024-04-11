@@ -8,6 +8,7 @@ import (
 
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
+	FindAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
 }
 
 type attributeRepository struct {
@@ -28,4 +29,28 @@ func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.At
 		FieldType:  req.FieldType,
 		Required:   req.Required,
 	})
+}
+
+func (a *attributeRepository) FindAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
+	attributeList, err := a.dao.SearchAttributeByIdentifies(ctx, identifies)
+	if err != nil {
+		return nil, err
+	}
+
+	domainAttribute := make([]domain.Attribute, 0, len(attributeList))
+	for _, ca := range attributeList {
+		domainAttribute = append(domainAttribute, a.toDomain(ca))
+	}
+	return domainAttribute, nil
+}
+
+func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute {
+	return domain.Attribute{
+		ID:         modelDao.Id,
+		Name:       modelDao.Name,
+		Identifies: modelDao.Identifies,
+		FieldType:  modelDao.FieldType,
+		ModelID:    modelDao.ModelID,
+		Required:   modelDao.Required,
+	}
 }

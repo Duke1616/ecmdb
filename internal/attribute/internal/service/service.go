@@ -8,6 +8,7 @@ import (
 
 type Service interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
+	SearchAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
 }
 
 type service struct {
@@ -22,4 +23,8 @@ func NewService(repo repository.AttributeRepository) Service {
 
 func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
 	return s.repo.CreateAttribute(ctx, req)
+}
+
+func (s *service) SearchAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
+	return s.repo.FindAttributeByIdentifies(ctx, identifies)
 }

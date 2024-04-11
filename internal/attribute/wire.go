@@ -13,13 +13,19 @@ import (
 
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
-	service.NewService,
 	repository.NewAttributeRepository,
 	dao.NewAttributeDAO)
 
-func InitHandler(db *mongo.Client) *Handler {
-	wire.Build(ProviderSet)
-	return new(Handler)
+func InitModule(db *mongo.Client) (*Module, error) {
+	wire.Build(
+		ProviderSet,
+		NewService,
+		//wire.FieldsOf(new(*baguwen.Module), "Svc")
+		wire.Struct(new(Module), "*"),
+	)
+	return new(Module), nil
 }
 
-type Handler = web.Handler
+func NewService(repo repository.AttributeRepository) Service {
+	return service.NewService(repo)
+}

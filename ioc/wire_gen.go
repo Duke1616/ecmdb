@@ -20,8 +20,16 @@ func InitApp() (*App, error) {
 	v := InitGinMiddlewares()
 	client := InitMongoDB()
 	handler := model.InitHandler(client)
-	webHandler := attribute.InitHandler(client)
-	handler2 := resource.InitHandler(client)
+	module, err := attribute.InitModule(client)
+	if err != nil {
+		return nil, err
+	}
+	webHandler := module.Hdl
+	resourceModule, err := resource.InitModule(client, module)
+	if err != nil {
+		return nil, err
+	}
+	handler2 := resourceModule.Hdl
 	handler3 := relation.InitHandler(client)
 	engine := InitWebServer(v, handler, webHandler, handler2, handler3)
 	app := &App{

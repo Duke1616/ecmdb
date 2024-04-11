@@ -17,16 +17,22 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler(db *mongo.Client) *web.Handler {
+func InitModule(db *mongo.Client) (*Module, error) {
 	attributeDAO := dao.NewAttributeDAO(db)
 	attributeRepository := repository.NewAttributeRepository(attributeDAO)
-	serviceService := service.NewService(attributeRepository)
-	handler := web.NewHandler(serviceService)
-	return handler
+	service := NewService(attributeRepository)
+	handler := web.NewHandler(service)
+	module := &Module{
+		Svc: service,
+		Hdl: handler,
+	}
+	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewAttributeRepository, dao.NewAttributeDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, repository.NewAttributeRepository, dao.NewAttributeDAO)
 
-type Handler = web.Handler
+func NewService(repo repository.AttributeRepository) Service {
+	return service.NewService(repo)
+}

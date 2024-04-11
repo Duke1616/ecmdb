@@ -49,7 +49,7 @@ func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.
 func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.Result, error) {
 	modelIdentifies := ctx.Param("model_identifies")
 
-	attributes, err := h.attributeSvc.SearchAttributeByIdentifies(ctx, modelIdentifies)
+	attributes, err := h.attributeSvc.SearchAttributeByModelIdentifies(ctx, modelIdentifies)
 	if err != nil {
 		return systemErrorResult, err
 	}

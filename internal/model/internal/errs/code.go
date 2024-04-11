@@ -22,3 +22,8 @@ type ErrorCode struct {
 	Code int
 	Msg  string
 }
+
+func (e ErrorCode) Error() string {
+	//TODO implement me
+	panic("implement me")
+}

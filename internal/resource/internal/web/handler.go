@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
@@ -48,15 +47,28 @@ func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.
 
 func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.Result, error) {
 	modelIdentifies := ctx.Param("model_identifies")
-
 	attributes, err := h.attributeSvc.SearchAttributeByModelIdentifies(ctx, modelIdentifies)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	fmt.Println(attributes)
+	var dmAttr domain.DetailResource
+	dmAttr.Attributes = make([]domain.Attribute, 0, len(attributes))
+	for _, v := range attributes {
+		val := domain.Attribute{
+			ID:              v.ID,
+			ModelIdentifies: v.ModelIdentifies,
+			Identifies:      v.Identifies,
+			Name:            v.Name,
+			FieldType:       v.FieldType,
+			Required:        v.Required,
+		}
 
-	resp, err := h.svc.FindResourceById(ctx, req.ID, modelIdentifies)
+		dmAttr.Attributes = append(dmAttr.Attributes, val)
+	}
+	dmAttr.ID = req.ID
+
+	resp, err := h.svc.FindResourceById(ctx, dmAttr)
 	if err != nil {
 		return systemErrorResult, err
 	}

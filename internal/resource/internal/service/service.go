@@ -8,7 +8,7 @@ import (
 
 type Service interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, id int64, modelIdentifies string) (domain.Resource, error)
+	FindResourceById(ctx context.Context, req domain.DetailResource) (domain.Resource, error)
 }
 
 type service struct {
@@ -25,6 +25,6 @@ func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int6
 	return s.repo.CreateResource(ctx, req)
 }
 
-func (s *service) FindResourceById(ctx context.Context, id int64, modelIdentifies string) (domain.Resource, error) {
-	return s.repo.FindResourceById(ctx, id, modelIdentifies)
+func (s *service) FindResourceById(ctx context.Context, req domain.DetailResource) (domain.Resource, error) {
+	return s.repo.FindResourceById(ctx, req)
 }

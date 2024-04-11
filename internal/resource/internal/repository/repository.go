@@ -2,13 +2,14 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository/dao"
 )
 
 type ResourceRepository interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, id int64, modelIdentifies string) (domain.Resource, error)
+	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) (domain.Resource, error)
 }
 
 type resourceRepository struct {
@@ -27,12 +28,13 @@ func (r *resourceRepository) CreateResource(ctx context.Context, req domain.Reso
 	})
 }
 
-func (r *resourceRepository) FindResourceById(ctx context.Context, id int64, modelIdentifies string) (domain.Resource, error) {
-	resource, err := r.dao.FindResourceById(ctx, id, modelIdentifies)
+func (r *resourceRepository) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) (domain.Resource, error) {
+	resource, err := r.dao.FindResourceById(ctx, dmAttr)
 	if err != nil {
 		return domain.Resource{}, err
 	}
 
+	fmt.Println(dmAttr)
 	return domain.Resource{
 		ID:              resource.Id,
 		ModelIdentifies: resource.ModelIdentifies,

@@ -5,6 +5,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/google/wire"
 )
@@ -17,6 +18,7 @@ func InitApp() (*App, error) {
 		model.InitHandler,
 		attribute.InitHandler,
 		resource.InitHandler,
+		relation.InitHandler,
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

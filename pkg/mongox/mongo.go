@@ -8,7 +8,7 @@ import (
 )
 
 func GetDataID(DB *mongo.Database, collection string) int64 {
-	coll := DB.Collection("c_id_generator") // 指定表名为ids表
+	coll := DB.Collection("c_id_generator")
 	var result struct {
 		Name   string `json:"name" bson:"name"`
 		NextID int64  `json:"next_id" bson:"next_id"`

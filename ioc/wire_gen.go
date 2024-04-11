@@ -9,6 +9,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/google/wire"
 )
@@ -21,7 +22,8 @@ func InitApp() (*App, error) {
 	handler := model.InitHandler(client)
 	webHandler := attribute.InitHandler(client)
 	handler2 := resource.InitHandler(client)
-	engine := InitWebServer(v, handler, webHandler, handler2)
+	handler3 := relation.InitHandler(client)
+	engine := InitWebServer(v, handler, webHandler, handler2, handler3)
 	app := &App{
 		Web: engine,
 	}

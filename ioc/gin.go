@@ -3,6 +3,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -10,12 +11,14 @@ import (
 	"time"
 )
 
-func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler, resourceHdl *resource.Handler) *gin.Engine {
+func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
+	resourceHdl *resource.Handler, relationHdl *relation.Handler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
 	resourceHdl.RegisterRoutes(server)
+	relationHdl.RegisterRoute(server)
 	return server
 }
 

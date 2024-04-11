@@ -25,11 +25,11 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
 	id, err := h.svc.CreateAttribute(ctx.Request.Context(), domain.Attribute{
-		Name:       req.Name,
-		ModelID:    req.ModelID,
-		Identifies: req.Identifies,
-		FieldType:  req.FieldType,
-		Required:   req.Required,
+		Name:            req.Name,
+		ModelIdentifies: req.ModelIdentifies,
+		Identifies:      req.Identifies,
+		FieldType:       req.FieldType,
+		Required:        req.Required,
 	})
 
 	if err != nil {

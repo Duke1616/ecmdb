@@ -11,7 +11,7 @@ import (
 
 type AttributeDAO interface {
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
-	SearchAttributeByIdentifies(ctx context.Context, identifies string) ([]*Attribute, error)
+	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error)
 }
 
 type attributeDAO struct {
@@ -39,10 +39,10 @@ func (a *attributeDAO) CreateAttribute(ctx context.Context, attribute Attribute)
 	return attribute.Id, nil
 }
 
-func (a *attributeDAO) SearchAttributeByIdentifies(ctx context.Context, identifies string) ([]*Attribute, error) {
+func (a *attributeDAO) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error) {
 	col := a.db.Collection("c_attribute")
 
-	filer := bson.M{"identifies": identifies}
+	filer := bson.M{"model_identifies": identifies}
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
@@ -61,12 +61,12 @@ func (a *attributeDAO) SearchAttributeByIdentifies(ctx context.Context, identifi
 }
 
 type Attribute struct {
-	Id         int64  `bson:"id"`
-	ModelID    int64  `bson:"model_id"`
-	Name       string `bson:"name"`
-	Identifies string `bson:"identifies"`
-	FieldType  string `bson:"field_type"`
-	Required   bool   `bson:"required"`
-	Ctime      int64  `bson:"ctime"`
-	Utime      int64  `bson:"utime"`
+	Id              int64  `bson:"id"`
+	ModelIdentifies string `bson:"model_identifies"`
+	Name            string `bson:"name"`
+	Identifies      string `bson:"identifies"`
+	FieldType       string `bson:"field_type"`
+	Required        bool   `bson:"required"`
+	Ctime           int64  `bson:"ctime"`
+	Utime           int64  `bson:"utime"`
 }

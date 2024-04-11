@@ -8,7 +8,7 @@ import (
 
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	FindAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
+	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
 }
 
 type attributeRepository struct {
@@ -23,16 +23,16 @@ func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {
 
 func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
 	return a.dao.CreateAttribute(ctx, dao.Attribute{
-		ModelID:    req.ModelID,
-		Name:       req.Name,
-		Identifies: req.Identifies,
-		FieldType:  req.FieldType,
-		Required:   req.Required,
+		ModelIdentifies: req.ModelIdentifies,
+		Name:            req.Name,
+		Identifies:      req.Identifies,
+		FieldType:       req.FieldType,
+		Required:        req.Required,
 	})
 }
 
-func (a *attributeRepository) FindAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
-	attributeList, err := a.dao.SearchAttributeByIdentifies(ctx, identifies)
+func (a *attributeRepository) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
+	attributeList, err := a.dao.SearchAttributeByModelIdentifies(ctx, identifies)
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +46,11 @@ func (a *attributeRepository) FindAttributeByIdentifies(ctx context.Context, ide
 
 func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute {
 	return domain.Attribute{
-		ID:         modelDao.Id,
-		Name:       modelDao.Name,
-		Identifies: modelDao.Identifies,
-		FieldType:  modelDao.FieldType,
-		ModelID:    modelDao.ModelID,
-		Required:   modelDao.Required,
+		ID:              modelDao.Id,
+		Name:            modelDao.Name,
+		Identifies:      modelDao.Identifies,
+		FieldType:       modelDao.FieldType,
+		ModelIdentifies: modelDao.ModelIdentifies,
+		Required:        modelDao.Required,
 	}
 }

@@ -8,7 +8,7 @@ import (
 
 type Service interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	SearchAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
+	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
 }
 
 type service struct {
@@ -25,6 +25,6 @@ func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (in
 	return s.repo.CreateAttribute(ctx, req)
 }
 
-func (s *service) SearchAttributeByIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
-	return s.repo.FindAttributeByIdentifies(ctx, identifies)
+func (s *service) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
+	return s.repo.SearchAttributeByModelIdentifies(ctx, identifies)
 }

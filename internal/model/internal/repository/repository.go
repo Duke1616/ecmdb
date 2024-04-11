@@ -25,6 +25,7 @@ func (m *modelRepository) CreateModel(ctx context.Context, req domain.Model) (in
 	return m.dao.CreateModel(ctx, dao.Model{
 		ModelGroupId: req.GroupId,
 		Name:         req.Name,
+		Identifies:   req.Identifies,
 	})
 }
 

@@ -40,8 +40,9 @@ func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.R
 
 func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result, error) {
 	id, err := h.svc.CreateModel(ctx, domain.Model{
-		Name:    req.Name,
-		GroupId: req.GroupId,
+		Name:       req.Name,
+		GroupId:    req.GroupId,
+		Identifies: req.Identifies,
 	})
 
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
-	"strconv"
 )
 
 type Handler struct {
@@ -21,19 +20,15 @@ func NewHandler(service service.Service) *Handler {
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/resource")
 
-	g.POST("/create/:model_id", ginx.WrapBody[CreateResourceReq](h.CreateResource))
+	g.POST("/create/:model_identifies", ginx.WrapBody[CreateResourceReq](h.CreateResource))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
-	modelStr := ctx.Param("model_id")
-	modelID, err := strconv.ParseInt(modelStr, 10, 64)
-	if err != nil {
-		return urlPathErrorResult, err
-	}
+	modelIdentifies := ctx.Param("model_identifies")
 
 	id, err := h.svc.CreateResource(ctx, domain.Resource{
-		ModelID: modelID,
-		Data:    req.Data,
+		ModelIdentifies: modelIdentifies,
+		Data:            req.Data,
 	})
 
 	if err != nil {

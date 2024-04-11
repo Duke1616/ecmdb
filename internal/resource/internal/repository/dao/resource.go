@@ -28,7 +28,7 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, 
 	col := dao.db.Collection("c_resources")
 
 	data["id"] = id
-	data["model_id"] = resource.ModelID
+	data["model_identifies"] = resource.ModelIdentifies
 	data["ctime"] = now.UnixMilli()
 	data["utime"] = now.UnixMilli()
 	_, err := col.InsertMany(ctx, []interface{}{data})
@@ -41,5 +41,5 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, 
 }
 
 type Resource struct {
-	ModelID int64
+	ModelIdentifies string
 }

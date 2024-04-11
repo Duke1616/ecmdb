@@ -4,7 +4,10 @@ tasks:
     desc: 命令提示
     cmds:
       - task --list-all
-
+  run:
+    desc: 启动服务
+    cmds:
+      - go run main.go
   gen:
     desc: 代码生成
     cmds:

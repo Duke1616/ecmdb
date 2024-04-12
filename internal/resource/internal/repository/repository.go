@@ -2,14 +2,14 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 )
 
 type ResourceRepository interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) (domain.Resource, error)
+	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
 }
 
 type resourceRepository struct {
@@ -28,16 +28,11 @@ func (r *resourceRepository) CreateResource(ctx context.Context, req domain.Reso
 	})
 }
 
-func (r *resourceRepository) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) (domain.Resource, error) {
+func (r *resourceRepository) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
 	resource, err := r.dao.FindResourceById(ctx, dmAttr)
 	if err != nil {
-		return domain.Resource{}, err
+		return nil, err
 	}
 
-	fmt.Println(dmAttr)
-	return domain.Resource{
-		ID:              resource.Id,
-		ModelIdentifies: resource.ModelIdentifies,
-		Data:            resource.Data,
-	}, nil
+	return resource, nil
 }

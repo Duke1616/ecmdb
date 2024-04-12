@@ -6,12 +6,13 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, data mongox.MapStr, ab Resource) (int64, error)
-	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) (*Resource, error)
+	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
 }
 
 type resourceDAO struct {
@@ -43,22 +44,33 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, 
 	return id, nil
 }
 
-func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) (*Resource, error) {
+func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
 	col := dao.db.Collection("c_resources")
-	// 字段映射
-	m := &Resource{}
 
 	filter := bson.M{"id": dmAttr.ID}
-
-	if err := col.FindOne(ctx, filter).Decode(m); err != nil {
-		return m, err
+	projection := make(map[string]int, 0)
+	for _, val := range dmAttr.Attributes {
+		projection[val.Identifies] = 1
+	}
+	projection["id"] = 1
+	opts := &options.FindOptions{
+		Projection: projection,
 	}
 
-	return m, nil
+	resources := make([]mongox.MapStr, 0)
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &resources)
+	if err != nil {
+		return nil, err
+	}
+
+	return resources, nil
 }
 
 type Resource struct {
-	Id              int64
 	ModelIdentifies string
-	Data            mongox.MapStr
 }

@@ -4,11 +4,12 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 )
 
 type Service interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, req domain.DetailResource) (domain.Resource, error)
+	FindResourceById(ctx context.Context, req domain.DetailResource) ([]mongox.MapStr, error)
 }
 
 type service struct {
@@ -25,6 +26,6 @@ func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int6
 	return s.repo.CreateResource(ctx, req)
 }
 
-func (s *service) FindResourceById(ctx context.Context, req domain.DetailResource) (domain.Resource, error) {
+func (s *service) FindResourceById(ctx context.Context, req domain.DetailResource) ([]mongox.MapStr, error) {
 	return s.repo.FindResourceById(ctx, req)
 }

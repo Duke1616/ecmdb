@@ -53,19 +53,8 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 	}
 
 	var dmAttr domain.DetailResource
-	dmAttr.Attributes = make([]domain.Attribute, 0, len(attributes))
-	for _, v := range attributes {
-		val := domain.Attribute{
-			ID:              v.ID,
-			ModelIdentifies: v.ModelIdentifies,
-			Identifies:      v.Identifies,
-			Name:            v.Name,
-			FieldType:       v.FieldType,
-			Required:        v.Required,
-		}
 
-		dmAttr.Attributes = append(dmAttr.Attributes, val)
-	}
+	dmAttr.Projection = attributes.Projection
 	dmAttr.ID = req.ID
 
 	resp, err := h.svc.FindResourceById(ctx, dmAttr)

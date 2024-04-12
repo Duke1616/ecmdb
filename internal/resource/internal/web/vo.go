@@ -7,15 +7,5 @@ type CreateResourceReq struct {
 }
 
 type DetailResourceReq struct {
-	ID         int64       `json:"id"`
-	Attributes []Attribute `json:"attributes,omitempty"`
-}
-
-type Attribute struct {
-	ID              int64
-	ModelIdentifies string
-	Identifies      string
-	Name            string
-	FieldType       string
-	Required        bool
+	ID int64 `json:"id"`
 }

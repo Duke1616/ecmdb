@@ -8,7 +8,7 @@ import (
 
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error)
+	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) (domain.AttributeProjection, error)
 }
 
 type attributeRepository struct {
@@ -31,17 +31,21 @@ func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.At
 	})
 }
 
-func (a *attributeRepository) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]domain.Attribute, error) {
+// SearchAttributeByModelIdentifies 查询对应模型的字段信息
+func (a *attributeRepository) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) (domain.AttributeProjection, error) {
 	attributeList, err := a.dao.SearchAttributeByModelIdentifies(ctx, identifies)
 	if err != nil {
-		return nil, err
+		return domain.AttributeProjection{}, err
+	}
+	projection := make(map[string]int, 0)
+
+	for _, ca := range attributeList {
+		projection[ca.Identifies] = 1
 	}
 
-	domainAttribute := make([]domain.Attribute, 0, len(attributeList))
-	for _, ca := range attributeList {
-		domainAttribute = append(domainAttribute, a.toDomain(ca))
-	}
-	return domainAttribute, nil
+	return domain.AttributeProjection{
+		Projection: projection,
+	}, nil
 }
 
 func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute {

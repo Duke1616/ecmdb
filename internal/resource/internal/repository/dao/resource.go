@@ -46,15 +46,11 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, 
 
 func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
 	col := dao.db.Collection("c_resources")
-
 	filter := bson.M{"id": dmAttr.ID}
-	projection := make(map[string]int, 0)
-	for _, val := range dmAttr.Attributes {
-		projection[val.Identifies] = 1
-	}
-	projection["id"] = 1
+	dmAttr.Projection["id"] = 1
+
 	opts := &options.FindOptions{
-		Projection: projection,
+		Projection: dmAttr.Projection,
 	}
 
 	resources := make([]mongox.MapStr, 0)

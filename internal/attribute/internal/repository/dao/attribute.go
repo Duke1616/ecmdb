@@ -9,27 +9,29 @@ import (
 	"time"
 )
 
+const AttributeCollection = "c_attribute"
+
 type AttributeDAO interface {
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
 	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error)
 }
 
 type attributeDAO struct {
-	db *mongo.Database
+	db *mongox.Mongo
 }
 
 func NewAttributeDAO(client *mongo.Client) AttributeDAO {
 	return &attributeDAO{
-		db: client.Database("cmdb"),
+		db: mongox.NewMongo(client),
 	}
 }
 
-func (a *attributeDAO) CreateAttribute(ctx context.Context, attribute Attribute) (int64, error) {
+func (dao *attributeDAO) CreateAttribute(ctx context.Context, attribute Attribute) (int64, error) {
 	now := time.Now()
 	attribute.Ctime, attribute.Utime = now.UnixMilli(), now.UnixMilli()
-	attribute.Id = mongox.GetDataID(a.db, "c_attribute")
+	attribute.Id = dao.db.GetIdGenerator(AttributeCollection)
+	col := dao.db.Collection(AttributeCollection)
 
-	col := a.db.Collection("c_attribute")
 	_, err := col.InsertMany(ctx, []interface{}{attribute})
 
 	if err != nil {
@@ -39,8 +41,8 @@ func (a *attributeDAO) CreateAttribute(ctx context.Context, attribute Attribute)
 	return attribute.Id, nil
 }
 
-func (a *attributeDAO) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error) {
-	col := a.db.Collection("c_attribute")
+func (dao *attributeDAO) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error) {
+	col := dao.db.Collection(AttributeCollection)
 
 	filer := bson.M{"model_identifies": identifies}
 	opt := &options.FindOptions{

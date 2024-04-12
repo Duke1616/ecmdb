@@ -8,6 +8,7 @@ import (
 
 type RelationRepository interface {
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
+	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
 }
 
 func NewRelationRepository(dao dao.RelationDAO) RelationRepository {
@@ -26,5 +27,15 @@ func (r relationRepository) CreateModelRelation(ctx context.Context, req domain.
 		TargetModelIdentifies:  req.TargetModelIdentifies,
 		RelationTypeIdentifies: req.RelationTypeIdentifies,
 		Mapping:                req.Mapping,
+	})
+}
+
+func (r relationRepository) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
+	return r.dao.CreateResourceRelation(ctx, dao.ResourceRelation{
+		SourceModelIdentifies:  req.SourceModelIdentifies,
+		TargetModelIdentifies:  req.TargetModelIdentifies,
+		RelationTypeIdentifies: req.RelationTypeIdentifies,
+		SourceResourceID:       req.SourceResourceID,
+		TargetResourceID:       req.TargetResourceID,
 	})
 }

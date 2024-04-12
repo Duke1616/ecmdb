@@ -45,5 +45,20 @@ func (h *Handler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationR
 }
 
 func (h *Handler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
-	return ginx.Result{}, nil
+	resp, err := h.svc.CreateResourceRelation(ctx, domain.ResourceRelation{
+		SourceModelIdentifies:  req.SourceModelIdentifies,
+		TargetModelIdentifies:  req.TargetModelIdentifies,
+		RelationTypeIdentifies: req.RelationTypeIdentifies,
+		SourceResourceID:       req.SourceResourceID,
+		TargetResourceID:       req.TargetResourceID,
+	})
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "创建资源关联关系成功",
+		Data: resp,
+	}, nil
 }

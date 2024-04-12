@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	ModelCollection      = "c_model"
+	ModelGroupCollection = "c_model_group"
+)
+
 type ModelDAO interface {
 	CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error)
 	CreateModel(ctx context.Context, m Model) (int64, error)
@@ -19,20 +24,20 @@ type ModelDAO interface {
 
 func NewModelDAO(client *mongo.Client) ModelDAO {
 	return &modelDAO{
-		db: client.Database("cmdb"),
+		db: mongox.NewMongo(client),
 	}
 }
 
 type modelDAO struct {
-	db *mongo.Database
+	db *mongox.Mongo
 }
 
 func (dao *modelDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error) {
 	now := time.Now()
 	mg.Ctime, mg.Utime = now.UnixMilli(), now.UnixMilli()
-	mg.Id = mongox.GetDataID(dao.db, "c_model_group")
+	mg.Id = dao.db.GetIdGenerator(ModelGroupCollection)
+	col := dao.db.Collection(ModelGroupCollection)
 
-	col := dao.db.Collection("c_model_group")
 	_, err := col.InsertMany(ctx, []interface{}{mg})
 
 	if err != nil {
@@ -45,9 +50,9 @@ func (dao *modelDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64
 func (dao *modelDAO) CreateModel(ctx context.Context, md Model) (int64, error) {
 	now := time.Now()
 	md.Ctime, md.Utime = now.UnixMilli(), now.UnixMilli()
-	md.Id = mongox.GetDataID(dao.db, "c_model")
+	md.Id = dao.db.GetIdGenerator(ModelCollection)
+	col := dao.db.Collection(ModelCollection)
 
-	col := dao.db.Collection("c_model")
 	_, err := col.InsertMany(ctx, []interface{}{md})
 
 	if err != nil {
@@ -58,7 +63,7 @@ func (dao *modelDAO) CreateModel(ctx context.Context, md Model) (int64, error) {
 }
 
 func (dao *modelDAO) GetModelByIdentifies(ctx context.Context, Identifies string) (*Model, error) {
-	col := dao.db.Collection("c_model")
+	col := dao.db.Collection(ModelCollection)
 	m := &Model{}
 	filter := bson.M{"identifies": Identifies}
 
@@ -70,7 +75,7 @@ func (dao *modelDAO) GetModelByIdentifies(ctx context.Context, Identifies string
 }
 
 func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]*Model, error) {
-	col := dao.db.Collection("c_model")
+	col := dao.db.Collection(ModelCollection)
 
 	filer := bson.M{}
 	opt := &options.FindOptions{
@@ -93,7 +98,7 @@ func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]*Mo
 }
 
 func (dao *modelDAO) CountModels(ctx context.Context) (int64, error) {
-	col := dao.db.Collection("c_model")
+	col := dao.db.Collection(ModelCollection)
 	filer := bson.M{}
 
 	count, err := col.CountDocuments(ctx, filer)

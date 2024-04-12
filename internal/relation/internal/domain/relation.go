@@ -25,8 +25,10 @@ type ResourceRelation struct {
 	ID                     int64
 	SourceModelIdentifies  string
 	TargetModelIdentifies  string
-	SourceResourceID       string
-	TargetResourceID       string
+	SourceResourceID       int64
+	TargetResourceID       int64
 	RelationTypeIdentifies string // 关联类型唯一索引
 	RelationName           string // 拼接字符
+	Ctime                  time.Time
+	Utime                  time.Time
 }

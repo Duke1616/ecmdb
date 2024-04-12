@@ -10,26 +10,27 @@ import (
 	"time"
 )
 
+const ResourceCollection = "c_resources"
+
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, data mongox.MapStr, ab Resource) (int64, error)
 	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
 }
 
 type resourceDAO struct {
-	db *mongo.Database
+	db *mongox.Mongo
 }
 
 func NewResourceDAO(client *mongo.Client) ResourceDAO {
 	return &resourceDAO{
-		db: client.Database("cmdb"),
+		db: mongox.NewMongo(client),
 	}
 }
 
 func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, resource Resource) (int64, error) {
 	now := time.Now()
-	id := mongox.GetDataID(dao.db, "c_resources")
-
-	col := dao.db.Collection("c_resources")
+	id := dao.db.GetIdGenerator(ResourceCollection)
+	col := dao.db.Collection(ResourceCollection)
 
 	data["id"] = id
 	data["model_identifies"] = resource.ModelIdentifies
@@ -45,7 +46,7 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, 
 }
 
 func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
-	col := dao.db.Collection("c_resources")
+	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": dmAttr.ID}
 	dmAttr.Projection["id"] = 1
 

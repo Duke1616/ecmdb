@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -16,6 +18,9 @@ const (
 type RelationDAO interface {
 	CreateModelRelation(ctx context.Context, mg ModelRelation) (int64, error)
 	CreateResourceRelation(ctx context.Context, mg ResourceRelation) (int64, error)
+	ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error)
+	ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 func NewRelationDAO(client *mongo.Client) RelationDAO {
@@ -62,6 +67,57 @@ func (dao *relationDAO) CreateResourceRelation(ctx context.Context, mr ResourceR
 	}
 
 	return mr.Id, nil
+}
+
+func (dao *relationDAO) ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+
+	filer := bson.M{}
+	opt := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var set []*ModelRelation
+	for resp.Next(ctx) {
+		ins := &ModelRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *relationDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+
+	filer := bson.M{}
+	opt := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var set []*ResourceRelation
+	for resp.Next(ctx) {
+		ins := &ResourceRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type ModelRelation struct {

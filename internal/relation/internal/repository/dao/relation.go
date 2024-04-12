@@ -125,7 +125,7 @@ type ModelRelation struct {
 	SourceModelIdentifies  string `bson:"source_model_identifies"`
 	TargetModelIdentifies  string `bson:"target_model_identifies"`
 	RelationTypeIdentifies string `bson:"relation_type_identifies"`
-	RelationName           string `bson:"relation_name"`
+	RelationName           string `bson:"relation_name"` // 唯一标识、以防重复创建
 	Mapping                string `bson:"mapping"`
 	Ctime                  int64  `bson:"ctime"`
 	Utime                  int64  `bson:"utime"`
@@ -138,7 +138,7 @@ type ResourceRelation struct {
 	SourceResourceID       int64  `bson:"source_resource_id"`
 	TargetResourceID       int64  `bson:"target_resource_id"`
 	RelationTypeIdentifies string `bson:"relation_type_identifies"`
-	RelationName           string `bson:"relation_name"`
+	RelationName           string `bson:"relation_name"` // 唯一标识、以防重复创建
 	Ctime                  int64  `bson:"ctime"`
 	Utime                  int64  `bson:"utime"`
 }

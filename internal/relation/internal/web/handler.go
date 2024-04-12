@@ -21,9 +21,11 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) RegisterRoute(server *gin.Engine) {
 	g := server.Group("/relation")
-
+	// 模型关联关系
 	g.POST("/model/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
 	g.POST("/model/list", ginx.WrapBody[Page](h.ListModelRelation))
+
+	// 资源关联关系
 	g.POST("/resource/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 	g.POST("/resource/list", ginx.WrapBody[Page](h.ListResourceRelation))
 

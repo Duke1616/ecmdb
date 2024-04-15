@@ -14,6 +14,9 @@ type Service interface {
 
 	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, int64, error)
+
+	// ListResourceIds 通过关联类型和模型UID 获取关联的 resources ids
+	ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 }
 
 type service struct {
@@ -70,4 +73,8 @@ func (s *service) ListResourceRelation(ctx context.Context, offset, limit int64)
 	}
 
 	return relation, 0, nil
+}
+
+func (s *service) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+	return s.repo.ListResourceIds(ctx, modelUid, relationType)
 }

@@ -10,6 +10,7 @@ import (
 type Service interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
 	FindResourceById(ctx context.Context, req domain.DetailResource) ([]mongox.MapStr, error)
+	ListResourceByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
 }
 
 type service struct {
@@ -30,6 +31,6 @@ func (s *service) FindResourceById(ctx context.Context, req domain.DetailResourc
 	return s.repo.FindResourceById(ctx, req)
 }
 
-func (s *service) ListRelations(ctx context.Context, modelUIds []string) ([]domain.ResourceRelation, error) {
-	return nil, nil
+func (s *service) ListResourceByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error) {
+	return s.repo.ListResourcesByIds(ctx, projection, ids)
 }

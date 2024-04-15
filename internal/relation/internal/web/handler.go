@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -10,13 +11,16 @@ import (
 )
 
 type Handler struct {
-	svc         service.Service
-	resourceSvc resource.Service
+	svc          service.Service
+	attributeSvc attribute.Service
+	resourceSvc  resource.Service
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, attributeSvc attribute.Service, resourceSvc resource.Service) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:          svc,
+		attributeSvc: attributeSvc,
+		resourceSvc:  resourceSvc,
 	}
 }
 
@@ -30,6 +34,7 @@ func (h *Handler) RegisterRoute(server *gin.Engine) {
 	// 资源关联关系
 	g.POST("/resource/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 	g.POST("/resource/list", ginx.WrapBody[Page](h.ListResourceRelation))
+
 }
 
 func (h *Handler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
@@ -95,7 +100,7 @@ func (h *Handler) ListResourceRelation(ctx *gin.Context, req Page) (ginx.Result,
 
 // ListModelUIDRelation 根据模型唯一索引名称，查询所有关联信息
 func (h *Handler) ListModelUIDRelation(ctx *gin.Context, req ListModelRelationByModelUidReq) (ginx.Result, error) {
-	relations, total, err := h.svc.ListModelUidRelation(ctx, req.Offset, req.Limit, req.ModelIdentifies)
+	relations, total, err := h.svc.ListModelUidRelation(ctx, req.Offset, req.Limit, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -107,6 +112,28 @@ func (h *Handler) ListModelUIDRelation(ctx *gin.Context, req ListModelRelationBy
 				return h.toRelationVO(src)
 			}),
 		},
+	}, nil
+}
+
+func (h *Handler) ListResourceByModelUid(ctx *gin.Context, req ListResourceRelationByModelUidReq) (
+	ginx.Result, error) {
+	projection, err := h.attributeSvc.SearchAttributeByModelUID(ctx, req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	ids, err := h.svc.ListResourceIds(ctx, req.ModelUid, req.relationType)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	resources, err := h.resourceSvc.ListResourceByIds(ctx, projection.Projection, ids)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: resources,
 	}, nil
 }
 

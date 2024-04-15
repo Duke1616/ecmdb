@@ -15,6 +15,8 @@ const ResourceCollection = "c_resources"
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
 	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
+
+	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error)
 }
 
 type resourceDAO struct {
@@ -55,6 +57,29 @@ func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.Deta
 
 	resources := make([]mongox.MapStr, 0)
 	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &resources)
+	if err != nil {
+		return nil, err
+	}
+
+	return resources, nil
+}
+
+func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+
+	opts := &options.FindOptions{
+		Projection: projection,
+	}
+
+	resources := make([]*Resource, 0)
+	cursor, err := col.Find(ctx, filter, opts)
+
 	if err != nil {
 		return nil, err
 	}

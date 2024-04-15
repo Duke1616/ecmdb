@@ -16,6 +16,8 @@ type RelationRepository interface {
 
 	ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
 	TotalByModelIdentifies(ctx context.Context, modelUid string) (int64, error)
+
+	ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 }
 
 func NewRelationRepository(dao dao.RelationDAO) RelationRepository {
@@ -99,6 +101,10 @@ func (r *relationRepository) TotalByModelIdentifies(ctx context.Context, modelUi
 func (r *relationRepository) Total(ctx context.Context) (int64, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (r *relationRepository) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+	return r.dao.ListResourceIds(ctx, modelUid, relationType)
 }
 
 func (r *relationRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {

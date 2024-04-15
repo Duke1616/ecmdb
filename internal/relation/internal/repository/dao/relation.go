@@ -25,6 +25,7 @@ type RelationDAO interface {
 
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error)
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
+	ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 }
 
 func NewRelationDAO(client *mongo.Client) RelationDAO {
@@ -157,6 +158,34 @@ func (dao *relationDAO) CountByModelUid(ctx context.Context, modelUid string) (i
 	}
 
 	return count, nil
+}
+
+func (dao *relationDAO) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filer := bson.M{
+		"$and": []bson.M{
+			{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}},
+			{"relation_type_uid": relationType},
+		},
+	}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var ins struct {
+		id int64
+	}
+
+	var set []int64
+	for resp.Next(ctx) {
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins.id)
+	}
+
+	return set, nil
 }
 
 type ModelRelation struct {

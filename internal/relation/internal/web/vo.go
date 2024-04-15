@@ -28,7 +28,13 @@ type Page struct {
 
 type ListModelRelationByModelUidReq struct {
 	Page
-	ModelIdentifies string `json:"model_identifies"`
+	ModelUid string `json:"model_uid"`
+}
+
+type ListResourceRelationByModelUidReq struct {
+	Page
+	ModelUid     string `json:"model_uid"`
+	relationType string `json:"relation_type"`
 }
 
 type ListOrdersResp struct {

@@ -72,7 +72,10 @@ func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.Deta
 func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": bson.M{"$in": ids}}
-
+	projection["_id"] = 0
+	projection["id"] = 1
+	projection["name"] = 1
+	projection["model_uid"] = 1
 	opts := &options.FindOptions{
 		Projection: projection,
 	}

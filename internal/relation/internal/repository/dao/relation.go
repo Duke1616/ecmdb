@@ -173,16 +173,17 @@ func (dao *relationDAO) ListResourceIds(ctx context.Context, modelUid string, re
 	}
 
 	resp, err := col.Find(ctx, filer, opt)
-	var ins struct {
-		id int64
-	}
 
 	var set []int64
 	for resp.Next(ctx) {
-		if err = resp.Decode(ins); err != nil {
+		var result struct {
+			Id int64 `bson:"id"`
+		}
+
+		if err = resp.Decode(&result); err != nil {
 			return nil, err
 		}
-		set = append(set, ins.id)
+		set = append(set, result.Id)
 	}
 
 	return set, nil

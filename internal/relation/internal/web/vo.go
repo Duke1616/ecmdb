@@ -34,7 +34,7 @@ type ListModelRelationByModelUidReq struct {
 type ListResourceRelationByModelUidReq struct {
 	Page
 	ModelUid     string `json:"model_uid"`
-	relationType string `json:"relation_type"`
+	RelationType string `json:"relation_type"`
 }
 
 type ListOrdersResp struct {

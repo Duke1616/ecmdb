@@ -34,6 +34,7 @@ func (h *Handler) RegisterRoute(server *gin.Engine) {
 	// 资源关联关系
 	g.POST("/resource/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 	g.POST("/resource/list", ginx.WrapBody[Page](h.ListResourceRelation))
+	g.POST("/resource/list-name", ginx.WrapBody[ListResourceRelationByModelUidReq](h.ListResourceByModelUid))
 
 }
 
@@ -122,14 +123,14 @@ func (h *Handler) ListResourceByModelUid(ctx *gin.Context, req ListResourceRelat
 		return systemErrorResult, err
 	}
 
-	ids, err := h.svc.ListResourceIds(ctx, req.ModelUid, req.relationType)
+	ids, err := h.svc.ListResourceIds(ctx, req.ModelUid, req.RelationType)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
-	resources, err := h.resourceSvc.ListResourceByIds(ctx, projection.Projection, ids)
+	resources, err := h.resourceSvc.ListResourceByIds(ctx, projection, ids)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{

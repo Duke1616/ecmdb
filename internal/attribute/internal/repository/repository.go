@@ -8,7 +8,7 @@ import (
 
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	SearchAttributeByModelUID(ctx context.Context, identifies string) (domain.AttributeProjection, error)
+	SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error)
 }
 
 type attributeRepository struct {
@@ -32,10 +32,10 @@ func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.At
 }
 
 // SearchAttributeByModelUID 查询对应模型的字段信息
-func (a *attributeRepository) SearchAttributeByModelUID(ctx context.Context, modelUid string) (domain.AttributeProjection, error) {
+func (a *attributeRepository) SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error) {
 	attributeList, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
 	if err != nil {
-		return domain.AttributeProjection{}, err
+		return nil, err
 	}
 	projection := make(map[string]int, 0)
 
@@ -43,9 +43,7 @@ func (a *attributeRepository) SearchAttributeByModelUID(ctx context.Context, mod
 		projection[ca.UID] = 1
 	}
 
-	return domain.AttributeProjection{
-		Projection: projection,
-	}, nil
+	return projection, nil
 }
 
 func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute {

@@ -56,7 +56,7 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 
 	var dmAttr domain.DetailResource
 
-	dmAttr.Projection = attributes.Projection
+	dmAttr.Projection = attributes
 	dmAttr.ID = req.ID
 
 	resp, err := h.svc.FindResourceById(ctx, dmAttr)

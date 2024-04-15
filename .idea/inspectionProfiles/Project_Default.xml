@@ -1,0 +1,10 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="GoDfaErrorMayBeNotNil" enabled="true" level="WARNING" enabled_by_default="true">
+      <methods>
+        <method importPath="go.mongodb.org/mongo-driver/mongo" receiver="*Collection" name="Find" />
+      </methods>
+    </inspection_tool>
+  </profile>
+</component>

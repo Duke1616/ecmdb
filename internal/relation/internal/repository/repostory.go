@@ -14,8 +14,8 @@ type RelationRepository interface {
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, error)
 	Total(ctx context.Context) (int64, error)
 
-	ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]domain.ModelRelation, error)
-	TotalByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error)
+	ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
+	TotalByModelIdentifies(ctx context.Context, modelUid string) (int64, error)
 }
 
 func NewRelationRepository(dao dao.RelationDAO) RelationRepository {
@@ -30,20 +30,20 @@ type relationRepository struct {
 
 func (r *relationRepository) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
 	return r.dao.CreateModelRelation(ctx, dao.ModelRelation{
-		SourceModelIdentifies:  req.SourceModelIdentifies,
-		TargetModelIdentifies:  req.TargetModelIdentifies,
-		RelationTypeIdentifies: req.RelationTypeIdentifies,
-		Mapping:                req.Mapping,
+		SourceModelUID:  req.SourceModelUID,
+		TargetModelUID:  req.TargetModelUID,
+		RelationTypeUID: req.RelationTypeUID,
+		Mapping:         req.Mapping,
 	})
 }
 
 func (r *relationRepository) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
 	return r.dao.CreateResourceRelation(ctx, dao.ResourceRelation{
-		SourceModelIdentifies:  req.SourceModelIdentifies,
-		TargetModelIdentifies:  req.TargetModelIdentifies,
-		RelationTypeIdentifies: req.RelationTypeIdentifies,
-		SourceResourceID:       req.SourceResourceID,
-		TargetResourceID:       req.TargetResourceID,
+		SourceModelUID:   req.SourceModelUID,
+		TargetModelUID:   req.TargetModelUID,
+		RelationTypeUID:  req.RelationTypeUID,
+		SourceResourceID: req.SourceResourceID,
+		TargetResourceID: req.TargetResourceID,
 	})
 }
 
@@ -78,8 +78,8 @@ func (r *relationRepository) ListResourceRelation(ctx context.Context, offset, l
 	return res, nil
 }
 
-func (r *relationRepository) ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]domain.ModelRelation, error) {
-	relations, err := r.dao.ListRelationByModelIdentifies(ctx, offset, limit, modelIdentifies)
+func (r *relationRepository) ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error) {
+	relations, err := r.dao.ListRelationByModelUid(ctx, offset, limit, modelUid)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +92,8 @@ func (r *relationRepository) ListRelationByModelIdentifies(ctx context.Context, 
 	return res, nil
 }
 
-func (r *relationRepository) TotalByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error) {
-	return r.dao.CountByModelIdentifies(ctx, modelIdentifies)
+func (r *relationRepository) TotalByModelIdentifies(ctx context.Context, modelUid string) (int64, error) {
+	return r.dao.CountByModelUid(ctx, modelUid)
 }
 
 func (r *relationRepository) Total(ctx context.Context) (int64, error) {
@@ -103,27 +103,27 @@ func (r *relationRepository) Total(ctx context.Context) (int64, error) {
 
 func (r *relationRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {
 	return domain.ResourceRelation{
-		ID:                     resourceDao.Id,
-		SourceModelIdentifies:  resourceDao.SourceModelIdentifies,
-		TargetModelIdentifies:  resourceDao.TargetModelIdentifies,
-		SourceResourceID:       resourceDao.SourceResourceID,
-		TargetResourceID:       resourceDao.TargetResourceID,
-		RelationTypeIdentifies: resourceDao.RelationTypeIdentifies,
-		RelationName:           resourceDao.RelationName,
-		Ctime:                  time.UnixMilli(resourceDao.Ctime),
-		Utime:                  time.UnixMilli(resourceDao.Utime),
+		ID:               resourceDao.Id,
+		SourceModelUID:   resourceDao.SourceModelUID,
+		TargetModelUID:   resourceDao.TargetModelUID,
+		SourceResourceID: resourceDao.SourceResourceID,
+		TargetResourceID: resourceDao.TargetResourceID,
+		RelationTypeUID:  resourceDao.RelationTypeUID,
+		RelationName:     resourceDao.RelationName,
+		Ctime:            time.UnixMilli(resourceDao.Ctime),
+		Utime:            time.UnixMilli(resourceDao.Utime),
 	}
 }
 
 func (r *relationRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRelation {
 	return domain.ModelRelation{
-		ID:                     modelDao.Id,
-		SourceModelIdentifies:  modelDao.SourceModelIdentifies,
-		TargetModelIdentifies:  modelDao.TargetModelIdentifies,
-		Mapping:                modelDao.Mapping,
-		RelationName:           modelDao.RelationName,
-		RelationTypeIdentifies: modelDao.RelationTypeIdentifies,
-		Ctime:                  time.UnixMilli(modelDao.Ctime),
-		Utime:                  time.UnixMilli(modelDao.Utime),
+		ID:              modelDao.Id,
+		SourceModelUID:  modelDao.SourceModelUID,
+		TargetModelUID:  modelDao.TargetModelUID,
+		Mapping:         modelDao.Mapping,
+		RelationName:    modelDao.RelationName,
+		RelationTypeUID: modelDao.RelationTypeUID,
+		Ctime:           time.UnixMilli(modelDao.Ctime),
+		Utime:           time.UnixMilli(modelDao.Utime),
 	}
 }

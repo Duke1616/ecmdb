@@ -24,7 +24,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateGroup))
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
-	g.POST("/detail", ginx.WrapBody[DetailUniqueIdentifierModelReq](h.DetailModel))
+	g.POST("/detail", ginx.WrapBody[DetailUidModelReq](h.DetailModel))
 	g.POST("/list", ginx.WrapBody[ListModelsReq](h.ListModels))
 }
 
@@ -44,9 +44,9 @@ func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.R
 
 func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result, error) {
 	id, err := h.svc.CreateModel(ctx, domain.Model{
-		Name:       req.Name,
-		GroupId:    req.GroupId,
-		Identifies: req.Identifies,
+		Name:    req.Name,
+		GroupId: req.GroupId,
+		UID:     req.UID,
 	})
 
 	if err != nil {
@@ -58,8 +58,8 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 	}, nil
 }
 
-func (h *Handler) DetailModel(ctx *gin.Context, req DetailUniqueIdentifierModelReq) (ginx.Result, error) {
-	model, err := h.svc.FindModelByIdentifies(ctx, req.UniqueIdentifier)
+func (h *Handler) DetailModel(ctx *gin.Context, req DetailUidModelReq) (ginx.Result, error) {
+	model, err := h.svc.FindModelByUid(ctx, req.uid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -92,9 +92,9 @@ func (h *Handler) toCaseList(data []domain.Model, total int64) ListModelsResp {
 
 func newModel(m domain.Model) Model {
 	return Model{
-		Name:       m.Name,
-		Identifies: m.Identifies,
-		Ctime:      m.Utime.Format(time.DateTime),
-		Utime:      m.Utime.Format(time.DateTime),
+		Name:  m.Name,
+		UID:   m.UID,
+		Ctime: m.Utime.Format(time.DateTime),
+		Utime: m.Utime.Format(time.DateTime),
 	}
 }

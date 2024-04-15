@@ -25,20 +25,19 @@ func (h *Handler) RegisterRoute(server *gin.Engine) {
 	// 模型关联关系
 	g.POST("/model/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
 	g.POST("/model/list", ginx.WrapBody[Page](h.ListModelRelation))
-	g.POST("/model/list/model", ginx.WrapBody[ListModelRelationByModelIdentifiesReq](h.ListModelIdentifiesRelation))
+	g.POST("/model/list-name", ginx.WrapBody[ListModelRelationByModelUidReq](h.ListModelUIDRelation))
 
 	// 资源关联关系
 	g.POST("/resource/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 	g.POST("/resource/list", ginx.WrapBody[Page](h.ListResourceRelation))
-
 }
 
 func (h *Handler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
 	resp, err := h.svc.CreateModelRelation(ctx, domain.ModelRelation{
-		SourceModelIdentifies:  req.SourceModelIdentifies,
-		TargetModelIdentifies:  req.TargetModelIdentifies,
-		RelationTypeIdentifies: req.RelationTypeIdentifies,
-		Mapping:                req.Mapping,
+		SourceModelUID:  req.SourceModelUID,
+		TargetModelUID:  req.TargetModelUID,
+		RelationTypeUID: req.RelationTypeUID,
+		Mapping:         req.Mapping,
 	})
 
 	if err != nil {
@@ -53,11 +52,11 @@ func (h *Handler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationR
 
 func (h *Handler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
 	resp, err := h.svc.CreateResourceRelation(ctx, domain.ResourceRelation{
-		SourceModelIdentifies:  req.SourceModelIdentifies,
-		TargetModelIdentifies:  req.TargetModelIdentifies,
-		RelationTypeIdentifies: req.RelationTypeIdentifies,
-		SourceResourceID:       req.SourceResourceID,
-		TargetResourceID:       req.TargetResourceID,
+		SourceModelUID:   req.SourceModelUID,
+		TargetModelUID:   req.TargetModelUID,
+		RelationTypeUID:  req.RelationTypeIdentifies,
+		SourceResourceID: req.SourceResourceID,
+		TargetResourceID: req.TargetResourceID,
 	})
 
 	if err != nil {
@@ -94,9 +93,9 @@ func (h *Handler) ListResourceRelation(ctx *gin.Context, req Page) (ginx.Result,
 	}, nil
 }
 
-// ListModelIdentifiesRelation 根据模型唯一索引名称，查询所有关联信息
-func (h *Handler) ListModelIdentifiesRelation(ctx *gin.Context, req ListModelRelationByModelIdentifiesReq) (ginx.Result, error) {
-	relations, total, err := h.svc.ListModelIdentifiesRelation(ctx, req.Offset, req.Limit, req.ModelIdentifies)
+// ListModelUIDRelation 根据模型唯一索引名称，查询所有关联信息
+func (h *Handler) ListModelUIDRelation(ctx *gin.Context, req ListModelRelationByModelUidReq) (ginx.Result, error) {
+	relations, total, err := h.svc.ListModelUidRelation(ctx, req.Offset, req.Limit, req.ModelIdentifies)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -113,13 +112,13 @@ func (h *Handler) ListModelIdentifiesRelation(ctx *gin.Context, req ListModelRel
 
 func (h *Handler) toRelationVO(m domain.ModelRelation) ModelRelation {
 	return ModelRelation{
-		ID:                     m.ID,
-		SourceModelIdentifies:  m.SourceModelIdentifies,
-		TargetModelIdentifies:  m.TargetModelIdentifies,
-		RelationTypeIdentifies: m.RelationTypeIdentifies,
-		RelationName:           m.RelationName,
-		Mapping:                m.Mapping,
-		Ctime:                  m.Ctime,
-		Utime:                  m.Utime,
+		ID:              m.ID,
+		SourceModelUID:  m.SourceModelUID,
+		TargetModelUID:  m.TargetModelUID,
+		RelationTypeUID: m.RelationTypeUID,
+		RelationName:    m.RelationName,
+		Mapping:         m.Mapping,
+		Ctime:           m.Ctime,
+		Utime:           m.Utime,
 	}
 }

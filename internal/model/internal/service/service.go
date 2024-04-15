@@ -10,7 +10,7 @@ import (
 type Service interface {
 	CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error)
 	CreateModel(ctx context.Context, req domain.Model) (int64, error)
-	FindModelByIdentifies(ctx context.Context, Identifies string) (domain.Model, error)
+	FindModelByUid(ctx context.Context, Identifies string) (domain.Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error)
 }
 
@@ -32,8 +32,8 @@ func (s *service) CreateModel(ctx context.Context, req domain.Model) (int64, err
 	return s.repo.CreateModel(ctx, req)
 }
 
-func (s *service) FindModelByIdentifies(ctx context.Context, Identifies string) (domain.Model, error) {
-	return s.repo.FindModelByIdentifies(ctx, Identifies)
+func (s *service) FindModelByUid(ctx context.Context, Identifies string) (domain.Model, error) {
+	return s.repo.FindModelByUid(ctx, Identifies)
 }
 
 func (s *service) ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error) {

@@ -10,7 +10,7 @@ import (
 type ModelRepository interface {
 	CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error)
 	CreateModel(ctx context.Context, req domain.Model) (int64, error)
-	FindModelByIdentifies(ctx context.Context, Identifies string) (domain.Model, error)
+	FindModelByUid(ctx context.Context, Identifies string) (domain.Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, error)
 	Total(ctx context.Context) (int64, error)
 }
@@ -46,7 +46,7 @@ func (m *modelRepository) CreateModel(ctx context.Context, req domain.Model) (in
 	return m.dao.CreateModel(ctx, dao.Model{
 		ModelGroupId: req.GroupId,
 		Name:         req.Name,
-		Identifies:   req.Identifies,
+		UID:          req.UID,
 	})
 }
 
@@ -56,27 +56,27 @@ func (m *modelRepository) CreateModelGroup(ctx context.Context, req domain.Model
 	})
 }
 
-func (m *modelRepository) FindModelByIdentifies(ctx context.Context, Identifies string) (domain.Model, error) {
-	model, err := m.dao.GetModelByIdentifies(ctx, Identifies)
+func (m *modelRepository) FindModelByUid(ctx context.Context, uid string) (domain.Model, error) {
+	model, err := m.dao.GetModelByUid(ctx, uid)
 	if err != nil {
 		return domain.Model{}, err
 	}
 
 	return domain.Model{
-		ID:         model.Id,
-		GroupId:    model.ModelGroupId,
-		Name:       model.Name,
-		Identifies: model.Identifies,
+		ID:      model.Id,
+		GroupId: model.ModelGroupId,
+		Name:    model.Name,
+		UID:     model.UID,
 	}, nil
 }
 
 func (m *modelRepository) toDomain(modelDao *dao.Model) domain.Model {
 	return domain.Model{
-		ID:         modelDao.Id,
-		GroupId:    modelDao.ModelGroupId,
-		Name:       modelDao.Name,
-		Identifies: modelDao.Identifies,
-		Ctime:      time.UnixMilli(modelDao.Ctime),
-		Utime:      time.UnixMilli(modelDao.Utime),
+		ID:      modelDao.Id,
+		GroupId: modelDao.ModelGroupId,
+		Name:    modelDao.Name,
+		UID:     modelDao.UID,
+		Ctime:   time.UnixMilli(modelDao.Ctime),
+		Utime:   time.UnixMilli(modelDao.Utime),
 	}
 }

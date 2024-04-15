@@ -5,13 +5,13 @@ type CreateModelGroupReq struct {
 }
 
 type CreateModelReq struct {
-	Name       string `json:"name"`
-	GroupId    int64  `json:"group_id"`
-	Identifies string `json:"identifies"`
+	Name    string `json:"name"`
+	GroupId int64  `json:"group_id"`
+	UID     string `json:"uid"`
 }
 
-type DetailUniqueIdentifierModelReq struct {
-	UniqueIdentifier string `json:"identifies"`
+type DetailUidModelReq struct {
+	uid string `json:"uid"`
 }
 
 type ListModelsReq struct {
@@ -25,8 +25,8 @@ type ListModelsResp struct {
 }
 
 type Model struct {
-	Name       string `json:"name"`
-	Identifies string `json:"identifies"`
-	Ctime      string `json:"ctime"`
-	Utime      string `json:"utime"`
+	Name  string `json:"name"`
+	UID   string `json:"uid"`
+	Ctime string `json:"ctime"`
+	Utime string `json:"utime"`
 }

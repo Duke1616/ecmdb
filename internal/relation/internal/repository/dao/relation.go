@@ -23,8 +23,8 @@ type RelationDAO interface {
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error)
 	Count(ctx context.Context) (int64, error)
 
-	ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]*ModelRelation, error)
-	CountByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error)
+	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error)
+	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 }
 
 func NewRelationDAO(client *mongo.Client) RelationDAO {
@@ -44,7 +44,7 @@ func (dao *relationDAO) CreateModelRelation(ctx context.Context, mr ModelRelatio
 	col := dao.db.Collection(ModelRelationCollection)
 
 	mr.RelationName = fmt.Sprintf("%s_%s_%s",
-		mr.SourceModelIdentifies, mr.RelationTypeIdentifies, mr.TargetModelIdentifies)
+		mr.SourceModelUID, mr.RelationTypeUID, mr.TargetModelUID)
 
 	_, err := col.InsertMany(ctx, []interface{}{mr})
 
@@ -62,7 +62,7 @@ func (dao *relationDAO) CreateResourceRelation(ctx context.Context, mr ResourceR
 	col := dao.db.Collection(ResourceRelationCollection)
 
 	mr.RelationName = fmt.Sprintf("%s_%s_%s",
-		mr.SourceModelIdentifies, mr.RelationTypeIdentifies, mr.TargetModelIdentifies)
+		mr.SourceModelUID, mr.RelationTypeUID, mr.TargetModelUID)
 
 	_, err := col.InsertMany(ctx, []interface{}{mr})
 
@@ -124,10 +124,10 @@ func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
 	panic("implement me")
 }
 
-func (dao *relationDAO) ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]*ModelRelation, error) {
+func (dao *relationDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 
-	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelIdentifies, Options: "i"}}}
+	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 	opt := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -147,9 +147,9 @@ func (dao *relationDAO) ListRelationByModelIdentifies(ctx context.Context, offse
 	return set, nil
 }
 
-func (dao *relationDAO) CountByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error) {
+func (dao *relationDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ModelRelationCollection)
-	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelIdentifies, Options: "i"}}}
+	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 
 	count, err := col.CountDocuments(ctx, filer)
 	if err != nil {
@@ -160,24 +160,24 @@ func (dao *relationDAO) CountByModelIdentifies(ctx context.Context, modelIdentif
 }
 
 type ModelRelation struct {
-	Id                     int64  `bson:"id"`
-	SourceModelIdentifies  string `bson:"source_model_identifies"`
-	TargetModelIdentifies  string `bson:"target_model_identifies"`
-	RelationTypeIdentifies string `bson:"relation_type_identifies"`
-	RelationName           string `bson:"relation_name"` // 唯一标识、以防重复创建
-	Mapping                string `bson:"mapping"`
-	Ctime                  int64  `bson:"ctime"`
-	Utime                  int64  `bson:"utime"`
+	Id              int64  `bson:"id"`
+	SourceModelUID  string `bson:"source_model_uid"`
+	TargetModelUID  string `bson:"target_model_uid"`
+	RelationTypeUID string `bson:"relation_type_uid"`
+	RelationName    string `bson:"relation_name"` // 唯一标识、以防重复创建
+	Mapping         string `bson:"mapping"`
+	Ctime           int64  `bson:"ctime"`
+	Utime           int64  `bson:"utime"`
 }
 
 type ResourceRelation struct {
-	Id                     int64  `bson:"id"`
-	SourceModelIdentifies  string `bson:"source_model_identifies"`
-	TargetModelIdentifies  string `bson:"target_model_identifies"`
-	SourceResourceID       int64  `bson:"source_resource_id"`
-	TargetResourceID       int64  `bson:"target_resource_id"`
-	RelationTypeIdentifies string `bson:"relation_type_identifies"`
-	RelationName           string `bson:"relation_name"` // 唯一标识、以防重复创建
-	Ctime                  int64  `bson:"ctime"`
-	Utime                  int64  `bson:"utime"`
+	Id               int64  `bson:"id"`
+	SourceModelUID   string `bson:"source_model_uid"`
+	TargetModelUID   string `bson:"target_model_uid"`
+	SourceResourceID int64  `bson:"source_resource_id"`
+	TargetResourceID int64  `bson:"target_resource_id"`
+	RelationTypeUID  string `bson:"relation_type_uid"`
+	RelationName     string `bson:"relation_name"` // 唯一标识、以防重复创建
+	Ctime            int64  `bson:"ctime"`
+	Utime            int64  `bson:"utime"`
 }

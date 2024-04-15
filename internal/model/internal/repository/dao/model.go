@@ -17,7 +17,7 @@ const (
 type ModelDAO interface {
 	CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error)
 	CreateModel(ctx context.Context, m Model) (int64, error)
-	GetModelByIdentifies(ctx context.Context, Identifies string) (*Model, error)
+	GetModelByUid(ctx context.Context, uid string) (*Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]*Model, error)
 	CountModels(ctx context.Context) (int64, error)
 }
@@ -62,10 +62,10 @@ func (dao *modelDAO) CreateModel(ctx context.Context, md Model) (int64, error) {
 	return md.Id, nil
 }
 
-func (dao *modelDAO) GetModelByIdentifies(ctx context.Context, Identifies string) (*Model, error) {
+func (dao *modelDAO) GetModelByUid(ctx context.Context, uid string) (*Model, error) {
 	col := dao.db.Collection(ModelCollection)
 	m := &Model{}
-	filter := bson.M{"identifies": Identifies}
+	filter := bson.M{"uid": uid}
 
 	if err := col.FindOne(ctx, filter).Decode(m); err != nil {
 		return &Model{}, err
@@ -118,9 +118,9 @@ type ModelGroup struct {
 
 type Model struct {
 	Id           int64  `bson:"id"`
-	ModelGroupId int64  `bson:"group_id"`
+	ModelGroupId int64  `bson:"model_group_id"`
 	Name         string `bson:"name"`
-	Identifies   string `bson:"identifies"`
+	UID          string `bson:"uid"`
 	Ctime        int64  `bson:"ctime"`
 	Utime        int64  `bson:"utime"`
 }

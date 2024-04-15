@@ -13,7 +13,7 @@ const AttributeCollection = "c_attribute"
 
 type AttributeDAO interface {
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
-	SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error)
+	SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]*Attribute, error)
 }
 
 type attributeDAO struct {
@@ -41,10 +41,10 @@ func (dao *attributeDAO) CreateAttribute(ctx context.Context, attribute Attribut
 	return attribute.Id, nil
 }
 
-func (dao *attributeDAO) SearchAttributeByModelIdentifies(ctx context.Context, identifies string) ([]*Attribute, error) {
+func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]*Attribute, error) {
 	col := dao.db.Collection(AttributeCollection)
 
-	filer := bson.M{"model_identifies": identifies}
+	filer := bson.M{"model_uid": modelUid}
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
@@ -63,12 +63,14 @@ func (dao *attributeDAO) SearchAttributeByModelIdentifies(ctx context.Context, i
 }
 
 type Attribute struct {
-	Id              int64  `bson:"id"`
-	ModelIdentifies string `bson:"model_identifies"`
-	Name            string `bson:"name"`
-	Identifies      string `bson:"identifies"`
-	FieldType       string `bson:"field_type"`
-	Required        bool   `bson:"required"`
-	Ctime           int64  `bson:"ctime"`
-	Utime           int64  `bson:"utime"`
+	Id        int64  `bson:"id"`
+	ModelUID  string `bson:"model_uid"`  // 模型唯一标识
+	Name      string `bson:"name"`       // 字段名称
+	UID       string `bson:"uid"`        // 字段唯一标识、英文标识
+	FieldType string `bson:"field_type"` // 字段类型
+	Required  bool   `bson:"required"`   // 是否为必传
+	Display   bool   `bson:"display"`    // 是否前端展示
+	Index     int64  `bson:"index"`      // 字段前端展示顺序
+	Ctime     int64  `bson:"ctime"`
+	Utime     int64  `bson:"utime"`
 }

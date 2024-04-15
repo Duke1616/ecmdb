@@ -13,7 +13,7 @@ import (
 const ResourceCollection = "c_resources"
 
 type ResourceDAO interface {
-	CreateResource(ctx context.Context, data mongox.MapStr, ab Resource) (int64, error)
+	CreateResource(ctx context.Context, resource Resource) (int64, error)
 	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
 }
 
@@ -27,28 +27,27 @@ func NewResourceDAO(client *mongo.Client) ResourceDAO {
 	}
 }
 
-func (dao *resourceDAO) CreateResource(ctx context.Context, data mongox.MapStr, resource Resource) (int64, error) {
+func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, error) {
 	now := time.Now()
-	id := dao.db.GetIdGenerator(ResourceCollection)
+	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
+	r.ID = dao.db.GetIdGenerator(ResourceCollection)
 	col := dao.db.Collection(ResourceCollection)
 
-	data["id"] = id
-	data["model_identifies"] = resource.ModelIdentifies
-	data["ctime"] = now.UnixMilli()
-	data["utime"] = now.UnixMilli()
-	_, err := col.InsertMany(ctx, []interface{}{data})
+	_, err := col.InsertMany(ctx, []interface{}{r})
 
 	if err != nil {
 		return 0, err
 	}
 
-	return id, nil
+	return r.ID, nil
 }
 
 func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": dmAttr.ID}
+	dmAttr.Projection["_id"] = 0
 	dmAttr.Projection["id"] = 1
+	dmAttr.Projection["name"] = 1
 
 	opts := &options.FindOptions{
 		Projection: dmAttr.Projection,
@@ -69,5 +68,10 @@ func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.Deta
 }
 
 type Resource struct {
-	ModelIdentifies string
+	ID       int64         `bson:"id"`
+	Name     string        `bson:"name"`
+	ModelUID string        `bson:"model_uid"`
+	Data     mongox.MapStr `bson:",inline"`
+	Ctime    int64         `bson:"ctime"`
+	Utime    int64         `bson:"utime"`
 }

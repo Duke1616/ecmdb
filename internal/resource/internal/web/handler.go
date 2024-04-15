@@ -23,16 +23,18 @@ func NewHandler(service service.Service, attributeSvc attribute.Service) *Handle
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/resource")
 
-	g.POST("/create/:model_identifies", ginx.WrapBody[CreateResourceReq](h.CreateResource))
-	g.POST("/detail/:model_identifies", ginx.WrapBody[DetailResourceReq](h.DetailResource))
+	g.POST("/create/:model_uid", ginx.WrapBody[CreateResourceReq](h.CreateResource))
+	g.POST("/detail/:model_uid", ginx.WrapBody[DetailResourceReq](h.DetailResource))
+	// 查询资源的关联关系
+	g.POST("/list/relation")
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
-	modelIdentifies := ctx.Param("model_identifies")
-
+	modelUid := ctx.Param("model_uid")
 	id, err := h.svc.CreateResource(ctx, domain.Resource{
-		ModelIdentifies: modelIdentifies,
-		Data:            req.Data,
+		Name:     req.Name,
+		ModelUID: modelUid,
+		Data:     req.Data,
 	})
 
 	if err != nil {
@@ -46,8 +48,8 @@ func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.
 }
 
 func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.Result, error) {
-	modelIdentifies := ctx.Param("model_identifies")
-	attributes, err := h.attributeSvc.SearchAttributeByModelIdentifies(ctx, modelIdentifies)
+	modelUniqueIdentifier := ctx.Param("model_uid")
+	attributes, err := h.attributeSvc.SearchAttributeByModelUID(ctx, modelUniqueIdentifier)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -66,4 +68,8 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 		Data: resp,
 		Msg:  "查看资源详情成功",
 	}, nil
+}
+
+func (h *Handler) ListRelations(ctx gin.Context) (ginx.Result, error) {
+	return ginx.Result{}, nil
 }

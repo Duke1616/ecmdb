@@ -14,12 +14,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource/internal/web"
 	"github.com/google/wire"
 	"go.mongodb.org/mongo-driver/mongo"
+	"sync"
 )
 
 // Injectors from wire.go:
 
 func InitModule(db *mongo.Client, attributeModule *attribute.Module) (*Module, error) {
-	resourceDAO := dao.NewResourceDAO(db)
+	resourceDAO := InitResourceDAO(db)
 	resourceRepository := repository.NewResourceRepository(resourceDAO)
 	service := NewService(resourceRepository)
 	serviceService := attributeModule.Svc
@@ -33,7 +34,23 @@ func InitModule(db *mongo.Client, attributeModule *attribute.Module) (*Module, e
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, repository.NewResourceRepository, dao.NewResourceDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, repository.NewResourceRepository)
+
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongo.Client) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitResourceDAO(db *mongo.Client) dao.ResourceDAO {
+	InitCollectionOnce(db)
+	return dao.NewResourceDAO(db)
+}
 
 func NewService(repo repository.ResourceRepository) Service {
 	return service.NewService(repo)

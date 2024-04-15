@@ -23,8 +23,10 @@ func NewResourceRepository(dao dao.ResourceDAO) ResourceRepository {
 }
 
 func (r *resourceRepository) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
-	return r.dao.CreateResource(ctx, req.Data, dao.Resource{
-		ModelIdentifies: req.ModelIdentifies,
+	return r.dao.CreateResource(ctx, dao.Resource{
+		ModelUID: req.ModelUID,
+		Name:     req.Name,
+		Data:     req.Data,
 	})
 }
 

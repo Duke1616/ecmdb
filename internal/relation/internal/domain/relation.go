@@ -11,24 +11,24 @@ const (
 )
 
 type ModelRelation struct {
-	ID                     int64
-	SourceModelIdentifies  string
-	TargetModelIdentifies  string
-	RelationTypeIdentifies string // 关联类型唯一索引
-	RelationName           string // 拼接字符
-	Mapping                string // 关联关系
-	Ctime                  time.Time
-	Utime                  time.Time
+	ID              int64
+	SourceModelUID  string
+	TargetModelUID  string
+	RelationTypeUID string // 关联类型唯一索引
+	RelationName    string // 拼接字符
+	Mapping         string // 关联关系
+	Ctime           time.Time
+	Utime           time.Time
 }
 
 type ResourceRelation struct {
-	ID                     int64
-	SourceModelIdentifies  string
-	TargetModelIdentifies  string
-	SourceResourceID       int64
-	TargetResourceID       int64
-	RelationTypeIdentifies string // 关联类型唯一索引
-	RelationName           string // 拼接字符
-	Ctime                  time.Time
-	Utime                  time.Time
+	ID               int64
+	SourceModelUID   string
+	TargetModelUID   string
+	SourceResourceID int64
+	TargetResourceID int64
+	RelationTypeUID  string // 关联类型唯一索引
+	RelationName     string // 拼接字符
+	Ctime            time.Time
+	Utime            time.Time
 }

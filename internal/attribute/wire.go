@@ -20,7 +20,6 @@ func InitModule(db *mongo.Client) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		NewService,
-		//wire.FieldsOf(new(*baguwen.Module), "Svc")
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

@@ -22,11 +22,11 @@ func NewHandler(service service.Service, attributeSvc attribute.Service) *Handle
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/resource")
-
 	g.POST("/create/:model_uid", ginx.WrapBody[CreateResourceReq](h.CreateResource))
 	g.POST("/detail/:model_uid", ginx.WrapBody[DetailResourceReq](h.DetailResource))
+
 	// 查询资源的关联关系
-	g.POST("/list/relation")
+	g.POST("/list/relation", ginx.WrapBody[ListRelationsReq](h.ListRelations))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -70,6 +70,6 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 	}, nil
 }
 
-func (h *Handler) ListRelations(ctx gin.Context) (ginx.Result, error) {
+func (h *Handler) ListRelations(ctx *gin.Context, req ListRelationsReq) (ginx.Result, error) {
 	return ginx.Result{}, nil
 }

@@ -54,7 +54,7 @@ func (h *Handler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRel
 	resp, err := h.svc.CreateResourceRelation(ctx, domain.ResourceRelation{
 		SourceModelUID:   req.SourceModelUID,
 		TargetModelUID:   req.TargetModelUID,
-		RelationTypeUID:  req.RelationTypeIdentifies,
+		RelationTypeUID:  req.RelationTypeUID,
 		SourceResourceID: req.SourceResourceID,
 		TargetResourceID: req.TargetResourceID,
 	})

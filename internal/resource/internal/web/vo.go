@@ -16,5 +16,6 @@ type Page struct {
 	Limit  int64 `json:"limit,omitempty"`
 }
 
-type ListRelationReq struct {
+type ListRelationsReq struct {
+	ModelUid string `json:"model_uid"`
 }

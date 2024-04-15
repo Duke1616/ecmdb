@@ -9,6 +9,11 @@ type Resource struct {
 	Data     mongox.MapStr
 }
 
+type ResourceRelation struct {
+	ModelUid  string
+	Resources []Resource
+}
+
 type DetailResource struct {
 	ID         int64 `json:"id"`
 	Projection map[string]int

@@ -29,3 +29,7 @@ func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int6
 func (s *service) FindResourceById(ctx context.Context, req domain.DetailResource) ([]mongox.MapStr, error) {
 	return s.repo.FindResourceById(ctx, req)
 }
+
+func (s *service) ListRelations(ctx context.Context, modelUIds []string) ([]domain.ResourceRelation, error) {
+	return nil, nil
+}

@@ -14,11 +14,11 @@ type CreateModelRelationReq struct {
 }
 
 type CreateResourceRelationReq struct {
-	SourceModelUID         string `json:"source_model_uid"`
-	TargetModelUID         string `json:"target_model_uid"`
-	SourceResourceID       int64  `json:"source_resource_id"`
-	TargetResourceID       int64  `json:"target_resource_id"`
-	RelationTypeIdentifies string `json:"relation_type_identifies"`
+	SourceModelUID   string `json:"source_model_uid"`
+	TargetModelUID   string `json:"target_model_uid"`
+	SourceResourceID int64  `json:"source_resource_id"`
+	TargetResourceID int64  `json:"target_resource_id"`
+	RelationTypeUID  string `json:"relation_type_uid"`
 }
 
 type Page struct {

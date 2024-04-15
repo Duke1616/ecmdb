@@ -12,7 +12,10 @@ type RelationRepository interface {
 	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
 	ListModelRelation(ctx context.Context, offset, limit int64) ([]domain.ModelRelation, error)
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, error)
-	Count(ctx context.Context) (int64, error)
+	Total(ctx context.Context) (int64, error)
+
+	ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]domain.ModelRelation, error)
+	TotalByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error)
 }
 
 func NewRelationRepository(dao dao.RelationDAO) RelationRepository {
@@ -73,10 +76,27 @@ func (r *relationRepository) ListResourceRelation(ctx context.Context, offset, l
 	}
 
 	return res, nil
-
 }
 
-func (r *relationRepository) Count(ctx context.Context) (int64, error) {
+func (r *relationRepository) ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]domain.ModelRelation, error) {
+	relations, err := r.dao.ListRelationByModelIdentifies(ctx, offset, limit, modelIdentifies)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]domain.ModelRelation, 0, len(relations))
+	for _, value := range relations {
+		res = append(res, r.toDomain(value))
+	}
+
+	return res, nil
+}
+
+func (r *relationRepository) TotalByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error) {
+	return r.dao.CountByModelIdentifies(ctx, modelIdentifies)
+}
+
+func (r *relationRepository) Total(ctx context.Context) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

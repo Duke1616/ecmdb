@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -21,6 +22,9 @@ type RelationDAO interface {
 	ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error)
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error)
 	Count(ctx context.Context) (int64, error)
+
+	ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]*ModelRelation, error)
+	CountByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error)
 }
 
 func NewRelationDAO(client *mongo.Client) RelationDAO {
@@ -118,6 +122,41 @@ func (dao *relationDAO) ListResourceRelation(ctx context.Context, offset, limit 
 func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (dao *relationDAO) ListRelationByModelIdentifies(ctx context.Context, offset, limit int64, modelIdentifies string) ([]*ModelRelation, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+
+	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelIdentifies, Options: "i"}}}
+	opt := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var set []*ModelRelation
+	for resp.Next(ctx) {
+		ins := &ModelRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *relationDAO) CountByModelIdentifies(ctx context.Context, modelIdentifies string) (int64, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelIdentifies, Options: "i"}}}
+
+	count, err := col.CountDocuments(ctx, filer)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 type ModelRelation struct {

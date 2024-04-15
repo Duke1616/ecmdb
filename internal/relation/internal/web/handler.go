@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +25,7 @@ func (h *Handler) RegisterRoute(server *gin.Engine) {
 	// 模型关联关系
 	g.POST("/model/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
 	g.POST("/model/list", ginx.WrapBody[Page](h.ListModelRelation))
+	g.POST("/model/list/model", ginx.WrapBody[ListModelRelationByModelIdentifiesReq](h.ListModelIdentifiesRelation))
 
 	// 资源关联关系
 	g.POST("/resource/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
@@ -90,4 +92,34 @@ func (h *Handler) ListResourceRelation(ctx *gin.Context, req Page) (ginx.Result,
 		Msg:  "查询资源关联成功",
 		Data: m,
 	}, nil
+}
+
+// ListModelIdentifiesRelation 根据模型唯一索引名称，查询所有关联信息
+func (h *Handler) ListModelIdentifiesRelation(ctx *gin.Context, req ListModelRelationByModelIdentifiesReq) (ginx.Result, error) {
+	relations, total, err := h.svc.ListModelIdentifiesRelation(ctx, req.Offset, req.Limit, req.ModelIdentifies)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: ListOrdersResp{
+			Total: total,
+			ModelRelations: slice.Map(relations, func(idx int, src domain.ModelRelation) ModelRelation {
+				return h.toRelationVO(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) toRelationVO(m domain.ModelRelation) ModelRelation {
+	return ModelRelation{
+		ID:                     m.ID,
+		SourceModelIdentifies:  m.SourceModelIdentifies,
+		TargetModelIdentifies:  m.TargetModelIdentifies,
+		RelationTypeIdentifies: m.RelationTypeIdentifies,
+		RelationName:           m.RelationName,
+		Mapping:                m.Mapping,
+		Ctime:                  m.Ctime,
+		Utime:                  m.Utime,
+	}
 }

@@ -17,16 +17,16 @@ type RelationModelRepository interface {
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
-	return &relationModelRepository{
+	return &modelRepository{
 		dao: dao,
 	}
 }
 
-type relationModelRepository struct {
+type modelRepository struct {
 	dao dao.RelationModelDAO
 }
 
-func (r *relationModelRepository) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+func (r *modelRepository) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
 	return r.dao.CreateModelRelation(ctx, dao.ModelRelation{
 		SourceModelUID:  req.SourceModelUID,
 		TargetModelUID:  req.TargetModelUID,
@@ -35,7 +35,7 @@ func (r *relationModelRepository) CreateModelRelation(ctx context.Context, req d
 	})
 }
 
-func (r *relationModelRepository) ListModelRelation(ctx context.Context, offset, limit int64) ([]domain.ModelRelation, error) {
+func (r *modelRepository) ListModelRelation(ctx context.Context, offset, limit int64) ([]domain.ModelRelation, error) {
 	modelRelations, err := r.dao.ListModelRelation(ctx, offset, limit)
 	if err != nil {
 		return nil, err
@@ -51,12 +51,12 @@ func (r *relationModelRepository) ListModelRelation(ctx context.Context, offset,
 
 }
 
-func (r *relationModelRepository) Total(ctx context.Context) (int64, error) {
+func (r *modelRepository) Total(ctx context.Context) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (r *relationModelRepository) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error) {
+func (r *modelRepository) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error) {
 	relations, err := r.dao.ListRelationByModelUid(ctx, offset, limit, modelUid)
 	if err != nil {
 		return nil, err
@@ -70,11 +70,11 @@ func (r *relationModelRepository) ListRelationByModelUid(ctx context.Context, of
 	return res, nil
 }
 
-func (r *relationModelRepository) TotalByModelUid(ctx context.Context, modelUid string) (int64, error) {
+func (r *modelRepository) TotalByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	return r.dao.CountByModelUid(ctx, modelUid)
 }
 
-func (r *relationModelRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRelation {
+func (r *modelRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRelation {
 	return domain.ModelRelation{
 		ID:              modelDao.Id,
 		SourceModelUID:  modelDao.SourceModelUID,

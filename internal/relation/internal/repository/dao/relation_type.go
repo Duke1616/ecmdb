@@ -4,23 +4,43 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 type RelationTypeDAO interface {
-	CreateRelation(ctx context.Context, mg ModelRelation) (int64, error)
+	Create(ctx context.Context, r RelationType) (int64, error)
 }
 
 func NewRelationTypeDAO(client *mongo.Client) RelationTypeDAO {
-	return &relationTypeDAO{
+	return &relationDAO{
 		db: mongox.NewMongo(client),
 	}
 }
 
-type relationTypeDAO struct {
+type relationDAO struct {
 	db *mongox.Mongo
 }
 
-func (r relationTypeDAO) CreateRelation(ctx context.Context, mg ModelRelation) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (dao *relationDAO) Create(ctx context.Context, r RelationType) (int64, error) {
+	now := time.Now()
+	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
+	r.Id = dao.db.GetIdGenerator(RelationTypeCollection)
+	col := dao.db.Collection(RelationTypeCollection)
+
+	_, err := col.InsertMany(ctx, []interface{}{r})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return r.Id, nil
+}
+
+type RelationType struct {
+	Id             int64  `bson:"id"`
+	UID            string `bson:"uid"`
+	SourceDescribe string `bson:"source_describe"`
+	TargetDescribe string `bson:"target_describe"`
+	Ctime          int64  `bson:"ctime"`
+	Utime          int64  `bson:"utime"`
 }

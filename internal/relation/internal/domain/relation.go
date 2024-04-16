@@ -32,3 +32,12 @@ type ResourceRelation struct {
 	Ctime            time.Time
 	Utime            time.Time
 }
+
+type RelationType struct {
+	ID             int64
+	UID            string
+	SourceDescribe string
+	TargetDescribe string
+	Ctime          time.Time
+	Utime          time.Time
+}

@@ -26,19 +26,25 @@ func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceMode
 	relationModelDAO := dao.NewRelationModelDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
 	relationModelService := service.NewRelationModelService(relationModelRepository)
+	relationTypeDAO := dao.NewRelationTypeDAO(db)
+	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
+	relationTypeService := service.NewRelationTypeService(relationTypeRepository)
 	serviceService := attributeModel.Svc
 	service2 := resourceModel.Svc
 	relationResourceHandler := web.NewRelationResourceHandler(relationResourceService, serviceService, service2)
 	relationModelHandler := web.NewRelationModelHandler(relationModelService)
+	relationTypeHandler := web.NewRelationTypeHandler(relationTypeService)
 	module := &Module{
 		RRSvc: relationResourceService,
 		RMSvc: relationModelService,
+		RTSvc: relationTypeService,
 		RRHdl: relationResourceHandler,
 		RMHdl: relationModelHandler,
+		RTHdl: relationTypeHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, service.NewRelationResourceService, service.NewRelationModelService, repository.NewRelationModelRepository, repository.NewRelationResourceRepository, dao.NewRelationModelDAO, dao.NewRelationResourceDAO)
+var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, web.NewRelationTypeHandler, service.NewRelationResourceService, service.NewRelationModelService, service.NewRelationTypeService, repository.NewRelationModelRepository, repository.NewRelationResourceRepository, repository.NewRelationTypeRepository, dao.NewRelationModelDAO, dao.NewRelationResourceDAO, dao.NewRelationTypeDAO)

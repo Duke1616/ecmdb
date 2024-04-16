@@ -14,16 +14,16 @@ type RelationResourceRepository interface {
 }
 
 func NewRelationResourceRepository(dao dao.RelationResourceDAO) RelationResourceRepository {
-	return &relationResourceRepository{
+	return &resourceRepository{
 		dao: dao,
 	}
 }
 
-type relationResourceRepository struct {
+type resourceRepository struct {
 	dao dao.RelationResourceDAO
 }
 
-func (r *relationResourceRepository) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
+func (r *resourceRepository) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
 	return r.dao.CreateResourceRelation(ctx, dao.ResourceRelation{
 		SourceModelUID:   req.SourceModelUID,
 		TargetModelUID:   req.TargetModelUID,
@@ -33,7 +33,7 @@ func (r *relationResourceRepository) CreateResourceRelation(ctx context.Context,
 	})
 }
 
-func (r *relationResourceRepository) ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, error) {
+func (r *resourceRepository) ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, error) {
 	resourceRelations, err := r.dao.ListResourceRelation(ctx, offset, limit)
 	if err != nil {
 		return nil, err
@@ -48,15 +48,15 @@ func (r *relationResourceRepository) ListResourceRelation(ctx context.Context, o
 	return res, nil
 }
 
-func (r *relationResourceRepository) TotalByModelIdentifies(ctx context.Context, modelUid string) (int64, error) {
+func (r *resourceRepository) TotalByModelIdentifies(ctx context.Context, modelUid string) (int64, error) {
 	return r.dao.CountByModelUid(ctx, modelUid)
 }
 
-func (r *relationResourceRepository) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+func (r *resourceRepository) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
 	return r.dao.ListResourceIds(ctx, modelUid, relationType)
 }
 
-func (r *relationResourceRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {
+func (r *resourceRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {
 	return domain.ResourceRelation{
 		ID:               resourceDao.Id,
 		SourceModelUID:   resourceDao.SourceModelUID,

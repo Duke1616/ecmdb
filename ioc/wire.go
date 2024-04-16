@@ -21,7 +21,7 @@ func InitApp() (*App, error) {
 		resource.InitModule,
 		wire.FieldsOf(new(*resource.Module), "Hdl"),
 		relation.InitModule,
-		wire.FieldsOf(new(*relation.Module), "RRHdl", "RMHdl"),
+		wire.FieldsOf(new(*relation.Module), "RRHdl", "RMHdl", "RTHdl"),
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

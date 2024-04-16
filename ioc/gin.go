@@ -12,7 +12,7 @@ import (
 )
 
 func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler) *gin.Engine {
+	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, rtHdl *relation.RTHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	modelHdl.RegisterRoutes(server)
@@ -20,6 +20,7 @@ func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl
 	resourceHdl.RegisterRoutes(server)
 	rmHdl.RegisterRoute(server)
 	rrHdl.RegisterRoute(server)
+	rtHdl.RegisterRoute(server)
 	return server
 }
 

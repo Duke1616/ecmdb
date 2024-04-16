@@ -18,11 +18,10 @@ func NewRelationTypeHandler(svc service.RelationTypeService) *RelationTypeHandle
 
 func (h *RelationTypeHandler) RegisterRoute(server *gin.Engine) {
 	g := server.Group("/relation/type")
-
-	// 模型关联类型
-	g.POST("/create", ginx.WrapBody[CreateRelationTypeReq](h.CreateRelationType))
+	// 关联类型
+	g.POST("/create", ginx.WrapBody[CreateRelationTypeReq](h.Create))
 }
 
-func (h *RelationTypeHandler) CreateRelationType(ctx *gin.Context, req CreateRelationTypeReq) (ginx.Result, error) {
+func (h *RelationTypeHandler) Create(ctx *gin.Context, req CreateRelationTypeReq) (ginx.Result, error) {
 	return ginx.Result{}, nil
 }

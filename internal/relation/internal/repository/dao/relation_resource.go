@@ -20,16 +20,16 @@ type RelationResourceDAO interface {
 }
 
 func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
-	return &relationResourceDAO{
+	return &resourceDAO{
 		db: mongox.NewMongo(client),
 	}
 }
 
-type relationResourceDAO struct {
+type resourceDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *relationResourceDAO) CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error) {
+func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error) {
 	now := time.Now()
 	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
 	mr.Id = dao.db.GetIdGenerator(ResourceRelationCollection)
@@ -47,7 +47,7 @@ func (dao *relationResourceDAO) CreateResourceRelation(ctx context.Context, mr R
 	return mr.Id, nil
 }
 
-func (dao *relationResourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error) {
+func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 
 	filer := bson.M{}
@@ -70,7 +70,7 @@ func (dao *relationResourceDAO) ListResourceRelation(ctx context.Context, offset
 	return set, nil
 }
 
-func (dao *relationResourceDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
+func (dao *resourceDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 
 	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
@@ -93,7 +93,7 @@ func (dao *relationResourceDAO) ListRelationByModelUid(ctx context.Context, offs
 	return set, nil
 }
 
-func (dao *relationResourceDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
+func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 
@@ -105,7 +105,7 @@ func (dao *relationResourceDAO) CountByModelUid(ctx context.Context, modelUid st
 	return count, nil
 }
 
-func (dao *relationResourceDAO) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+func (dao *resourceDAO) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filer := bson.M{
 		"$and": []bson.M{

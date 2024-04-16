@@ -16,12 +16,16 @@ import (
 var ProviderSet = wire.NewSet(
 	web.NewRelationResourceHandler,
 	web.NewRelationModelHandler,
+	web.NewRelationTypeHandler,
 	service.NewRelationResourceService,
 	service.NewRelationModelService,
+	service.NewRelationTypeService,
 	repository.NewRelationModelRepository,
 	repository.NewRelationResourceRepository,
+	repository.NewRelationTypeRepository,
 	dao.NewRelationModelDAO,
-	dao.NewRelationResourceDAO)
+	dao.NewRelationResourceDAO,
+	dao.NewRelationTypeDAO)
 
 func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceModel *resource.Module) (*Module, error) {
 	wire.Build(

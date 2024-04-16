@@ -14,3 +14,6 @@ type RRHandler = web.RelationResourceHandler
 
 type RMSvc = service.RelationModelService
 type RMHandler = web.RelationModelHandler
+
+type RTSvc = service.RelationTypeService
+type RTHandler = web.RelationTypeHandler

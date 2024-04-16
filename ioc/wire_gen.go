@@ -36,7 +36,8 @@ func InitApp() (*App, error) {
 	}
 	relationModelHandler := relationModule.RMHdl
 	relationResourceHandler := relationModule.RRHdl
-	engine := InitWebServer(v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler)
+	relationTypeHandler := relationModule.RTHdl
+	engine := InitWebServer(v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler)
 	app := &App{
 		Web: engine,
 	}

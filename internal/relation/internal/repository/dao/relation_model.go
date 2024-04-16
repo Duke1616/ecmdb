@@ -20,16 +20,16 @@ type RelationModelDAO interface {
 }
 
 func NewRelationModelDAO(client *mongo.Client) RelationModelDAO {
-	return &relationModelDAO{
+	return &modelDAO{
 		db: mongox.NewMongo(client),
 	}
 }
 
-type relationModelDAO struct {
+type modelDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *relationModelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
+func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
 	now := time.Now()
 	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
 	mr.Id = dao.db.GetIdGenerator(ModelRelationCollection)
@@ -47,7 +47,7 @@ func (dao *relationModelDAO) CreateModelRelation(ctx context.Context, mr ModelRe
 	return mr.Id, nil
 }
 
-func (dao *relationModelDAO) ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error) {
+func (dao *modelDAO) ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 
 	filer := bson.M{}
@@ -70,12 +70,12 @@ func (dao *relationModelDAO) ListModelRelation(ctx context.Context, offset, limi
 	return set, nil
 }
 
-func (dao *relationModelDAO) Count(ctx context.Context) (int64, error) {
+func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (dao *relationModelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
+func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 
 	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
@@ -98,7 +98,7 @@ func (dao *relationModelDAO) ListRelationByModelUid(ctx context.Context, offset,
 	return set, nil
 }
 
-func (dao *relationModelDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
+func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 

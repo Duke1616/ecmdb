@@ -4,6 +4,7 @@ package relation
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
@@ -27,11 +28,13 @@ var ProviderSet = wire.NewSet(
 	dao.NewRelationResourceDAO,
 	dao.NewRelationTypeDAO)
 
-func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceModel *resource.Module) (*Module, error) {
+func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceModel *resource.Module,
+	modelModule *model.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
 		wire.FieldsOf(new(*resource.Module), "Svc"),
+		wire.FieldsOf(new(*model.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

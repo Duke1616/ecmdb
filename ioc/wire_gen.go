@@ -19,18 +19,22 @@ import (
 func InitApp() (*App, error) {
 	v := InitGinMiddlewares()
 	client := InitMongoDB()
-	handler := model.InitHandler(client)
-	module, err := attribute.InitModule(client)
+	module, err := model.InitModule(client)
 	if err != nil {
 		return nil, err
 	}
-	webHandler := module.Hdl
-	resourceModule, err := resource.InitModule(client, module)
+	handler := module.Hdl
+	attributeModule, err := attribute.InitModule(client)
+	if err != nil {
+		return nil, err
+	}
+	webHandler := attributeModule.Hdl
+	resourceModule, err := resource.InitModule(client, attributeModule)
 	if err != nil {
 		return nil, err
 	}
 	handler2 := resourceModule.Hdl
-	relationModule, err := relation.InitModule(client, module, resourceModule)
+	relationModule, err := relation.InitModule(client, attributeModule, resourceModule, module)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,8 @@ type RelationModelDAO interface {
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error)
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 	Count(ctx context.Context) (int64, error)
+
+	FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
 }
 
 func NewRelationModelDAO(client *mongo.Client) RelationModelDAO {
@@ -83,6 +85,27 @@ func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit i
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var set []*ModelRelation
+	for resp.Next(ctx) {
+		ins := &ModelRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *modelDAO) FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+
+	filer := bson.M{"source_model_uid": sourceUid}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
 	resp, err := col.Find(ctx, filer, opt)

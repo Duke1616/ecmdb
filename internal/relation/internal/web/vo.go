@@ -1,6 +1,8 @@
 package web
 
-import "time"
+import (
+	"time"
+)
 
 type CreateModelRelationReq struct {
 	SourceModelUID  string `json:"source_model_uid"`
@@ -33,7 +35,7 @@ type ListResourceRelationByModelUidReq struct {
 	RelationType string `json:"relation_type"`
 }
 
-type ListOrdersResp struct {
+type ListRelationModelsResp struct {
 	Total          int64           `json:"total,omitempty"`
 	ModelRelations []ModelRelation `json:"orders,omitempty"`
 }
@@ -54,4 +56,22 @@ type CreateRelationTypeReq struct {
 	UID            string `json:"uid"`
 	SourceDescribe string `json:"source_describe"`
 	TargetDescribe string `json:"target_describe"`
+}
+
+// Model 拓补图模型关联节点信息
+type Model struct {
+	ID              int64  `json:"id"`
+	RelationTypeUID string `json:"relation_type_uid"`
+	TargetModelUID  string `json:"target_model_uid"`
+}
+
+type ModelDiagram struct {
+	ID        int64  `json:"id"`
+	ModelUID  string `json:"model_uid"`
+	ModelName string `json:"model_name"`
+	Assets    []Model
+}
+
+type RetrieveRelationModelDiagram struct {
+	Diagrams []ModelDiagram `json:"diagrams"`
 }

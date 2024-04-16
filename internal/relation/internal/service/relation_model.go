@@ -11,6 +11,8 @@ type RelationModelService interface {
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
 	ListModelRelation(ctx context.Context, offset, limit int64) ([]domain.ModelRelation, int64, error)
 	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error)
+	// FindModelRelationBySourceUID 根据源模型UID 查询所有的关联的模型
+	FindModelRelationBySourceUID(ctx context.Context, sourceUId string) ([]domain.ModelRelationDiagram, error)
 }
 
 type modelService struct {
@@ -54,4 +56,8 @@ func (s *modelService) ListModelUidRelation(ctx context.Context, offset, limit i
 		return err
 	})
 	return relations, total, eg.Wait()
+}
+
+func (s *modelService) FindModelRelationBySourceUID(ctx context.Context, modelId string) ([]domain.ModelRelationDiagram, error) {
+	return s.repo.FindModelRelationBySourceUID(ctx, modelId)
 }

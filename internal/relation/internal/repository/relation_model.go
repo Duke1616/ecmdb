@@ -14,6 +14,8 @@ type RelationModelRepository interface {
 
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
+
+	FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -72,6 +74,24 @@ func (r *modelRepository) ListRelationByModelUid(ctx context.Context, offset, li
 
 func (r *modelRepository) TotalByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	return r.dao.CountByModelUid(ctx, modelUid)
+}
+
+func (r *modelRepository) FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error) {
+	relations, err := r.dao.FindModelRelationBySourceUID(ctx, sourceUid)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]domain.ModelRelationDiagram, 0, len(relations))
+	for _, value := range relations {
+		res = append(res, domain.ModelRelationDiagram{
+			ID:              value.Id,
+			RelationTypeUID: value.RelationTypeUID,
+			TargetModelUID:  value.TargetModelUID,
+		})
+	}
+
+	return res, nil
 }
 
 func (r *modelRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRelation {

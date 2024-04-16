@@ -17,9 +17,10 @@ var ProviderSet = wire.NewSet(
 	repository.NewModelRepository,
 	dao.NewModelDAO)
 
-func InitHandler(db *mongo.Client) *Handler {
-	wire.Build(ProviderSet)
-	return new(Handler)
+func InitModule(db *mongo.Client) (*Module, error) {
+	wire.Build(
+		ProviderSet,
+		wire.Struct(new(Module), "*"),
+	)
+	return new(Module), nil
 }
-
-type Handler = web.Handler

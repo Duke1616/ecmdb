@@ -1,0 +1,14 @@
+{
+  "name": "属于",
+  "uid": "belong",
+  "source_describe": "属于",
+  "target_describe": "包含"
+}
+
+{
+  "name": "运行",
+  "uid": "run",
+  "source_describe": "运行于",
+  "target_describe": "运行"
+}
+

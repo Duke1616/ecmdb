@@ -35,6 +35,7 @@ type ResourceRelation struct {
 
 type RelationType struct {
 	ID             int64
+	Name           string
 	UID            string
 	SourceDescribe string
 	TargetDescribe string

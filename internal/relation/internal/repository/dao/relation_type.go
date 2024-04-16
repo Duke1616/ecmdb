@@ -3,12 +3,16 @@ package dao
 import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
 type RelationTypeDAO interface {
 	Create(ctx context.Context, r RelationType) (int64, error)
+	List(ctx context.Context, offset, limit int64) ([]*RelationType, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 func NewRelationTypeDAO(client *mongo.Client) RelationTypeDAO {
@@ -36,8 +40,44 @@ func (dao *relationDAO) Create(ctx context.Context, r RelationType) (int64, erro
 	return r.Id, nil
 }
 
+func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]*RelationType, error) {
+	col := dao.db.Collection(RelationTypeCollection)
+
+	filer := bson.M{}
+	opt := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var set []*RelationType
+	for resp.Next(ctx) {
+		ins := &RelationType{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
+	col := dao.db.Collection(RelationTypeCollection)
+	filer := bson.M{}
+
+	count, err := col.CountDocuments(ctx, filer)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 type RelationType struct {
 	Id             int64  `bson:"id"`
+	Name           string `bson:"name"`
 	UID            string `bson:"uid"`
 	SourceDescribe string `bson:"source_describe"`
 	TargetDescribe string `bson:"target_describe"`

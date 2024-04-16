@@ -23,9 +23,9 @@ func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {
 
 func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
 	return a.dao.CreateAttribute(ctx, dao.Attribute{
-		ModelUID:  req.UID,
+		ModelUID:  req.ModelUID,
 		Name:      req.Name,
-		UID:       req.ModelUID,
+		UID:       req.UID,
 		FieldType: req.FieldType,
 		Required:  req.Required,
 	})
@@ -34,6 +34,7 @@ func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.At
 // SearchAttributeByModelUID 查询对应模型的字段信息
 func (a *attributeRepository) SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error) {
 	attributeList, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
+
 	if err != nil {
 		return nil, err
 	}

@@ -14,10 +14,14 @@ import (
 )
 
 var ProviderSet = wire.NewSet(
-	web.NewHandler,
-	service.NewService,
-	repository.NewRelationRepository,
-	dao.NewRelationDAO)
+	web.NewRelationResourceHandler,
+	web.NewRelationModelHandler,
+	service.NewRelationResourceService,
+	service.NewRelationModelService,
+	repository.NewRelationModelRepository,
+	repository.NewRelationResourceRepository,
+	dao.NewRelationModelDAO,
+	dao.NewRelationResourceDAO)
 
 func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceModel *resource.Module) (*Module, error) {
 	wire.Build(

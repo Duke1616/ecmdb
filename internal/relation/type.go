@@ -5,6 +5,12 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/web"
 )
 
-type Service = service.Service
+// RR => RelationResource
+// RM => RelationModel
+// RT => RelationType
 
-type Handler = web.Handler
+type RRSvc = service.RelationResourceService
+type RRHandler = web.RelationResourceHandler
+
+type RMSvc = service.RelationModelService
+type RMHandler = web.RelationModelHandler

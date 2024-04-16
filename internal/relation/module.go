@@ -1,6 +1,8 @@
 package relation
 
 type Module struct {
-	Svc Service
-	Hdl *Handler
+	RRSvc RRSvc
+	RMSvc RMSvc
+	RRHdl *RRHandler
+	RMHdl *RMHandler
 }

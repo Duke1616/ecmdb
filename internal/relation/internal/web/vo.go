@@ -2,10 +2,6 @@ package web
 
 import "time"
 
-type CreateRelationTypeReq struct {
-	name string
-}
-
 type CreateModelRelationReq struct {
 	SourceModelUID  string `json:"source_model_uid"`
 	TargetModelUID  string `json:"target_model_uid"`
@@ -51,4 +47,11 @@ type ModelRelation struct {
 	Mapping         string    `json:"mapping"`           // 关联关系
 	Ctime           time.Time `json:"ctime"`
 	Utime           time.Time `json:"utime"`
+}
+
+type CreateRelationTypeReq struct {
+	Name           string `json:"name"`
+	UID            string `json:"uid"`
+	SourceDescribe string `json:"source_describe"`
+	TargetDescribe string `json:"target_describe"`
 }

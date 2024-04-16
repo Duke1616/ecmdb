@@ -12,13 +12,14 @@ import (
 )
 
 func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, relationHdl *relation.Handler) *gin.Engine {
+	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
 	resourceHdl.RegisterRoutes(server)
-	relationHdl.RegisterRoute(server)
+	rmHdl.RegisterRoute(server)
+	rrHdl.RegisterRoute(server)
 	return server
 }
 

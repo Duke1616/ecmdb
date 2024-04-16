@@ -48,8 +48,8 @@ func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.
 }
 
 func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.Result, error) {
-	modelUniqueIdentifier := ctx.Param("model_uid")
-	attributes, err := h.attributeSvc.SearchAttributeByModelUID(ctx, modelUniqueIdentifier)
+	modelUid := ctx.Param("model_uid")
+	attributes, err := h.attributeSvc.SearchAttributeFiled(ctx, modelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}

@@ -8,7 +8,7 @@ import (
 
 type Service interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error)
+	SearchAttributeFiled(ctx context.Context, modelUid string) (map[string]int, error)
 }
 
 type service struct {
@@ -25,6 +25,6 @@ func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (in
 	return s.repo.CreateAttribute(ctx, req)
 }
 
-func (s *service) SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error) {
+func (s *service) SearchAttributeFiled(ctx context.Context, modelUid string) (map[string]int, error) {
 	return s.repo.SearchAttributeByModelUID(ctx, modelUid)
 }

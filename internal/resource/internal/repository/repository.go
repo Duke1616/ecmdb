@@ -51,8 +51,10 @@ func (r *resourceRepository) ListResourcesByIds(ctx context.Context, projection 
 
 	for _, val := range resources {
 		res = append(res, domain.Resource{
-			Data: val.Data,
-			Name: val.Name,
+			ID:       val.ID,
+			ModelUID: val.ModelUID,
+			Data:     val.Data,
+			Name:     val.Name,
 		})
 	}
 

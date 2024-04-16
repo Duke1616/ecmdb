@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -12,7 +13,8 @@ import (
 )
 
 func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, rtHdl *relation.RTHandler) *gin.Engine {
+	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
+	rtHdl *relation.RTHandler, ldapHdl *user.Handler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	modelHdl.RegisterRoutes(server)
@@ -21,6 +23,7 @@ func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl
 	rmHdl.RegisterRoute(server)
 	rrHdl.RegisterRoute(server)
 	rtHdl.RegisterRoute(server)
+	ldapHdl.RegisterRoute(server)
 	return server
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/google/wire"
 )
 
@@ -41,7 +42,13 @@ func InitApp() (*App, error) {
 	relationModelHandler := relationModule.RMHdl
 	relationResourceHandler := relationModule.RRHdl
 	relationTypeHandler := relationModule.RTHdl
-	engine := InitWebServer(v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler)
+	config := InitLdapConfig()
+	userModule, err := user.InitModule(config)
+	if err != nil {
+		return nil, err
+	}
+	handler3 := userModule.Hdl
+	engine := InitWebServer(v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3)
 	app := &App{
 		Web: engine,
 	}

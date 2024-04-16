@@ -11,7 +11,7 @@ import (
 
 const specialLDAPRunes = ",#+<>;\"="
 
-type LdapInterface interface {
+type LdapProvider interface {
 	CheckConnect() error
 	CheckUserPassword(username string, password string) (*Profile, error)
 	GetDetails(username string) (*Profile, error)
@@ -21,7 +21,7 @@ type ldapX struct {
 	conf Config
 }
 
-func NewLdap(conf Config) LdapInterface {
+func NewLdap(conf Config) LdapProvider {
 	return &ldapX{
 		conf: conf,
 	}
@@ -195,21 +195,21 @@ func (p *ldapX) ldapEscape(inputUsername string) string {
 	return inputUsername
 }
 
-func (p *ldapX) GetDetails(inputUsername string) (*Profile, error) {
+func (p *ldapX) GetDetails(username string) (*Profile, error) {
 	conn, err := p.connect(p.conf.BindDN, p.conf.BindPassword)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	profile, err := p.getUserProfile(conn, inputUsername)
+	profile, err := p.getUserProfile(conn, username)
 	if err != nil {
 		return nil, err
 	}
 
-	GroupFilter, err := p.resolveGroupFilter(inputUsername, profile)
+	GroupFilter, err := p.resolveGroupFilter(username, profile)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create group filter for user %s. Cause: %s", inputUsername, err)
+		return nil, fmt.Errorf("unable to create group filter for user %s. Cause: %s", username, err)
 	}
 
 	slog.Debug("Computed groups filter is %s", GroupFilter)
@@ -225,12 +225,12 @@ func (p *ldapX) GetDetails(inputUsername string) (*Profile, error) {
 	sr, err := conn.Search(searchGroupRequest)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve groups of user %s. Cause: %s", inputUsername, err)
+		return nil, fmt.Errorf("unable to retrieve groups of user %s. Cause: %s", username, err)
 	}
 
 	for _, res := range sr.Entries {
 		if len(res.Attributes) == 0 {
-			slog.Debug("No groups retrieved from LDAP for user %s", inputUsername)
+			slog.Debug("No groups retrieved from LDAP for user %s", username)
 			break
 		}
 		// Append all values of the document. Normally there should be only one per document.
@@ -240,12 +240,12 @@ func (p *ldapX) GetDetails(inputUsername string) (*Profile, error) {
 	return profile, nil
 }
 
-func (p *ldapX) resolveGroupFilter(inputUsername string, profile *Profile) (string, error) { //nolint:unparam
-	inputUsername = p.ldapEscape(inputUsername)
+func (p *ldapX) resolveGroupFilter(username string, profile *Profile) (string, error) { //nolint:unparam
+	username = p.ldapEscape(username)
 
 	// We temporarily keep placeholder {0} for backward compatibility.
-	groupFilter := strings.ReplaceAll(p.conf.GroupFilter, "{0}", inputUsername)
-	groupFilter = strings.ReplaceAll(groupFilter, "{input}", inputUsername)
+	groupFilter := strings.ReplaceAll(p.conf.GroupFilter, "{0}", username)
+	groupFilter = strings.ReplaceAll(groupFilter, "{input}", username)
 
 	if profile != nil {
 		// We temporarily keep placeholder {1} for backward compatibility.

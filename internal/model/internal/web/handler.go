@@ -47,6 +47,7 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 		Name:    req.Name,
 		GroupId: req.GroupId,
 		UID:     req.UID,
+		Icon:    req.Icon,
 	})
 
 	if err != nil {
@@ -59,7 +60,7 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 }
 
 func (h *Handler) DetailModel(ctx *gin.Context, req DetailUidModelReq) (ginx.Result, error) {
-	model, err := h.svc.FindModelByUid(ctx, req.uid)
+	model, err := h.svc.FindModelByUid(ctx, req.Uid)
 	if err != nil {
 		return systemErrorResult, err
 	}

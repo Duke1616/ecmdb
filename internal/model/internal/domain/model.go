@@ -7,6 +7,7 @@ type Model struct {
 	GroupId int64
 	Name    string
 	UID     string
+	Icon    string
 	Ctime   time.Time
 	Utime   time.Time
 }

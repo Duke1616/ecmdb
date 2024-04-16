@@ -110,6 +110,7 @@ func (h *RelationModelHandler) FindRelationModelDiagram(ctx *gin.Context, req Pa
 			ID:        val.ID,
 			ModelUID:  val.UID,
 			ModelName: val.Name,
+			Icon:      val.Icon,
 			Assets:    models,
 		})
 	}

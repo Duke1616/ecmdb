@@ -8,10 +8,11 @@ type CreateModelReq struct {
 	Name    string `json:"name"`
 	GroupId int64  `json:"group_id"`
 	UID     string `json:"uid"`
+	Icon    string `json:"icon"`
 }
 
 type DetailUidModelReq struct {
-	uid string `json:"uid"`
+	Uid string `json:"uid"`
 }
 
 type ListModelsReq struct {
@@ -27,6 +28,7 @@ type ListModelsResp struct {
 type Model struct {
 	Name  string `json:"name"`
 	UID   string `json:"uid"`
+	Icon  string `json:"icon"`
 	Ctime string `json:"ctime"`
 	Utime string `json:"utime"`
 }

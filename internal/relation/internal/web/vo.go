@@ -67,6 +67,7 @@ type Model struct {
 
 type ModelDiagram struct {
 	ID        int64  `json:"id"`
+	Icon      string `json:"icon"`
 	ModelUID  string `json:"model_uid"`
 	ModelName string `json:"model_name"`
 	Assets    []Model

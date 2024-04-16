@@ -47,6 +47,7 @@ func (m *modelRepository) CreateModel(ctx context.Context, req domain.Model) (in
 		ModelGroupId: req.GroupId,
 		Name:         req.Name,
 		UID:          req.UID,
+		Icon:         req.Icon,
 	})
 }
 
@@ -76,6 +77,7 @@ func (m *modelRepository) toDomain(modelDao *dao.Model) domain.Model {
 		GroupId: modelDao.ModelGroupId,
 		Name:    modelDao.Name,
 		UID:     modelDao.UID,
+		Icon:    modelDao.Icon,
 		Ctime:   time.UnixMilli(modelDao.Ctime),
 		Utime:   time.UnixMilli(modelDao.Utime),
 	}

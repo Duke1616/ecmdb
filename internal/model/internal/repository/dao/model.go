@@ -121,6 +121,7 @@ type Model struct {
 	ModelGroupId int64  `bson:"model_group_id"`
 	Name         string `bson:"name"`
 	UID          string `bson:"uid"`
+	Icon         string `bson:"icon"`
 	Ctime        int64  `bson:"ctime"`
 	Utime        int64  `bson:"utime"`
 }

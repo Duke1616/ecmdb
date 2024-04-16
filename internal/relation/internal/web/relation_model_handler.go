@@ -26,8 +26,8 @@ func (h *RelationModelHandler) RegisterRoute(server *gin.Engine) {
 	// 模型关联关系
 	g.POST("/model/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
 	g.POST("/model/list", ginx.WrapBody[Page](h.ListModelRelation))
+	// 指定模型, 查询模型拥有的所有关联信息
 	g.POST("/model/list-name", ginx.WrapBody[ListModelRelationByModelUidReq](h.ListModelUIDRelation))
-
 	// 查询所有模型的关联关系，拓补图
 	g.POST("/model/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
 }

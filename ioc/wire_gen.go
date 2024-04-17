@@ -43,7 +43,7 @@ func InitApp() (*App, error) {
 	relationResourceHandler := relationModule.RRHdl
 	relationTypeHandler := relationModule.RTHdl
 	config := InitLdapConfig()
-	userModule, err := user.InitModule(config)
+	userModule, err := user.InitModule(client, config)
 	if err != nil {
 		return nil, err
 	}

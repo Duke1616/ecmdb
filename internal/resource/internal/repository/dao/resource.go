@@ -7,7 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 const ResourceCollection = "c_resources"
@@ -30,8 +29,6 @@ func NewResourceDAO(client *mongo.Client) ResourceDAO {
 }
 
 func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, error) {
-	now := time.Now()
-	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
 	r.ID = dao.db.GetIdGenerator(ResourceCollection)
 	col := dao.db.Collection(ResourceCollection)
 

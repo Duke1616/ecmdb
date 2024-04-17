@@ -13,8 +13,8 @@ const specialLDAPRunes = ",#+<>;\"="
 
 type LdapProvider interface {
 	CheckConnect() error
-	CheckUserPassword(username string, password string) (*Profile, error)
-	GetDetails(username string) (*Profile, error)
+	VerifyUserCredentials(username string, password string) (*Profile, error)
+	FindUserDetail(username string) (*Profile, error)
 }
 
 type ldapX struct {
@@ -89,7 +89,7 @@ func (p *ldapX) dial(addr string) (Connection, error) {
 	return NewLDAPConnectionImpl(conn), nil
 }
 
-func (p *ldapX) CheckUserPassword(username string, password string) (*Profile, error) {
+func (p *ldapX) VerifyUserCredentials(username string, password string) (*Profile, error) {
 	adminClient, err := p.connect(p.conf.BindDN, p.conf.BindPassword)
 	if err != nil {
 		return nil, err
@@ -120,6 +120,7 @@ func (p *ldapX) getUserProfile(conn Connection, inputUsername string) (*Profile,
 		p.conf.MailAttribute,
 		p.conf.UsernameAttribute,
 		p.conf.DisplayNameAttribute,
+		p.conf.TitleAttribute,
 	}
 
 	// Search for the given username.
@@ -161,6 +162,10 @@ func (p *ldapX) getUserProfile(conn Connection, inputUsername string) (*Profile,
 		if attr.Name == p.conf.DisplayNameAttribute {
 			userProfile.DisplayName = attr.Values[0]
 		}
+
+		if attr.Name == p.conf.TitleAttribute {
+			userProfile.Title = attr.Values[0]
+		}
 	}
 
 	if userProfile.DN == "" {
@@ -170,14 +175,14 @@ func (p *ldapX) getUserProfile(conn Connection, inputUsername string) (*Profile,
 	return &userProfile, nil
 }
 
-func (p *ldapX) resolveUserFilter(userFilter string, inputUsername string) string {
-	inputUsername = p.ldapEscape(inputUsername)
+func (p *ldapX) resolveUserFilter(userFilter string, username string) string {
+	username = p.ldapEscape(username)
 
 	// We temporarily keep placeholder {0} for backward compatibility.
-	userFilter = strings.ReplaceAll(userFilter, "{0}", inputUsername)
+	userFilter = strings.ReplaceAll(userFilter, "{0}", username)
 
 	// The {username} placeholder is equivalent to {0}, it's the new way, a named placeholder.
-	userFilter = strings.ReplaceAll(userFilter, "{input}", inputUsername)
+	userFilter = strings.ReplaceAll(userFilter, "{input}", username)
 
 	// {username_attribute} and {mail_attribute} are replaced by the content of the attribute defined
 	// in configuration.
@@ -195,7 +200,7 @@ func (p *ldapX) ldapEscape(inputUsername string) string {
 	return inputUsername
 }
 
-func (p *ldapX) GetDetails(username string) (*Profile, error) {
+func (p *ldapX) FindUserDetail(username string) (*Profile, error) {
 	conn, err := p.connect(p.conf.BindDN, p.conf.BindPassword)
 	if err != nil {
 		return nil, err
@@ -207,7 +212,7 @@ func (p *ldapX) GetDetails(username string) (*Profile, error) {
 		return nil, err
 	}
 
-	GroupFilter, err := p.resolveGroupFilter(username, profile)
+	GroupFilter, err := p.resolveGroupFilter(p.conf.GroupFilter, username, profile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create group filter for user %s. Cause: %s", username, err)
 	}
@@ -240,11 +245,11 @@ func (p *ldapX) GetDetails(username string) (*Profile, error) {
 	return profile, nil
 }
 
-func (p *ldapX) resolveGroupFilter(username string, profile *Profile) (string, error) { //nolint:unparam
+func (p *ldapX) resolveGroupFilter(groupFilter, username string, profile *Profile) (string, error) { //nolint:unparam
 	username = p.ldapEscape(username)
 
 	// We temporarily keep placeholder {0} for backward compatibility.
-	groupFilter := strings.ReplaceAll(p.conf.GroupFilter, "{0}", username)
+	groupFilter = strings.ReplaceAll(groupFilter, "{0}", username)
 	groupFilter = strings.ReplaceAll(groupFilter, "{input}", username)
 
 	if profile != nil {

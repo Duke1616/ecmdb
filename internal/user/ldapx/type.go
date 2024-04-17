@@ -4,7 +4,7 @@ type Profile struct {
 	DN          string
 	Email       string
 	Username    string
-	Position    string
+	Title       string
 	DisplayName string
 	Groups      []string
 }
@@ -17,6 +17,7 @@ type Config struct {
 	UsernameAttribute    string `mapstructure:"username_attribute" json:"username_attribute,omitempty"`
 	MailAttribute        string `mapstructure:"mail_attribute" json:"mail_attribute,omitempty"`
 	DisplayNameAttribute string `mapstructure:"display_name_attribute" json:"display_name_attribute,omitempty"`
+	TitleAttribute       string `mapstructure:"title_attribute" json:"title_attribute,omitempty"`
 	UserFilter           string `mapstructure:"user_filter" json:"user_filter,omitempty"`
 	GroupFilter          string `mapstructure:"group_filter" json:"group_filter"`
 	GroupNameAttribute   string `mapstructure:"group_name_attribute" json:"group_name_attribute"`

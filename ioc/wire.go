@@ -11,11 +11,12 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitMongoDB)
+var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
 		BaseSet,
+		InitSession,
 		InitLdapConfig,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),

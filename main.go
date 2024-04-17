@@ -1,6 +1,8 @@
 package main
 
-import "github.com/Duke1616/ecmdb/ioc"
+import (
+	"github.com/Duke1616/ecmdb/ioc"
+)
 
 func main() {
 	app, err := ioc.InitApp()

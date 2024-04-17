@@ -4,6 +4,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ginx/gctx"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +21,7 @@ func NewHandler(svc service.Service, ldapSvc service.LdapService) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoute(server *gin.Engine) {
+func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 }
@@ -42,6 +44,15 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 		CreateType: domain.UserRegistry,
 	})
 
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	jwtData := map[string]string{}
+	jwtData["hello"] = "world"
+
+	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.ID).SetJwtData(jwtData).Build()
+	
 	if err != nil {
 		return systemErrorResult, err
 	}

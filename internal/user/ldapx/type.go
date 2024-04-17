@@ -22,7 +22,3 @@ type Config struct {
 	GroupFilter          string `mapstructure:"group_filter" json:"group_filter"`
 	GroupNameAttribute   string `mapstructure:"group_name_attribute" json:"group_name_attribute"`
 }
-
-type LdapConfig struct {
-	Ldap Config `mapstructure:"ldap"`
-}

@@ -6,24 +6,29 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
 )
 
-func InitWebServer(mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
+func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler) *gin.Engine {
+	session.SetDefaultProvider(sp)
 	server := gin.Default()
 	server.Use(mdls...)
+	ldapHdl.PublicRegisterRoutes(server)
+	// 验证是否登录
+	server.Use(session.CheckLoginMiddleware())
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
 	resourceHdl.RegisterRoutes(server)
 	rmHdl.RegisterRoute(server)
 	rrHdl.RegisterRoute(server)
 	rtHdl.RegisterRoute(server)
-	ldapHdl.RegisterRoute(server)
+
 	return server
 }
 

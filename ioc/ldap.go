@@ -6,22 +6,16 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitLdapConfig() ldapx.Config {
-	// 设置要解析的 YAML 文件路径
-	viper.SetConfigFile("config/prod.yaml")
-
-	// 读取并解析配置文件
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
-
+func InitLdapConfig(viper *viper.Viper) ldapx.Config {
 	// 定义一个结构体实例
-	var cfg ldapx.LdapConfig
+	var cfg ldapx.Config
 
 	// 使用 Unmarshal 函数将配置数据解析到结构体中
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := viper.UnmarshalKey("ldap", &cfg); err != nil {
 		panic(fmt.Errorf("unable to decode into struct: %v", err))
 	}
 
-	return cfg.Ldap
+	fmt.Println(cfg)
+
+	return cfg
 }

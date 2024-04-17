@@ -18,6 +18,9 @@ import (
 // Injectors from wire.go:
 
 func InitApp() (*App, error) {
+	viper := InitViper()
+	cmdable := InitRedis(viper)
+	provider := InitSession(viper, cmdable)
 	v := InitGinMiddlewares()
 	client := InitMongoDB()
 	module, err := model.InitModule(client)
@@ -42,13 +45,13 @@ func InitApp() (*App, error) {
 	relationModelHandler := relationModule.RMHdl
 	relationResourceHandler := relationModule.RRHdl
 	relationTypeHandler := relationModule.RTHdl
-	config := InitLdapConfig()
+	config := InitLdapConfig(viper)
 	userModule, err := user.InitModule(client, config)
 	if err != nil {
 		return nil, err
 	}
 	handler3 := userModule.Hdl
-	engine := InitWebServer(v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3)
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3)
 	app := &App{
 		Web: engine,
 	}
@@ -57,4 +60,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB)
+var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis)

@@ -49,10 +49,9 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}
 
 	jwtData := map[string]string{}
-	jwtData["hello"] = "world"
 
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.ID).SetJwtData(jwtData).Build()
-	
+
 	if err != nil {
 		return systemErrorResult, err
 	}

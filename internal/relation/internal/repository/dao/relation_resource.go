@@ -16,7 +16,12 @@ type RelationResourceDAO interface {
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error)
 
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
-	ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
+
+	ListSrcResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
+	ListDstResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
+
+	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
+	ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
 }
 
 func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
@@ -27,6 +32,64 @@ func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
 
 type resourceDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *resourceDAO) ListSrcResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filer := bson.M{
+		"$and": []bson.M{
+			{"source_model_uid": modelUid},
+			{"relation_type_uid": relationType},
+		},
+	}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+
+	var set []int64
+	for resp.Next(ctx) {
+		var result struct {
+			Id int64 `bson:"id"`
+		}
+
+		if err = resp.Decode(&result); err != nil {
+			return nil, err
+		}
+		set = append(set, result.Id)
+	}
+
+	return set, nil
+}
+
+func (dao *resourceDAO) ListDstResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filer := bson.M{
+		"$and": []bson.M{
+			{"target_resource_id": modelUid},
+			{"relation_type_uid": relationType},
+		},
+	}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+
+	var set []int64
+	for resp.Next(ctx) {
+		var result struct {
+			Id int64 `bson:"id"`
+		}
+
+		if err = resp.Decode(&result); err != nil {
+			return nil, err
+		}
+		set = append(set, result.Id)
+	}
+
+	return set, nil
 }
 
 func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error) {
@@ -61,29 +124,6 @@ func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit 
 	var set []*ResourceRelation
 	for resp.Next(ctx) {
 		ins := &ResourceRelation{}
-		if err = resp.Decode(ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
-	}
-
-	return set, nil
-}
-
-func (dao *resourceDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-
-	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
-	opt := &options.FindOptions{
-		Sort:  bson.D{{Key: "ctime", Value: -1}},
-		Limit: &limit,
-		Skip:  &offset,
-	}
-
-	resp, err := col.Find(ctx, filer, opt)
-	var set []*ModelRelation
-	for resp.Next(ctx) {
-		ins := &ModelRelation{}
 		if err = resp.Decode(ins); err != nil {
 			return nil, err
 		}
@@ -129,6 +169,58 @@ func (dao *resourceDAO) ListResourceIds(ctx context.Context, modelUid string, re
 			return nil, err
 		}
 		set = append(set, result.Id)
+	}
+
+	return set, nil
+}
+
+func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"source_model_uid": modelUid},
+			{"source_resource_id": id},
+		},
+	}
+
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filter, opt)
+	var set []*ResourceRelation
+	for resp.Next(ctx) {
+		ins := &ResourceRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"target_model_uid": modelUid},
+			{"target_resource_id": id},
+		},
+	}
+
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filter, opt)
+	var set []*ResourceRelation
+	for resp.Next(ctx) {
+		ins := &ResourceRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
 	}
 
 	return set, nil

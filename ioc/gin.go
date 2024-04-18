@@ -20,14 +20,16 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	server := gin.Default()
 	server.Use(mdls...)
 	ldapHdl.PublicRegisterRoutes(server)
-	// 验证是否登录
-	server.Use(session.CheckLoginMiddleware())
+
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
 	resourceHdl.RegisterRoutes(server)
 	rmHdl.RegisterRoute(server)
 	rrHdl.RegisterRoute(server)
 	rtHdl.RegisterRoute(server)
+
+	// 验证是否登录
+	server.Use(session.CheckLoginMiddleware())
 
 	return server
 }

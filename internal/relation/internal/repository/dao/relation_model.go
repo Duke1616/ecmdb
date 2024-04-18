@@ -19,6 +19,7 @@ type RelationModelDAO interface {
 	Count(ctx context.Context) (int64, error)
 
 	FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
+	FindModelRelationByTargetUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
 }
 
 func NewRelationModelDAO(client *mongo.Client) RelationModelDAO {
@@ -79,15 +80,21 @@ func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
 
 func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
+	//filter := bson.M{
+	//	"$or": bson.A{
+	//		bson.M{"source_model_uid": modelUid},
+	//		bson.M{"target_model_uid": modelUid},
+	//	},
+	//}
 
-	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
+	filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 	opt := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
 
-	resp, err := col.Find(ctx, filer, opt)
+	resp, err := col.Find(ctx, filter, opt)
 	var set []*ModelRelation
 	for resp.Next(ctx) {
 		ins := &ModelRelation{}
@@ -104,6 +111,27 @@ func (dao *modelDAO) FindModelRelationBySourceUID(ctx context.Context, sourceUid
 	col := dao.db.Collection(ModelRelationCollection)
 
 	filer := bson.M{"source_model_uid": sourceUid}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filer, opt)
+	var set []*ModelRelation
+	for resp.Next(ctx) {
+		ins := &ModelRelation{}
+		if err = resp.Decode(ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *modelDAO) FindModelRelationByTargetUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+
+	filer := bson.M{"source_target_uid": sourceUid}
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}

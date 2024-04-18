@@ -31,6 +31,7 @@ type ListModelRelationByModelUidReq struct {
 
 type ListResourceRelationByModelUidReq struct {
 	Page
+	ID           string `json:"id"`
 	ModelUid     string `json:"model_uid"`
 	RelationType string `json:"relation_type"`
 }
@@ -75,4 +76,18 @@ type ModelDiagram struct {
 
 type RetrieveRelationModelDiagram struct {
 	Diagrams []ModelDiagram `json:"diagrams"`
+}
+
+type ResourceRelation struct {
+	SourceModelUID   string `json:"source_model_uid"`
+	TargetModelUID   string `json:"target_model_uid"`
+	SourceResourceID int64  `json:"source_resource_id"`
+	TargetResourceID int64  `json:"target_resource_id"`
+	RelationTypeUID  string `json:"relation_type_uid"`
+	RelationName     string `json:"relation_name"`
+}
+
+type ListResourceDiagramReq struct {
+	ModelUid   string `json:"model_uid"`
+	ResourceId int64  `json:"resource_id"`
 }

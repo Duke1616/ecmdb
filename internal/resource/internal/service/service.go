@@ -13,6 +13,9 @@ type Service interface {
 
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
+
+	// FindResource 资源关联关系调用，查询关联数据
+	FindResource(ctx context.Context, id int64) (domain.Resource, error)
 }
 
 type service struct {
@@ -39,4 +42,8 @@ func (s *service) ListResource(ctx context.Context, projection map[string]int, m
 
 func (s *service) ListResourceByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error) {
 	return s.repo.ListResourcesByIds(ctx, projection, ids)
+}
+
+func (s *service) FindResource(ctx context.Context, id int64) (domain.Resource, error) {
+	return s.repo.FindResource(ctx, id)
 }

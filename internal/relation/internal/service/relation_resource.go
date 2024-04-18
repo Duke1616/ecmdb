@@ -62,9 +62,8 @@ func (s *resourceService) ListDstResources(ctx context.Context, modelUid string,
 
 func (s *resourceService) ListDiagram(ctx context.Context, modelUid string, id int64) (domain.ResourceDiagram, int64, error) {
 	var (
-		eg    errgroup.Group
-		rd    domain.ResourceDiagram
-		total int64
+		eg errgroup.Group
+		rd domain.ResourceDiagram
 	)
 	eg.Go(func() error {
 		var err error
@@ -78,8 +77,7 @@ func (s *resourceService) ListDiagram(ctx context.Context, modelUid string, id i
 		return err
 	})
 
-	total = int64(len(rd.SRC) + len(rd.DST))
-	return rd, total, eg.Wait()
+	return rd, int64(len(rd.SRC) + len(rd.DST)), eg.Wait()
 }
 
 func (s *resourceService) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error) {

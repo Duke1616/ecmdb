@@ -16,6 +16,8 @@ type ResourceDAO interface {
 	ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]Resource, error)
 
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error)
+
+	FindResource(ctx context.Context, id int64) (Resource, error)
 }
 
 type resourceDAO struct {
@@ -109,6 +111,23 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[s
 	for cursor.Next(ctx) {
 		if err = cursor.Decode(&result); err != nil {
 			return nil, err
+		}
+	}
+
+	return result, nil
+}
+
+func (dao *resourceDAO) FindResource(ctx context.Context, id int64) (Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"id": id}
+	opts := &options.FindOptions{}
+
+	cursor, err := col.Find(ctx, filter, opts)
+
+	var result Resource
+	for cursor.Next(ctx) {
+		if err = cursor.Decode(&result); err != nil {
+			return Resource{}, err
 		}
 	}
 

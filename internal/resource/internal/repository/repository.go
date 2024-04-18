@@ -12,6 +12,8 @@ type ResourceRepository interface {
 	ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]domain.Resource, error)
 
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
+
+	FindResource(ctx context.Context, id int64) (domain.Resource, error)
 }
 
 type resourceRepository struct {
@@ -84,4 +86,18 @@ func (r *resourceRepository) ListResource(ctx context.Context, projection map[st
 	}
 
 	return res, nil
+}
+
+func (r *resourceRepository) FindResource(ctx context.Context, id int64) (domain.Resource, error) {
+	rc, err := r.dao.FindResource(ctx, id)
+	if err != nil {
+		return domain.Resource{}, nil
+	}
+
+	return domain.Resource{
+		ID:       rc.ID,
+		Name:     rc.Name,
+		ModelUID: rc.ModelUID,
+		Data:     rc.Data,
+	}, nil
 }

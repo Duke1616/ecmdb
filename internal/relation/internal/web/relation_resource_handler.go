@@ -108,17 +108,80 @@ func (h *RelationResourceHandler) ListResourceByModelUid(ctx *gin.Context, req L
 
 // ListDiagram 入参 BASE UID 和 resource id
 func (h *RelationResourceHandler) ListDiagram(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	// 1. 查询SRC模型 UID 放到 SRC
-	// 2. 查询DST模型 UID 放到 DST
 	diagram, _, err := h.svc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
 	if err != nil {
 		return ginx.Result{}, err
 	}
 
-	// 1. 查询模型的所有关联
-	// 2.
+	var rds RetrieveDiagram
+
+	rds.Assets = make(map[string][]Assets, len(diagram.DST)+len(diagram.SRC))
+
+	var src []ResourceRelation
+	for _, val := range diagram.SRC {
+		src = append(src, ResourceRelation{
+			SourceModelUID:   val.SourceModelUID,
+			TargetModelUID:   val.TargetModelUID,
+			SourceResourceID: val.SourceResourceID,
+			TargetResourceID: val.TargetResourceID,
+			RelationTypeUID:  val.RelationTypeUID,
+			RelationName:     val.RelationName,
+		})
+	}
+	rds.SRC = src
+
+	var dst []ResourceRelation
+	for _, val := range diagram.DST {
+		dst = append(dst, ResourceRelation{
+			SourceModelUID:   val.SourceModelUID,
+			TargetModelUID:   val.TargetModelUID,
+			SourceResourceID: val.SourceResourceID,
+			TargetResourceID: val.TargetResourceID,
+			RelationTypeUID:  val.RelationTypeUID,
+			RelationName:     val.RelationName,
+		})
+	}
+
+	rds.DST = dst
+
+	for _, val := range diagram.SRC {
+		fr, _ := h.resourceSvc.FindResource(ctx, val.TargetResourceID)
+
+		// 检查是否存在键，并获取对应的切片
+		as, ok := rds.Assets[fr.ModelUID]
+
+		// 如果不存在，初始化一个空切片并添加到 map 中
+		if !ok {
+			as = make([]Assets, 0, 1) // 预分配一个元素的空间
+		}
+
+		// 创建新的资源，并添加到切片中
+		rds.Assets[fr.ModelUID] = append(as, Assets{
+			ResourceID:   fr.ID,
+			ResourceName: fr.Name,
+		})
+	}
+
+	for _, val := range diagram.DST {
+		fr, _ := h.resourceSvc.FindResource(ctx, val.SourceResourceID)
+
+		// 检查是否存在键，并获取对应的切片
+		as, ok := rds.Assets[fr.ModelUID]
+
+		// 如果不存在，初始化一个空切片并添加到 map 中
+		if !ok {
+			as = make([]Assets, 0, 1) // 预分配一个元素的空间
+		}
+
+		// 创建新的资源，并添加到切片中
+		rds.Assets[fr.ModelUID] = append(as, Assets{
+			ResourceID:   fr.ID,
+			ResourceName: fr.Name,
+		})
+	}
+
 	return ginx.Result{
-		Data: diagram,
+		Data: rds,
 	}, nil
 }
 
@@ -212,6 +275,7 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 		dstS, err = h.svc.ListDstAggregated(ctx, req.ModelUid, req.ResourceId)
 		return err
 	})
+
 	if err := eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
@@ -221,3 +285,40 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 		Data: result,
 	}, nil
 }
+
+//func (h *RelationResourceHandler) processDiagrams(ctx *gin.Context, diagrams []domain.ResourceRelation) error {
+//	for _, val := range diagrams {
+//		fr, err := h.resourceSvc.FindResource(ctx, val.SourceResourceID)
+//		if err != nil {
+//			// 处理错误
+//			return err
+//		}
+//
+//		// 添加到 rds.SRC 或 rds.DST
+//		r := ResourceRelation{
+//			SourceModelUID:   val.SourceModelUID,
+//			TargetModelUID:   val.TargetModelUID,
+//			SourceResourceID: val.SourceResourceID,
+//			TargetResourceID: val.TargetResourceID,
+//			RelationTypeUID:  val.RelationTypeUID,
+//			RelationName:     val.RelationName,
+//		}
+//
+//		if diagrams == diagram.SRC {
+//			rds.SRC = append(rds.SRC, r)
+//		} else {
+//			rds.DST = append(rds.DST, r)
+//		}
+//
+//		// 添加到 rds.Assets
+//		if _, ok := rds.Assets[fr.ModelUID]; !ok {
+//			rds.Assets[fr.ModelUID] = []Assets{}
+//		}
+//		rds.Assets[fr.ModelUID] = append(rds.Assets[fr.ModelUID], Assets{
+//			ResourceID:   fr.ID,
+//			ResourceName: fr.Name,
+//		})
+//	}
+//
+//	return nil
+//}

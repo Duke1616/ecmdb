@@ -108,3 +108,14 @@ type Data struct {
 	ResourceId       int64  `json:"resource_id"`
 	RelationTypeName string `json:"relation_type_name"`
 }
+
+type RetrieveDiagram struct {
+	SRC    []ResourceRelation  `json:"src"`
+	DST    []ResourceRelation  `json:"dst"`
+	Assets map[string][]Assets `json:"assets"`
+}
+
+type Assets struct {
+	ResourceID   int64  `json:"resource_id"`
+	ResourceName string `json:"resource_name"`
+}

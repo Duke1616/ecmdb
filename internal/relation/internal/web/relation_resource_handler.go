@@ -106,7 +106,7 @@ func (h *RelationResourceHandler) ListResourceByModelUid(ctx *gin.Context, req L
 	}, nil
 }
 
-// ListDiagram 入参 BASE UID 和 resource id
+// ListDiagram 入参 BASE UID 和 resource id TODO 后期优化，代码过于冗余
 func (h *RelationResourceHandler) ListDiagram(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
 	diagram, _, err := h.svc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
 	if err != nil {
@@ -114,7 +114,6 @@ func (h *RelationResourceHandler) ListDiagram(ctx *gin.Context, req ListResource
 	}
 
 	var rds RetrieveDiagram
-
 	rds.Assets = make(map[string][]Assets, len(diagram.DST)+len(diagram.SRC))
 
 	var src []ResourceRelation
@@ -285,40 +284,3 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 		Data: result,
 	}, nil
 }
-
-//func (h *RelationResourceHandler) processDiagrams(ctx *gin.Context, diagrams []domain.ResourceRelation) error {
-//	for _, val := range diagrams {
-//		fr, err := h.resourceSvc.FindResource(ctx, val.SourceResourceID)
-//		if err != nil {
-//			// 处理错误
-//			return err
-//		}
-//
-//		// 添加到 rds.SRC 或 rds.DST
-//		r := ResourceRelation{
-//			SourceModelUID:   val.SourceModelUID,
-//			TargetModelUID:   val.TargetModelUID,
-//			SourceResourceID: val.SourceResourceID,
-//			TargetResourceID: val.TargetResourceID,
-//			RelationTypeUID:  val.RelationTypeUID,
-//			RelationName:     val.RelationName,
-//		}
-//
-//		if diagrams == diagram.SRC {
-//			rds.SRC = append(rds.SRC, r)
-//		} else {
-//			rds.DST = append(rds.DST, r)
-//		}
-//
-//		// 添加到 rds.Assets
-//		if _, ok := rds.Assets[fr.ModelUID]; !ok {
-//			rds.Assets[fr.ModelUID] = []Assets{}
-//		}
-//		rds.Assets[fr.ModelUID] = append(rds.Assets[fr.ModelUID], Assets{
-//			ResourceID:   fr.ID,
-//			ResourceName: fr.Name,
-//		})
-//	}
-//
-//	return nil
-//}

@@ -14,15 +14,15 @@ import (
 
 type RelationResourceDAO interface {
 	CreateResourceRelation(ctx context.Context, mg ResourceRelation) (int64, error)
-	ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error)
+	ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error)
 
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	ListSrcResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 	ListDstResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 
-	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
-	ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
+	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
+	ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
 
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
@@ -114,7 +114,7 @@ func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, mr ResourceR
 	return mr.Id, nil
 }
 
-func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]*ResourceRelation, error) {
+func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 
 	filer := bson.M{}
@@ -125,10 +125,10 @@ func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit 
 	}
 
 	resp, err := col.Find(ctx, filer, opt)
-	var set []*ResourceRelation
+	var set []ResourceRelation
 	for resp.Next(ctx) {
-		ins := &ResourceRelation{}
-		if err = resp.Decode(ins); err != nil {
+		var ins ResourceRelation
+		if err = resp.Decode(&ins); err != nil {
 			return nil, err
 		}
 		set = append(set, ins)
@@ -178,7 +178,7 @@ func (dao *resourceDAO) ListResourceIds(ctx context.Context, modelUid string, re
 	return set, nil
 }
 
-func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error) {
+func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
 		"$and": []bson.M{
@@ -192,10 +192,10 @@ func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, i
 	}
 
 	resp, err := col.Find(ctx, filter, opt)
-	var set []*ResourceRelation
+	var set []ResourceRelation
 	for resp.Next(ctx) {
-		ins := &ResourceRelation{}
-		if err = resp.Decode(ins); err != nil {
+		var ins ResourceRelation
+		if err = resp.Decode(&ins); err != nil {
 			return nil, err
 		}
 		set = append(set, ins)
@@ -282,7 +282,7 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 	return result, nil
 }
 
-func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error) {
+func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
 		"$and": []bson.M{
@@ -296,10 +296,10 @@ func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, i
 	}
 
 	resp, err := col.Find(ctx, filter, opt)
-	var set []*ResourceRelation
+	var set []ResourceRelation
 	for resp.Next(ctx) {
-		ins := &ResourceRelation{}
-		if err = resp.Decode(ins); err != nil {
+		var ins ResourceRelation
+		if err = resp.Decode(&ins); err != nil {
 			return nil, err
 		}
 		set = append(set, ins)

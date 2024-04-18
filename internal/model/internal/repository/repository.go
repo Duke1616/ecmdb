@@ -71,7 +71,7 @@ func (m *modelRepository) FindModelByUid(ctx context.Context, uid string) (domai
 	}, nil
 }
 
-func (m *modelRepository) toDomain(modelDao *dao.Model) domain.Model {
+func (m *modelRepository) toDomain(modelDao dao.Model) domain.Model {
 	return domain.Model{
 		ID:      modelDao.Id,
 		GroupId: modelDao.ModelGroupId,

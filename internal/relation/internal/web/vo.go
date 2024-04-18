@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// CreateModelRelationReq 模型关联关系
 type CreateModelRelationReq struct {
 	SourceModelUID  string `json:"source_model_uid"`
 	TargetModelUID  string `json:"target_model_uid"`
@@ -11,6 +12,7 @@ type CreateModelRelationReq struct {
 	Mapping         string `json:"mapping"`
 }
 
+// CreateResourceRelationReq 资源关联关系
 type CreateResourceRelationReq struct {
 	SourceModelUID   string `json:"source_model_uid"`
 	TargetModelUID   string `json:"target_model_uid"`
@@ -99,4 +101,10 @@ type RetrieveResource struct {
 
 type ListModelByUidReq struct {
 	ModelUid string `json:"model_uid"`
+}
+
+type Data struct {
+	ModelUid         string `json:"model_uid"`
+	ResourceId       int64  `json:"resource_id"`
+	RelationTypeName string `json:"relation_type_name"`
 }

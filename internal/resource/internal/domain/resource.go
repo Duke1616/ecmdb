@@ -13,8 +13,3 @@ type ResourceRelation struct {
 	ModelUid  string
 	Resources []Resource
 }
-
-type DetailResource struct {
-	ID         int64 `json:"id"`
-	Projection map[string]int
-}

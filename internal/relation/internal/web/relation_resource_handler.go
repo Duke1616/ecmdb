@@ -43,10 +43,13 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource))
 	g.POST("/list", ginx.WrapBody[ListResourceDiagramReq](h.List))
 
-	// 列表聚合展示
+	// 列表聚合展示、通过聚合处理
 	g.POST("/pipeline/list-src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
 	g.POST("/pipeline/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
+
+	// 比对，查询已经关联的节点
+
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {

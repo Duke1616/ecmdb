@@ -185,7 +185,7 @@ func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid str
 	return rads, nil
 }
 
-func (r *resourceRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {
+func (r *resourceRepository) toResourceDomain(resourceDao dao.ResourceRelation) domain.ResourceRelation {
 	return domain.ResourceRelation{
 		ID:               resourceDao.Id,
 		SourceModelUID:   resourceDao.SourceModelUID,

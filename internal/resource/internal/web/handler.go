@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
@@ -28,7 +29,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.WrapBody[DetailResourceReq](h.DetailResource))
 
 	// 根据模型查看资产列表
-	g.POST("/list/:model_uid")
+	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -62,5 +63,23 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 	return ginx.Result{
 		Data: resp,
 		Msg:  "查看资源详情成功",
+	}, nil
+}
+
+func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Result, error) {
+	projection, err := h.attributeSvc.SearchAttributeFiled(ctx, req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	fmt.Print(projection)
+	resp, err := h.svc.ListResource(ctx, projection, req.ModelUid, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: resp,
+		Msg:  "查看资源列表成功",
 	}, nil
 }

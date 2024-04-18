@@ -10,9 +10,4 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
-
-	urlPathErrorResult = ginx.Result{
-		Code: errs.SystemError.Code,
-		Msg:  errs.SystemError.Msg,
-	}
 )

@@ -12,7 +12,8 @@ const ResourceCollection = "c_resources"
 
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
-	FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error)
+	FindResourceById(ctx context.Context, projection map[string]int, id int64) (Resource, error)
+	ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]Resource, error)
 
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error)
 }
@@ -40,7 +41,7 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, 
 	return r.ID, nil
 }
 
-func (dao *resourceDAO) FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error) {
+func (dao *resourceDAO) FindResourceById(ctx context.Context, projection map[string]int, id int64) (Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
 	projection["_id"] = 0
@@ -51,18 +52,45 @@ func (dao *resourceDAO) FindResourceById(ctx context.Context, projection map[str
 		Projection: projection,
 	}
 
-	resources := make([]mongox.MapStr, 0)
 	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, err
+		return Resource{}, err
 	}
 
-	err = cursor.All(ctx, &resources)
-	if err != nil {
-		return nil, err
+	var result Resource
+	for cursor.Next(ctx) {
+		if err = cursor.Decode(&result); err != nil {
+			return Resource{}, err
+		}
 	}
 
-	return resources, nil
+	return result, nil
+}
+
+func (dao *resourceDAO) ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"model_uid": modelUid}
+	projection["_id"] = 0
+	projection["id"] = 1
+	projection["name"] = 1
+
+	opts := &options.FindOptions{
+		Projection: projection,
+		Limit:      &limit,
+		Skip:       &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	var result []Resource
+	for cursor.Next(ctx) {
+		var rs Resource
+		if err = cursor.Decode(&rs); err != nil {
+			return nil, err
+		}
+		result = append(result, rs)
+	}
+
+	return result, nil
 }
 
 func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error) {
@@ -75,19 +103,16 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[s
 		Projection: projection,
 	}
 
-	resources := make([]*Resource, 0)
 	cursor, err := col.Find(ctx, filter, opts)
 
-	if err != nil {
-		return nil, err
+	result := make([]*Resource, 0)
+	for cursor.Next(ctx) {
+		if err = cursor.Decode(&result); err != nil {
+			return nil, err
+		}
 	}
 
-	err = cursor.All(ctx, &resources)
-	if err != nil {
-		return nil, err
-	}
-
-	return resources, nil
+	return result, nil
 }
 
 type Resource struct {

@@ -91,3 +91,8 @@ type ListResourceDiagramReq struct {
 	ModelUid   string `json:"model_uid"`
 	ResourceId int64  `json:"resource_id"`
 }
+
+type RetrieveResource struct {
+	Name   string             `json:"name"`
+	Assets []ResourceRelation `json:"assets"`
+}

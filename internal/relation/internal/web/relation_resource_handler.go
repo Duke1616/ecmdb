@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 )
 
 type RelationResourceHandler struct {
@@ -37,6 +38,8 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource))
 	g.POST("/list", ginx.WrapBody[ListResourceDiagramReq](h.List))
 
+	g.POST("/pipeline/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
+	g.POST("/pipeline/dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
@@ -132,19 +135,51 @@ func (h *RelationResourceHandler) ListDstResource(ctx *gin.Context, req ListReso
 }
 
 func (h *RelationResourceHandler) List(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	srcS, err := h.svc.ListSrcResources(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
+	var (
+		eg   errgroup.Group
+		srcS []domain.ResourceRelation
+		dstS []domain.ResourceRelation
+	)
+
+	eg.Go(func() error {
+		var err error
+		srcS, err = h.svc.ListSrcResources(ctx, req.ModelUid, req.ResourceId)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		dstS, err = h.svc.ListDstResources(ctx, req.ModelUid, req.ResourceId)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
-
-	dstS, err := h.svc.ListDstResources(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
 	result := append(srcS, dstS...)
 
 	return ginx.Result{
 		Data: result,
+	}, nil
+}
+
+func (h *RelationResourceHandler) ListSrcAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
+	list, err := h.svc.ListSrcAggregated(ctx, req.ModelUid, req.ResourceId)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: list,
+	}, nil
+}
+
+func (h *RelationResourceHandler) ListDstAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
+	list, err := h.svc.ListDstAggregated(ctx, req.ModelUid, req.ResourceId)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: list,
 	}, nil
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
 	"golang.org/x/sync/errgroup"
-	"time"
 )
 
 type RelationResourceRepository interface {
@@ -16,6 +15,9 @@ type RelationResourceRepository interface {
 
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
+
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error)
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error)
 }
 
 func NewRelationResourceRepository(dao dao.RelationResourceDAO) RelationResourceRepository {
@@ -111,6 +113,60 @@ func (r *resourceRepository) ListDstResources(ctx context.Context, modelUid stri
 	return res, nil
 }
 
+func (r *resourceRepository) ListSrcAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error) {
+	rrs, err := r.dao.ListSrcAggregated(ctx, modelUid, id)
+	if err != nil {
+		return domain.ResourceAggregatedData{}, err
+	}
+
+	var arrRs []domain.ResourceRelation
+	for _, val := range rrs.Data {
+		arrRs = append(arrRs, domain.ResourceRelation{
+			ID:               val.Id,
+			SourceModelUID:   val.SourceModelUID,
+			TargetModelUID:   val.TargetModelUID,
+			SourceResourceID: val.SourceResourceID,
+			TargetResourceID: val.TargetResourceID,
+			RelationTypeUID:  val.RelationTypeUID,
+			RelationName:     val.RelationName,
+		})
+	}
+
+	return domain.ResourceAggregatedData{
+		RelationName: rrs.RelationName,
+		Count:        rrs.Count,
+		ModelUid:     rrs.ModelUid,
+		Data:         arrRs,
+	}, nil
+}
+
+func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error) {
+	rrs, err := r.dao.ListDstAggregated(ctx, modelUid, id)
+	if err != nil {
+		return domain.ResourceAggregatedData{}, err
+	}
+
+	var arrRs []domain.ResourceRelation
+	for _, val := range rrs.Data {
+		arrRs = append(arrRs, domain.ResourceRelation{
+			ID:               val.Id,
+			SourceModelUID:   val.SourceModelUID,
+			TargetModelUID:   val.TargetModelUID,
+			SourceResourceID: val.SourceResourceID,
+			TargetResourceID: val.TargetResourceID,
+			RelationTypeUID:  val.RelationTypeUID,
+			RelationName:     val.RelationName,
+		})
+	}
+
+	return domain.ResourceAggregatedData{
+		RelationName: rrs.RelationName,
+		Count:        rrs.Count,
+		ModelUid:     rrs.ModelUid,
+		Data:         arrRs,
+	}, nil
+}
+
 func (r *resourceRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {
 	return domain.ResourceRelation{
 		ID:               resourceDao.Id,
@@ -120,7 +176,5 @@ func (r *resourceRepository) toResourceDomain(resourceDao *dao.ResourceRelation)
 		TargetResourceID: resourceDao.TargetResourceID,
 		RelationTypeUID:  resourceDao.RelationTypeUID,
 		RelationName:     resourceDao.RelationName,
-		Ctime:            time.UnixMilli(resourceDao.Ctime),
-		Utime:            time.UnixMilli(resourceDao.Utime),
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 	"time"
 )
 
@@ -22,6 +23,9 @@ type RelationResourceDAO interface {
 
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
+
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error)
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error)
 }
 
 func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
@@ -200,6 +204,76 @@ func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, i
 	return set, nil
 }
 
+func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"source_model_uid": modelUid},
+			{"source_resource_id": id},
+		},
+	}
+
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
+		{{"$group", bson.D{
+			{"_id", "$relation_name"},
+			{"count", bson.D{{"$sum", 1}}},                         // 统计每个分组中的文档数量
+			{"data", bson.D{{"$push", "$$ROOT"}}},                  // 将每个文档添加到一个数组中
+			{"model_uid", bson.D{{"$first", "$target_model_uid"}}}, // 添加额外字段
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 遍历游标，解码每个文档
+	var result ResourceAggregatedData
+	for cursor.Next(context.Background()) {
+		if err := cursor.Decode(&result); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return result, nil
+}
+
+func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"target_model_uid": modelUid},
+			{"target_resource_id": id},
+		},
+	}
+
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}}, // 添加筛选条件
+		{{"$group", bson.D{
+			{"_id", "$relation_name"},
+			{"count", bson.D{{"$sum", 1}}},                         // 统计每个分组中的文档数量
+			{"data", bson.D{{"$push", "$$ROOT"}}},                  // 将每个文档添加到一个数组中
+			{"model_uid", bson.D{{"$first", "$source_model_uid"}}}, // 添加额外字段
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 遍历游标，解码每个文档
+	var result ResourceAggregatedData
+	for cursor.Next(context.Background()) {
+		if err := cursor.Decode(&result); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return result, nil
+}
+
 func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
@@ -236,4 +310,11 @@ type ResourceRelation struct {
 	RelationName     string `bson:"relation_name"` // 唯一标识、以防重复创建
 	Ctime            int64  `bson:"ctime"`
 	Utime            int64  `bson:"utime"`
+}
+
+type ResourceAggregatedData struct {
+	RelationName string             `bson:"_id"`
+	ModelUid     string             `bson:"model_uid"`
+	Count        int                `bson:"count"`
+	Data         []ResourceRelation `bson:"data"`
 }

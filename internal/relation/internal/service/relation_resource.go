@@ -20,6 +20,9 @@ type RelationResourceService interface {
 
 	// ListDiagram 通过 model_uid 和 resource_id 查询 SRC 和 DST 的数据
 	ListDiagram(ctx context.Context, modelUid string, id int64) (domain.ResourceDiagram, int64, error)
+
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error)
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error)
 }
 
 type resourceService struct {
@@ -77,4 +80,12 @@ func (s *resourceService) ListDiagram(ctx context.Context, modelUid string, id i
 
 	total = int64(len(rd.SRC) + len(rd.DST))
 	return rd, total, eg.Wait()
+}
+
+func (s *resourceService) ListSrcAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error) {
+	return s.repo.ListSrcAggregated(ctx, modelUid, id)
+}
+
+func (s *resourceService) ListDstAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error) {
+	return s.repo.ListDstAggregated(ctx, modelUid, id)
 }

@@ -14,6 +14,8 @@ const AttributeCollection = "c_attribute"
 type AttributeDAO interface {
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
 	SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]*Attribute, error)
+
+	ListAttribute(ctx context.Context, modelUID string) ([]Attribute, error)
 }
 
 type attributeDAO struct {
@@ -60,6 +62,26 @@ func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid
 	}
 
 	return set, nil
+}
+
+func (dao *attributeDAO) ListAttribute(ctx context.Context, modelUID string) ([]Attribute, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"model_uid": modelUID}
+
+	opts := &options.FindOptions{}
+
+	cursor, err := col.Find(ctx, filter, opts)
+
+	result := make([]Attribute, 0)
+	for cursor.Next(ctx) {
+		var at Attribute
+		if err = cursor.Decode(&at); err != nil {
+			return nil, err
+		}
+		result = append(result, at)
+	}
+
+	return result, nil
 }
 
 type Attribute struct {

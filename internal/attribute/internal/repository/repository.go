@@ -9,6 +9,8 @@ import (
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 	SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error)
+
+	ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error)
 }
 
 type attributeRepository struct {
@@ -45,6 +47,27 @@ func (a *attributeRepository) SearchAttributeByModelUID(ctx context.Context, mod
 	}
 
 	return projection, nil
+}
+
+func (a *attributeRepository) ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
+	attributes, err := a.dao.ListAttribute(ctx, modelUID)
+	if err != nil {
+		return nil, err
+	}
+
+	ats := make([]domain.Attribute, 0)
+	for _, val := range attributes {
+		ats = append(ats, domain.Attribute{
+			ID:        val.Id,
+			ModelUID:  val.ModelUID,
+			UID:       val.UID,
+			Name:      val.Name,
+			FieldType: val.FieldType,
+			Required:  val.Required,
+		})
+	}
+
+	return ats, nil
 }
 
 func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute {

@@ -22,6 +22,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
 	g.POST("/detail", ginx.WrapBody[DetailAttributeReq](h.DetailAttribute))
+	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttribute))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -43,12 +44,23 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 }
 
 func (h *Handler) DetailAttribute(ctx *gin.Context, req DetailAttributeReq) (ginx.Result, error) {
-	attr, err := h.svc.SearchAttributeFiled(ctx, req.ModelUid)
+	attr, err := h.svc.SearchAttributeFiled(ctx, req.Id)
 	if err != nil {
 		return ginx.Result{}, err
 	}
 
 	return ginx.Result{
 		Data: attr,
+	}, nil
+}
+
+func (h *Handler) ListAttribute(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
+	ats, err := h.svc.ListAttribute(ctx, req.ModelUID)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: ats,
 	}, nil
 }

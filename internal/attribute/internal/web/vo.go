@@ -9,5 +9,9 @@ type CreateAttributeReq struct {
 }
 
 type DetailAttributeReq struct {
-	ModelUid string `json:"model_uid"`
+	Id string `json:"id"`
+}
+
+type ListAttributeReq struct {
+	ModelUID string `json:"model_uid"`
 }

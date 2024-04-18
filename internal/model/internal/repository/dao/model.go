@@ -17,8 +17,8 @@ const (
 type ModelDAO interface {
 	CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error)
 	CreateModel(ctx context.Context, m Model) (int64, error)
-	GetModelByUid(ctx context.Context, uid string) (*Model, error)
-	ListModels(ctx context.Context, offset, limit int64) ([]*Model, error)
+	GetModelByUid(ctx context.Context, uid string) (Model, error)
+	ListModels(ctx context.Context, offset, limit int64) ([]Model, error)
 	CountModels(ctx context.Context) (int64, error)
 }
 
@@ -62,19 +62,19 @@ func (dao *modelDAO) CreateModel(ctx context.Context, md Model) (int64, error) {
 	return md.Id, nil
 }
 
-func (dao *modelDAO) GetModelByUid(ctx context.Context, uid string) (*Model, error) {
+func (dao *modelDAO) GetModelByUid(ctx context.Context, uid string) (Model, error) {
 	col := dao.db.Collection(ModelCollection)
-	m := &Model{}
 	filter := bson.M{"uid": uid}
 
-	if err := col.FindOne(ctx, filter).Decode(m); err != nil {
-		return &Model{}, err
+	var m Model
+	if err := col.FindOne(ctx, filter).Decode(&m); err != nil {
+		return Model{}, err
 	}
 
 	return m, nil
 }
 
-func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]*Model, error) {
+func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]Model, error) {
 	col := dao.db.Collection(ModelCollection)
 
 	filer := bson.M{}
@@ -85,10 +85,10 @@ func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]*Mo
 	}
 
 	resp, err := col.Find(ctx, filer, opt)
-	var set []*Model
+	var set []Model
 	for resp.Next(ctx) {
-		ins := &Model{}
-		if err = resp.Decode(ins); err != nil {
+		var ins Model
+		if err = resp.Decode(&ins); err != nil {
 			return nil, err
 		}
 		set = append(set, ins)

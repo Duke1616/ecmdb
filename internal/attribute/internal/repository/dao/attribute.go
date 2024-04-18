@@ -13,7 +13,7 @@ const AttributeCollection = "c_attribute"
 
 type AttributeDAO interface {
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
-	SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]*Attribute, error)
+	SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error)
 
 	ListAttribute(ctx context.Context, modelUID string) ([]Attribute, error)
 }
@@ -43,7 +43,7 @@ func (dao *attributeDAO) CreateAttribute(ctx context.Context, attribute Attribut
 	return attribute.Id, nil
 }
 
-func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]*Attribute, error) {
+func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {
 	col := dao.db.Collection(AttributeCollection)
 
 	filer := bson.M{"model_uid": modelUid}
@@ -52,10 +52,10 @@ func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid
 	}
 
 	resp, err := col.Find(ctx, filer, opt)
-	var set []*Attribute
+	var set []Attribute
 	for resp.Next(ctx) {
-		ins := &Attribute{}
-		if err = resp.Decode(ins); err != nil {
+		var ins Attribute
+		if err = resp.Decode(&ins); err != nil {
 			return nil, err
 		}
 		set = append(set, ins)

@@ -26,8 +26,14 @@ func (h *RelationModelHandler) RegisterRoute(server *gin.Engine) {
 	// 模型关联关系
 	g.POST("/model/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
 	g.POST("/model/list", ginx.WrapBody[Page](h.ListModelRelation))
+
 	// 指定模型, 查询模型拥有的所有关联信息
 	g.POST("/model/list-name", ginx.WrapBody[ListModelRelationByModelUidReq](h.ListModelUIDRelation))
+
+	// TODO 模型匹配
+	g.POST("/model/list-src", ginx.WrapBody[ListModelByUidReq](h.ListSrcModel))
+	g.POST("/model/list-dst", ginx.WrapBody[ListModelByUidReq](h.ListDstModel))
+
 	// 查询所有模型的关联关系，拓补图
 	g.POST("/model/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
 }
@@ -90,7 +96,7 @@ func (h *RelationModelHandler) FindRelationModelDiagram(ctx *gin.Context, req Pa
 
 	for _, val := range ms {
 		//  2. 以模型源作为基础，关联的所有服务
-		rs, err := h.svc.FindModelRelationBySourceUID(ctx, val.UID)
+		rs, err := h.svc.ListSrcModelByUid(ctx, val.UID)
 		if err != nil {
 			return systemErrorResult, err
 		}
@@ -120,6 +126,14 @@ func (h *RelationModelHandler) FindRelationModelDiagram(ctx *gin.Context, req Pa
 			Diagrams: diagrams,
 		},
 	}, nil
+}
+
+func (h *RelationModelHandler) ListSrcModel(ctx *gin.Context, req ListModelByUidReq) (ginx.Result, error) {
+	return ginx.Result{}, nil
+}
+
+func (h *RelationModelHandler) ListDstModel(ctx *gin.Context, req ListModelByUidReq) (ginx.Result, error) {
+	return ginx.Result{}, nil
 }
 
 func (h *RelationModelHandler) toRelationVO(m domain.ModelRelation) ModelRelation {

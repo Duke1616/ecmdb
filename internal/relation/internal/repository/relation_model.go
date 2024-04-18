@@ -15,7 +15,8 @@ type RelationModelRepository interface {
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
 
-	FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error)
+	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error)
+	ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -76,14 +77,32 @@ func (r *modelRepository) TotalByModelUid(ctx context.Context, modelUid string) 
 	return r.dao.CountByModelUid(ctx, modelUid)
 }
 
-func (r *modelRepository) FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error) {
-	relations, err := r.dao.FindModelRelationBySourceUID(ctx, sourceUid)
+func (r *modelRepository) ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error) {
+	mrs, err := r.dao.ListSrcModelByUid(ctx, sourceUid)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]domain.ModelRelationDiagram, 0, len(relations))
-	for _, value := range relations {
+	res := make([]domain.ModelRelationDiagram, 0, len(mrs))
+	for _, value := range mrs {
+		res = append(res, domain.ModelRelationDiagram{
+			ID:              value.Id,
+			RelationTypeUID: value.RelationTypeUID,
+			TargetModelUID:  value.TargetModelUID,
+		})
+	}
+
+	return res, nil
+}
+
+func (r *modelRepository) ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error) {
+	mrs, err := r.dao.ListDstModelByUid(ctx, sourceUid)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]domain.ModelRelationDiagram, 0, len(mrs))
+	for _, value := range mrs {
 		res = append(res, domain.ModelRelationDiagram{
 			ID:              value.Id,
 			RelationTypeUID: value.RelationTypeUID,

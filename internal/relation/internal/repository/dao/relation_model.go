@@ -18,8 +18,8 @@ type RelationModelDAO interface {
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 	Count(ctx context.Context) (int64, error)
 
-	FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
-	FindModelRelationByTargetUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
+	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
+	ListDstModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
 }
 
 func NewRelationModelDAO(client *mongo.Client) RelationModelDAO {
@@ -107,7 +107,7 @@ func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit i
 	return set, nil
 }
 
-func (dao *modelDAO) FindModelRelationBySourceUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
+func (dao *modelDAO) ListSrcModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 
 	filer := bson.M{"source_model_uid": sourceUid}
@@ -128,7 +128,7 @@ func (dao *modelDAO) FindModelRelationBySourceUID(ctx context.Context, sourceUid
 	return set, nil
 }
 
-func (dao *modelDAO) FindModelRelationByTargetUID(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
+func (dao *modelDAO) ListDstModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 
 	filer := bson.M{"source_target_uid": sourceUid}

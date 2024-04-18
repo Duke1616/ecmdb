@@ -9,7 +9,7 @@ import (
 
 type ResourceRepository interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
+	FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error)
 
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
 }
@@ -32,13 +32,8 @@ func (r *resourceRepository) CreateResource(ctx context.Context, req domain.Reso
 	})
 }
 
-func (r *resourceRepository) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
-	resource, err := r.dao.FindResourceById(ctx, dmAttr)
-	if err != nil {
-		return nil, err
-	}
-
-	return resource, nil
+func (r *resourceRepository) FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error) {
+	return r.dao.FindResourceById(ctx, projection, id)
 }
 
 func (r *resourceRepository) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error) {

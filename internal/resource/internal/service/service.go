@@ -9,7 +9,7 @@ import (
 
 type Service interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, req domain.DetailResource) ([]mongox.MapStr, error)
+	FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error)
 	ListResourceByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
 }
 
@@ -27,8 +27,8 @@ func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int6
 	return s.repo.CreateResource(ctx, req)
 }
 
-func (s *service) FindResourceById(ctx context.Context, req domain.DetailResource) ([]mongox.MapStr, error) {
-	return s.repo.FindResourceById(ctx, req)
+func (s *service) FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error) {
+	return s.repo.FindResourceById(ctx, projection, id)
 }
 
 func (s *service) ListResourceByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error) {

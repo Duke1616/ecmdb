@@ -96,3 +96,7 @@ type RetrieveResource struct {
 	Name   string             `json:"name"`
 	Assets []ResourceRelation `json:"assets"`
 }
+
+type ListModelByUidReq struct {
+	ModelUid string `json:"model_uid"`
+}

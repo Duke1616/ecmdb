@@ -2,7 +2,6 @@ package dao
 
 import (
 	"context"
-	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,7 +12,7 @@ const ResourceCollection = "c_resources"
 
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
-	FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error)
+	FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error)
 
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error)
 }
@@ -41,15 +40,15 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, 
 	return r.ID, nil
 }
 
-func (dao *resourceDAO) FindResourceById(ctx context.Context, dmAttr domain.DetailResource) ([]mongox.MapStr, error) {
+func (dao *resourceDAO) FindResourceById(ctx context.Context, projection map[string]int, id int64) ([]mongox.MapStr, error) {
 	col := dao.db.Collection(ResourceCollection)
-	filter := bson.M{"id": dmAttr.ID}
-	dmAttr.Projection["_id"] = 0
-	dmAttr.Projection["id"] = 1
-	dmAttr.Projection["name"] = 1
+	filter := bson.M{"id": id}
+	projection["_id"] = 0
+	projection["id"] = 1
+	projection["name"] = 1
 
 	opts := &options.FindOptions{
-		Projection: dmAttr.Projection,
+		Projection: projection,
 	}
 
 	resources := make([]mongox.MapStr, 0)

@@ -3,12 +3,14 @@ package web
 import "github.com/Duke1616/ecmdb/pkg/mongox"
 
 type CreateResourceReq struct {
-	Name string        `json:"name"`
-	Data mongox.MapStr `json:"data"`
+	Name     string        `json:"name"`
+	ModelUid string        `json:"model_uid"`
+	Data     mongox.MapStr `json:"data"`
 }
 
 type DetailResourceReq struct {
-	ID int64 `json:"id"`
+	ModelUid string `json:"model_uid"`
+	ID       int64  `json:"id"`
 }
 
 type Page struct {

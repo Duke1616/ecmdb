@@ -31,6 +31,8 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	// 资源关联关系
 	g.POST("/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 	g.POST("/list/all", ginx.WrapBody[Page](h.ListResourceRelation))
+
+	// 新建关联，查询所有的关联信息
 	g.POST("/list-name", ginx.WrapBody[ListResourceRelationByModelUidReq](h.ListResourceByModelUid))
 
 	// 拓补图
@@ -42,8 +44,8 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/list", ginx.WrapBody[ListResourceDiagramReq](h.List))
 
 	// 列表聚合展示
-	g.POST("/pipeline/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
-	g.POST("/pipeline/dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
+	g.POST("/pipeline/list-src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
+	g.POST("/pipeline/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
 }
 

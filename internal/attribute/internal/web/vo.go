@@ -7,3 +7,7 @@ type CreateAttributeReq struct {
 	FieldType string `json:"field_type"`
 	Required  bool   `json:"required"`
 }
+
+type DetailAttributeReq struct {
+	ModelUid string `json:"model_uid"`
+}

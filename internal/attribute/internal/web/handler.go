@@ -21,6 +21,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/model/attribute")
 
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
+	g.POST("/detail", ginx.WrapBody[DetailAttributeReq](h.DetailAttribute))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -38,5 +39,16 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	return ginx.Result{
 		Data: id,
 		Msg:  "添加模型属性成功",
+	}, nil
+}
+
+func (h *Handler) DetailAttribute(ctx *gin.Context, req DetailAttributeReq) (ginx.Result, error) {
+	attr, err := h.svc.SearchAttributeFiled(ctx, req.ModelUid)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: attr,
 	}, nil
 }

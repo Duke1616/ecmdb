@@ -33,13 +33,18 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/list/all", ginx.WrapBody[Page](h.ListResourceRelation))
 	g.POST("/list-name", ginx.WrapBody[ListResourceRelationByModelUidReq](h.ListResourceByModelUid))
 
+	// 拓补图
 	g.POST("/diagram", ginx.WrapBody[ListResourceDiagramReq](h.ListDiagram))
+
+	// 列表展示
 	g.POST("/list-src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource))
 	g.POST("/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource))
 	g.POST("/list", ginx.WrapBody[ListResourceDiagramReq](h.List))
 
+	// 列表聚合展示
 	g.POST("/pipeline/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
 	g.POST("/pipeline/dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
+	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
@@ -181,5 +186,33 @@ func (h *RelationResourceHandler) ListDstAggregated(ctx *gin.Context, req ListRe
 
 	return ginx.Result{
 		Data: list,
+	}, nil
+}
+
+func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
+	var (
+		eg   errgroup.Group
+		srcS []domain.ResourceAggregatedData
+		dstS []domain.ResourceAggregatedData
+	)
+
+	eg.Go(func() error {
+		var err error
+		srcS, err = h.svc.ListSrcAggregated(ctx, req.ModelUid, req.ResourceId)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		dstS, err = h.svc.ListDstAggregated(ctx, req.ModelUid, req.ResourceId)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return systemErrorResult, err
+	}
+
+	result := append(srcS, dstS...)
+	return ginx.Result{
+		Data: result,
 	}, nil
 }

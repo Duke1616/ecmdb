@@ -24,8 +24,8 @@ type RelationResourceDAO interface {
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]*ResourceRelation, error)
 
-	ListSrcAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error)
-	ListDstAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error)
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
 }
 
 func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
@@ -204,7 +204,7 @@ func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, i
 	return set, nil
 }
 
-func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error) {
+func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
 		"$and": []bson.M{
@@ -229,17 +229,21 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 	}
 
 	// 遍历游标，解码每个文档
-	var result ResourceAggregatedData
+	var result []ResourceAggregatedData
 	for cursor.Next(context.Background()) {
-		if err := cursor.Decode(&result); err != nil {
-			log.Fatal(err)
+
+		var rad ResourceAggregatedData
+		if err = cursor.Decode(&rad); err != nil {
+			return nil, err
 		}
+
+		result = append(result, rad)
 	}
 
 	return result, nil
 }
 
-func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, id int64) (ResourceAggregatedData, error) {
+func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
 		"$and": []bson.M{
@@ -264,11 +268,15 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 	}
 
 	// 遍历游标，解码每个文档
-	var result ResourceAggregatedData
+	var result []ResourceAggregatedData
 	for cursor.Next(context.Background()) {
-		if err := cursor.Decode(&result); err != nil {
-			log.Fatal(err)
+
+		var rad ResourceAggregatedData
+		if err = cursor.Decode(&rad); err != nil {
+			return nil, err
 		}
+
+		result = append(result, rad)
 	}
 
 	return result, nil

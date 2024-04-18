@@ -16,8 +16,8 @@ type RelationResourceRepository interface {
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
 
-	ListSrcAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error)
-	ListDstAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error)
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
 }
 
 func NewRelationResourceRepository(dao dao.RelationResourceDAO) RelationResourceRepository {
@@ -113,58 +113,76 @@ func (r *resourceRepository) ListDstResources(ctx context.Context, modelUid stri
 	return res, nil
 }
 
-func (r *resourceRepository) ListSrcAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error) {
+func (r *resourceRepository) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error) {
 	rrs, err := r.dao.ListSrcAggregated(ctx, modelUid, id)
 	if err != nil {
-		return domain.ResourceAggregatedData{}, err
+		return nil, err
 	}
 
-	var arrRs []domain.ResourceRelation
-	for _, val := range rrs.Data {
-		arrRs = append(arrRs, domain.ResourceRelation{
-			ID:               val.Id,
-			SourceModelUID:   val.SourceModelUID,
-			TargetModelUID:   val.TargetModelUID,
-			SourceResourceID: val.SourceResourceID,
-			TargetResourceID: val.TargetResourceID,
-			RelationTypeUID:  val.RelationTypeUID,
-			RelationName:     val.RelationName,
-		})
+	var rads []domain.ResourceAggregatedData
+	for _, val := range rrs {
+
+		var rr []domain.ResourceRelation
+		for _, data := range val.Data {
+			rr = append(rr, domain.ResourceRelation{
+				ID:               data.Id,
+				SourceModelUID:   data.SourceModelUID,
+				TargetModelUID:   data.TargetModelUID,
+				SourceResourceID: data.SourceResourceID,
+				TargetResourceID: data.TargetResourceID,
+				RelationTypeUID:  data.RelationTypeUID,
+				RelationName:     data.RelationName,
+			})
+		}
+
+		a := domain.ResourceAggregatedData{
+			RelationName: val.RelationName,
+			ModelUid:     val.ModelUid,
+			Count:        val.Count,
+			Data:         rr,
+		}
+
+		rads = append(rads, a)
+
 	}
 
-	return domain.ResourceAggregatedData{
-		RelationName: rrs.RelationName,
-		Count:        rrs.Count,
-		ModelUid:     rrs.ModelUid,
-		Data:         arrRs,
-	}, nil
+	return rads, nil
 }
 
-func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid string, id int64) (domain.ResourceAggregatedData, error) {
+func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error) {
 	rrs, err := r.dao.ListDstAggregated(ctx, modelUid, id)
 	if err != nil {
-		return domain.ResourceAggregatedData{}, err
+		return nil, err
 	}
 
-	var arrRs []domain.ResourceRelation
-	for _, val := range rrs.Data {
-		arrRs = append(arrRs, domain.ResourceRelation{
-			ID:               val.Id,
-			SourceModelUID:   val.SourceModelUID,
-			TargetModelUID:   val.TargetModelUID,
-			SourceResourceID: val.SourceResourceID,
-			TargetResourceID: val.TargetResourceID,
-			RelationTypeUID:  val.RelationTypeUID,
-			RelationName:     val.RelationName,
-		})
+	var rads []domain.ResourceAggregatedData
+	for _, val := range rrs {
+
+		var rr []domain.ResourceRelation
+		for _, data := range val.Data {
+			rr = append(rr, domain.ResourceRelation{
+				ID:               data.Id,
+				SourceModelUID:   data.SourceModelUID,
+				TargetModelUID:   data.TargetModelUID,
+				SourceResourceID: data.SourceResourceID,
+				TargetResourceID: data.TargetResourceID,
+				RelationTypeUID:  data.RelationTypeUID,
+				RelationName:     data.RelationName,
+			})
+		}
+
+		a := domain.ResourceAggregatedData{
+			RelationName: val.RelationName,
+			ModelUid:     val.ModelUid,
+			Count:        val.Count,
+			Data:         rr,
+		}
+
+		rads = append(rads, a)
+
 	}
 
-	return domain.ResourceAggregatedData{
-		RelationName: rrs.RelationName,
-		Count:        rrs.Count,
-		ModelUid:     rrs.ModelUid,
-		Data:         arrRs,
-	}, nil
+	return rads, nil
 }
 
 func (r *resourceRepository) toResourceDomain(resourceDao *dao.ResourceRelation) domain.ResourceRelation {

@@ -50,7 +50,6 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
 
 	// 查询可以关联的节点
-	// 查询可以关联的节点
 	g.POST("/list/related", ginx.WrapBody[ListRelatedReq](h.ListRelated))
 }
 
@@ -292,17 +291,19 @@ func (h *RelationResourceHandler) ListRelated(ctx *gin.Context, req ListRelatedR
 		excludeIds []int64
 	)
 	// 查询已经关联的数据
-	// "host_run_mysql"
+	// model_uid = physical
+	// relation_name = "physical_run_mongo"
 	rn := strings.Split(req.RelationName, "_")
 	if rn[0] == req.ModelUid {
 		mUid = rn[2]
-		excludeIds, err = h.svc.ListDstRelated(ctx, rn[2], req.RelationName, req.ResourceId)
+		excludeIds, err = h.svc.ListSrcRelated(ctx, req.ModelUid, req.RelationName, req.ResourceId)
 	} else {
 		mUid = rn[0]
-		excludeIds, err = h.svc.ListSrcRelated(ctx, rn[0], req.RelationName, req.ResourceId)
+		excludeIds, err = h.svc.ListDstRelated(ctx, rn[2], req.RelationName, req.ResourceId)
 	}
 
 	// 查看模型字段
+	// model_uid = mongo
 	filed, err := h.attributeSvc.SearchAttributeFiled(ctx, mUid)
 	if err != nil {
 		return systemErrorResult, err

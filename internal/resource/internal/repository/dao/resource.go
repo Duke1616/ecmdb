@@ -138,11 +138,12 @@ func (dao *resourceDAO) FindResource(ctx context.Context, id int64) (Resource, e
 
 func (dao *resourceDAO) ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
-	filter := bson.M{
-		"model_uid": modelUid,
-		"id": bson.M{
+	filter := bson.M{"model_uid": modelUid}
+
+	if len(ids) > 0 {
+		filter["id"] = bson.M{
 			"$nin": ids,
-		},
+		}
 	}
 
 	projection["_id"] = 0

@@ -18,6 +18,8 @@ type ResourceDAO interface {
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error)
 
 	FindResource(ctx context.Context, id int64) (Resource, error)
+
+	ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
 }
 
 type resourceDAO struct {
@@ -129,6 +131,38 @@ func (dao *resourceDAO) FindResource(ctx context.Context, id int64) (Resource, e
 		if err = cursor.Decode(&result); err != nil {
 			return Resource{}, err
 		}
+	}
+
+	return result, nil
+}
+
+func (dao *resourceDAO) ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{
+		"model_uid": modelUid,
+		"id": bson.M{
+			"$nin": ids,
+		},
+	}
+
+	projection["_id"] = 0
+	projection["id"] = 1
+	projection["name"] = 1
+
+	opts := &options.FindOptions{
+		Projection: projection,
+		Limit:      &limit,
+		Skip:       &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	var result []Resource
+	for cursor.Next(ctx) {
+		var rs Resource
+		if err = cursor.Decode(&rs); err != nil {
+			return nil, err
+		}
+		result = append(result, rs)
 	}
 
 	return result, nil

@@ -23,6 +23,10 @@ type RelationResourceService interface {
 
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
+
+	// ListSrcRelated 查询当前已经关联的数据，新增资源关联使用
+	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 }
 
 type resourceService struct {
@@ -86,4 +90,12 @@ func (s *resourceService) ListSrcAggregated(ctx context.Context, modelUid string
 
 func (s *resourceService) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error) {
 	return s.repo.ListDstAggregated(ctx, modelUid, id)
+}
+
+func (s *resourceService) ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
+	return s.repo.ListSrcRelated(ctx, modelUid, relationName, id)
+}
+
+func (s *resourceService) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
+	return s.repo.ListDstRelated(ctx, modelUid, relationName, id)
 }

@@ -48,8 +48,7 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/pipeline/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
 
-	// 比对，查询已经关联的节点
-
+	// 查询可以关联的节点
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {

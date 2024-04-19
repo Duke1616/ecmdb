@@ -16,6 +16,9 @@ type Service interface {
 
 	// FindResource 资源关联关系调用，查询关联数据
 	FindResource(ctx context.Context, id int64) (domain.Resource, error)
+
+	// ListExcludeResource 排除部分的 ids
+	ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
 }
 
 type service struct {
@@ -46,4 +49,8 @@ func (s *service) ListResourceByIds(ctx context.Context, projection map[string]i
 
 func (s *service) FindResource(ctx context.Context, id int64) (domain.Resource, error) {
 	return s.repo.FindResource(ctx, id)
+}
+
+func (s *service) ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
+	return s.repo.ListExcludeResource(ctx, projection, modelUid, offset, limit, ids)
 }

@@ -18,6 +18,9 @@ type RelationResourceRepository interface {
 
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
+
+	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 }
 
 func NewRelationResourceRepository(dao dao.RelationResourceDAO) RelationResourceRepository {
@@ -181,6 +184,14 @@ func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid str
 	}
 
 	return rads, nil
+}
+
+func (r *resourceRepository) ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
+	return r.dao.ListSrcRelated(ctx, modelUid, relationName, id)
+}
+
+func (r *resourceRepository) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
+	return r.dao.ListDstRelated(ctx, modelUid, relationName, id)
 }
 
 func (r *resourceRepository) toResourceDomain(resourceDao dao.ResourceRelation) domain.ResourceRelation {

@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
 	"strings"
 	"time"
 )
@@ -27,6 +26,9 @@ type RelationResourceDAO interface {
 
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
+
+	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 }
 
 func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
@@ -232,7 +234,7 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 
 	cursor, err := col.Aggregate(ctx, pipeline)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// 遍历游标，解码每个文档
@@ -271,7 +273,7 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 
 	cursor, err := col.Aggregate(ctx, pipeline)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// 遍历游标，解码每个文档
@@ -310,6 +312,66 @@ func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, i
 			return nil, err
 		}
 		set = append(set, ins)
+	}
+
+	return set, nil
+}
+
+func (dao *resourceDAO) ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"source_model_uid": modelUid},
+			{"relation_name": relationName},
+			{"source_resource_id": id},
+		},
+	}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filter, opt)
+
+	var set []int64
+	for resp.Next(ctx) {
+		var result struct {
+			Id int64 `bson:"target_resource_id"`
+		}
+
+		if err = resp.Decode(&result); err != nil {
+			return nil, err
+		}
+		set = append(set, result.Id)
+	}
+
+	return set, nil
+}
+
+func (dao *resourceDAO) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"target_model_uid": modelUid},
+			{"relation_name": relationName},
+			{"target_resource_id": id},
+		},
+	}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filter, opt)
+
+	var set []int64
+	for resp.Next(ctx) {
+		var result struct {
+			Id int64 `bson:"source_resource_id"`
+		}
+
+		if err = resp.Decode(&result); err != nil {
+			return nil, err
+		}
+		set = append(set, result.Id)
 	}
 
 	return set, nil

@@ -14,6 +14,8 @@ type ResourceRepository interface {
 	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
 
 	FindResource(ctx context.Context, id int64) (domain.Resource, error)
+
+	ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
 }
 
 type resourceRepository struct {
@@ -100,4 +102,24 @@ func (r *resourceRepository) FindResource(ctx context.Context, id int64) (domain
 		ModelUID: rc.ModelUID,
 		Data:     rc.Data,
 	}, nil
+}
+
+func (r *resourceRepository) ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
+	rs, err := r.dao.ListExcludeResource(ctx, projection, modelUid, offset, limit, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]domain.Resource, 0, len(rs))
+
+	for _, val := range rs {
+		res = append(res, domain.Resource{
+			ID:       val.ID,
+			ModelUID: val.ModelUID,
+			Data:     val.Data,
+			Name:     val.Name,
+		})
+	}
+
+	return res, nil
 }

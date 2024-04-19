@@ -33,8 +33,8 @@ func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceMode
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
-		wire.FieldsOf(new(*resource.Module), "Svc"),
 		wire.FieldsOf(new(*model.Module), "Svc"),
+		wire.FieldsOf(new(*resource.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

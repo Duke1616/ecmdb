@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
+	"strings"
 )
 
 type RelationResourceHandler struct {
@@ -49,6 +50,8 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
 
 	// 查询可以关联的节点
+	// 查询可以关联的节点
+	g.POST("/list/related", ginx.WrapBody[ListRelatedReq](h.ListRelated))
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
@@ -279,5 +282,38 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 	result := append(srcS, dstS...)
 	return ginx.Result{
 		Data: result,
+	}, nil
+}
+
+func (h *RelationResourceHandler) ListRelated(ctx *gin.Context, req ListRelatedReq) (ginx.Result, error) {
+	var (
+		mUid       string
+		err        error
+		excludeIds []int64
+	)
+	// 查询已经关联的数据
+	// "host_run_mysql"
+	rn := strings.Split(req.RelationName, "_")
+	if rn[0] == req.ModelUid {
+		mUid = rn[2]
+		excludeIds, err = h.svc.ListDstRelated(ctx, rn[2], req.RelationName, req.ResourceId)
+	} else {
+		mUid = rn[0]
+		excludeIds, err = h.svc.ListSrcRelated(ctx, rn[0], req.RelationName, req.ResourceId)
+	}
+
+	// 查看模型字段
+	filed, err := h.attributeSvc.SearchAttributeFiled(ctx, mUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 排除已关联数据, 返回未关联数据
+	rrs, err := h.resourceSvc.ListExcludeResource(ctx, filed, mUid, req.Offset, req.Limit, excludeIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: rrs,
 	}, nil
 }

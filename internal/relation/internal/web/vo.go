@@ -117,3 +117,12 @@ type Assets struct {
 	ResourceID   int64  `json:"resource_id"`
 	ResourceName string `json:"resource_name"`
 }
+
+// ListRelatedReq 查询指定关联的数据
+// 根据传入模型以及关联名称，推断出对方的模型，排除已经关联数据，返回对应的数据
+type ListRelatedReq struct {
+	Page
+	ResourceId   int64  `json:"resource_id"`   // 当前资源ID
+	ModelUid     string `json:"model_uid"`     // 当前模型ID
+	RelationName string `json:"relation_name"` // 关联类型，以方便推断是数据正向 OR 反向
+}

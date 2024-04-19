@@ -3,25 +3,21 @@ package web
 import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
-	"strings"
 )
 
 type Handler struct {
 	svc          service.Service
 	attributeSvc attribute.Service
-	RRSvc        relation.RRSvc
 }
 
-func NewHandler(service service.Service, attributeSvc attribute.Service, RRSvc relation.RRSvc) *Handler {
+func NewHandler(service service.Service, attributeSvc attribute.Service) *Handler {
 	return &Handler{
 		svc:          service,
 		attributeSvc: attributeSvc,
-		RRSvc:        RRSvc,
 	}
 }
 
@@ -38,8 +34,6 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 根据 ids 查询模型资产列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceIdsReq](h.ListResourceByIds))
 
-	// 查询可以关联的节点
-	g.POST("/list/related", ginx.WrapBody[ListRelatedReq](h.ListRelated))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -106,37 +100,4 @@ func (h *Handler) ListResourceByIds(ctx *gin.Context, req ListResourceIdsReq) (g
 	}
 
 	return ginx.Result{Data: rrs}, nil
-}
-
-func (h *Handler) ListRelated(ctx *gin.Context, req ListRelatedReq) (ginx.Result, error) {
-	var (
-		mUid       string
-		err        error
-		excludeIds []int64
-	)
-	// 查询已经关联的数据
-	// "host_run_mysql"
-	rn := strings.Split(req.RelationName, "_")
-	if rn[0] == req.ModelUid {
-		mUid = rn[2]
-		excludeIds, err = h.RRSvc.ListDstRelated(ctx, rn[2], req.RelationName, req.ResourceId)
-	} else {
-		mUid = rn[0]
-		excludeIds, err = h.RRSvc.ListSrcRelated(ctx, rn[0], req.RelationName, req.ResourceId)
-	}
-
-	// 查看模型字段
-	filed, err := h.attributeSvc.SearchAttributeFiled(ctx, mUid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 排除已关联数据, 返回未关联数据
-	rrs, err := h.svc.ListExcludeResource(ctx, filed, mUid, req.Offset, req.Limit, excludeIds)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: rrs,
-	}, nil
 }

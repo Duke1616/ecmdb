@@ -22,3 +22,8 @@ type ListResourceReq struct {
 	Page
 	ModelUid string `json:"model_uid"`
 }
+
+type ListResourceIdsReq struct {
+	ModelUid string  `json:"model_uid"`
+	Ids      []int64 `json:"ids"`
+}

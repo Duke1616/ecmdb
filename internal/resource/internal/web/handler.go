@@ -30,6 +30,9 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	// 根据模型查看资产列表
 	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
+
+	// 根据 ids 查询模型资产列表
+	g.POST("/list/ids", ginx.WrapBody[ListResourceIdsReq](h.ListResourceByIds))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -82,4 +85,18 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 		Data: resp,
 		Msg:  "查看资源列表成功",
 	}, nil
+}
+
+func (h *Handler) ListResourceByIds(ctx *gin.Context, req ListResourceIdsReq) (ginx.Result, error) {
+	filed, err := h.attributeSvc.SearchAttributeFiled(ctx, req.ModelUid)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	rrs, err := h.svc.ListResourceByIds(ctx, filed, req.Ids)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{Data: rrs}, nil
 }

@@ -32,9 +32,7 @@ type resourceRepository struct {
 
 func (r *resourceRepository) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
 	return r.dao.CreateResourceRelation(ctx, dao.ResourceRelation{
-		SourceModelUID:   req.SourceModelUID,
-		TargetModelUID:   req.TargetModelUID,
-		RelationTypeUID:  req.RelationTypeUID,
+		RelationName:     req.RelationName,
 		SourceResourceID: req.SourceResourceID,
 		TargetResourceID: req.TargetResourceID,
 	})

@@ -54,9 +54,7 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
 	resp, err := h.svc.CreateResourceRelation(ctx, domain.ResourceRelation{
-		SourceModelUID:   req.SourceModelUID,
-		TargetModelUID:   req.TargetModelUID,
-		RelationTypeUID:  req.RelationTypeUID,
+		RelationName:     req.RelationName,
 		SourceResourceID: req.SourceResourceID,
 		TargetResourceID: req.TargetResourceID,
 	})

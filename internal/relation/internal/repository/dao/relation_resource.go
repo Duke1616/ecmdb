@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -96,22 +97,28 @@ func (dao *resourceDAO) ListDstResourceIds(ctx context.Context, modelUid string,
 	return set, nil
 }
 
-func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error) {
+func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceRelation) (int64, error) {
 	now := time.Now()
-	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
-	mr.Id = dao.db.GetIdGenerator(ResourceRelationCollection)
+	rr.Ctime, rr.Utime = now.UnixMilli(), now.UnixMilli()
+	rr.Id = dao.db.GetIdGenerator(ResourceRelationCollection)
 	col := dao.db.Collection(ResourceRelationCollection)
 
-	mr.RelationName = fmt.Sprintf("%s_%s_%s",
-		mr.SourceModelUID, mr.RelationTypeUID, mr.TargetModelUID)
+	rn := strings.Split(rr.RelationName, "_")
+	if len(rn) != 3 {
+		return 0, fmt.Errorf("invalid resource relation name: %s", rr.RelationName)
+	}
 
-	_, err := col.InsertMany(ctx, []interface{}{mr})
+	rr.SourceModelUID = rn[0]
+	rr.RelationTypeUID = rn[1]
+	rr.TargetModelUID = rn[2]
+
+	_, err := col.InsertMany(ctx, []interface{}{rr})
 
 	if err != nil {
 		return 0, err
 	}
 
-	return mr.Id, nil
+	return rr.Id, nil
 }
 
 func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error) {

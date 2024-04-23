@@ -5,6 +5,7 @@
       <option name="customFlags">
         <array>
           <option value="e2e" />
+          <option value="wireinject" />
         </array>
       </option>
     </buildTags>

@@ -31,9 +31,9 @@ type RelationResourceDAO interface {
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 }
 
-func NewRelationResourceDAO(client *mongo.Client) RelationResourceDAO {
+func NewRelationResourceDAO(db *mongox.Mongo) RelationResourceDAO {
 	return &resourceDAO{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

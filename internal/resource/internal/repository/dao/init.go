@@ -8,8 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitIndexes(db *mongo.Client) error {
-	col := mongox.NewMongo(db).Collection(ResourceCollection)
+func InitIndexes(db *mongox.Mongo) error {
+	col := db.Collection(ResourceCollection)
 
 	indexes := []mongo.IndexModel{
 		{

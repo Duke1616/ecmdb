@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -22,9 +21,9 @@ type ModelDAO interface {
 	CountModels(ctx context.Context) (int64, error)
 }
 
-func NewModelDAO(client *mongo.Client) ModelDAO {
+func NewModelDAO(db *mongox.Mongo) ModelDAO {
 	return &modelDAO{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

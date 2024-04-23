@@ -8,8 +8,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var ProviderSet = wire.NewSet(
@@ -19,7 +19,7 @@ var ProviderSet = wire.NewSet(
 	dao.NewUserDao,
 	web.NewHandler)
 
-func InitModule(db *mongo.Client, ldapConfig ldapx.Config) (*Module, error) {
+func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		wire.Struct(new(Module), "*"),

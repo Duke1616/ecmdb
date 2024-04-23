@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -26,9 +25,9 @@ type resourceDAO struct {
 	db *mongox.Mongo
 }
 
-func NewResourceDAO(client *mongo.Client) ResourceDAO {
+func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
 	return &resourceDAO{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

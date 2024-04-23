@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
 
@@ -19,9 +18,9 @@ type userDao struct {
 	db *mongox.Mongo
 }
 
-func NewUserDao(client *mongo.Client) UserDAO {
+func NewUserDao(db *mongox.Mongo) UserDAO {
 	return &userDao{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

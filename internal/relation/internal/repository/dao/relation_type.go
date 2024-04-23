@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -15,9 +14,9 @@ type RelationTypeDAO interface {
 	Count(ctx context.Context) (int64, error)
 }
 
-func NewRelationTypeDAO(client *mongo.Client) RelationTypeDAO {
+func NewRelationTypeDAO(db *mongox.Mongo) RelationTypeDAO {
 	return &relationDAO{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

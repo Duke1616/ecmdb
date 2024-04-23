@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -22,9 +21,9 @@ type attributeDAO struct {
 	db *mongox.Mongo
 }
 
-func NewAttributeDAO(client *mongo.Client) AttributeDAO {
+func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
 	return &attributeDAO{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

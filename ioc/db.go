@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -9,7 +10,7 @@ import (
 	"time"
 )
 
-func InitMongoDB() *mongo.Client {
+func InitMongoDB() *mongox.Mongo {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -32,5 +33,5 @@ func InitMongoDB() *mongo.Client {
 		log.Panicf("ping mongodb server error, %s", err)
 	}
 
-	return client
+	return mongox.NewMongo(client, "cmdb")
 }

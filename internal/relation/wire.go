@@ -10,8 +10,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/web"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var ProviderSet = wire.NewSet(
@@ -28,7 +28,7 @@ var ProviderSet = wire.NewSet(
 	dao.NewRelationResourceDAO,
 	dao.NewRelationTypeDAO)
 
-func InitModule(db *mongo.Client, attributeModel *attribute.Module, resourceModel *resource.Module,
+func InitModule(db *mongox.Mongo, attributeModel *attribute.Module, resourceModel *resource.Module,
 	modelModule *model.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,

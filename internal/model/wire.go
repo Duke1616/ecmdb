@@ -7,8 +7,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/model/internal/web"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var ProviderSet = wire.NewSet(
@@ -17,7 +17,7 @@ var ProviderSet = wire.NewSet(
 	repository.NewModelRepository,
 	dao.NewModelDAO)
 
-func InitModule(db *mongo.Client) (*Module, error) {
+func InitModule(db *mongox.Mongo) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		wire.Struct(new(Module), "*"),

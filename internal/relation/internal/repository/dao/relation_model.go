@@ -6,7 +6,6 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -22,9 +21,9 @@ type RelationModelDAO interface {
 	ListDstModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
 }
 
-func NewRelationModelDAO(client *mongo.Client) RelationModelDAO {
+func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
 	return &modelDAO{
-		db: mongox.NewMongo(client),
+		db: db,
 	}
 }
 

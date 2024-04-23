@@ -11,13 +11,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/web"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongo.Client) (*Module, error) {
+func InitModule(db *mongox.Mongo) (*Module, error) {
 	attributeDAO := dao.NewAttributeDAO(db)
 	attributeRepository := repository.NewAttributeRepository(attributeDAO)
 	service := NewService(attributeRepository)

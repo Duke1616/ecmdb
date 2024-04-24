@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 )
 
+//go:generate mockgen -source=./service.go -destination=../../mocks/attribute.mock.go -package=attributemocks Service
 type Service interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 	SearchAttributeFiled(ctx context.Context, modelUid string) (map[string]int, error)

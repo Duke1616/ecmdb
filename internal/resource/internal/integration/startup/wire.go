@@ -8,10 +8,9 @@ import (
 	"github.com/google/wire"
 )
 
-func InitHandler() (*resource.Handler, error) {
+func InitHandler(am *attribute.Module) (*resource.Handler, error) {
 	wire.Build(InitMongoDB,
 		resource.InitModule,
-		attribute.InitModule,
 		wire.FieldsOf(new(*resource.Module), "Hdl"),
 	)
 	return new(resource.Handler), nil

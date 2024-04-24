@@ -14,16 +14,12 @@ import (
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(am *attribute.Module) (*web.Handler, error) {
 	mongo := InitMongoDB()
-	module, err := attribute.InitModule(mongo)
+	module, err := resource.InitModule(mongo, am)
 	if err != nil {
 		return nil, err
 	}
-	resourceModule, err := resource.InitModule(mongo, module)
-	if err != nil {
-		return nil, err
-	}
-	handler := resourceModule.Hdl
+	handler := module.Hdl
 	return handler, nil
 }

@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -14,7 +15,7 @@ type ResourceDAO interface {
 	FindResourceById(ctx context.Context, projection map[string]int, id int64) (Resource, error)
 	ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]Resource, error)
 
-	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error)
+	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]Resource, error)
 
 	FindResource(ctx context.Context, id int64) (Resource, error)
 
@@ -38,7 +39,7 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, 
 	_, err := col.InsertMany(ctx, []interface{}{r})
 
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("数据库写入错误, %w", err)
 	}
 
 	return r.ID, nil
@@ -96,7 +97,7 @@ func (dao *resourceDAO) ListResource(ctx context.Context, projection map[string]
 	return result, nil
 }
 
-func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]*Resource, error) {
+func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": bson.M{"$in": ids}}
 	projection["_id"] = 0
@@ -108,11 +109,14 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[s
 
 	cursor, err := col.Find(ctx, filter, opts)
 
-	result := make([]*Resource, 0)
+	result := make([]Resource, 0)
 	for cursor.Next(ctx) {
-		if err = cursor.Decode(&result); err != nil {
+		var rs Resource
+		if err = cursor.Decode(&rs); err != nil {
 			return nil, err
 		}
+
+		result = append(result, rs)
 	}
 
 	return result, nil

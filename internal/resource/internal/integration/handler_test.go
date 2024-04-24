@@ -3,17 +3,20 @@
 package integration
 
 import (
+	"context"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/integration/startup"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/web"
+	"github.com/Duke1616/ecmdb/pkg/ginx/test"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/ekit/iox"
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/mock/gomock"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
@@ -46,6 +49,7 @@ func (s *HandlerTestSuite) TestCreate() {
 		req  web.CreateResourceReq
 
 		wantCode int
+		wantResp test.Result[int64]
 	}{
 		{
 			name:     "创建资源",
@@ -55,6 +59,10 @@ func (s *HandlerTestSuite) TestCreate() {
 				ModelUid: "mysql",
 				Data:     nil,
 			},
+			wantResp: test.Result[int64]{
+				Data: 1,
+				Msg:  "创建资源成功",
+			},
 		},
 	}
 
@@ -63,8 +71,15 @@ func (s *HandlerTestSuite) TestCreate() {
 			req, err := http.NewRequest(http.MethodPost,
 				"/resource/create", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
-			recorder := httptest.NewRecorder()
+			recorder := test.NewJSONResponseRecorder[int64]()
 			s.server.ServeHTTP(recorder, req)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantCode, recorder.Code)
+			assert.Equal(t, tc.wantResp, recorder.MustScan())
+
+			_, err = s.db.Collection("c_resources").DeleteMany(context.Background(), bson.M{})
+			require.NoError(t, err)
+			_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 			require.NoError(t, err)
 		})
 	}

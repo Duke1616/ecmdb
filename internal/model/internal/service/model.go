@@ -8,9 +8,8 @@ import (
 )
 
 type Service interface {
-	CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error)
 	CreateModel(ctx context.Context, req domain.Model) (int64, error)
-	FindModelByUid(ctx context.Context, Identifies string) (domain.Model, error)
+	FindModelById(ctx context.Context, id int64) (domain.Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error)
 }
 
@@ -18,33 +17,29 @@ type service struct {
 	repo repository.ModelRepository
 }
 
-func NewService(repo repository.ModelRepository) Service {
+func NewModelService(repo repository.ModelRepository) Service {
 	return &service{
 		repo: repo,
 	}
-}
-
-func (s *service) CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error) {
-	return s.repo.CreateModelGroup(ctx, req)
 }
 
 func (s *service) CreateModel(ctx context.Context, req domain.Model) (int64, error) {
 	return s.repo.CreateModel(ctx, req)
 }
 
-func (s *service) FindModelByUid(ctx context.Context, Identifies string) (domain.Model, error) {
-	return s.repo.FindModelByUid(ctx, Identifies)
+func (s *service) FindModelById(ctx context.Context, id int64) (domain.Model, error) {
+	return s.repo.FindModelById(ctx, id)
 }
 
 func (s *service) ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error) {
 	var (
-		total     int64
-		modelList []domain.Model
-		eg        errgroup.Group
+		total  int64
+		models []domain.Model
+		eg     errgroup.Group
 	)
 	eg.Go(func() error {
 		var err error
-		modelList, err = s.repo.ListModels(ctx, offset, limit)
+		models, err = s.repo.ListModels(ctx, offset, limit)
 		return err
 	})
 	eg.Go(func() error {
@@ -53,7 +48,7 @@ func (s *service) ListModels(ctx context.Context, offset, limit int64) ([]domain
 		return err
 	})
 	if err := eg.Wait(); err != nil {
-		return modelList, total, err
+		return models, total, err
 	}
-	return modelList, total, nil
+	return models, total, nil
 }

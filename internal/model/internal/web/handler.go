@@ -6,30 +6,33 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
-	"time"
 )
 
 type Handler struct {
-	svc service.Service
+	svc   service.Service
+	mgSvc service.MGService
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, groupSvc service.MGService) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:   svc,
+		mgSvc: groupSvc,
 	}
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/model")
-
+	// 模型分组
 	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateGroup))
+
+	// 模型操作
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
-	g.POST("/detail", ginx.WrapBody[DetailUidModelReq](h.DetailModel))
-	g.POST("/list", ginx.WrapBody[ListModelsReq](h.ListModels))
+	g.POST("/detail", ginx.WrapBody[DetailModelReq](h.DetailModel))
+	g.POST("/list", ginx.WrapBody[Page](h.ListModels))
 }
 
 func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
-	id, err := h.svc.CreateModelGroup(ctx.Request.Context(), domain.ModelGroup{
+	id, err := h.mgSvc.CreateModelGroup(ctx.Request.Context(), domain.ModelGroup{
 		Name: req.Name,
 	})
 
@@ -59,8 +62,8 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 	}, nil
 }
 
-func (h *Handler) DetailModel(ctx *gin.Context, req DetailUidModelReq) (ginx.Result, error) {
-	model, err := h.svc.FindModelByUid(ctx, req.Uid)
+func (h *Handler) DetailModel(ctx *gin.Context, req DetailModelReq) (ginx.Result, error) {
+	model, err := h.svc.FindModelById(ctx, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -71,31 +74,18 @@ func (h *Handler) DetailModel(ctx *gin.Context, req DetailUidModelReq) (ginx.Res
 	}, nil
 }
 
-func (h *Handler) ListModels(ctx *gin.Context, req ListModelsReq) (ginx.Result, error) {
+func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
 	models, total, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: h.toCaseList(models, total),
+		Data: RetrieveModelsListResp{
+			Total: total,
+			Models: slice.Map(models, func(idx int, m domain.Model) Model {
+				return toModelVo(m)
+			}),
+		},
 	}, nil
-}
-
-func (h *Handler) toCaseList(data []domain.Model, total int64) ListModelsResp {
-	return ListModelsResp{
-		Total: total,
-		Models: slice.Map(data, func(idx int, m domain.Model) Model {
-			return newModel(m)
-		}),
-	}
-}
-
-func newModel(m domain.Model) Model {
-	return Model{
-		Name:  m.Name,
-		UID:   m.UID,
-		Ctime: m.Utime.Format(time.DateTime),
-		Utime: m.Utime.Format(time.DateTime),
-	}
 }

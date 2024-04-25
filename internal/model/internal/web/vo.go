@@ -1,5 +1,10 @@
 package web
 
+import (
+	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
+	"time"
+)
+
 type CreateModelGroupReq struct {
 	Name string `json:"name"`
 }
@@ -11,16 +16,16 @@ type CreateModelReq struct {
 	Icon    string `json:"icon"`
 }
 
-type DetailUidModelReq struct {
-	Uid string `json:"uid"`
+type DetailModelReq struct {
+	ID int64 `json:"id"`
 }
 
-type ListModelsReq struct {
+type Page struct {
 	Offset int64 `json:"offset,omitempty"`
 	Limit  int64 `json:"limit,omitempty"`
 }
 
-type ListModelsResp struct {
+type RetrieveModelsListResp struct {
 	Total  int64   `json:"total,omitempty"`
 	Models []Model `json:"models,omitempty"`
 }
@@ -31,4 +36,13 @@ type Model struct {
 	Icon  string `json:"icon"`
 	Ctime string `json:"ctime"`
 	Utime string `json:"utime"`
+}
+
+func toModelVo(m domain.Model) Model {
+	return Model{
+		Name:  m.Name,
+		UID:   m.UID,
+		Ctime: m.Utime.Format(time.DateTime),
+		Utime: m.Utime.Format(time.DateTime),
+	}
 }

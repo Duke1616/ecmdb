@@ -20,8 +20,11 @@ import (
 func InitModule(db *mongox.Mongo) (*Module, error) {
 	modelDAO := dao.NewModelDAO(db)
 	modelRepository := repository.NewModelRepository(modelDAO)
-	serviceService := service.NewService(modelRepository)
-	handler := web.NewHandler(serviceService)
+	serviceService := service.NewModelService(modelRepository)
+	modelGroupDAO := dao.NewModelGroupDAO(db)
+	mgRepository := repository.NewMGRepository(modelGroupDAO)
+	mgService := service.NewMGService(mgRepository)
+	handler := web.NewHandler(serviceService, mgService)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,
@@ -31,4 +34,9 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewModelRepository, dao.NewModelDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, initMGProvider,
+	initModelProvider)
+
+var initMGProvider = wire.NewSet(service.NewMGService, repository.NewMGRepository, dao.NewModelGroupDAO)
+
+var initModelProvider = wire.NewSet(service.NewModelService, repository.NewModelRepository, dao.NewModelDAO)

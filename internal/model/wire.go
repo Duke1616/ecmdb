@@ -13,9 +13,8 @@ import (
 
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
-	service.NewService,
-	repository.NewModelRepository,
-	dao.NewModelDAO)
+	initMGProvider,
+	initModelProvider)
 
 func InitModule(db *mongox.Mongo) (*Module, error) {
 	wire.Build(
@@ -24,3 +23,14 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 	)
 	return new(Module), nil
 }
+
+var initMGProvider = wire.NewSet(
+	service.NewMGService,
+	repository.NewMGRepository,
+	dao.NewModelGroupDAO,
+)
+
+var initModelProvider = wire.NewSet(
+	service.NewModelService,
+	repository.NewModelRepository,
+	dao.NewModelDAO)

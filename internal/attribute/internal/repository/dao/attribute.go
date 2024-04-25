@@ -30,15 +30,32 @@ func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
 }
 
 func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (int64, error) {
-	now := time.Now()
-	attr.Ctime, attr.Utime = now.UnixMilli(), now.UnixMilli()
+	session, err := dao.db.DBClient.StartSession()
+	if err != nil {
+		return 0, fmt.Errorf("无法创建会话: %w", err)
+	}
+	defer session.EndSession(ctx)
+
+	// 开始事务
+	err = session.StartTransaction()
+	if err != nil {
+		return 0, fmt.Errorf("无法开始事务: %w", err)
+	}
+
 	attr.Id = dao.db.GetIdGenerator(AttributeCollection)
 	col := dao.db.Collection(AttributeCollection)
+	now := time.Now()
+	attr.Ctime, attr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	_, err := col.InsertOne(ctx, attr)
-
+	_, err = col.InsertOne(ctx, attr)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	// 提交事务
+	err = session.CommitTransaction(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return attr.Id, nil
@@ -46,23 +63,31 @@ func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (i
 
 func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {
 	col := dao.db.Collection(AttributeCollection)
-
 	filer := bson.M{"model_uid": modelUid}
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	resp, err := col.Find(ctx, filer, opt)
-	var set []Attribute
-	for resp.Next(ctx) {
-		var ins Attribute
-		if err = resp.Decode(&ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
+	cursor, err := col.Find(ctx, filer, opt)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	return set, nil
+	result := make([]Attribute, 0)
+	for cursor.Next(ctx) {
+		var ins Attribute
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
+		}
+		result = append(result, ins)
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *attributeDAO) ListAttribute(ctx context.Context, modelUid string) ([]Attribute, error) {
@@ -71,6 +96,7 @@ func (dao *attributeDAO) ListAttribute(ctx context.Context, modelUid string) ([]
 	opts := &options.FindOptions{}
 
 	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -79,9 +105,13 @@ func (dao *attributeDAO) ListAttribute(ctx context.Context, modelUid string) ([]
 	for cursor.Next(ctx) {
 		var attr Attribute
 		if err = cursor.Decode(&attr); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("解码错误: %w", err)
 		}
 		result = append(result, attr)
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
 	return result, nil
@@ -93,7 +123,7 @@ func (dao *attributeDAO) Count(ctx context.Context, modelUid string) (int64, err
 
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
 
 	return count, nil

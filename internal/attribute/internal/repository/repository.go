@@ -4,13 +4,15 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
+	"github.com/ecodeclub/ekit/slice"
 )
 
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
 
-	ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error)
+	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error)
+	Total(ctx context.Context, modelUID string) (int64, error)
 }
 
 type attributeRepository struct {
@@ -24,59 +26,47 @@ func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {
 }
 
 func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
-	return a.dao.CreateAttribute(ctx, dao.Attribute{
-		ModelUID:  req.ModelUID,
-		Name:      req.Name,
-		FieldName: req.FieldName,
-		FieldType: req.FieldType,
-		Required:  req.Required,
-	})
+	return a.dao.CreateAttribute(ctx, a.toEntity(req))
 }
 
 // SearchAttributeFieldsByModelUid 查询对应模型的字段信息
 func (a *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
 	attrs, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
 
-	if err != nil {
-		return nil, err
-	}
-	fields := make([]string, len(attrs))
-
-	for _, ca := range attrs {
-		fields = append(fields, ca.FieldName)
-	}
-
-	return fields, nil
+	return slice.Map(attrs, func(idx int, src dao.Attribute) string {
+		return src.FieldName
+	}), err
 }
 
-func (a *attributeRepository) ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
-	attributes, err := a.dao.ListAttribute(ctx, modelUID)
-	if err != nil {
-		return nil, err
-	}
+func (a *attributeRepository) ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
+	attrs, err := a.dao.ListAttribute(ctx, modelUID)
 
-	ats := make([]domain.Attribute, 0)
-	for _, val := range attributes {
-		ats = append(ats, domain.Attribute{
-			ID:        val.Id,
-			ModelUID:  val.ModelUID,
-			FieldName: val.FieldName,
-			Name:      val.Name,
-			FieldType: val.FieldType,
-			Required:  val.Required,
-		})
-	}
-
-	return ats, nil
+	return slice.Map(attrs, func(idx int, src dao.Attribute) domain.Attribute {
+		return a.toDomain(src)
+	}), err
 }
 
-func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute {
+func (a *attributeRepository) Total(ctx context.Context, modelUID string) (int64, error) {
+	return a.dao.Count(ctx, modelUID)
+}
+
+func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
+	return dao.Attribute{
+		ModelUID:  req.ModelUID,
+		Name:      req.Name,
+		FieldName: req.FieldName,
+		FieldType: req.FieldType,
+		Required:  req.Required,
+	}
+}
+
+func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 	return domain.Attribute{
-		ID:        modelDao.Id,
-		Name:      modelDao.Name,
-		FieldName: modelDao.FieldName,
-		FieldType: modelDao.FieldType,
-		ModelUID:  modelDao.ModelUID,
-		Required:  modelDao.Required,
+		ID:        attr.Id,
+		Name:      attr.Name,
+		FieldName: attr.FieldName,
+		FieldType: attr.FieldType,
+		ModelUID:  attr.ModelUID,
+		Required:  attr.Required,
 	}
 }

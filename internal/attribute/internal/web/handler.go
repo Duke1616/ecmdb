@@ -4,6 +4,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,21 +19,16 @@ func NewHandler(svc service.Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
-	g := server.Group("/model/attribute")
+	g := server.Group("/attribute")
 
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
-	g.POST("/detail", ginx.WrapBody[DetailAttributeReq](h.DetailAttribute))
-	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttribute))
+	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttributes))
+
+	g.POST("/detail", ginx.WrapBody[DetailAttributeReq](h.DetailAttributeFields))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
-	id, err := h.svc.CreateAttribute(ctx.Request.Context(), domain.Attribute{
-		Name:      req.Name,
-		ModelUID:  req.ModelUID,
-		FieldName: req.FieldName,
-		FieldType: req.FieldType,
-		Required:  req.Required,
-	})
+	id, err := h.svc.CreateAttribute(ctx.Request.Context(), toDomain(req))
 
 	if err != nil {
 		return systemErrorResult, err
@@ -43,24 +39,29 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	}, nil
 }
 
-func (h *Handler) DetailAttribute(ctx *gin.Context, req DetailAttributeReq) (ginx.Result, error) {
-	attr, err := h.svc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
+func (h *Handler) DetailAttributeFields(ctx *gin.Context, req DetailAttributeReq) (ginx.Result, error) {
+	fields, err := h.svc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: attr,
+		Data: fields,
 	}, nil
 }
 
-func (h *Handler) ListAttribute(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
-	ats, err := h.svc.ListAttribute(ctx, req.ModelUID)
+func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
+	attrs, total, err := h.svc.ListAttributes(ctx, req.ModelUid)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: ats,
+		Data: RetrieveAttributeList{
+			Total: total,
+			Attribute: slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
+				return toAttributeVo(src)
+			}),
+		},
 	}, nil
 }

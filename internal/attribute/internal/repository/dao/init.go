@@ -19,6 +19,9 @@ func InitIndexes(db *mongox.Mongo) error {
 			},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys: bson.M{"model_uid": -1},
+		},
 	}
 
 	_, err := col.Indexes().CreateMany(context.Background(), indexes)

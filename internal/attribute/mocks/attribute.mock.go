@@ -79,41 +79,42 @@ func (c *MockServiceCreateAttributeCall) DoAndReturn(f func(context.Context, dom
 	return c
 }
 
-// ListAttribute mocks base method.
-func (m *MockService) ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
+// ListAttributes mocks base method.
+func (m *MockService) ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAttribute", ctx, modelUID)
+	ret := m.ctrl.Call(m, "ListAttributes", ctx, modelUID)
 	ret0, _ := ret[0].([]domain.Attribute)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// ListAttribute indicates an expected call of ListAttribute.
-func (mr *MockServiceMockRecorder) ListAttribute(ctx, modelUID any) *MockServiceListAttributeCall {
+// ListAttributes indicates an expected call of ListAttributes.
+func (mr *MockServiceMockRecorder) ListAttributes(ctx, modelUID any) *MockServiceListAttributesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttribute", reflect.TypeOf((*MockService)(nil).ListAttribute), ctx, modelUID)
-	return &MockServiceListAttributeCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttributes", reflect.TypeOf((*MockService)(nil).ListAttributes), ctx, modelUID)
+	return &MockServiceListAttributesCall{Call: call}
 }
 
-// MockServiceListAttributeCall wrap *gomock.Call
-type MockServiceListAttributeCall struct {
+// MockServiceListAttributesCall wrap *gomock.Call
+type MockServiceListAttributesCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServiceListAttributeCall) Return(arg0 []domain.Attribute, arg1 error) *MockServiceListAttributeCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockServiceListAttributesCall) Return(arg0 []domain.Attribute, arg1 int64, arg2 error) *MockServiceListAttributesCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceListAttributeCall) Do(f func(context.Context, string) ([]domain.Attribute, error)) *MockServiceListAttributeCall {
+func (c *MockServiceListAttributesCall) Do(f func(context.Context, string) ([]domain.Attribute, int64, error)) *MockServiceListAttributesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceListAttributeCall) DoAndReturn(f func(context.Context, string) ([]domain.Attribute, error)) *MockServiceListAttributeCall {
+func (c *MockServiceListAttributesCall) DoAndReturn(f func(context.Context, string) ([]domain.Attribute, int64, error)) *MockServiceListAttributesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

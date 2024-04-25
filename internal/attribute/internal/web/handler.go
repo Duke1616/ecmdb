@@ -24,7 +24,6 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
 	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttributes))
 
-	g.POST("/detail", ginx.WrapBody[DetailAttributeReq](h.DetailAttributeFields))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -36,17 +35,6 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	return ginx.Result{
 		Data: id,
 		Msg:  "添加模型属性成功",
-	}, nil
-}
-
-func (h *Handler) DetailAttributeFields(ctx *gin.Context, req DetailAttributeReq) (ginx.Result, error) {
-	fields, err := h.svc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: fields,
 	}, nil
 }
 

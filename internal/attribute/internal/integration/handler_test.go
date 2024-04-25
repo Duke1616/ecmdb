@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/integration/startup"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/ginx/test"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
@@ -27,6 +28,7 @@ type HandlerTestSuite struct {
 	dao    dao.AttributeDAO
 	db     *mongox.Mongo
 	server *gin.Engine
+	svc    service.Service
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {

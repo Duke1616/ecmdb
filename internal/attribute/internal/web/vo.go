@@ -12,10 +12,6 @@ type CreateAttributeReq struct {
 	Required  bool   `json:"required"`
 }
 
-type DetailAttributeReq struct {
-	ModelUid string `json:"model_uid"`
-}
-
 type ListAttributeReq struct {
 	ModelUid string `json:"model_uid"`
 }

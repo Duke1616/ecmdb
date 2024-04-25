@@ -3,8 +3,8 @@ package domain
 type Attribute struct {
 	ID        int64
 	ModelUID  string
-	UID       string
 	Name      string
+	FieldName string
 	FieldType string
 	Required  bool
 }

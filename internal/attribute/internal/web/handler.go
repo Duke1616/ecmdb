@@ -29,7 +29,7 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	id, err := h.svc.CreateAttribute(ctx.Request.Context(), domain.Attribute{
 		Name:      req.Name,
 		ModelUID:  req.ModelUID,
-		UID:       req.UID,
+		FieldName: req.FieldName,
 		FieldType: req.FieldType,
 		Required:  req.Required,
 	})
@@ -44,7 +44,7 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 }
 
 func (h *Handler) DetailAttribute(ctx *gin.Context, req DetailAttributeReq) (ginx.Result, error) {
-	attr, err := h.svc.SearchAttributeFiled(ctx, req.Id)
+	attr, err := h.svc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
 	if err != nil {
 		return ginx.Result{}, err
 	}

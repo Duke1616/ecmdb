@@ -85,7 +85,7 @@ func (h *RelationResourceHandler) ListResourceRelation(ctx *gin.Context, req Pag
 // ListResourceByModelUid 查询模型下，可以进行关联的数据
 func (h *RelationResourceHandler) ListResourceByModelUid(ctx *gin.Context, req ListResourceRelationByModelUidReq) (
 	ginx.Result, error) {
-	projection, err := h.attributeSvc.SearchAttributeFiled(ctx, req.ModelUid)
+	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查询字段属性失败: %w", err)
 	}
@@ -95,7 +95,7 @@ func (h *RelationResourceHandler) ListResourceByModelUid(ctx *gin.Context, req L
 		return systemErrorResult, fmt.Errorf("查询 resource ids失败: %w", err)
 	}
 
-	resources, err := h.resourceSvc.ListResourceByIds(ctx, projection, ids)
+	resources, err := h.resourceSvc.ListResourceByIds(ctx, fields, ids)
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("查询resources列表失败: %w", err)
 	}
@@ -304,13 +304,13 @@ func (h *RelationResourceHandler) ListRelated(ctx *gin.Context, req ListRelatedR
 
 	// 查看模型字段
 	// model_uid = mongo
-	filed, err := h.attributeSvc.SearchAttributeFiled(ctx, mUid)
+	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, mUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	// 排除已关联数据, 返回未关联数据
-	rrs, err := h.resourceSvc.ListExcludeResource(ctx, filed, mUid, req.Offset, req.Limit, excludeIds)
+	rrs, err := h.resourceSvc.ListExcludeResource(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
 	if err != nil {
 		return systemErrorResult, err
 	}

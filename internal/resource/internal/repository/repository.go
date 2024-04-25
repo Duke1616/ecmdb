@@ -8,14 +8,14 @@ import (
 
 type ResourceRepository interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
-	FindResourceById(ctx context.Context, projection map[string]int, id int64) (domain.Resource, error)
-	ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]domain.Resource, error)
+	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
+	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
 
-	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error)
+	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
 	FindResource(ctx context.Context, id int64) (domain.Resource, error)
 
-	ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
+	ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
 }
 
 type resourceRepository struct {
@@ -36,8 +36,8 @@ func (r *resourceRepository) CreateResource(ctx context.Context, req domain.Reso
 	})
 }
 
-func (r *resourceRepository) FindResourceById(ctx context.Context, projection map[string]int, id int64) (domain.Resource, error) {
-	rs, err := r.dao.FindResourceById(ctx, projection, id)
+func (r *resourceRepository) FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error) {
+	rs, err := r.dao.FindResourceById(ctx, fields, id)
 	if err != nil {
 		return domain.Resource{}, err
 	}
@@ -50,8 +50,8 @@ func (r *resourceRepository) FindResourceById(ctx context.Context, projection ma
 	}, nil
 }
 
-func (r *resourceRepository) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]domain.Resource, error) {
-	resources, err := r.dao.ListResourcesByIds(ctx, projection, ids)
+func (r *resourceRepository) ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error) {
+	resources, err := r.dao.ListResourcesByIds(ctx, fields, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +70,8 @@ func (r *resourceRepository) ListResourcesByIds(ctx context.Context, projection 
 	return res, nil
 }
 
-func (r *resourceRepository) ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]domain.Resource, error) {
-	rs, err := r.dao.ListResource(ctx, projection, modelUid, offset, limit)
+func (r *resourceRepository) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
+	rs, err := r.dao.ListResource(ctx, fields, modelUid, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func (r *resourceRepository) FindResource(ctx context.Context, id int64) (domain
 	}, nil
 }
 
-func (r *resourceRepository) ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
-	rs, err := r.dao.ListExcludeResource(ctx, projection, modelUid, offset, limit, ids)
+func (r *resourceRepository) ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
+	rs, err := r.dao.ListExcludeResource(ctx, fields, modelUid, offset, limit, ids)
 	if err != nil {
 		return nil, err
 	}

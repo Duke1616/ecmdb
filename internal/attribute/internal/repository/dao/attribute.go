@@ -87,7 +87,7 @@ type Attribute struct {
 	Id        int64  `bson:"id"`
 	ModelUID  string `bson:"model_uid"`  // 模型唯一标识
 	Name      string `bson:"name"`       // 字段名称
-	UID       string `bson:"uid"`        // 字段唯一标识、英文标识
+	FieldName string `bson:"field_name"` // 字段唯一标识、英文标识
 	FieldType string `bson:"field_type"` // 字段类型
 	Required  bool   `bson:"required"`   // 是否为必传
 	Display   bool   `bson:"display"`    // 是否前端展示

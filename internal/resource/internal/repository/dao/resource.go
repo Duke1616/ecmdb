@@ -12,14 +12,14 @@ const ResourceCollection = "c_resources"
 
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
-	FindResourceById(ctx context.Context, projection map[string]int, id int64) (Resource, error)
-	ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]Resource, error)
+	FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error)
+	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
 
-	ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]Resource, error)
+	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
 
 	FindResource(ctx context.Context, id int64) (Resource, error)
 
-	ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
+	ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
 }
 
 type resourceDAO struct {
@@ -45,9 +45,13 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, 
 	return r.ID, nil
 }
 
-func (dao *resourceDAO) FindResourceById(ctx context.Context, projection map[string]int, id int64) (Resource, error) {
+func (dao *resourceDAO) FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
+	projection := make(map[string]int, len(fields))
+	for _, v := range fields {
+		projection[v] = 1
+	}
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
@@ -71,9 +75,13 @@ func (dao *resourceDAO) FindResourceById(ctx context.Context, projection map[str
 	return result, nil
 }
 
-func (dao *resourceDAO) ListResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64) ([]Resource, error) {
+func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
+	projection := make(map[string]int, len(fields))
+	for _, v := range fields {
+		projection[v] = 1
+	}
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
@@ -97,9 +105,13 @@ func (dao *resourceDAO) ListResource(ctx context.Context, projection map[string]
 	return result, nil
 }
 
-func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, projection map[string]int, ids []int64) ([]Resource, error) {
+func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": bson.M{"$in": ids}}
+	projection := make(map[string]int, len(fields))
+	for _, v := range fields {
+		projection[v] = 1
+	}
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
@@ -139,7 +151,7 @@ func (dao *resourceDAO) FindResource(ctx context.Context, id int64) (Resource, e
 	return result, nil
 }
 
-func (dao *resourceDAO) ListExcludeResource(ctx context.Context, projection map[string]int, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
+func (dao *resourceDAO) ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
 
@@ -148,7 +160,10 @@ func (dao *resourceDAO) ListExcludeResource(ctx context.Context, projection map[
 			"$nin": ids,
 		}
 	}
-
+	projection := make(map[string]int, len(fields))
+	for _, v := range fields {
+		projection[v] = 1
+	}
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1

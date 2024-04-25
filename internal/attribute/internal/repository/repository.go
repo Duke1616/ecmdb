@@ -8,7 +8,7 @@ import (
 
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error)
+	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
 
 	ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error)
 }
@@ -27,26 +27,26 @@ func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.At
 	return a.dao.CreateAttribute(ctx, dao.Attribute{
 		ModelUID:  req.ModelUID,
 		Name:      req.Name,
-		UID:       req.UID,
+		FieldName: req.FieldName,
 		FieldType: req.FieldType,
 		Required:  req.Required,
 	})
 }
 
-// SearchAttributeByModelUID 查询对应模型的字段信息
-func (a *attributeRepository) SearchAttributeByModelUID(ctx context.Context, modelUid string) (map[string]int, error) {
-	attributeList, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
+// SearchAttributeFieldsByModelUid 查询对应模型的字段信息
+func (a *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
+	attrs, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
 
 	if err != nil {
 		return nil, err
 	}
-	projection := make(map[string]int, 0)
+	fields := make([]string, len(attrs))
 
-	for _, ca := range attributeList {
-		projection[ca.UID] = 1
+	for _, ca := range attrs {
+		fields = append(fields, ca.FieldName)
 	}
 
-	return projection, nil
+	return fields, nil
 }
 
 func (a *attributeRepository) ListAttribute(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
@@ -60,7 +60,7 @@ func (a *attributeRepository) ListAttribute(ctx context.Context, modelUID string
 		ats = append(ats, domain.Attribute{
 			ID:        val.Id,
 			ModelUID:  val.ModelUID,
-			UID:       val.UID,
+			FieldName: val.FieldName,
 			Name:      val.Name,
 			FieldType: val.FieldType,
 			Required:  val.Required,
@@ -74,7 +74,7 @@ func (a *attributeRepository) toDomain(modelDao *dao.Attribute) domain.Attribute
 	return domain.Attribute{
 		ID:        modelDao.Id,
 		Name:      modelDao.Name,
-		UID:       modelDao.UID,
+		FieldName: modelDao.FieldName,
 		FieldType: modelDao.FieldType,
 		ModelUID:  modelDao.ModelUID,
 		Required:  modelDao.Required,

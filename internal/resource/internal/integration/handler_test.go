@@ -52,9 +52,8 @@ func (s *HandlerTestSuite) SetupSuite() {
 	s.ctrl = gomock.NewController(s.T())
 	attrSvc := attributemocks.NewMockService(s.ctrl)
 
-	project := make(map[string]int, 0)
-	project["hostname"] = 1
-	attrSvc.EXPECT().SearchAttributeFiled(gomock.Any(), "mysql").AnyTimes().Return(project, nil)
+	project := []string{"hostname"}
+	attrSvc.EXPECT().SearchAttributeFieldsByModelUid(gomock.Any(), "mysql").AnyTimes().Return(project, nil)
 	handler, err := startup.InitHandler(&attribute.Module{
 		Svc: attrSvc,
 	})

@@ -3,13 +3,13 @@ package web
 type CreateAttributeReq struct {
 	Name      string `json:"name"`
 	ModelUID  string `json:"model_uid"`
-	UID       string `json:"uid"`
+	FieldName string `json:"field_name"`
 	FieldType string `json:"field_type"`
 	Required  bool   `json:"required"`
 }
 
 type DetailAttributeReq struct {
-	Id string `json:"id"`
+	ModelUid string `json:"model_uid"`
 }
 
 type ListAttributeReq struct {

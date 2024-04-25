@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
@@ -54,12 +53,12 @@ func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.
 }
 
 func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.Result, error) {
-	projection, err := h.attributeSvc.SearchAttributeFiled(ctx, req.ModelUid)
+	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	resp, err := h.svc.FindResourceById(ctx, projection, req.ID)
+	resp, err := h.svc.FindResourceById(ctx, fields, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -71,13 +70,12 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 }
 
 func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Result, error) {
-	projection, err := h.attributeSvc.SearchAttributeFiled(ctx, req.ModelUid)
+	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	fmt.Print(projection)
-	resp, err := h.svc.ListResource(ctx, projection, req.ModelUid, req.Offset, req.Limit)
+	resp, err := h.svc.ListResource(ctx, fields, req.ModelUid, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -89,12 +87,12 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 }
 
 func (h *Handler) ListResourceByIds(ctx *gin.Context, req ListResourceIdsReq) (ginx.Result, error) {
-	filed, err := h.attributeSvc.SearchAttributeFiled(ctx, req.ModelUid)
+	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
 	if err != nil {
 		return ginx.Result{}, err
 	}
 
-	rrs, err := h.svc.ListResourceByIds(ctx, filed, req.Ids)
+	rrs, err := h.svc.ListResourceByIds(ctx, fields, req.Ids)
 	if err != nil {
 		return ginx.Result{}, err
 	}

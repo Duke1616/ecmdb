@@ -11,16 +11,14 @@ import (
 )
 
 type RelationModelDAO interface {
-	CreateModelRelation(ctx context.Context, mg ModelRelation) (int64, error)
-	ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error)
-	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error)
+	CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error)
+
+	// ListRelationByModelUid 查询模型关联关系
+	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error)
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
-	Count(ctx context.Context) (int64, error)
 
-	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
-	ListDstModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
-
-	ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]ModelRelation, error)
+	// FindModelDiagramBySrcUids 查询模型拓扑图
+	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]ModelRelation, error)
 }
 
 func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
@@ -34,52 +32,67 @@ type modelDAO struct {
 }
 
 func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
-	now := time.Now()
-	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
+	session, err := dao.db.DBClient.StartSession()
+	if err != nil {
+		return 0, fmt.Errorf("无法创建会话: %w", err)
+	}
+	defer session.EndSession(ctx)
+
+	// 开始事务
+	err = session.StartTransaction()
+	if err != nil {
+		return 0, fmt.Errorf("无法开始事务: %w", err)
+	}
+
 	mr.Id = dao.db.GetIdGenerator(ModelRelationCollection)
 	col := dao.db.Collection(ModelRelationCollection)
+	now := time.Now()
+	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	mr.RelationName = fmt.Sprintf("%s_%s_%s",
-		mr.SourceModelUID, mr.RelationTypeUID, mr.TargetModelUID)
-
-	_, err := col.InsertMany(ctx, []interface{}{mr})
-
+	_, err = col.InsertOne(ctx, mr)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	// 提交事务
+	err = session.CommitTransaction(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return mr.Id, nil
 }
 
-func (dao *modelDAO) ListModelRelation(ctx context.Context, offset, limit int64) ([]*ModelRelation, error) {
+func (dao *modelDAO) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
-
-	filer := bson.M{}
-	opt := &options.FindOptions{
-		Sort:  bson.D{{Key: "ctime", Value: -1}},
-		Limit: &limit,
-		Skip:  &offset,
+	filter := bson.M{"source_model_uid": bson.M{"$in": srcUids}}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	resp, err := col.Find(ctx, filer, opt)
-	var set []*ModelRelation
-	for resp.Next(ctx) {
-		ins := &ModelRelation{}
-		if err = resp.Decode(ins); err != nil {
-			return nil, err
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	result := make([]ModelRelation, 0)
+	for cursor.Next(ctx) {
+		var ins ModelRelation
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
 		}
-		set = append(set, ins)
+		result = append(result, ins)
 	}
 
-	return set, nil
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
 }
 
-func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]*ModelRelation, error) {
+func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
 	//filter := bson.M{
 	//	"$or": bson.A{
@@ -87,99 +100,45 @@ func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit i
 	//		bson.M{"target_model_uid": modelUid},
 	//	},
 	//}
-
 	filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
-	opt := &options.FindOptions{
+	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
 
-	resp, err := col.Find(ctx, filter, opt)
-	var set []*ModelRelation
-	for resp.Next(ctx) {
-		ins := &ModelRelation{}
-		if err = resp.Decode(ins); err != nil {
-			return nil, err
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	result := make([]ModelRelation, 0)
+	for cursor.Next(ctx) {
+		var ins ModelRelation
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
 		}
-		set = append(set, ins)
+		result = append(result, ins)
 	}
 
-	return set, nil
-}
-
-func (dao *modelDAO) ListSrcModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-
-	filer := bson.M{"source_model_uid": sourceUid}
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
-	resp, err := col.Find(ctx, filer, opt)
-	var set []*ModelRelation
-	for resp.Next(ctx) {
-		ins := &ModelRelation{}
-		if err = resp.Decode(ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
-	}
-
-	return set, nil
-}
-
-func (dao *modelDAO) ListDstModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-
-	filer := bson.M{"source_target_uid": sourceUid}
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	resp, err := col.Find(ctx, filer, opt)
-	var set []*ModelRelation
-	for resp.Next(ctx) {
-		ins := &ModelRelation{}
-		if err = resp.Decode(ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
-	}
-
-	return set, nil
+	return result, nil
 }
 
 func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ModelRelationCollection)
-	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
+	filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 
-	count, err := col.CountDocuments(ctx, filer)
+	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
 
 	return count, nil
-}
-
-func (dao *modelDAO) ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-	filter := bson.M{"source_model_uid": bson.M{"$in": srcUids}}
-	opts := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	resp, err := col.Find(ctx, filter, opts)
-	var set []ModelRelation
-	for resp.Next(ctx) {
-		var ins ModelRelation
-		if err = resp.Decode(&ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
-	}
-
-	return set, nil
 }
 
 type ModelRelation struct {

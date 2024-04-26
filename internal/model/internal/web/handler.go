@@ -35,7 +35,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.WrapBody[Page](h.ListModels))
 
 	// 模型关联关系
-	//g.POST("/relation/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
+	g.POST("/relation/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
 }
 
 func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
@@ -106,12 +106,12 @@ func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Res
 	}
 
 	// 取出所有的 uids
-	modelUidS := slice.Map(models, func(idx int, src domain.Model) string {
+	modelUids := slice.Map(models, func(idx int, src domain.Model) string {
 		return src.UID
 	})
 
 	// 查询包含的数据
-	ds, err := h.RMSvc.ListSrcModelByUIDs(ctx, modelUidS)
+	ds, err := h.RMSvc.FindModelDiagramBySrcUids(ctx, modelUids)
 	if err != nil {
 		return systemErrorResult, err
 	}

@@ -4,21 +4,17 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
+	"github.com/ecodeclub/ekit/slice"
 	"time"
 )
 
 type RelationModelRepository interface {
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
-	ListModelRelation(ctx context.Context, offset, limit int64) ([]domain.ModelRelation, error)
-	Total(ctx context.Context) (int64, error)
 
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
 
-	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error)
-	ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error)
-
-	ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
+	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -32,90 +28,48 @@ type modelRepository struct {
 }
 
 func (r *modelRepository) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
-	return r.dao.CreateModelRelation(ctx, dao.ModelRelation{
-		SourceModelUID:  req.SourceModelUID,
-		TargetModelUID:  req.TargetModelUID,
-		RelationTypeUID: req.RelationTypeUID,
-		Mapping:         req.Mapping,
-	})
-}
-
-func (r *modelRepository) ListModelRelation(ctx context.Context, offset, limit int64) ([]domain.ModelRelation, error) {
-	modelRelations, err := r.dao.ListModelRelation(ctx, offset, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]domain.ModelRelation, 0, len(modelRelations))
-
-	for _, value := range modelRelations {
-		res = append(res, r.toDomain(value))
-	}
-
-	return res, nil
-
-}
-
-func (r *modelRepository) Total(ctx context.Context) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+	return r.dao.CreateModelRelation(ctx, r.toEntity(req))
 }
 
 func (r *modelRepository) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error) {
-	relations, err := r.dao.ListRelationByModelUid(ctx, offset, limit, modelUid)
-	if err != nil {
-		return nil, err
-	}
+	rms, err := r.dao.ListRelationByModelUid(ctx, offset, limit, modelUid)
 
-	res := make([]domain.ModelRelation, 0, len(relations))
-	for _, value := range relations {
-		res = append(res, r.toDomain(value))
-	}
-
-	return res, nil
+	return slice.Map(rms, func(idx int, src dao.ModelRelation) domain.ModelRelation {
+		return r.toDomain(src)
+	}), err
 }
 
 func (r *modelRepository) TotalByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	return r.dao.CountByModelUid(ctx, modelUid)
 }
 
-func (r *modelRepository) ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error) {
-	mrs, err := r.dao.ListSrcModelByUid(ctx, sourceUid)
-	if err != nil {
-		return nil, err
-	}
+func (r *modelRepository) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
+	diagrams, err := r.dao.FindModelDiagramBySrcUids(ctx, srcUids)
 
-	res := make([]domain.ModelDiagram, 0, len(mrs))
-	for _, value := range mrs {
-		res = append(res, domain.ModelDiagram{
-			ID:              value.Id,
-			RelationTypeUID: value.RelationTypeUID,
-			TargetModelUID:  value.TargetModelUID,
-		})
-	}
-
-	return res, nil
+	return slice.Map(diagrams, func(idx int, src dao.ModelRelation) domain.ModelDiagram {
+		return r.toDiagram(src)
+	}), err
 }
 
-func (r *modelRepository) ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error) {
-	mrs, err := r.dao.ListDstModelByUid(ctx, sourceUid)
-	if err != nil {
-		return nil, err
+func (r *modelRepository) toEntity(req domain.ModelRelation) dao.ModelRelation {
+	return dao.ModelRelation{
+		SourceModelUID:  req.SourceModelUID,
+		TargetModelUID:  req.TargetModelUID,
+		RelationTypeUID: req.RelationTypeUID,
+		Mapping:         req.Mapping,
 	}
-
-	res := make([]domain.ModelDiagram, 0, len(mrs))
-	for _, value := range mrs {
-		res = append(res, domain.ModelDiagram{
-			ID:              value.Id,
-			RelationTypeUID: value.RelationTypeUID,
-			TargetModelUID:  value.TargetModelUID,
-		})
-	}
-
-	return res, nil
 }
 
-func (r *modelRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRelation {
+func (r *modelRepository) toDiagram(src dao.ModelRelation) domain.ModelDiagram {
+	return domain.ModelDiagram{
+		ID:              src.Id,
+		RelationTypeUID: src.RelationTypeUID,
+		TargetModelUID:  src.TargetModelUID,
+		SourceModelUid:  src.SourceModelUID,
+	}
+}
+
+func (r *modelRepository) toDomain(modelDao dao.ModelRelation) domain.ModelRelation {
 	return domain.ModelRelation{
 		ID:              modelDao.Id,
 		SourceModelUID:  modelDao.SourceModelUID,
@@ -126,23 +80,4 @@ func (r *modelRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRela
 		Ctime:           time.UnixMilli(modelDao.Ctime),
 		Utime:           time.UnixMilli(modelDao.Utime),
 	}
-}
-
-func (r *modelRepository) ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
-	mrs, err := r.dao.ListSrcModelByUIDs(ctx, srcUids)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]domain.ModelDiagram, 0, len(mrs))
-	for _, value := range mrs {
-		res = append(res, domain.ModelDiagram{
-			ID:              value.Id,
-			RelationTypeUID: value.RelationTypeUID,
-			TargetModelUID:  value.TargetModelUID,
-			SourceModelUid:  value.SourceModelUID,
-		})
-	}
-
-	return res, nil
 }

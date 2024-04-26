@@ -82,17 +82,6 @@ type ListModelByUidReq struct {
 	ModelUid string `json:"model_uid"`
 }
 
-type RetrieveDiagram struct {
-	SRC    []ResourceRelation  `json:"src"`
-	DST    []ResourceRelation  `json:"dst"`
-	Assets map[string][]Assets `json:"assets"`
-}
-
-type Assets struct {
-	ResourceID   int64  `json:"resource_id"`
-	ResourceName string `json:"resource_name"`
-}
-
 // ListRelatedReq 查询指定关联的数据
 // 根据传入模型以及关联名称，推断出对方的模型，排除已经关联数据，返回对应的数据
 type ListRelatedReq struct {

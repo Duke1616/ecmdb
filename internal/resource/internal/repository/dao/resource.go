@@ -115,6 +115,7 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string,
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
+	projection["model_uid"] = 1
 	opts := &options.FindOptions{
 		Projection: projection,
 	}

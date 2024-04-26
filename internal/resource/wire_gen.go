@@ -8,6 +8,7 @@ package resource
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
@@ -19,12 +20,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, attributeModule *attribute.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module) (*Module, error) {
 	resourceDAO := InitResourceDAO(db)
 	resourceRepository := repository.NewResourceRepository(resourceDAO)
 	service := NewService(resourceRepository)
 	serviceService := attributeModule.Svc
-	handler := web.NewHandler(service, serviceService)
+	relationResourceService := relationModule.RRSvc
+	handler := web.NewHandler(service, serviceService, relationResourceService)
 	module := &Module{
 		Svc: service,
 		Hdl: handler,

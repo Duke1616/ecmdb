@@ -4,6 +4,7 @@ package resource
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
@@ -17,12 +18,13 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	repository.NewResourceRepository)
 
-func InitModule(db *mongox.Mongo, attributeModule *attribute.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		NewService,
 		InitResourceDAO,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
+		wire.FieldsOf(new(*relation.Module), "RRSvc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

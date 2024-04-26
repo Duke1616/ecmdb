@@ -23,28 +23,28 @@ func InitApp() (*App, error) {
 	provider := InitSession(viper, cmdable)
 	v := InitGinMiddlewares()
 	mongo := InitMongoDB()
-	module, err := attribute.InitModule(mongo)
+	module, err := relation.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	resourceModule, err := resource.InitModule(mongo, module)
-	if err != nil {
-		return nil, err
-	}
-	relationModule, err := relation.InitModule(mongo, module, resourceModule)
-	if err != nil {
-		return nil, err
-	}
-	modelModule, err := model.InitModule(mongo, relationModule)
+	modelModule, err := model.InitModule(mongo, module)
 	if err != nil {
 		return nil, err
 	}
 	handler := modelModule.Hdl
-	webHandler := module.Hdl
+	attributeModule, err := attribute.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	webHandler := attributeModule.Hdl
+	resourceModule, err := resource.InitModule(mongo, attributeModule, module)
+	if err != nil {
+		return nil, err
+	}
 	handler2 := resourceModule.Hdl
-	relationModelHandler := relationModule.RMHdl
-	relationResourceHandler := relationModule.RRHdl
-	relationTypeHandler := relationModule.RTHdl
+	relationModelHandler := module.RMHdl
+	relationResourceHandler := module.RRHdl
+	relationTypeHandler := module.RTHdl
 	config := InitLdapConfig(viper)
 	userModule, err := user.InitModule(mongo, config)
 	if err != nil {

@@ -20,3 +20,5 @@ type RTSvc = service.RelationTypeService
 type RTHandler = web.RelationTypeHandler
 
 type ModelDiagram = domain.ModelDiagram
+
+type ResourceRelation = domain.ResourceRelation

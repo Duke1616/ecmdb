@@ -1,43 +1,31 @@
 package web
 
 import (
-	"fmt"
-	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
-	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
-	"strings"
 )
 
 type RelationResourceHandler struct {
-	svc          service.RelationResourceService
-	attributeSvc attribute.Service
-	resourceSvc  resource.Service
+	svc service.RelationResourceService
 }
 
-func NewRelationResourceHandler(svc service.RelationResourceService, attributeSvc attribute.Service,
-	resourceSvc resource.Service) *RelationResourceHandler {
+func NewRelationResourceHandler(svc service.RelationResourceService) *RelationResourceHandler {
 	return &RelationResourceHandler{
-		svc:          svc,
-		attributeSvc: attributeSvc,
-		resourceSvc:  resourceSvc,
+		svc: svc,
 	}
 }
 
 func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
-	g := server.Group("/relation/resource")
+	g := server.Group("/resource/relation/")
 	// 资源关联关系
 	g.POST("/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 	g.POST("/list/all", ginx.WrapBody[Page](h.ListResourceRelation))
 
 	// 新建关联，查询所有的关联信息
-	g.POST("/list-name", ginx.WrapBody[ListResourceRelationByModelUidReq](h.ListResourceByModelUid))
-
-	// 拓补图
-	g.POST("/diagram", ginx.WrapBody[ListResourceDiagramReq](h.ListDiagram))
+	//g.POST("/list-name", ginx.WrapBody[ListResourceRelationByModelUidReq](h.ListResourceByModelUid))
 
 	// 列表展示
 	g.POST("/list-src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource))
@@ -48,9 +36,6 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/pipeline/list-src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
 	g.POST("/pipeline/list-dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
-
-	// 查询可以关联的节点
-	g.POST("/list/related", ginx.WrapBody[ListRelatedReq](h.ListRelated))
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
@@ -83,105 +68,27 @@ func (h *RelationResourceHandler) ListResourceRelation(ctx *gin.Context, req Pag
 }
 
 // ListResourceByModelUid 查询模型下，可以进行关联的数据
-func (h *RelationResourceHandler) ListResourceByModelUid(ctx *gin.Context, req ListResourceRelationByModelUidReq) (
-	ginx.Result, error) {
-	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("查询字段属性失败: %w", err)
-	}
-
-	ids, err := h.svc.ListResourceIds(ctx, req.ModelUid, req.RelationType)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("查询 resource ids失败: %w", err)
-	}
-
-	resources, err := h.resourceSvc.ListResourceByIds(ctx, fields, ids)
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("查询resources列表失败: %w", err)
-	}
-
-	return ginx.Result{
-		Data: resources,
-	}, nil
-}
-
-// ListDiagram 入参 BASE UID 和 resource id TODO 后期优化，代码过于冗余
-func (h *RelationResourceHandler) ListDiagram(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	diagram, _, err := h.svc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	var rds RetrieveDiagram
-	rds.Assets = make(map[string][]Assets, len(diagram.DST)+len(diagram.SRC))
-
-	var src []ResourceRelation
-	for _, val := range diagram.SRC {
-		src = append(src, ResourceRelation{
-			SourceModelUID:   val.SourceModelUID,
-			TargetModelUID:   val.TargetModelUID,
-			SourceResourceID: val.SourceResourceID,
-			TargetResourceID: val.TargetResourceID,
-			RelationTypeUID:  val.RelationTypeUID,
-			RelationName:     val.RelationName,
-		})
-	}
-	rds.SRC = src
-
-	var dst []ResourceRelation
-	for _, val := range diagram.DST {
-		dst = append(dst, ResourceRelation{
-			SourceModelUID:   val.SourceModelUID,
-			TargetModelUID:   val.TargetModelUID,
-			SourceResourceID: val.SourceResourceID,
-			TargetResourceID: val.TargetResourceID,
-			RelationTypeUID:  val.RelationTypeUID,
-			RelationName:     val.RelationName,
-		})
-	}
-
-	rds.DST = dst
-
-	for _, val := range diagram.SRC {
-		fr, _ := h.resourceSvc.FindResource(ctx, val.TargetResourceID)
-
-		// 检查是否存在键，并获取对应的切片
-		as, ok := rds.Assets[fr.ModelUID]
-
-		// 如果不存在，初始化一个空切片并添加到 map 中
-		if !ok {
-			as = make([]Assets, 0, 1) // 预分配一个元素的空间
-		}
-
-		// 创建新的资源，并添加到切片中
-		rds.Assets[fr.ModelUID] = append(as, Assets{
-			ResourceID:   fr.ID,
-			ResourceName: fr.Name,
-		})
-	}
-
-	for _, val := range diagram.DST {
-		fr, _ := h.resourceSvc.FindResource(ctx, val.SourceResourceID)
-
-		// 检查是否存在键，并获取对应的切片
-		as, ok := rds.Assets[fr.ModelUID]
-
-		// 如果不存在，初始化一个空切片并添加到 map 中
-		if !ok {
-			as = make([]Assets, 0, 1) // 预分配一个元素的空间
-		}
-
-		// 创建新的资源，并添加到切片中
-		rds.Assets[fr.ModelUID] = append(as, Assets{
-			ResourceID:   fr.ID,
-			ResourceName: fr.Name,
-		})
-	}
-
-	return ginx.Result{
-		Data: rds,
-	}, nil
-}
+//func (h *RelationResourceHandler) ListResourceByModelUid(ctx *gin.Context, req ListResourceRelationByModelUidReq) (
+//	ginx.Result, error) {
+//	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
+//	if err != nil {
+//		return systemErrorResult, fmt.Errorf("查询字段属性失败: %w", err)
+//	}
+//
+//	ids, err := h.svc.ListResourceIds(ctx, req.ModelUid, req.RelationType)
+//	if err != nil {
+//		return systemErrorResult, fmt.Errorf("查询 resource ids失败: %w", err)
+//	}
+//
+//	resources, err := h.resourceSvc.ListResourceByIds(ctx, fields, ids)
+//	if err != nil {
+//		return systemErrorResult, fmt.Errorf("查询resources列表失败: %w", err)
+//	}
+//
+//	return ginx.Result{
+//		Data: resources,
+//	}, nil
+//}
 
 func (h *RelationResourceHandler) ListSrcResource(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
 	rs, err := h.svc.ListSrcResources(ctx, req.ModelUid, req.ResourceId)
@@ -281,40 +188,5 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 	result := append(srcS, dstS...)
 	return ginx.Result{
 		Data: result,
-	}, nil
-}
-
-func (h *RelationResourceHandler) ListRelated(ctx *gin.Context, req ListRelatedReq) (ginx.Result, error) {
-	var (
-		mUid       string
-		err        error
-		excludeIds []int64
-	)
-	// 查询已经关联的数据
-	// model_uid = physical
-	// relation_name = "physical_run_mongo"
-	rn := strings.Split(req.RelationName, "_")
-	if rn[0] == req.ModelUid {
-		mUid = rn[2]
-		excludeIds, err = h.svc.ListSrcRelated(ctx, req.ModelUid, req.RelationName, req.ResourceId)
-	} else {
-		mUid = rn[0]
-		excludeIds, err = h.svc.ListDstRelated(ctx, rn[2], req.RelationName, req.ResourceId)
-	}
-
-	// 查看模型字段
-	// model_uid = mongo
-	fields, err := h.attributeSvc.SearchAttributeFieldsByModelUid(ctx, mUid)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 排除已关联数据, 返回未关联数据
-	rrs, err := h.resourceSvc.ListExcludeResource(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{
-		Data: rrs,
 	}, nil
 }

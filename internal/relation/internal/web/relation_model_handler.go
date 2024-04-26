@@ -1,7 +1,6 @@
 package web
 
 import (
-	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -10,14 +9,12 @@ import (
 )
 
 type RelationModelHandler struct {
-	svc      service.RelationModelService
-	modelSvc model.Service
+	svc service.RelationModelService
 }
 
-func NewRelationModelHandler(svc service.RelationModelService, modelSvc model.Service) *RelationModelHandler {
+func NewRelationModelHandler(svc service.RelationModelService) *RelationModelHandler {
 	return &RelationModelHandler{
-		svc:      svc,
-		modelSvc: modelSvc,
+		svc: svc,
 	}
 }
 
@@ -33,9 +30,6 @@ func (h *RelationModelHandler) RegisterRoute(server *gin.Engine) {
 	// TODO 模型匹配
 	g.POST("/model/list-src", ginx.WrapBody[ListModelByUidReq](h.ListSrcModel))
 	g.POST("/model/list-dst", ginx.WrapBody[ListModelByUidReq](h.ListDstModel))
-
-	// 查询所有模型的关联关系，拓补图
-	g.POST("/model/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
 }
 
 func (h *RelationModelHandler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
@@ -81,49 +75,6 @@ func (h *RelationModelHandler) ListModelUIDRelation(ctx *gin.Context, req ListMo
 			ModelRelations: slice.Map(relations, func(idx int, src domain.ModelRelation) ModelRelation {
 				return h.toRelationVO(src)
 			}),
-		},
-	}, nil
-}
-
-func (h *RelationModelHandler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Result, error) {
-	//	1. 先查询所有的模型
-	ms, _, err := h.modelSvc.ListModels(ctx, req.Offset, req.Limit)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	var diagrams []ModelDiagram
-
-	for _, val := range ms {
-		//  2. 以模型源作为基础，关联的所有服务
-		rs, err := h.svc.ListSrcModelByUid(ctx, val.UID)
-		if err != nil {
-			return systemErrorResult, err
-		}
-
-		var models []Model
-		for _, rsVal := range rs {
-			m := Model{
-				ID:              rsVal.ID,
-				RelationTypeUID: rsVal.RelationTypeUID,
-				TargetModelUID:  rsVal.TargetModelUID,
-			}
-
-			models = append(models, m)
-		}
-
-		diagrams = append(diagrams, ModelDiagram{
-			ID:        val.ID,
-			ModelUID:  val.UID,
-			ModelName: val.Name,
-			Icon:      val.Icon,
-			Assets:    models,
-		})
-	}
-
-	return ginx.Result{
-		Data: RetrieveRelationModelDiagram{
-			Diagrams: diagrams,
 		},
 	}, nil
 }

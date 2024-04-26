@@ -19,6 +19,8 @@ type RelationModelDAO interface {
 
 	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
 	ListDstModelByUid(ctx context.Context, sourceUid string) ([]*ModelRelation, error)
+
+	ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]ModelRelation, error)
 }
 
 func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
@@ -158,6 +160,26 @@ func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int6
 	}
 
 	return count, nil
+}
+
+func (dao *modelDAO) ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]ModelRelation, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+	filter := bson.M{"source_model_uid": bson.M{"$in": srcUids}}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	resp, err := col.Find(ctx, filter, opts)
+	var set []ModelRelation
+	for resp.Next(ctx) {
+		var ins ModelRelation
+		if err = resp.Decode(&ins); err != nil {
+			return nil, err
+		}
+		set = append(set, ins)
+	}
+
+	return set, nil
 }
 
 type ModelRelation struct {

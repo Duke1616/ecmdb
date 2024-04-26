@@ -13,8 +13,10 @@ type RelationModelService interface {
 	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error)
 
 	// ListSrcModelByUid 根据源模型UID 查询所有的关联的模型
-	ListSrcModelByUid(ctx context.Context, sourceUId string) ([]domain.ModelRelationDiagram, error)
-	ListDstModelByUid(ctx context.Context, sourceUId string) ([]domain.ModelRelationDiagram, error)
+	ListSrcModelByUid(ctx context.Context, sourceUId string) ([]domain.ModelDiagram, error)
+	ListDstModelByUid(ctx context.Context, sourceUId string) ([]domain.ModelDiagram, error)
+
+	ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
 }
 
 type modelService struct {
@@ -60,10 +62,14 @@ func (s *modelService) ListModelUidRelation(ctx context.Context, offset, limit i
 	return relations, total, eg.Wait()
 }
 
-func (s *modelService) ListSrcModelByUid(ctx context.Context, modelId string) ([]domain.ModelRelationDiagram, error) {
+func (s *modelService) ListSrcModelByUid(ctx context.Context, modelId string) ([]domain.ModelDiagram, error) {
 	return s.repo.ListSrcModelByUid(ctx, modelId)
 }
 
-func (s *modelService) ListDstModelByUid(ctx context.Context, modelId string) ([]domain.ModelRelationDiagram, error) {
+func (s *modelService) ListDstModelByUid(ctx context.Context, modelId string) ([]domain.ModelDiagram, error) {
 	return s.repo.ListSrcModelByUid(ctx, modelId)
+}
+
+func (s *modelService) ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
+	return s.repo.ListSrcModelByUIDs(ctx, srcUids)
 }

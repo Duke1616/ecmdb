@@ -22,23 +22,23 @@ func InitApp() (*App, error) {
 	cmdable := InitRedis(viper)
 	provider := InitSession(viper, cmdable)
 	v := InitGinMiddlewares()
-	client := InitMongoDB()
-	module, err := model.InitModule(client)
+	mongo := InitMongoDB()
+	module, err := model.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
 	handler := module.Hdl
-	attributeModule, err := attribute.InitModule(client)
+	attributeModule, err := attribute.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
 	webHandler := attributeModule.Hdl
-	resourceModule, err := resource.InitModule(client, attributeModule)
+	resourceModule, err := resource.InitModule(mongo, attributeModule)
 	if err != nil {
 		return nil, err
 	}
 	handler2 := resourceModule.Hdl
-	relationModule, err := relation.InitModule(client, attributeModule, resourceModule, module)
+	relationModule, err := relation.InitModule(mongo, attributeModule, resourceModule)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func InitApp() (*App, error) {
 	relationResourceHandler := relationModule.RRHdl
 	relationTypeHandler := relationModule.RTHdl
 	config := InitLdapConfig(viper)
-	userModule, err := user.InitModule(client, config)
+	userModule, err := user.InitModule(mongo, config)
 	if err != nil {
 		return nil, err
 	}

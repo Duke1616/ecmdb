@@ -11,12 +11,14 @@ import (
 type Handler struct {
 	svc   service.Service
 	mgSvc service.MGService
+	//RMSvc relation.RMSvc
 }
 
 func NewHandler(svc service.Service, groupSvc service.MGService) *Handler {
 	return &Handler{
 		svc:   svc,
 		mgSvc: groupSvc,
+		//RMSvc: RMSvc,
 	}
 }
 
@@ -29,6 +31,9 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
 	g.POST("/detail", ginx.WrapBody[DetailModelReq](h.DetailModel))
 	g.POST("/list", ginx.WrapBody[Page](h.ListModels))
+
+	// 模型关联关系
+	//g.POST("/relation/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
 }
 
 func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
@@ -63,13 +68,13 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 }
 
 func (h *Handler) DetailModel(ctx *gin.Context, req DetailModelReq) (ginx.Result, error) {
-	model, err := h.svc.FindModelById(ctx, req.ID)
+	m, err := h.svc.FindModelById(ctx, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: model,
+		Data: m,
 		Msg:  "模型查找成功",
 	}, nil
 }
@@ -89,3 +94,38 @@ func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
 		},
 	}, nil
 }
+
+//func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Result, error) {
+//	// TODO 为了后续加入 label 概念进行过滤先查询所有的模型
+//	// 查询所有模型
+//	models, _, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
+//	if err != nil {
+//		return systemErrorResult, err
+//	}
+//
+//	// 取出所有的 uids
+//	modelUidS := slice.Map(models, func(idx int, src model.Model) string {
+//		return src.UID
+//	})
+//
+//	// 查询包含的数据
+//	ds, err := h.RMSvc.ListSrcModelByUIDs(ctx, modelUidS)
+//	if err != nil {
+//		return systemErrorResult, err
+//	}
+//
+//	// 生成关联节点的map
+//	var mds map[string][]relation.ModelDiagram
+//	mds = tools.ToMapS(ds, func(m relation.ModelDiagram) string {
+//		return m.SourceModelUid
+//	})
+//
+//	// 返回 vo，前端展示
+//	diagrams := toModelDiagramVo(models, mds)
+//
+//	return ginx.Result{
+//		Data: RetrieveRelationModelDiagram{
+//			Diagrams: diagrams,
+//		},
+//	}, nil
+//}

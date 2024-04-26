@@ -21,11 +21,12 @@ type ModelRelation struct {
 	Utime           time.Time
 }
 
-// ModelRelationDiagram 拓补图模型关联节点信息
-type ModelRelationDiagram struct {
+// ModelDiagram 拓补图模型关联节点信息
+type ModelDiagram struct {
 	ID              int64
 	RelationTypeUID string
 	TargetModelUID  string
+	SourceModelUid  string
 }
 
 type RelationType struct {

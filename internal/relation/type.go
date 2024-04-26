@@ -1,6 +1,7 @@
 package relation
 
 import (
+	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/web"
 )
@@ -17,3 +18,5 @@ type RMHandler = web.RelationModelHandler
 
 type RTSvc = service.RelationTypeService
 type RTHandler = web.RelationTypeHandler
+
+type ModelDiagram = domain.ModelDiagram

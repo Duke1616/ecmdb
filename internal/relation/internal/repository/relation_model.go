@@ -15,8 +15,10 @@ type RelationModelRepository interface {
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
 
-	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error)
-	ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error)
+	ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error)
+	ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error)
+
+	ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -77,15 +79,15 @@ func (r *modelRepository) TotalByModelUid(ctx context.Context, modelUid string) 
 	return r.dao.CountByModelUid(ctx, modelUid)
 }
 
-func (r *modelRepository) ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error) {
+func (r *modelRepository) ListSrcModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error) {
 	mrs, err := r.dao.ListSrcModelByUid(ctx, sourceUid)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]domain.ModelRelationDiagram, 0, len(mrs))
+	res := make([]domain.ModelDiagram, 0, len(mrs))
 	for _, value := range mrs {
-		res = append(res, domain.ModelRelationDiagram{
+		res = append(res, domain.ModelDiagram{
 			ID:              value.Id,
 			RelationTypeUID: value.RelationTypeUID,
 			TargetModelUID:  value.TargetModelUID,
@@ -95,15 +97,15 @@ func (r *modelRepository) ListSrcModelByUid(ctx context.Context, sourceUid strin
 	return res, nil
 }
 
-func (r *modelRepository) ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelRelationDiagram, error) {
+func (r *modelRepository) ListDstModelByUid(ctx context.Context, sourceUid string) ([]domain.ModelDiagram, error) {
 	mrs, err := r.dao.ListDstModelByUid(ctx, sourceUid)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]domain.ModelRelationDiagram, 0, len(mrs))
+	res := make([]domain.ModelDiagram, 0, len(mrs))
 	for _, value := range mrs {
-		res = append(res, domain.ModelRelationDiagram{
+		res = append(res, domain.ModelDiagram{
 			ID:              value.Id,
 			RelationTypeUID: value.RelationTypeUID,
 			TargetModelUID:  value.TargetModelUID,
@@ -124,4 +126,23 @@ func (r *modelRepository) toDomain(modelDao *dao.ModelRelation) domain.ModelRela
 		Ctime:           time.UnixMilli(modelDao.Ctime),
 		Utime:           time.UnixMilli(modelDao.Utime),
 	}
+}
+
+func (r *modelRepository) ListSrcModelByUIDs(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
+	mrs, err := r.dao.ListSrcModelByUIDs(ctx, srcUids)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]domain.ModelDiagram, 0, len(mrs))
+	for _, value := range mrs {
+		res = append(res, domain.ModelDiagram{
+			ID:              value.Id,
+			RelationTypeUID: value.RelationTypeUID,
+			TargetModelUID:  value.TargetModelUID,
+			SourceModelUid:  value.SourceModelUID,
+		})
+	}
+
+	return res, nil
 }

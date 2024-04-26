@@ -8,7 +8,6 @@ package relation
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
@@ -20,7 +19,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, attributeModel *attribute.Module, resourceModel *resource.Module, modelModule *model.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, resourceModule *resource.Module) (*Module, error) {
 	relationResourceDAO := dao.NewRelationResourceDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
 	relationResourceService := service.NewRelationResourceService(relationResourceRepository)
@@ -30,11 +29,10 @@ func InitModule(db *mongox.Mongo, attributeModel *attribute.Module, resourceMode
 	relationTypeDAO := dao.NewRelationTypeDAO(db)
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
 	relationTypeService := service.NewRelationTypeService(relationTypeRepository)
-	serviceService := attributeModel.Svc
-	service2 := resourceModel.Svc
+	serviceService := attributeModule.Svc
+	service2 := resourceModule.Svc
 	relationResourceHandler := web.NewRelationResourceHandler(relationResourceService, serviceService, service2)
-	service3 := modelModule.Svc
-	relationModelHandler := web.NewRelationModelHandler(relationModelService, service3)
+	relationModelHandler := web.NewRelationModelHandler(relationModelService)
 	relationTypeHandler := web.NewRelationTypeHandler(relationTypeService)
 	module := &Module{
 		RRSvc: relationResourceService,

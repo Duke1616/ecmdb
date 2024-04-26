@@ -1,7 +1,6 @@
 package web
 
 import (
-	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/ecodeclub/ekit/slice"
@@ -82,8 +81,8 @@ func toModelVo(m domain.Model) Model {
 	}
 }
 
-func toModelDiagramVo(models []model.Model, mds map[string][]relation.ModelDiagram) []ModelDiagram {
-	return slice.Map(models, func(idx int, src model.Model) ModelDiagram {
+func toModelDiagramVo(models []domain.Model, mds map[string][]relation.ModelDiagram) []ModelDiagram {
+	return slice.Map(models, func(idx int, src domain.Model) ModelDiagram {
 		var m []RelationModel
 		val, ok := mds[src.UID]
 		if ok {

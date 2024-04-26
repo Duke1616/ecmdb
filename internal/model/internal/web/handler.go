@@ -3,7 +3,9 @@ package web
 import (
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/ecmdb/pkg/tools"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
@@ -11,14 +13,14 @@ import (
 type Handler struct {
 	svc   service.Service
 	mgSvc service.MGService
-	//RMSvc relation.RMSvc
+	RMSvc relation.RMSvc
 }
 
-func NewHandler(svc service.Service, groupSvc service.MGService) *Handler {
+func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.RMSvc) *Handler {
 	return &Handler{
 		svc:   svc,
 		mgSvc: groupSvc,
-		//RMSvc: RMSvc,
+		RMSvc: RMSvc,
 	}
 }
 
@@ -95,37 +97,37 @@ func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
 	}, nil
 }
 
-//func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Result, error) {
-//	// TODO 为了后续加入 label 概念进行过滤先查询所有的模型
-//	// 查询所有模型
-//	models, _, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
-//	if err != nil {
-//		return systemErrorResult, err
-//	}
-//
-//	// 取出所有的 uids
-//	modelUidS := slice.Map(models, func(idx int, src model.Model) string {
-//		return src.UID
-//	})
-//
-//	// 查询包含的数据
-//	ds, err := h.RMSvc.ListSrcModelByUIDs(ctx, modelUidS)
-//	if err != nil {
-//		return systemErrorResult, err
-//	}
-//
-//	// 生成关联节点的map
-//	var mds map[string][]relation.ModelDiagram
-//	mds = tools.ToMapS(ds, func(m relation.ModelDiagram) string {
-//		return m.SourceModelUid
-//	})
-//
-//	// 返回 vo，前端展示
-//	diagrams := toModelDiagramVo(models, mds)
-//
-//	return ginx.Result{
-//		Data: RetrieveRelationModelDiagram{
-//			Diagrams: diagrams,
-//		},
-//	}, nil
-//}
+func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Result, error) {
+	// TODO 为了后续加入 label 概念进行过滤先查询所有的模型
+	// 查询所有模型
+	models, _, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 取出所有的 uids
+	modelUidS := slice.Map(models, func(idx int, src domain.Model) string {
+		return src.UID
+	})
+
+	// 查询包含的数据
+	ds, err := h.RMSvc.ListSrcModelByUIDs(ctx, modelUidS)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 生成关联节点的map
+	var mds map[string][]relation.ModelDiagram
+	mds = tools.ToMapS(ds, func(m relation.ModelDiagram) string {
+		return m.SourceModelUid
+	})
+
+	// 返回 vo，前端展示
+	diagrams := toModelDiagramVo(models, mds)
+
+	return ginx.Result{
+		Data: RetrieveRelationModelDiagram{
+			Diagrams: diagrams,
+		},
+	}, nil
+}

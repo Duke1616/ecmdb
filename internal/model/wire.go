@@ -7,6 +7,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/model/internal/web"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
 )
@@ -16,9 +17,10 @@ var ProviderSet = wire.NewSet(
 	initMGProvider,
 	initModelProvider)
 
-func InitModule(db *mongox.Mongo) (*Module, error) {
+func InitModule(db *mongox.Mongo, rmModule *relation.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
+		wire.FieldsOf(new(*relation.Module), "RMSvc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

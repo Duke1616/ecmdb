@@ -28,13 +28,13 @@ func (s *service) Create(ctx context.Context, req domain.RelationType) (int64, e
 
 func (s *service) List(ctx context.Context, offset, limit int64) ([]domain.RelationType, int64, error) {
 	var (
-		eg        errgroup.Group
-		relations []domain.RelationType
-		total     int64
+		eg    errgroup.Group
+		rts   []domain.RelationType
+		total int64
 	)
 	eg.Go(func() error {
 		var err error
-		relations, err = s.repo.List(ctx, offset, limit)
+		rts, err = s.repo.List(ctx, offset, limit)
 		return err
 	})
 
@@ -43,5 +43,8 @@ func (s *service) List(ctx context.Context, offset, limit int64) ([]domain.Relat
 		total, err = s.repo.Total(ctx)
 		return err
 	})
-	return relations, total, eg.Wait()
+	if err := eg.Wait(); err != nil {
+		return rts, total, err
+	}
+	return rts, total, nil
 }

@@ -19,16 +19,16 @@ func NewRelationModelHandler(svc service.RelationModelService) *RelationModelHan
 }
 
 func (h *RelationModelHandler) RegisterRoute(server *gin.Engine) {
-	g := server.Group("/relation")
+	g := server.Group("/model")
 	// 模型关联关系
-	g.POST("/model/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
+	g.POST("/relation/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
 
-	// 指定模型, 查询模型拥有的所有关联信息
-	g.POST("/model/list", ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation))
+	// 查询模型拥有的所有关联信息
+	g.POST("/relation/list", ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation))
 }
 
 func (h *RelationModelHandler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
-	id, err := h.svc.CreateModelRelation(ctx, toDomain(req))
+	id, err := h.svc.CreateModelRelation(ctx, toModelDomain(req))
 
 	if err != nil {
 		return systemErrorResult, err
@@ -48,7 +48,7 @@ func (h *RelationModelHandler) ListModelUIDRelation(ctx *gin.Context, req ListMo
 	}
 
 	return ginx.Result{
-		Data: ListRelationModelsResp{
+		Data: RetrieveRelationModels{
 			Total: total,
 			ModelRelations: slice.Map(relations, func(idx int, src domain.ModelRelation) ModelRelation {
 				return h.toRelationVO(src)
@@ -57,7 +57,7 @@ func (h *RelationModelHandler) ListModelUIDRelation(ctx *gin.Context, req ListMo
 	}, nil
 }
 
-func toDomain(req CreateModelRelationReq) domain.ModelRelation {
+func toModelDomain(req CreateModelRelationReq) domain.ModelRelation {
 	return domain.ModelRelation{
 		SourceModelUID:  req.SourceModelUID,
 		TargetModelUID:  req.TargetModelUID,

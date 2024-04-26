@@ -36,7 +36,7 @@ type ListResourceRelationByModelUidReq struct {
 	RelationType string `json:"relation_type"`
 }
 
-type ListRelationModelsResp struct {
+type RetrieveRelationModels struct {
 	Total          int64           `json:"total,omitempty"`
 	ModelRelations []ModelRelation `json:"orders,omitempty"`
 }
@@ -82,12 +82,6 @@ type ListModelByUidReq struct {
 	ModelUid string `json:"model_uid"`
 }
 
-type Data struct {
-	ModelUid         string `json:"model_uid"`
-	ResourceId       int64  `json:"resource_id"`
-	RelationTypeName string `json:"relation_type_name"`
-}
-
 type RetrieveDiagram struct {
 	SRC    []ResourceRelation  `json:"src"`
 	DST    []ResourceRelation  `json:"dst"`
@@ -106,4 +100,19 @@ type ListRelatedReq struct {
 	ResourceId   int64  `json:"resource_id"`   // 当前资源ID
 	ModelUid     string `json:"model_uid"`     // 当前模型ID
 	RelationName string `json:"relation_name"` // 关联类型，以方便推断是数据正向 OR 反向
+}
+
+type RelationType struct {
+	ID             int64
+	Name           string
+	UID            string
+	SourceDescribe string
+	TargetDescribe string
+	Ctime          time.Time
+	Utime          time.Time
+}
+
+type RetrieveRelationType struct {
+	Total         int64          `json:"total,omitempty"`
+	RelationTypes []RelationType `json:"relation_types,omitempty"`
 }

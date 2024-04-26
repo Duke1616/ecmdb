@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -10,7 +11,7 @@ import (
 
 type RelationTypeDAO interface {
 	Create(ctx context.Context, r RelationType) (int64, error)
-	List(ctx context.Context, offset, limit int64) ([]*RelationType, error)
+	List(ctx context.Context, offset, limit int64) ([]RelationType, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -25,41 +26,66 @@ type relationDAO struct {
 }
 
 func (dao *relationDAO) Create(ctx context.Context, r RelationType) (int64, error) {
+	session, err := dao.db.DBClient.StartSession()
+	if err != nil {
+		return 0, fmt.Errorf("无法创建会话: %w", err)
+	}
+	defer session.EndSession(ctx)
+
+	// 开始事务
+	err = session.StartTransaction()
+	if err != nil {
+		return 0, fmt.Errorf("无法开始事务: %w", err)
+	}
+
 	now := time.Now()
 	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
 	r.Id = dao.db.GetIdGenerator(RelationTypeCollection)
 	col := dao.db.Collection(RelationTypeCollection)
 
-	_, err := col.InsertMany(ctx, []interface{}{r})
-
+	_, err = col.InsertOne(ctx, r)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	// 提交事务
+	err = session.CommitTransaction(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return r.Id, nil
 }
 
-func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]*RelationType, error) {
+func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]RelationType, error) {
 	col := dao.db.Collection(RelationTypeCollection)
-
-	filer := bson.M{}
-	opt := &options.FindOptions{
+	filter := bson.M{}
+	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
 
-	resp, err := col.Find(ctx, filer, opt)
-	var set []*RelationType
-	for resp.Next(ctx) {
-		ins := &RelationType{}
-		if err = resp.Decode(ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	return set, nil
+	result := make([]RelationType, 0)
+	for cursor.Next(ctx) {
+		var ins RelationType
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
+		}
+		result = append(result, ins)
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
@@ -68,7 +94,7 @@ func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
 
 	count, err := col.CountDocuments(ctx, filer)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
 
 	return count, nil

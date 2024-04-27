@@ -23,11 +23,6 @@ type ListResourceReq struct {
 	ModelUid string `json:"model_uid"`
 }
 
-type ListResourceIdsReq struct {
-	ModelUid string  `json:"model_uid"`
-	Ids      []int64 `json:"ids"`
-}
-
 // ListCanBeRelatedReq 查询可以关联的节点
 type ListCanBeRelatedReq struct {
 	Page

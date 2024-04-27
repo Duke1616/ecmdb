@@ -22,7 +22,6 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g := server.Group("/resource/relation")
 	// 资源关联关系
 	g.POST("/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
-	g.POST("/list", ginx.WrapBody[Page](h.ListResourceRelation))
 
 	// TODO 暂不建议使用，普通列表展示
 	g.POST("/list/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource))
@@ -49,18 +48,6 @@ func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req C
 	return ginx.Result{
 		Msg:  "创建资源关联关系成功",
 		Data: resp,
-	}, nil
-}
-
-func (h *RelationResourceHandler) ListResourceRelation(ctx *gin.Context, req Page) (ginx.Result, error) {
-	m, _, err := h.svc.ListResourceRelation(ctx, req.Offset, req.Limit)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Msg:  "查询资源关联成功",
-		Data: m,
 	}, nil
 }
 
@@ -139,8 +126,8 @@ func (h *RelationResourceHandler) ListDstAggregated(ctx *gin.Context, req ListRe
 func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
 	var (
 		eg   errgroup.Group
-		srcS []domain.ResourceAggregatedData
-		dstS []domain.ResourceAggregatedData
+		srcS []domain.ResourceAggregatedAssets
+		dstS []domain.ResourceAggregatedAssets
 	)
 
 	eg.Go(func() error {

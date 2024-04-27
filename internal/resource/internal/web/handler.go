@@ -29,11 +29,10 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/resource")
 	// 资源操作
 	g.POST("/create", ginx.WrapBody[CreateResourceReq](h.CreateResource))
+	// 根据 ID 查询资源列表
 	g.POST("/detail", ginx.WrapBody[DetailResourceReq](h.DetailResource))
+	// 根据模型 UID 查询资源列表
 	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
-
-	// 根据 ids 查询模型资产列表
-	g.POST("/list/ids", ginx.WrapBody[ListResourceIdsReq](h.ListResourceByIds))
 
 	// 资源关联关系
 	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReq](h.ListCanBeRelated))
@@ -41,11 +40,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
-	id, err := h.svc.CreateResource(ctx, domain.Resource{
-		Name:     req.Name,
-		ModelUID: req.ModelUid,
-		Data:     req.Data,
-	})
+	id, err := h.svc.CreateResource(ctx, h.toDomain(req))
 
 	if err != nil {
 		return systemErrorResult, err
@@ -91,20 +86,6 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 	}, nil
 }
 
-func (h *Handler) ListResourceByIds(ctx *gin.Context, req ListResourceIdsReq) (ginx.Result, error) {
-	fields, err := h.attrSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	rrs, err := h.svc.ListResourceByIds(ctx, fields, req.Ids)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	return ginx.Result{Data: rrs}, nil
-}
-
 func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (ginx.Result, error) {
 	var (
 		mUid       string
@@ -143,6 +124,7 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 }
 
 func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
+	// 查询资产关联上下级拓扑
 	diagram, _, err := h.RRSvc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
 	if err != nil {
 		return systemErrorResult, err
@@ -198,6 +180,14 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 			Assets: assets,
 		},
 	}, nil
+}
+
+func (h *Handler) toDomain(req CreateResourceReq) domain.Resource {
+	return domain.Resource{
+		Name:     req.Name,
+		ModelUID: req.ModelUid,
+		Data:     req.Data,
+	}
 }
 
 func (h *Handler) toResourceRelationVo(src relation.ResourceRelation) ResourceRelation {

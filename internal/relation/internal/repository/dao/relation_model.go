@@ -76,19 +76,13 @@ func (dao *modelDAO) FindModelDiagramBySrcUids(ctx context.Context, srcUids []st
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	result := make([]ModelRelation, 0)
-	for cursor.Next(ctx) {
-		var ins ModelRelation
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	var result []ModelRelation
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 
@@ -113,19 +107,13 @@ func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit i
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	result := make([]ModelRelation, 0)
-	for cursor.Next(ctx) {
-		var ins ModelRelation
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	var result []ModelRelation
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 

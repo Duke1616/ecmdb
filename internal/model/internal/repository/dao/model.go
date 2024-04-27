@@ -85,18 +85,12 @@ func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]Mod
 	}
 
 	var result []Model
-	for cursor.Next(ctx) {
-		var ins Model
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 

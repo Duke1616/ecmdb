@@ -10,11 +10,11 @@ type ResourceRelation struct {
 	RelationName     string // 拼接字符
 }
 
-type ResourceAggregatedData struct {
+type ResourceAggregatedAssets struct {
 	RelationName string
 	ModelUid     string
 	Count        int
-	Data         []ResourceRelation
+	ResourceIds  []int64 `bson:"resource_ids"`
 }
 
 type ResourceDiagram struct {

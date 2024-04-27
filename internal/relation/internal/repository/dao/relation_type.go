@@ -72,19 +72,13 @@ func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]Relati
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	result := make([]RelationType, 0)
-	for cursor.Next(ctx) {
-		var ins RelationType
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	var result []RelationType
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 

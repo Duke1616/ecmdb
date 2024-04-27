@@ -74,19 +74,13 @@ func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	result := make([]Attribute, 0)
-	for cursor.Next(ctx) {
-		var ins Attribute
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	var result []Attribute
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 
@@ -101,19 +95,13 @@ func (dao *attributeDAO) ListAttribute(ctx context.Context, modelUid string) ([]
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	result := make([]Attribute, 0)
-	for cursor.Next(ctx) {
-		var attr Attribute
-		if err = cursor.Decode(&attr); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, attr)
+	var result []Attribute
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 

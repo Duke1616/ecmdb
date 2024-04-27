@@ -2,23 +2,23 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
-	"golang.org/x/sync/errgroup"
+	"github.com/ecodeclub/ekit/slice"
 )
 
 type RelationResourceRepository interface {
 	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
-	ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, error)
-	ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 
+	// ListSrcResources 查询资源列表
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
 
-	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
-	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error)
+	// ListSrcAggregated 聚合查询关联列表
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error)
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error)
 
+	// ListSrcRelated 查询当前已经关联的数据，新增资源关联使用
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 }
@@ -34,156 +34,35 @@ type resourceRepository struct {
 }
 
 func (r *resourceRepository) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
-	return r.dao.CreateResourceRelation(ctx, dao.ResourceRelation{
-		RelationName:     req.RelationName,
-		SourceResourceID: req.SourceResourceID,
-		TargetResourceID: req.TargetResourceID,
-	})
+	return r.dao.CreateResourceRelation(ctx, r.toEntity(req))
 }
 
-func (r *resourceRepository) ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, error) {
-	resourceRelations, err := r.dao.ListResourceRelation(ctx, offset, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]domain.ResourceRelation, 0, len(resourceRelations))
-
-	for _, value := range resourceRelations {
-		res = append(res, r.toResourceDomain(value))
-	}
-
-	return res, nil
+func (r *resourceRepository) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error) {
+	rrs, err := r.dao.ListSrcAggregated(ctx, modelUid, id)
+	return slice.Map(rrs, func(idx int, src dao.ResourceAggregatedAsset) domain.ResourceAggregatedAssets {
+		return r.toAggregatedAssetsDomain(src)
+	}), err
 }
 
-func (r *resourceRepository) TotalByModelIdentifies(ctx context.Context, modelUid string) (int64, error) {
-	return r.dao.CountByModelUid(ctx, modelUid)
-}
-
-func (r *resourceRepository) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
-	var (
-		eg     errgroup.Group
-		srcids []int64
-		dstids []int64
-	)
-	eg.Go(func() error {
-		var err error
-		srcids, err = r.dao.ListSrcResourceIds(ctx, modelUid, relationType)
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		dstids, err = r.dao.ListDstResourceIds(ctx, modelUid, relationType)
-		return err
-	})
-
-	//total = int64(len(rd.SRC) + len(rd.DST))
-	//return rd, total, eg.Wait()
-	fmt.Print(dstids)
-	return srcids, nil
+func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error) {
+	rrs, err := r.dao.ListDstAggregated(ctx, modelUid, id)
+	return slice.Map(rrs, func(idx int, src dao.ResourceAggregatedAsset) domain.ResourceAggregatedAssets {
+		return r.toAggregatedAssetsDomain(src)
+	}), err
 }
 
 func (r *resourceRepository) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
-	resourceRelations, err := r.dao.ListSrcResources(ctx, modelUid, id)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]domain.ResourceRelation, 0, len(resourceRelations))
-
-	for _, value := range resourceRelations {
-		res = append(res, r.toResourceDomain(value))
-	}
-
-	return res, nil
+	rrs, err := r.dao.ListSrcResources(ctx, modelUid, id)
+	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+		return r.toResourceDomain(src)
+	}), err
 }
 
 func (r *resourceRepository) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
-	resourceRelations, err := r.dao.ListDstResources(ctx, modelUid, id)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]domain.ResourceRelation, 0, len(resourceRelations))
-
-	for _, value := range resourceRelations {
-		res = append(res, r.toResourceDomain(value))
-	}
-
-	return res, nil
-}
-
-func (r *resourceRepository) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error) {
-	rrs, err := r.dao.ListSrcAggregated(ctx, modelUid, id)
-	if err != nil {
-		return nil, err
-	}
-
-	var rads []domain.ResourceAggregatedData
-	for _, val := range rrs {
-
-		var rr []domain.ResourceRelation
-		for _, data := range val.RRSAsset {
-			rr = append(rr, domain.ResourceRelation{
-				ID:               data.Id,
-				SourceModelUID:   data.SourceModelUID,
-				TargetModelUID:   data.TargetModelUID,
-				SourceResourceID: data.SourceResourceID,
-				TargetResourceID: data.TargetResourceID,
-				RelationTypeUID:  data.RelationTypeUID,
-				RelationName:     data.RelationName,
-			})
-		}
-
-		a := domain.ResourceAggregatedData{
-			RelationName: val.RelationName,
-			ModelUid:     val.ModelUid,
-			Count:        val.Count,
-			Data:         rr,
-		}
-
-		rads = append(rads, a)
-
-	}
-
-	return rads, nil
-}
-
-func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedData, error) {
-	rrs, err := r.dao.ListDstAggregated(ctx, modelUid, id)
-	if err != nil {
-		return nil, err
-	}
-
-	var rads []domain.ResourceAggregatedData
-	for _, val := range rrs {
-
-		var rr []domain.ResourceRelation
-		for _, data := range val.RRSAsset {
-			rr = append(rr, domain.ResourceRelation{
-				ID:               data.Id,
-				SourceModelUID:   data.SourceModelUID,
-				TargetModelUID:   data.TargetModelUID,
-				SourceResourceID: data.SourceResourceID,
-				TargetResourceID: data.TargetResourceID,
-				RelationTypeUID:  data.RelationTypeUID,
-				RelationName:     data.RelationName,
-			})
-		}
-
-		a := domain.ResourceAggregatedData{
-			RelationName: val.RelationName,
-			ModelUid:     val.ModelUid,
-			Count:        val.Count,
-			Data:         rr,
-		}
-
-		rads = append(rads, a)
-
-	}
-
-	return rads, nil
+	rrs, err := r.dao.ListDstResources(ctx, modelUid, id)
+	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+		return r.toResourceDomain(src)
+	}), err
 }
 
 func (r *resourceRepository) ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
@@ -192,6 +71,14 @@ func (r *resourceRepository) ListSrcRelated(ctx context.Context, modelUid, relat
 
 func (r *resourceRepository) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
 	return r.dao.ListDstRelated(ctx, modelUid, relationName, id)
+}
+
+func (r *resourceRepository) toEntity(req domain.ResourceRelation) dao.ResourceRelation {
+	return dao.ResourceRelation{
+		RelationName:     req.RelationName,
+		SourceResourceID: req.SourceResourceID,
+		TargetResourceID: req.TargetResourceID,
+	}
 }
 
 func (r *resourceRepository) toResourceDomain(resourceDao dao.ResourceRelation) domain.ResourceRelation {
@@ -203,5 +90,14 @@ func (r *resourceRepository) toResourceDomain(resourceDao dao.ResourceRelation) 
 		TargetResourceID: resourceDao.TargetResourceID,
 		RelationTypeUID:  resourceDao.RelationTypeUID,
 		RelationName:     resourceDao.RelationName,
+	}
+}
+
+func (r *resourceRepository) toAggregatedAssetsDomain(src dao.ResourceAggregatedAsset) domain.ResourceAggregatedAssets {
+	return domain.ResourceAggregatedAssets{
+		RelationName: src.RelationName,
+		ModelUid:     src.ModelUid,
+		Count:        src.Count,
+		ResourceIds:  src.ResourceIds,
 	}
 }

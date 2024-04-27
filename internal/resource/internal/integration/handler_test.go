@@ -160,45 +160,20 @@ func (s *HandlerTestSuite) TestListManyByIds() {
 
 	testCases := []struct {
 		name string
-		req  web.ListResourceIdsReq
+		req  web.ListResourceReq
 
 		wantCode int
 		wantResp test.Result[[]domain.Resource]
 	}{
 		{
 			name: "查询资产列表",
-			req: web.ListResourceIdsReq{
-				ModelUid: "mysql",
-				Ids:      []int64{1, 2},
-			},
-			wantResp: test.Result[[]domain.Resource]{
-				Data: []domain.Resource{
-					{
-						ID:       1,
-						Name:     "instance-1",
-						ModelUID: "",
-						Data: mongox.MapStr{
-							"hostname": "张三-1",
-						},
-					},
-					{
-						ID:       2,
-						Name:     "instance-2",
-						ModelUID: "",
-						Data: mongox.MapStr{
-							"hostname": "张三-2",
-						},
-					},
-				},
-			},
-			wantCode: 200,
 		},
 	}
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost,
-				"/resource/list/ids", iox.NewJSONReader(tc.req))
+				"/resource/list", iox.NewJSONReader(tc.req))
 			req.Header.Set("content-type", "application/json")
 			recorder := test.NewJSONResponseRecorder[[]domain.Resource]()
 			s.server.ServeHTTP(recorder, req)

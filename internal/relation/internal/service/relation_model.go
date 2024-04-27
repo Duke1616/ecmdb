@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./relation_model.go -destination=../../mocks/relation_model.mock.go -package=relationmocks -typed RelationModelService
 type RelationModelService interface {
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
 	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error)

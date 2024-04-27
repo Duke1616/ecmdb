@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"strings"
@@ -14,12 +13,6 @@ import (
 
 type RelationResourceDAO interface {
 	CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error)
-	ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error)
-
-	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
-
-	ListSrcResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
-	ListDstResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error)
 
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
@@ -82,128 +75,6 @@ func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceR
 	return rr.Id, nil
 }
 
-func (dao *resourceDAO) ListSrcResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
-	col := dao.db.Collection(ResourceRelationCollection)
-	filer := bson.M{
-		"$and": []bson.M{
-			{"source_model_uid": modelUid},
-			{"relation_type_uid": relationType},
-		},
-	}
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	resp, err := col.Find(ctx, filer, opt)
-
-	var set []int64
-	for resp.Next(ctx) {
-		var result struct {
-			Id int64 `bson:"id"`
-		}
-
-		if err = resp.Decode(&result); err != nil {
-			return nil, err
-		}
-		set = append(set, result.Id)
-	}
-
-	return set, nil
-}
-
-func (dao *resourceDAO) ListDstResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
-	col := dao.db.Collection(ResourceRelationCollection)
-	filer := bson.M{
-		"$and": []bson.M{
-			{"target_resource_id": modelUid},
-			{"relation_type_uid": relationType},
-		},
-	}
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	resp, err := col.Find(ctx, filer, opt)
-
-	var set []int64
-	for resp.Next(ctx) {
-		var result struct {
-			Id int64 `bson:"id"`
-		}
-
-		if err = resp.Decode(&result); err != nil {
-			return nil, err
-		}
-		set = append(set, result.Id)
-	}
-
-	return set, nil
-}
-
-func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error) {
-	col := dao.db.Collection(ResourceRelationCollection)
-
-	filer := bson.M{}
-	opt := &options.FindOptions{
-		Sort:  bson.D{{Key: "ctime", Value: -1}},
-		Limit: &limit,
-		Skip:  &offset,
-	}
-
-	resp, err := col.Find(ctx, filer, opt)
-	var set []ResourceRelation
-	for resp.Next(ctx) {
-		var ins ResourceRelation
-		if err = resp.Decode(&ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
-	}
-
-	return set, nil
-}
-
-func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-	filer := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
-
-	count, err := col.CountDocuments(ctx, filer)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func (dao *resourceDAO) ListResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
-	col := dao.db.Collection(ResourceRelationCollection)
-	filer := bson.M{
-		"$and": []bson.M{
-			{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}},
-			{"relation_type_uid": relationType},
-		},
-	}
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	resp, err := col.Find(ctx, filer, opt)
-
-	var set []int64
-	for resp.Next(ctx) {
-		var result struct {
-			Id int64 `bson:"id"`
-		}
-
-		if err = resp.Decode(&result); err != nil {
-			return nil, err
-		}
-		set = append(set, result.Id)
-	}
-
-	return set, nil
-}
-
 func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
@@ -212,22 +83,52 @@ func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, i
 			{"source_resource_id": id},
 		},
 	}
-
-	opt := &options.FindOptions{
+	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	resp, err := col.Find(ctx, filter, opt)
-	var set []ResourceRelation
-	for resp.Next(ctx) {
-		var ins ResourceRelation
-		if err = resp.Decode(&ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	return set, nil
+	var result []ResourceRelation
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"target_model_uid": modelUid},
+			{"target_resource_id": id},
+		},
+	}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []ResourceRelation
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
@@ -238,14 +139,13 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 			{"source_resource_id": id},
 		},
 	}
-
 	pipeline := mongo.Pipeline{
 		{{"$match", filter}},
 		{{"$group", bson.D{
 			{"_id", "$relation_name"},
-			{"count", bson.D{{"$sum", 1}}},                         // 统计每个分组中的文档数量
-			{"data", bson.D{{"$push", "$$ROOT"}}},                  // 将每个文档添加到一个数组中
-			{"model_uid", bson.D{{"$first", "$target_model_uid"}}}, // 添加额外字段
+			{"count", bson.D{{"$sum", 1}}},                             // 统计每个分组中的文档数量
+			{"resource_ids", bson.D{{"$push", "$target_resource_id"}}}, // 将目标资源 Ids 添加到一个数组中
+			{"model_uid", bson.D{{"$first", "$target_model_uid"}}},     // 添加额外字段
 		}}},
 	}
 
@@ -256,14 +156,9 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 	}
 
 	var result []ResourceAggregatedAsset
-	for cursor.Next(ctx) {
-		var ins ResourceAggregatedAsset
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
@@ -284,9 +179,9 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 		{{"$match", filter}}, // 添加筛选条件
 		{{"$group", bson.D{
 			{"_id", "$relation_name"},
-			{"count", bson.D{{"$sum", 1}}},                         // 统计每个分组中的文档数量
-			{"data", bson.D{{"$push", "$$ROOT"}}},                  // 将每个文档添加到一个数组中
-			{"model_uid", bson.D{{"$first", "$source_model_uid"}}}, // 添加额外字段
+			{"count", bson.D{{"$sum", 1}}},                             // 统计每个分组中的文档数量
+			{"resource_ids", bson.D{{"$push", "$source_resource_id"}}}, // 将源资源 Ids 添加到一个数组中
+			{"model_uid", bson.D{{"$first", "$source_model_uid"}}},     // 添加额外字段
 		}}},
 	}
 
@@ -297,45 +192,14 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 	}
 
 	var result []ResourceAggregatedAsset
-	for cursor.Next(ctx) {
-		var ins ResourceAggregatedAsset
-		if err = cursor.Decode(&ins); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		result = append(result, ins)
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
 	return result, nil
-}
-
-func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error) {
-	col := dao.db.Collection(ResourceRelationCollection)
-	filter := bson.M{
-		"$and": []bson.M{
-			{"target_model_uid": modelUid},
-			{"target_resource_id": id},
-		},
-	}
-
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	resp, err := col.Find(ctx, filter, opt)
-	var set []ResourceRelation
-	for resp.Next(ctx) {
-		var ins ResourceRelation
-		if err = resp.Decode(&ins); err != nil {
-			return nil, err
-		}
-		set = append(set, ins)
-	}
-
-	return set, nil
 }
 
 func (dao *resourceDAO) ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
@@ -347,25 +211,31 @@ func (dao *resourceDAO) ListSrcRelated(ctx context.Context, modelUid, relationNa
 			{"source_resource_id": id},
 		},
 	}
-	opt := &options.FindOptions{
+	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	resp, err := col.Find(ctx, filter, opt)
+	cursor, err := col.Find(ctx, filter, opts)
 
-	var set []int64
-	for resp.Next(ctx) {
-		var result struct {
-			Id int64 `bson:"target_resource_id"`
-		}
-
-		if err = resp.Decode(&result); err != nil {
-			return nil, err
-		}
-		set = append(set, result.Id)
+	var result []int64
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
 
-	return set, nil
+	for cursor.Next(ctx) {
+		var ins struct {
+			Id int64 `bson:"target_resource_id"`
+		}
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
+		}
+		result = append(result, ins.Id)
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *resourceDAO) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
@@ -377,25 +247,26 @@ func (dao *resourceDAO) ListDstRelated(ctx context.Context, modelUid, relationNa
 			{"target_resource_id": id},
 		},
 	}
-	opt := &options.FindOptions{
+	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	resp, err := col.Find(ctx, filter, opt)
-
-	var set []int64
-	for resp.Next(ctx) {
-		var result struct {
+	cursor, err := col.Find(ctx, filter, opts)
+	var result []int64
+	for cursor.Next(ctx) {
+		var ins struct {
 			Id int64 `bson:"source_resource_id"`
 		}
-
-		if err = resp.Decode(&result); err != nil {
-			return nil, err
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
 		}
-		set = append(set, result.Id)
+		result = append(result, ins.Id)
 	}
 
-	return set, nil
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 type ResourceRelation struct {
@@ -412,8 +283,8 @@ type ResourceRelation struct {
 
 // ResourceAggregatedAsset 聚合查询返回数据
 type ResourceAggregatedAsset struct {
-	RelationName string             `bson:"_id"`
-	ModelUid     string             `bson:"model_uid"`
-	Count        int                `bson:"count"`
-	RRSAsset     []ResourceRelation `bson:"rrs_asset"`
+	RelationName string  `bson:"_id"`
+	ModelUid     string  `bson:"model_uid"`
+	Count        int     `bson:"count"`
+	ResourceIds  []int64 `bson:"resource_ids"`
 }

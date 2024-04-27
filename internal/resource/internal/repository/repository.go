@@ -13,8 +13,6 @@ type ResourceRepository interface {
 
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
-	FindResource(ctx context.Context, id int64) (domain.Resource, error)
-
 	ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
 }
 
@@ -29,11 +27,7 @@ func NewResourceRepository(dao dao.ResourceDAO) ResourceRepository {
 }
 
 func (r *resourceRepository) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
-	return r.dao.CreateResource(ctx, dao.Resource{
-		ModelUID: req.ModelUID,
-		Name:     req.Name,
-		Data:     req.Data,
-	})
+	return r.dao.CreateResource(ctx, r.toEntity(req))
 }
 
 func (r *resourceRepository) FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error) {
@@ -90,20 +84,6 @@ func (r *resourceRepository) ListResource(ctx context.Context, fields []string, 
 	return res, nil
 }
 
-func (r *resourceRepository) FindResource(ctx context.Context, id int64) (domain.Resource, error) {
-	rc, err := r.dao.FindResource(ctx, id)
-	if err != nil {
-		return domain.Resource{}, nil
-	}
-
-	return domain.Resource{
-		ID:       rc.ID,
-		Name:     rc.Name,
-		ModelUID: rc.ModelUID,
-		Data:     rc.Data,
-	}, nil
-}
-
 func (r *resourceRepository) ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
 	rs, err := r.dao.ListExcludeResource(ctx, fields, modelUid, offset, limit, ids)
 	if err != nil {
@@ -122,4 +102,12 @@ func (r *resourceRepository) ListExcludeResource(ctx context.Context, fields []s
 	}
 
 	return res, nil
+}
+
+func (r *resourceRepository) toEntity(req domain.Resource) dao.Resource {
+	return dao.Resource{
+		ModelUID: req.ModelUID,
+		Name:     req.Name,
+		Data:     req.Data,
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 const ResourceCollection = "c_resources"
@@ -13,11 +14,9 @@ const ResourceCollection = "c_resources"
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error)
+
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
-
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
-
-	FindResource(ctx context.Context, id int64) (Resource, error)
 
 	ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
 }
@@ -33,13 +32,32 @@ func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
 }
 
 func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, error) {
+	session, err := dao.db.DBClient.StartSession()
+	if err != nil {
+		return 0, fmt.Errorf("无法创建会话: %w", err)
+	}
+	defer session.EndSession(ctx)
+
+	// 开始事务
+	err = session.StartTransaction()
+	if err != nil {
+		return 0, fmt.Errorf("无法开始事务: %w", err)
+	}
+
+	now := time.Now()
+	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
 	r.ID = dao.db.GetIdGenerator(ResourceCollection)
 	col := dao.db.Collection(ResourceCollection)
 
-	_, err := col.InsertMany(ctx, []interface{}{r})
-
+	_, err = col.InsertOne(ctx, r)
 	if err != nil {
-		return 0, fmt.Errorf("数据库写入错误, %w", err)
+		return 0, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	// 提交事务
+	err = session.CommitTransaction(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return r.ID, nil
@@ -55,23 +73,14 @@ func (dao *resourceDAO) FindResourceById(ctx context.Context, fields []string, i
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
-
-	opts := &options.FindOptions{
+	opts := &options.FindOneOptions{
 		Projection: projection,
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	if err != nil {
-		return Resource{}, err
-	}
-
 	var result Resource
-	for cursor.Next(ctx) {
-		if err = cursor.Decode(&result); err != nil {
-			return Resource{}, err
-		}
+	if err := col.FindOne(ctx, filter, opts).Decode(&result); err != nil {
+		return Resource{}, fmt.Errorf("解码错误: %w", err)
 	}
-
 	return result, nil
 }
 
@@ -94,14 +103,12 @@ func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, model
 
 	cursor, err := col.Find(ctx, filter, opts)
 	var result []Resource
-	for cursor.Next(ctx) {
-		var rs Resource
-		if err = cursor.Decode(&rs); err != nil {
-			return nil, err
-		}
-		result = append(result, rs)
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
 	return result, nil
 }
 
@@ -121,34 +128,13 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string,
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
-
-	result := make([]Resource, 0)
-	for cursor.Next(ctx) {
-		var rs Resource
-		if err = cursor.Decode(&rs); err != nil {
-			return nil, err
-		}
-
-		result = append(result, rs)
+	var result []Resource
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
-	return result, nil
-}
-
-func (dao *resourceDAO) FindResource(ctx context.Context, id int64) (Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
-	filter := bson.M{"id": id}
-	opts := &options.FindOptions{}
-
-	cursor, err := col.Find(ctx, filter, opts)
-
-	var result Resource
-	for cursor.Next(ctx) {
-		if err = cursor.Decode(&result); err != nil {
-			return Resource{}, err
-		}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
-
 	return result, nil
 }
 
@@ -177,14 +163,12 @@ func (dao *resourceDAO) ListExcludeResource(ctx context.Context, fields []string
 
 	cursor, err := col.Find(ctx, filter, opts)
 	var result []Resource
-	for cursor.Next(ctx) {
-		var rs Resource
-		if err = cursor.Decode(&rs); err != nil {
-			return nil, err
-		}
-		result = append(result, rs)
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
 	}
-
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
 	return result, nil
 }
 

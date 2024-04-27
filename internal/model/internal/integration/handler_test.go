@@ -45,7 +45,7 @@ func (s *HandlerTestSuite) TearDownTest() {
 }
 
 func (s *HandlerTestSuite) SetupSuite() {
-	handler, err := startup.InitHandler()
+	handler, err := startup.InitHandler(nil)
 	require.NoError(s.T(), err)
 	server := gin.Default()
 	handler.RegisterRoutes(server)

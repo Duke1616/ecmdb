@@ -9,13 +9,14 @@ package startup
 import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/model/internal/web"
+	"github.com/Duke1616/ecmdb/internal/relation"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler(rmModule *relation.Module) (*web.Handler, error) {
 	mongo := InitMongoDB()
-	module, err := model.InitModule(mongo)
+	module, err := model.InitModule(mongo, rmModule)
 	if err != nil {
 		return nil, err
 	}

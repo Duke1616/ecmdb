@@ -5,7 +5,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
-	"github.com/Duke1616/ecmdb/pkg/tools"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
@@ -118,8 +117,18 @@ func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Res
 
 	// 生成关联节点的map
 	var mds map[string][]relation.ModelDiagram
-	mds = tools.ToMapS(ds, func(m relation.ModelDiagram) string {
-		return m.SourceModelUid
+	mds = slice.ToMapV(ds, func(m relation.ModelDiagram) (string, []relation.ModelDiagram) {
+		return m.SourceModelUid, slice.FilterMap(ds, func(idx int, src relation.ModelDiagram) (relation.ModelDiagram, bool) {
+			if m.SourceModelUid == src.SourceModelUid {
+				return relation.ModelDiagram{
+					ID:              src.ID,
+					RelationTypeUID: src.RelationTypeUID,
+					TargetModelUID:  src.TargetModelUID,
+					SourceModelUid:  src.SourceModelUid,
+				}, true
+			}
+			return relation.ModelDiagram{}, false
+		})
 	})
 
 	// 返回 vo，前端展示

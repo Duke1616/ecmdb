@@ -74,7 +74,5 @@ func (h *RelationModelHandler) toRelationVO(m domain.ModelRelation) ModelRelatio
 		RelationTypeUID: m.RelationTypeUID,
 		RelationName:    m.RelationName,
 		Mapping:         m.Mapping,
-		Ctime:           m.Ctime,
-		Utime:           m.Utime,
 	}
 }

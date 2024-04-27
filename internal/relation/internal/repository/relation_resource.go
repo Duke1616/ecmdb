@@ -124,7 +124,7 @@ func (r *resourceRepository) ListSrcAggregated(ctx context.Context, modelUid str
 	for _, val := range rrs {
 
 		var rr []domain.ResourceRelation
-		for _, data := range val.Data {
+		for _, data := range val.RRSAsset {
 			rr = append(rr, domain.ResourceRelation{
 				ID:               data.Id,
 				SourceModelUID:   data.SourceModelUID,
@@ -160,7 +160,7 @@ func (r *resourceRepository) ListDstAggregated(ctx context.Context, modelUid str
 	for _, val := range rrs {
 
 		var rr []domain.ResourceRelation
-		for _, data := range val.Data {
+		for _, data := range val.RRSAsset {
 			rr = append(rr, domain.ResourceRelation{
 				ID:               data.Id,
 				SourceModelUID:   data.SourceModelUID,

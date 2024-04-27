@@ -6,7 +6,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
-	"github.com/Duke1616/ecmdb/pkg/tools"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -148,39 +147,22 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 	if err != nil {
 		return systemErrorResult, err
 	}
-
 	var (
+		src   []ResourceRelation
+		dst   []ResourceRelation
 		srcId []int64
 		dstId []int64
 	)
 
-	var rds RetrieveDiagram
-	var src []ResourceRelation
-	for _, val := range diagram.SRC {
-		src = append(src, ResourceRelation{
-			SourceModelUID:   val.SourceModelUID,
-			TargetModelUID:   val.TargetModelUID,
-			SourceResourceID: val.SourceResourceID,
-			TargetResourceID: val.TargetResourceID,
-			RelationTypeUID:  val.RelationTypeUID,
-			RelationName:     val.RelationName,
-		})
-	}
-	rds.SRC = src
+	// 组合前端展示数据
+	src = slice.Map(diagram.SRC, func(idx int, src relation.ResourceRelation) ResourceRelation {
+		return h.toResourceRelationVo(src)
+	})
+	dst = slice.Map(diagram.DST, func(idx int, src relation.ResourceRelation) ResourceRelation {
+		return h.toResourceRelationVo(src)
+	})
 
-	var dst []ResourceRelation
-	for _, val := range diagram.DST {
-		dst = append(dst, ResourceRelation{
-			SourceModelUID:   val.SourceModelUID,
-			TargetModelUID:   val.TargetModelUID,
-			SourceResourceID: val.SourceResourceID,
-			TargetResourceID: val.TargetResourceID,
-			RelationTypeUID:  val.RelationTypeUID,
-			RelationName:     val.RelationName,
-		})
-	}
-	rds.DST = dst
-
+	// 查询关联的所有节点 ids
 	srcId = slice.Map(diagram.SRC, func(idx int, src relation.ResourceRelation) int64 {
 		return src.TargetResourceID
 	})
@@ -189,13 +171,15 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 	})
 	ids := append(srcId, dstId...)
 
+	// 查询节点信息
 	rs, err := h.svc.ListResourceByIds(ctx, nil, ids)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	rds.Assets = make(map[string][]ResourceAssets, len(diagram.DST)+len(diagram.SRC))
-	rds.Assets = tools.ToMapV(rs, func(element domain.Resource) (string, []ResourceAssets) {
+	// 组合前端返回数据
+	assets := make(map[string][]ResourceAssets, len(diagram.DST)+len(diagram.SRC))
+	assets = slice.ToMapV(rs, func(element domain.Resource) (string, []ResourceAssets) {
 		return element.ModelUID, slice.FilterMap(rs, func(idx int, src domain.Resource) (ResourceAssets, bool) {
 			if src.ModelUID == element.ModelUID {
 				return ResourceAssets{
@@ -208,6 +192,21 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 	})
 
 	return ginx.Result{
-		Data: rds,
+		Data: RetrieveDiagram{
+			SRC:    src,
+			DST:    dst,
+			Assets: assets,
+		},
 	}, nil
+}
+
+func (h *Handler) toResourceRelationVo(src relation.ResourceRelation) ResourceRelation {
+	return ResourceRelation{
+		SourceModelUID:   src.SourceModelUID,
+		TargetModelUID:   src.TargetModelUID,
+		SourceResourceID: src.SourceResourceID,
+		TargetResourceID: src.TargetResourceID,
+		RelationTypeUID:  src.RelationTypeUID,
+		RelationName:     src.RelationName,
+	}
 }

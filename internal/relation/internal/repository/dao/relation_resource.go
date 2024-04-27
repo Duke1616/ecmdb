@@ -13,7 +13,7 @@ import (
 )
 
 type RelationResourceDAO interface {
-	CreateResourceRelation(ctx context.Context, mg ResourceRelation) (int64, error)
+	CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error)
 	ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error)
 
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
@@ -24,8 +24,8 @@ type RelationResourceDAO interface {
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
 
-	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
-	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error)
+	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error)
+	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error)
 
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
@@ -39,6 +39,47 @@ func NewRelationResourceDAO(db *mongox.Mongo) RelationResourceDAO {
 
 type resourceDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceRelation) (int64, error) {
+	session, err := dao.db.DBClient.StartSession()
+	if err != nil {
+		return 0, fmt.Errorf("无法创建会话: %w", err)
+	}
+	defer session.EndSession(ctx)
+
+	// 开始事务
+	err = session.StartTransaction()
+	if err != nil {
+		return 0, fmt.Errorf("无法开始事务: %w", err)
+	}
+
+	now := time.Now()
+	rr.Ctime, rr.Utime = now.UnixMilli(), now.UnixMilli()
+	rr.Id = dao.db.GetIdGenerator(ResourceRelationCollection)
+	col := dao.db.Collection(ResourceRelationCollection)
+
+	rn := strings.Split(rr.RelationName, "_")
+	if len(rn) != 3 {
+		return 0, fmt.Errorf("invalid resource relation name: %s", rr.RelationName)
+	}
+
+	rr.SourceModelUID = rn[0]
+	rr.RelationTypeUID = rn[1]
+	rr.TargetModelUID = rn[2]
+
+	_, err = col.InsertOne(ctx, rr)
+	if err != nil {
+		return 0, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	// 提交事务
+	err = session.CommitTransaction(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("提交事务错误: %w", err)
+	}
+
+	return rr.Id, nil
 }
 
 func (dao *resourceDAO) ListSrcResourceIds(ctx context.Context, modelUid string, relationType string) ([]int64, error) {
@@ -97,30 +138,6 @@ func (dao *resourceDAO) ListDstResourceIds(ctx context.Context, modelUid string,
 	}
 
 	return set, nil
-}
-
-func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceRelation) (int64, error) {
-	now := time.Now()
-	rr.Ctime, rr.Utime = now.UnixMilli(), now.UnixMilli()
-	rr.Id = dao.db.GetIdGenerator(ResourceRelationCollection)
-	col := dao.db.Collection(ResourceRelationCollection)
-
-	rn := strings.Split(rr.RelationName, "_")
-	if len(rn) != 3 {
-		return 0, fmt.Errorf("invalid resource relation name: %s", rr.RelationName)
-	}
-
-	rr.SourceModelUID = rn[0]
-	rr.RelationTypeUID = rn[1]
-	rr.TargetModelUID = rn[2]
-
-	_, err := col.InsertMany(ctx, []interface{}{rr})
-
-	if err != nil {
-		return 0, err
-	}
-
-	return rr.Id, nil
 }
 
 func (dao *resourceDAO) ListResourceRelation(ctx context.Context, offset, limit int64) ([]ResourceRelation, error) {
@@ -213,7 +230,7 @@ func (dao *resourceDAO) ListSrcResources(ctx context.Context, modelUid string, i
 	return set, nil
 }
 
-func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error) {
+func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
 		"$and": []bson.M{
@@ -233,26 +250,28 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 	}
 
 	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	// 遍历游标，解码每个文档
-	var result []ResourceAggregatedData
-	for cursor.Next(context.Background()) {
-
-		var rad ResourceAggregatedData
-		if err = cursor.Decode(&rad); err != nil {
-			return nil, err
+	var result []ResourceAggregatedAsset
+	for cursor.Next(ctx) {
+		var ins ResourceAggregatedAsset
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
 		}
+		result = append(result, ins)
+	}
 
-		result = append(result, rad)
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
 	return result, nil
 }
 
-func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedData, error) {
+func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
 	col := dao.db.Collection(ResourceRelationCollection)
 	filter := bson.M{
 		"$and": []bson.M{
@@ -272,20 +291,22 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 	}
 
 	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 
-	// 遍历游标，解码每个文档
-	var result []ResourceAggregatedData
-	for cursor.Next(context.Background()) {
-
-		var rad ResourceAggregatedData
-		if err = cursor.Decode(&rad); err != nil {
-			return nil, err
+	var result []ResourceAggregatedAsset
+	for cursor.Next(ctx) {
+		var ins ResourceAggregatedAsset
+		if err = cursor.Decode(&ins); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
 		}
+		result = append(result, ins)
+	}
 
-		result = append(result, rad)
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
 	return result, nil
@@ -384,14 +405,15 @@ type ResourceRelation struct {
 	SourceResourceID int64  `bson:"source_resource_id"`
 	TargetResourceID int64  `bson:"target_resource_id"`
 	RelationTypeUID  string `bson:"relation_type_uid"`
-	RelationName     string `bson:"relation_name"` // 唯一标识、以防重复创建
+	RelationName     string `bson:"relation_name"`
 	Ctime            int64  `bson:"ctime"`
 	Utime            int64  `bson:"utime"`
 }
 
-type ResourceAggregatedData struct {
+// ResourceAggregatedAsset 聚合查询返回数据
+type ResourceAggregatedAsset struct {
 	RelationName string             `bson:"_id"`
 	ModelUid     string             `bson:"model_uid"`
 	Count        int                `bson:"count"`
-	Data         []ResourceRelation `bson:"data"`
+	RRSAsset     []ResourceRelation `bson:"rrs_asset"`
 }

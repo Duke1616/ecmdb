@@ -114,7 +114,7 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 	}
 
 	// 排除已关联数据, 返回未关联数据
-	rrs, err := h.svc.ListExcludeResource(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
+	rrs, err := h.svc.ListExcludeResourceByids(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
 	if err != nil {
 		return systemErrorResult, err
 	}

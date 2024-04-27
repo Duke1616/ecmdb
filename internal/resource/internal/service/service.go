@@ -14,8 +14,8 @@ type Service interface {
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
-	// ListExcludeResource 排除部分的 ids
-	ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
+	// ListExcludeResourceByids 排除部分的 ids
+	ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
 }
 
 type service struct {
@@ -44,6 +44,6 @@ func (s *service) ListResourceByIds(ctx context.Context, fields []string, ids []
 	return s.repo.ListResourcesByIds(ctx, fields, ids)
 }
 
-func (s *service) ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
-	return s.repo.ListExcludeResource(ctx, fields, modelUid, offset, limit, ids)
+func (s *service) ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
+	return s.repo.ListExcludeResourceByids(ctx, fields, modelUid, offset, limit, ids)
 }

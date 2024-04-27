@@ -14,11 +14,9 @@ const ResourceCollection = "c_resources"
 type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error)
-
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
-
-	ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
+	ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
 }
 
 type resourceDAO struct {
@@ -138,7 +136,7 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string,
 	return result, nil
 }
 
-func (dao *resourceDAO) ListExcludeResource(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
+func (dao *resourceDAO) ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
 

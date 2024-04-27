@@ -21,22 +21,16 @@ func NewResourceRepository(dao dao.UserDAO) UserRepository {
 	}
 }
 
-func (repo *userRepository) CreatUser(ctx context.Context, user domain.User) (int64, error) {
-	return repo.dao.CreatUser(ctx, dao.User{
-		Username:   user.Username,
-		Email:      user.Email,
-		Title:      user.Title,
-		SourceType: user.SourceType,
-		CreateType: user.CreateType,
-	})
+func (r *userRepository) CreatUser(ctx context.Context, user domain.User) (int64, error) {
+	return r.dao.CreatUser(ctx, r.toEntity(user))
 }
 
-func (repo *userRepository) FindByUsername(ctx context.Context, username string) (domain.User, error) {
-	user, err := repo.dao.FindByUsername(ctx, username)
-	if err != nil {
-		return domain.User{}, err
-	}
+func (r *userRepository) FindByUsername(ctx context.Context, username string) (domain.User, error) {
+	user, err := r.dao.FindByUsername(ctx, username)
+	return r.toDomain(user), err
+}
 
+func (r *userRepository) toDomain(user dao.User) domain.User {
 	return domain.User{
 		ID:         user.ID,
 		Username:   user.Username,
@@ -45,5 +39,15 @@ func (repo *userRepository) FindByUsername(ctx context.Context, username string)
 		Title:      user.Title,
 		SourceType: user.SourceType,
 		CreateType: user.CreateType,
-	}, nil
+	}
+}
+
+func (r *userRepository) toEntity(user domain.User) dao.User {
+	return dao.User{
+		Username:   user.Username,
+		Email:      user.Email,
+		Title:      user.Title,
+		SourceType: user.SourceType,
+		CreateType: user.CreateType,
+	}
 }

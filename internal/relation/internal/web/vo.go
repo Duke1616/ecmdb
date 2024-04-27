@@ -40,10 +40,22 @@ type ListResourceDiagramReq struct {
 
 type RetrieveRelationModels struct {
 	Total          int64           `json:"total,omitempty"`
-	ModelRelations []ModelRelation `json:"orders,omitempty"`
+	ModelRelations []ModelRelation `json:"model_relations,omitempty"`
 }
 
 type RetrieveRelationType struct {
 	Total         int64          `json:"total,omitempty"`
 	RelationTypes []RelationType `json:"relation_types,omitempty"`
+}
+
+type RetrieveAggregatedAssets struct {
+	RelationName string  `json:"relation_name"`
+	ModelUid     string  `json:"model_uid"`
+	Count        int     `json:"count"`
+	ResourceIds  []int64 `bson:"resource_ids"`
+}
+
+type RetrieveRelationResource struct {
+	Total             int64              `json:"total,omitempty"`
+	ResourceRelations []ResourceRelation `json:"resource_relations,omitempty"`
 }

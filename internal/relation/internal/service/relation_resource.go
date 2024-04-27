@@ -12,8 +12,8 @@ type RelationResourceService interface {
 	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
 
 	// ListSrcResources 查询资源关联列表
-	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
-	ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
+	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error)
+	ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error)
 
 	// ListDiagram 通过 model_uid 和 resource_id 查询 SRC 和 DST 的数据
 	ListDiagram(ctx context.Context, modelUid string, id int64) (domain.ResourceDiagram, int64, error)
@@ -40,12 +40,46 @@ func (s *resourceService) CreateResourceRelation(ctx context.Context, req domain
 	return s.repo.CreateResourceRelation(ctx, req)
 }
 
-func (s *resourceService) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
-	return s.repo.ListSrcResources(ctx, modelUid, id)
+func (s *resourceService) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error) {
+	var (
+		eg    errgroup.Group
+		total int64
+		rrs   []domain.ResourceRelation
+	)
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalSrc(ctx, modelUid, id)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		rrs, err = s.repo.ListSrcResources(ctx, modelUid, id)
+		return err
+	})
+
+	return rrs, total, eg.Wait()
 }
 
-func (s *resourceService) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
-	return s.repo.ListDstResources(ctx, modelUid, id)
+func (s *resourceService) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error) {
+	var (
+		eg    errgroup.Group
+		total int64
+		rrs   []domain.ResourceRelation
+	)
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalDst(ctx, modelUid, id)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		rrs, err = s.repo.ListDstResources(ctx, modelUid, id)
+		return err
+	})
+
+	return rrs, total, eg.Wait()
 }
 
 func (s *resourceService) ListDiagram(ctx context.Context, modelUid string, id int64) (domain.ResourceDiagram, int64, error) {

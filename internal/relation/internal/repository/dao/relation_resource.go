@@ -16,6 +16,8 @@ type RelationResourceDAO interface {
 
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
+	CountSrc(ctx context.Context, modelUid string, id int64) (int64, error)
+	CountDst(ctx context.Context, modelUid string, id int64) (int64, error)
 
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error)
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error)
@@ -129,6 +131,40 @@ func (dao *resourceDAO) ListDstResources(ctx context.Context, modelUid string, i
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *resourceDAO) CountSrc(ctx context.Context, modelUid string, id int64) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"source_model_uid": modelUid},
+			{"source_resource_id": id},
+		},
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
+}
+
+func (dao *resourceDAO) CountDst(ctx context.Context, modelUid string, id int64) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"target_model_uid": modelUid},
+			{"target_resource_id": id},
+		},
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {

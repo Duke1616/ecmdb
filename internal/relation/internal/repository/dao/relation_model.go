@@ -131,9 +131,9 @@ func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int6
 
 type ModelRelation struct {
 	Id              int64  `bson:"id"`
-	SourceModelUID  string `bson:"source_model_uid"`
-	TargetModelUID  string `bson:"target_model_uid"`
-	RelationTypeUID string `bson:"relation_type_uid"`
+	SourceModelUid  string `bson:"source_model_uid"`
+	TargetModelUid  string `bson:"target_model_uid"`
+	RelationTypeUid string `bson:"relation_type_uid"`
 	RelationName    string `bson:"relation_name"` // 唯一标识、以防重复创建
 	Mapping         string `bson:"mapping"`
 	Ctime           int64  `bson:"ctime"`

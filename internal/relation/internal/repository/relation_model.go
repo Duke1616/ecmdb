@@ -53,9 +53,9 @@ func (r *modelRepository) FindModelDiagramBySrcUids(ctx context.Context, srcUids
 
 func (r *modelRepository) toEntity(req domain.ModelRelation) dao.ModelRelation {
 	return dao.ModelRelation{
-		SourceModelUID:  req.SourceModelUID,
-		TargetModelUID:  req.TargetModelUID,
-		RelationTypeUID: req.RelationTypeUID,
+		SourceModelUid:  req.SourceModelUID,
+		TargetModelUid:  req.TargetModelUID,
+		RelationTypeUid: req.RelationTypeUID,
 		Mapping:         req.Mapping,
 	}
 }
@@ -63,20 +63,20 @@ func (r *modelRepository) toEntity(req domain.ModelRelation) dao.ModelRelation {
 func (r *modelRepository) toDiagram(src dao.ModelRelation) domain.ModelDiagram {
 	return domain.ModelDiagram{
 		ID:              src.Id,
-		RelationTypeUID: src.RelationTypeUID,
-		TargetModelUID:  src.TargetModelUID,
-		SourceModelUid:  src.SourceModelUID,
+		RelationTypeUid: src.RelationTypeUid,
+		TargetModelUid:  src.TargetModelUid,
+		SourceModelUid:  src.SourceModelUid,
 	}
 }
 
 func (r *modelRepository) toDomain(modelDao dao.ModelRelation) domain.ModelRelation {
 	return domain.ModelRelation{
 		ID:              modelDao.Id,
-		SourceModelUID:  modelDao.SourceModelUID,
-		TargetModelUID:  modelDao.TargetModelUID,
+		SourceModelUID:  modelDao.SourceModelUid,
+		TargetModelUID:  modelDao.TargetModelUid,
 		Mapping:         modelDao.Mapping,
 		RelationName:    modelDao.RelationName,
-		RelationTypeUID: modelDao.RelationTypeUID,
+		RelationTypeUID: modelDao.RelationTypeUid,
 		Ctime:           time.UnixMilli(modelDao.Ctime),
 		Utime:           time.UnixMilli(modelDao.Utime),
 	}

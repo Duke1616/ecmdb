@@ -198,12 +198,13 @@ func (c *MockRelationResourceServiceListDstRelatedCall) DoAndReturn(f func(conte
 }
 
 // ListDstResources mocks base method.
-func (m *MockRelationResourceService) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
+func (m *MockRelationResourceService) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDstResources", ctx, modelUid, id)
 	ret0, _ := ret[0].([]domain.ResourceRelation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ListDstResources indicates an expected call of ListDstResources.
@@ -219,98 +220,19 @@ type MockRelationResourceServiceListDstResourcesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRelationResourceServiceListDstResourcesCall) Return(arg0 []domain.ResourceRelation, arg1 error) *MockRelationResourceServiceListDstResourcesCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockRelationResourceServiceListDstResourcesCall) Do(f func(context.Context, string, int64) ([]domain.ResourceRelation, error)) *MockRelationResourceServiceListDstResourcesCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRelationResourceServiceListDstResourcesCall) DoAndReturn(f func(context.Context, string, int64) ([]domain.ResourceRelation, error)) *MockRelationResourceServiceListDstResourcesCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// ListResourceIds mocks base method.
-func (m *MockRelationResourceService) ListResourceIds(ctx context.Context, modelUid, relationType string) ([]int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourceIds", ctx, modelUid, relationType)
-	ret0, _ := ret[0].([]int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListResourceIds indicates an expected call of ListResourceIds.
-func (mr *MockRelationResourceServiceMockRecorder) ListResourceIds(ctx, modelUid, relationType any) *MockRelationResourceServiceListResourceIdsCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceIds", reflect.TypeOf((*MockRelationResourceService)(nil).ListResourceIds), ctx, modelUid, relationType)
-	return &MockRelationResourceServiceListResourceIdsCall{Call: call}
-}
-
-// MockRelationResourceServiceListResourceIdsCall wrap *gomock.Call
-type MockRelationResourceServiceListResourceIdsCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockRelationResourceServiceListResourceIdsCall) Return(arg0 []int64, arg1 error) *MockRelationResourceServiceListResourceIdsCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockRelationResourceServiceListResourceIdsCall) Do(f func(context.Context, string, string) ([]int64, error)) *MockRelationResourceServiceListResourceIdsCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRelationResourceServiceListResourceIdsCall) DoAndReturn(f func(context.Context, string, string) ([]int64, error)) *MockRelationResourceServiceListResourceIdsCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// ListResourceRelation mocks base method.
-func (m *MockRelationResourceService) ListResourceRelation(ctx context.Context, offset, limit int64) ([]domain.ResourceRelation, int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourceRelation", ctx, offset, limit)
-	ret0, _ := ret[0].([]domain.ResourceRelation)
-	ret1, _ := ret[1].(int64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// ListResourceRelation indicates an expected call of ListResourceRelation.
-func (mr *MockRelationResourceServiceMockRecorder) ListResourceRelation(ctx, offset, limit any) *MockRelationResourceServiceListResourceRelationCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceRelation", reflect.TypeOf((*MockRelationResourceService)(nil).ListResourceRelation), ctx, offset, limit)
-	return &MockRelationResourceServiceListResourceRelationCall{Call: call}
-}
-
-// MockRelationResourceServiceListResourceRelationCall wrap *gomock.Call
-type MockRelationResourceServiceListResourceRelationCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockRelationResourceServiceListResourceRelationCall) Return(arg0 []domain.ResourceRelation, arg1 int64, arg2 error) *MockRelationResourceServiceListResourceRelationCall {
+func (c *MockRelationResourceServiceListDstResourcesCall) Return(arg0 []domain.ResourceRelation, arg1 int64, arg2 error) *MockRelationResourceServiceListDstResourcesCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRelationResourceServiceListResourceRelationCall) Do(f func(context.Context, int64, int64) ([]domain.ResourceRelation, int64, error)) *MockRelationResourceServiceListResourceRelationCall {
+func (c *MockRelationResourceServiceListDstResourcesCall) Do(f func(context.Context, string, int64) ([]domain.ResourceRelation, int64, error)) *MockRelationResourceServiceListDstResourcesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRelationResourceServiceListResourceRelationCall) DoAndReturn(f func(context.Context, int64, int64) ([]domain.ResourceRelation, int64, error)) *MockRelationResourceServiceListResourceRelationCall {
+func (c *MockRelationResourceServiceListDstResourcesCall) DoAndReturn(f func(context.Context, string, int64) ([]domain.ResourceRelation, int64, error)) *MockRelationResourceServiceListDstResourcesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -394,12 +316,13 @@ func (c *MockRelationResourceServiceListSrcRelatedCall) DoAndReturn(f func(conte
 }
 
 // ListSrcResources mocks base method.
-func (m *MockRelationResourceService) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
+func (m *MockRelationResourceService) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSrcResources", ctx, modelUid, id)
 	ret0, _ := ret[0].([]domain.ResourceRelation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ListSrcResources indicates an expected call of ListSrcResources.
@@ -415,19 +338,19 @@ type MockRelationResourceServiceListSrcResourcesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRelationResourceServiceListSrcResourcesCall) Return(arg0 []domain.ResourceRelation, arg1 error) *MockRelationResourceServiceListSrcResourcesCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockRelationResourceServiceListSrcResourcesCall) Return(arg0 []domain.ResourceRelation, arg1 int64, arg2 error) *MockRelationResourceServiceListSrcResourcesCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRelationResourceServiceListSrcResourcesCall) Do(f func(context.Context, string, int64) ([]domain.ResourceRelation, error)) *MockRelationResourceServiceListSrcResourcesCall {
+func (c *MockRelationResourceServiceListSrcResourcesCall) Do(f func(context.Context, string, int64) ([]domain.ResourceRelation, int64, error)) *MockRelationResourceServiceListSrcResourcesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRelationResourceServiceListSrcResourcesCall) DoAndReturn(f func(context.Context, string, int64) ([]domain.ResourceRelation, error)) *MockRelationResourceServiceListSrcResourcesCall {
+func (c *MockRelationResourceServiceListSrcResourcesCall) DoAndReturn(f func(context.Context, string, int64) ([]domain.ResourceRelation, int64, error)) *MockRelationResourceServiceListSrcResourcesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

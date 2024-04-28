@@ -24,8 +24,8 @@ type ModelRelation struct {
 // ModelDiagram 拓补图模型关联节点信息
 type ModelDiagram struct {
 	ID              int64
-	RelationTypeUID string
-	TargetModelUID  string
+	RelationTypeUid string
+	TargetModelUid  string
 	SourceModelUid  string
 }
 

@@ -13,17 +13,14 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
+	"sync"
 )
 
 // Injectors from wire.go:
 
 func InitModule(db *mongox.Mongo) (*Module, error) {
-	relationResourceDAO := dao.NewRelationResourceDAO(db)
-	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
-	relationResourceService := service.NewRelationResourceService(relationResourceRepository)
-	relationModelDAO := dao.NewRelationModelDAO(db)
-	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
-	relationModelService := service.NewRelationModelService(relationModelRepository)
+	relationResourceService := InitRRService(db)
+	relationModelService := InitRMService(db)
 	relationTypeDAO := dao.NewRelationTypeDAO(db)
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
 	relationTypeService := service.NewRelationTypeService(relationTypeRepository)
@@ -41,6 +38,41 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 	return module, nil
 }
 
+func InitRMService(db *mongox.Mongo) service.RelationModelService {
+	relationModelDAO := initRmDAO(db)
+	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
+	relationModelService := service.NewRelationModelService(relationModelRepository)
+	return relationModelService
+}
+
+func InitRRService(db *mongox.Mongo) service.RelationResourceService {
+	relationResourceDAO := intRrDAO(db)
+	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
+	relationResourceService := service.NewRelationResourceService(relationResourceRepository)
+	return relationResourceService
+}
+
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, web.NewRelationTypeHandler, service.NewRelationResourceService, service.NewRelationModelService, service.NewRelationTypeService, repository.NewRelationModelRepository, repository.NewRelationResourceRepository, repository.NewRelationTypeRepository, dao.NewRelationModelDAO, dao.NewRelationResourceDAO, dao.NewRelationTypeDAO)
+var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, web.NewRelationTypeHandler, service.NewRelationTypeService, repository.NewRelationTypeRepository, dao.NewRelationTypeDAO)
+
+var (
+	rmDaoOnce = sync.Once{}
+	rrDaoOnce = sync.Once{}
+	rmd       dao.RelationModelDAO
+	rrd       dao.RelationResourceDAO
+)
+
+func initRmDAO(db *mongox.Mongo) dao.RelationModelDAO {
+	rmDaoOnce.Do(func() {
+		rmd = dao.NewRelationModelDAO(db)
+	})
+	return rmd
+}
+
+func intRrDAO(db *mongox.Mongo) dao.RelationResourceDAO {
+	rrDaoOnce.Do(func() {
+		rrd = dao.NewRelationResourceDAO(db)
+	})
+	return rrd
+}

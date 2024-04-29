@@ -122,8 +122,8 @@ func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Res
 			if m.SourceModelUid == src.SourceModelUid {
 				return relation.ModelDiagram{
 					ID:              src.ID,
-					RelationTypeUID: src.RelationTypeUID,
-					TargetModelUID:  src.TargetModelUID,
+					RelationTypeUid: src.RelationTypeUid,
+					TargetModelUid:  src.TargetModelUid,
 					SourceModelUid:  src.SourceModelUid,
 				}, true
 			}

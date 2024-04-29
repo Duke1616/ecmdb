@@ -89,8 +89,8 @@ func toModelDiagramVo(models []domain.Model, mds map[string][]relation.ModelDiag
 			m = slice.Map(val, func(idx int, src relation.ModelDiagram) RelationModel {
 				return RelationModel{
 					ID:              src.ID,
-					RelationTypeUID: src.RelationTypeUID,
-					TargetModelUID:  src.TargetModelUID,
+					RelationTypeUID: src.RelationTypeUid,
+					TargetModelUID:  src.TargetModelUid,
 				}
 			})
 		}

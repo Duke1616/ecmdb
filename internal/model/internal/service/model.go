@@ -11,6 +11,7 @@ type Service interface {
 	CreateModel(ctx context.Context, req domain.Model) (int64, error)
 	FindModelById(ctx context.Context, id int64) (domain.Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error)
+	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
 }
 
 type service struct {
@@ -51,4 +52,8 @@ func (s *service) ListModels(ctx context.Context, offset, limit int64) ([]domain
 		return models, total, err
 	}
 	return models, total, nil
+}
+
+func (s *service) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error) {
+	return s.repo.ListModelByGroupIds(ctx, mgids)
 }

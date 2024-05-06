@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -24,11 +25,13 @@ func NewHandler(svc service.Service, ldapSvc service.LdapService) *Handler {
 func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
+	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
+
 }
 
 func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
 	profile, err := h.ldapSvc.Login(ctx, domain.User{
-		Username: req.User,
+		Username: req.Username,
 		Password: req.Password,
 	})
 
@@ -59,5 +62,22 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	return ginx.Result{
 		Data: user,
 		Msg:  "登录用户成功",
+	}, nil
+}
+
+func (h *Handler) Info(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
+	type AuthInfo struct {
+		Username string   `json:"username"`
+		Roles    []string `json:"roles"`
+	}
+
+	jsonData := `{"username":"admin","roles":["admin"]}`
+	// 创建一个AuthInfo类型的变量来存储解析后的数据
+	var authInfo AuthInfo
+
+	// 使用json.Unmarshal函数解析JSON数据到结构体中
+	json.Unmarshal([]byte(jsonData), &authInfo)
+	return ginx.Result{
+		Data: ginx.Result{Data: authInfo},
 	}, nil
 }

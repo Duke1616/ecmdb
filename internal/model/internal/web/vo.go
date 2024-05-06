@@ -32,6 +32,11 @@ type RetrieveModelsListResp struct {
 	Models []Model `json:"models,omitempty"`
 }
 
+type RetrieveModelGroupsListResp struct {
+	Total int64        `json:"total,omitempty"`
+	Mgs   []ModelGroup `json:"model_groups,omitempty"`
+}
+
 type CreateModelRelationReq struct {
 	SourceModelUID  string `json:"source_model_uid"`
 	TargetModelUID  string `json:"target_model_uid"`
@@ -39,6 +44,10 @@ type CreateModelRelationReq struct {
 	Mapping         string `json:"mapping"`
 }
 
+type ModelGroup struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
 type Model struct {
 	Name  string `json:"name"`
 	UID   string `json:"uid"`
@@ -70,6 +79,33 @@ type ModelDiagram struct {
 
 type RetrieveRelationModelDiagram struct {
 	Diagrams []ModelDiagram `json:"diagrams"`
+}
+
+type RetrieveRelationModelGraph struct {
+	RootId string      `json:"rootId"`
+	Nodes  []ModelNode `json:"nodes"`
+	Lines  []ModelLine `json:"lines"`
+}
+
+type ModelListByGroupId struct {
+	GroupId   int64   `json:"group_id"`
+	GroupName string  `json:"group_name"`
+	Models    []Model `json:"models"`
+}
+
+type RetrieveModelListByGroupId struct {
+	Mgs []ModelListByGroupId `json:"mgs"`
+}
+
+type ModelNode struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
+type ModelLine struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Text string `json:"text"`
 }
 
 func toModelVo(m domain.Model) Model {

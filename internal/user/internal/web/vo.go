@@ -1,6 +1,6 @@
 package web
 
 type LoginLdapReq struct {
-	User     string `json:"user"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 }

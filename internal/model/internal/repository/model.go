@@ -13,6 +13,8 @@ type ModelRepository interface {
 	FindModelById(ctx context.Context, id int64) (domain.Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, error)
 	Total(ctx context.Context) (int64, error)
+
+	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
 }
 
 func NewModelRepository(dao dao.ModelDAO) ModelRepository {
@@ -44,6 +46,14 @@ func (m *modelRepository) ListModels(ctx context.Context, offset, limit int64) (
 
 func (m *modelRepository) Total(ctx context.Context) (int64, error) {
 	return m.dao.Count(ctx)
+}
+
+func (m *modelRepository) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error) {
+	models, err := m.dao.ListModelByGroupIds(ctx, mgids)
+
+	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
+		return toDomain(src)
+	}), err
 }
 
 func toEntity(req domain.Model) dao.Model {

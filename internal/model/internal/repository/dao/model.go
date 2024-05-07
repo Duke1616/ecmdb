@@ -60,32 +60,14 @@ func (dao *modelDAO) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]
 }
 
 func (dao *modelDAO) CreateModel(ctx context.Context, m Model) (int64, error) {
-	session, err := dao.db.DBClient.StartSession()
-	if err != nil {
-		return 0, fmt.Errorf("无法创建会话: %w", err)
-	}
-	defer session.EndSession(ctx)
-
-	// 开始事务
-	err = session.StartTransaction()
-	if err != nil {
-		return 0, fmt.Errorf("无法开始事务: %w", err)
-	}
-
 	now := time.Now()
 	m.Ctime, m.Utime = now.UnixMilli(), now.UnixMilli()
 	m.Id = dao.db.GetIdGenerator(ModelCollection)
 	col := dao.db.Collection(ModelCollection)
 
-	_, err = col.InsertOne(ctx, m)
+	_, err := col.InsertOne(ctx, m)
 	if err != nil {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
-	}
-
-	// 提交事务
-	err = session.CommitTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return m.Id, nil

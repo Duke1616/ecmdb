@@ -37,18 +37,6 @@ type resourceDAO struct {
 }
 
 func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceRelation) (int64, error) {
-	session, err := dao.db.DBClient.StartSession()
-	if err != nil {
-		return 0, fmt.Errorf("无法创建会话: %w", err)
-	}
-	defer session.EndSession(ctx)
-
-	// 开始事务
-	err = session.StartTransaction()
-	if err != nil {
-		return 0, fmt.Errorf("无法开始事务: %w", err)
-	}
-
 	now := time.Now()
 	rr.Ctime, rr.Utime = now.UnixMilli(), now.UnixMilli()
 	rr.Id = dao.db.GetIdGenerator(ResourceRelationCollection)
@@ -63,15 +51,9 @@ func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceR
 	rr.RelationTypeUID = rn[1]
 	rr.TargetModelUID = rn[2]
 
-	_, err = col.InsertOne(ctx, rr)
+	_, err := col.InsertOne(ctx, rr)
 	if err != nil {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
-	}
-
-	// 提交事务
-	err = session.CommitTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return rr.Id, nil

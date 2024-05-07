@@ -25,9 +25,16 @@ type Attribute struct {
 	Required  bool   `json:"required"`
 }
 
+type AttributeGroup struct {
+	GroupName  string      `json:"group_name"`
+	Expanded   bool        `json:"expanded"`
+	GroupId    int64       `json:"group_id"`
+	Attributes []Attribute `json:"attributes"`
+}
+
 type RetrieveAttributeList struct {
-	Attribute []Attribute `json:"attribute,omitempty"`
-	Total     int64       `json:"total,omitempty"`
+	Attributes []AttributeGroup `json:"ags,omitempty"`
+	Total      int64            `json:"total,omitempty"`
 }
 
 func toDomain(req CreateAttributeReq) domain.Attribute {

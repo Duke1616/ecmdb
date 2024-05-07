@@ -44,12 +44,18 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		return systemErrorResult, err
 	}
 
+	att := slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
+		return toAttributeVo(src)
+	})
+	atgroup1 := AttributeGroup{Attributes: att, GroupName: "字段1", GroupId: 1, Expanded: true}
+	atgroup2 := AttributeGroup{Attributes: att, GroupName: "字段2", GroupId: 2, Expanded: true}
+	var atgroups []AttributeGroup
+	atgroups = append(atgroups, atgroup1)
+	atgroups = append(atgroups, atgroup2)
 	return ginx.Result{
 		Data: RetrieveAttributeList{
-			Total: total,
-			Attribute: slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
-				return toAttributeVo(src)
-			}),
+			Total:      total,
+			Attributes: atgroups,
 		},
 	}, nil
 }

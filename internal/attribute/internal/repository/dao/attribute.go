@@ -30,32 +30,14 @@ func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
 }
 
 func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (int64, error) {
-	session, err := dao.db.DBClient.StartSession()
-	if err != nil {
-		return 0, fmt.Errorf("无法创建会话: %w", err)
-	}
-	defer session.EndSession(ctx)
-
-	// 开始事务
-	err = session.StartTransaction()
-	if err != nil {
-		return 0, fmt.Errorf("无法开始事务: %w", err)
-	}
-
 	attr.Id = dao.db.GetIdGenerator(AttributeCollection)
 	col := dao.db.Collection(AttributeCollection)
 	now := time.Now()
 	attr.Ctime, attr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	_, err = col.InsertOne(ctx, attr)
+	_, err := col.InsertOne(ctx, attr)
 	if err != nil {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
-	}
-
-	// 提交事务
-	err = session.CommitTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return attr.Id, nil

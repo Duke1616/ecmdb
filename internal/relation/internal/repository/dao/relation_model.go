@@ -32,32 +32,14 @@ type modelDAO struct {
 }
 
 func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
-	session, err := dao.db.DBClient.StartSession()
-	if err != nil {
-		return 0, fmt.Errorf("无法创建会话: %w", err)
-	}
-	defer session.EndSession(ctx)
-
-	// 开始事务
-	err = session.StartTransaction()
-	if err != nil {
-		return 0, fmt.Errorf("无法开始事务: %w", err)
-	}
-
 	mr.Id = dao.db.GetIdGenerator(ModelRelationCollection)
 	col := dao.db.Collection(ModelRelationCollection)
 	now := time.Now()
 	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	_, err = col.InsertOne(ctx, mr)
+	_, err := col.InsertOne(ctx, mr)
 	if err != nil {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
-	}
-
-	// 提交事务
-	err = session.CommitTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("提交事务错误: %w", err)
 	}
 
 	return mr.Id, nil

@@ -9,6 +9,7 @@ import (
 
 type Mongo struct {
 	DBClient *mongo.Client
+	Sess     mongo.Session
 	dbName   string
 }
 

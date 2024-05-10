@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
 	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttributes))
 
+	g.POST("/custom/field", ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -48,14 +49,25 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		return toAttributeVo(src)
 	})
 	atgroup1 := AttributeGroup{Attributes: att, GroupName: "字段1", GroupId: 1, Expanded: true}
-	atgroup2 := AttributeGroup{Attributes: att, GroupName: "字段2", GroupId: 2, Expanded: true}
+	//atgroup2 := AttributeGroup{Attributes: att, GroupName: "字段2", GroupId: 2, Expanded: true}
 	var atgroups []AttributeGroup
 	atgroups = append(atgroups, atgroup1)
-	atgroups = append(atgroups, atgroup2)
+	//atgroups = append(atgroups, atgroup2)
 	return ginx.Result{
 		Data: RetrieveAttributeList{
 			Total:      total,
 			Attributes: atgroups,
 		},
+	}, nil
+}
+
+func (h *Handler) CustomAttributeFieldColumns(ctx *gin.Context, req CustomAttributeFieldColumnsReq) (ginx.Result, error) {
+	columns, err := h.svc.CustomAttributeFieldColumns(ctx, req.ModelUid, req.CustomFieldName)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: columns,
 	}, nil
 }

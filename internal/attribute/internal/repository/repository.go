@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/gin-gonic/gin"
 )
 
 type AttributeRepository interface {
@@ -13,6 +14,9 @@ type AttributeRepository interface {
 
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error)
 	Total(ctx context.Context, modelUID string) (int64, error)
+
+	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+	CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 }
 
 type attributeRepository struct {
@@ -50,10 +54,18 @@ func (a *attributeRepository) Total(ctx context.Context, modelUID string) (int64
 	return a.dao.Count(ctx, modelUID)
 }
 
+func (a *attributeRepository) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+	return a.dao.UpdateFieldIndex(ctx, modelUid, customField)
+}
+
+func (a *attributeRepository) CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+	return a.dao.UpdateFieldIndexReverse(ctx, modelUid, customField)
+}
+
 func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 	return dao.Attribute{
-		ModelUID:  req.ModelUID,
-		Name:      req.Name,
+		ModelUID:  req.ModelUid,
+		FieldUid:  req.FieldUid,
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
 		Required:  req.Required,
@@ -63,10 +75,12 @@ func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 	return domain.Attribute{
 		ID:        attr.Id,
-		Name:      attr.Name,
+		FieldUid:  attr.FieldUid,
 		FieldName: attr.FieldName,
 		FieldType: attr.FieldType,
-		ModelUID:  attr.ModelUID,
+		ModelUid:  attr.ModelUID,
 		Required:  attr.Required,
+		Display:   attr.Display,
+		Index:     attr.Index,
 	}
 }

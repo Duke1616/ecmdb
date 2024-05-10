@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/ekit/slice"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -17,6 +19,9 @@ type AttributeDAO interface {
 
 	ListAttribute(ctx context.Context, modelUid string) ([]Attribute, error)
 	Count(ctx context.Context, modelUid string) (int64, error)
+
+	UpdateFieldIndex(ctx context.Context, modelUid string, customField []string) (int64, error)
+	UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error)
 }
 
 type attributeDAO struct {
@@ -99,11 +104,47 @@ func (dao *attributeDAO) Count(ctx context.Context, modelUid string) (int64, err
 	return count, nil
 }
 
+func (dao *attributeDAO) UpdateFieldIndex(ctx context.Context, modelUid string, customField []string) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+
+	updates := make([]mongo.WriteModel, len(customField))
+	updates = slice.Map(customField, func(idx int, src string) mongo.WriteModel {
+		return &mongo.UpdateOneModel{
+			Filter: bson.D{{"model_uid", modelUid}, {"field_name", src}},
+			Update: bson.D{{"$set", bson.D{{"display", true}, {"index", idx}}}},
+		}
+	})
+
+	result, err := col.BulkWrite(ctx, updates)
+	if err != nil {
+		return 0, fmt.Errorf("BulkWrite 修改错误, %w", err)
+	}
+
+	return result.ModifiedCount, nil
+}
+
+func (dao *attributeDAO) UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.D{
+		{"model_uid", modelUid},
+		{"field_name", bson.D{{"$nin", customField}}},
+	}
+	update := bson.D{{"$set", bson.D{{"display", false}}}}
+
+	// 执行批量更新
+	result, err := col.UpdateMany(ctx, filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("取反修改错误, %w", err)
+	}
+
+	return result.ModifiedCount, nil
+}
+
 type Attribute struct {
 	Id        int64  `bson:"id"`
 	ModelUID  string `bson:"model_uid"`  // 模型唯一标识
-	Name      string `bson:"name"`       // 字段名称
-	FieldName string `bson:"field_name"` // 字段唯一标识、英文标识
+	FieldUid  string `bson:"field_uid"`  // 字段唯一标识
+	FieldName string `bson:"field_name"` // 字段名称
 	FieldType string `bson:"field_type"` // 字段类型
 	Required  bool   `bson:"required"`   // 是否为必传
 	Display   bool   `bson:"display"`    // 是否前端展示

@@ -5,7 +5,7 @@ import (
 )
 
 type CreateAttributeReq struct {
-	Name      string `json:"name"`
+	FieldUid  string `json:"field_uid"`
 	ModelUid  string `json:"model_uid"`
 	FieldName string `json:"field_name"`
 	FieldType string `json:"field_type"`
@@ -18,11 +18,13 @@ type ListAttributeReq struct {
 
 type Attribute struct {
 	ID        int64  `json:"id"`
-	ModelUID  string `json:"model_uid"`
-	Name      string `json:"name"`
+	ModelUid  string `json:"model_uid"`
+	FieldUid  string `json:"field_uid"`
 	FieldName string `json:"field_name"`
 	FieldType string `json:"field_type"`
 	Required  bool   `json:"required"`
+	Display   bool   `json:"display"`
+	Index     int64  `json:"index"`
 }
 
 type AttributeGroup struct {
@@ -32,6 +34,15 @@ type AttributeGroup struct {
 	Attributes []Attribute `json:"attributes"`
 }
 
+// CustomAttributeFieldColumnsReq 排序并展示数据
+type CustomAttributeFieldColumnsReq struct {
+	ModelUid        string   `json:"model_uid"`
+	CustomFieldName []string `json:"custom_field_name"`
+}
+
+type RetrieveAttributeFieldsList struct {
+}
+
 type RetrieveAttributeList struct {
 	Attributes []AttributeGroup `json:"ags,omitempty"`
 	Total      int64            `json:"total,omitempty"`
@@ -39,8 +50,8 @@ type RetrieveAttributeList struct {
 
 func toDomain(req CreateAttributeReq) domain.Attribute {
 	return domain.Attribute{
-		Name:      req.Name,
-		ModelUID:  req.ModelUid,
+		FieldUid:  req.FieldUid,
+		ModelUid:  req.ModelUid,
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
 		Required:  req.Required,
@@ -50,10 +61,12 @@ func toDomain(req CreateAttributeReq) domain.Attribute {
 func toAttributeVo(attr domain.Attribute) Attribute {
 	return Attribute{
 		ID:        attr.ID,
-		Name:      attr.Name,
-		ModelUID:  attr.ModelUID,
+		FieldUid:  attr.FieldUid,
+		ModelUid:  attr.ModelUid,
 		FieldName: attr.FieldName,
 		FieldType: attr.FieldType,
 		Required:  attr.Required,
+		Display:   attr.Display,
+		Index:     attr.Index,
 	}
 }

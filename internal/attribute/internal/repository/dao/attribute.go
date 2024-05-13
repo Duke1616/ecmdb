@@ -22,6 +22,8 @@ type AttributeDAO interface {
 
 	UpdateFieldIndex(ctx context.Context, modelUid string, customField []string) (int64, error)
 	UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error)
+
+	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 }
 
 type attributeDAO struct {
@@ -138,6 +140,18 @@ func (dao *attributeDAO) UpdateFieldIndexReverse(ctx context.Context, modelUid s
 	}
 
 	return result.ModifiedCount, nil
+}
+
+func (dao *attributeDAO) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 type Attribute struct {

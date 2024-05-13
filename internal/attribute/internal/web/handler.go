@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttributes))
 
 	g.POST("/custom/field", ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns))
+	g.POST("/delete", ginx.WrapBody[DeleteAttributeReq](h.DeleteAttribute))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -48,7 +49,7 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 	att := slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
 		return toAttributeVo(src)
 	})
-	atgroup1 := AttributeGroup{Attributes: att, GroupName: "字段1", GroupId: 1, Expanded: true}
+	atgroup1 := AttributeGroup{Attributes: att, GroupName: "基础信息", GroupId: 1, Expanded: true}
 	//atgroup2 := AttributeGroup{Attributes: att, GroupName: "字段2", GroupId: 2, Expanded: true}
 	var atgroups []AttributeGroup
 	atgroups = append(atgroups, atgroup1)
@@ -69,5 +70,15 @@ func (h *Handler) CustomAttributeFieldColumns(ctx *gin.Context, req CustomAttrib
 
 	return ginx.Result{
 		Data: columns,
+	}, nil
+}
+
+func (h *Handler) DeleteAttribute(ctx *gin.Context, req DeleteAttributeReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteAttribute(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }

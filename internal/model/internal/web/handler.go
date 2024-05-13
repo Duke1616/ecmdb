@@ -122,6 +122,7 @@ func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, 
 		return m.GroupId, slice.FilterMap(models, func(idx int, src domain.Model) (Model, bool) {
 			if m.GroupId == src.GroupId {
 				return Model{
+					Id:   src.ID,
 					Name: src.Name,
 					UID:  src.UID,
 					Icon: src.Icon,

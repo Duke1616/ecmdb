@@ -19,6 +19,8 @@ type RelationModelDAO interface {
 
 	// FindModelDiagramBySrcUids 查询模型拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]ModelRelation, error)
+
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
@@ -109,6 +111,18 @@ func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int6
 	}
 
 	return count, nil
+}
+
+func (dao *modelDAO) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 type ModelRelation struct {

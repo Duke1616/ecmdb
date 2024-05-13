@@ -16,6 +16,10 @@ type ListAttributeReq struct {
 	ModelUid string `json:"model_uid"`
 }
 
+type DeleteAttributeReq struct {
+	Id int64 `json:"id"`
+}
+
 type Attribute struct {
 	ID        int64  `json:"id"`
 	ModelUid  string `json:"model_uid"`

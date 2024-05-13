@@ -48,6 +48,8 @@ func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]Relati
 		Skip:  &offset,
 	}
 
+	fmt.Println(offset, limit)
+
 	cursor, err := col.Find(ctx, filter, opts)
 	defer cursor.Close(ctx)
 	if err != nil {

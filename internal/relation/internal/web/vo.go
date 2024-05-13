@@ -59,3 +59,7 @@ type RetrieveRelationResource struct {
 	Total             int64              `json:"total,omitempty"`
 	ResourceRelations []ResourceRelation `json:"resource_relations,omitempty"`
 }
+
+type DeleteModelRelationReq struct {
+	Id int64 `json:"id"`
+}

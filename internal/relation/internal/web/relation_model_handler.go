@@ -25,6 +25,8 @@ func (h *RelationModelHandler) RegisterRoute(server *gin.Engine) {
 
 	// 查询模型拥有的所有关联信息
 	g.POST("/relation/list", ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation))
+
+	g.POST("/relation/delete", ginx.WrapBody[DeleteModelRelationReq](h.DeleteModelRelation))
 }
 
 func (h *RelationModelHandler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
@@ -54,6 +56,17 @@ func (h *RelationModelHandler) ListModelUIDRelation(ctx *gin.Context, req ListMo
 				return h.toRelationVO(src)
 			}),
 		},
+	}, nil
+}
+
+func (h *RelationModelHandler) DeleteModelRelation(ctx *gin.Context, req DeleteModelRelationReq) (ginx.Result, error) {
+	id, err := h.svc.DeleteModelRelation(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: id,
 	}, nil
 }
 

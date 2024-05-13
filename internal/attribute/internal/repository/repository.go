@@ -15,6 +15,8 @@ type AttributeRepository interface {
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error)
 	Total(ctx context.Context, modelUID string) (int64, error)
 
+	DeleteAttribute(ctx context.Context, id int64) (int64, error)
+
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 	CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 }
@@ -60,6 +62,10 @@ func (a *attributeRepository) CustomAttributeFieldColumns(ctx *gin.Context, mode
 
 func (a *attributeRepository) CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
 	return a.dao.UpdateFieldIndexReverse(ctx, modelUid, customField)
+}
+
+func (a *attributeRepository) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
+	return a.dao.DeleteAttribute(ctx, id)
 }
 
 func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {

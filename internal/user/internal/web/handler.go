@@ -51,6 +51,10 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 		return systemErrorResult, err
 	}
 
+	u := h.ToUserVo(user)
+	u.RefreshToken = ctx.GetHeader("refreshToken")
+	u.AccessToken = ctx.GetHeader("accessToken")
+
 	jwtData := make(map[string]string, 0)
 
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.ID).SetJwtData(jwtData).Build()
@@ -60,7 +64,7 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}
 
 	return ginx.Result{
-		Data: user,
+		Data: u,
 		Msg:  "登录用户成功",
 	}, nil
 }
@@ -80,4 +84,15 @@ func (h *Handler) Info(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) 
 	return ginx.Result{
 		Data: ginx.Result{Data: authInfo},
 	}, nil
+}
+
+func (h *Handler) ToUserVo(src domain.User) User {
+	return User{
+		ID:         src.ID,
+		Username:   src.Username,
+		Email:      src.Email,
+		Title:      src.Title,
+		SourceType: src.SourceType,
+		CreateType: src.CreateType,
+	}
 }

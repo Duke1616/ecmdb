@@ -14,6 +14,8 @@ type RelationModelService interface {
 
 	// FindModelDiagramBySrcUids 查询模型关联关系，绘制拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
+
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 type modelService struct {
@@ -56,4 +58,8 @@ func (s *modelService) ListModelUidRelation(ctx context.Context, offset, limit i
 
 func (s *modelService) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
 	return s.repo.FindModelDiagramBySrcUids(ctx, srcUids)
+}
+
+func (s *modelService) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteModelRelation(ctx, id)
 }

@@ -49,6 +49,7 @@ type ModelGroup struct {
 	Name string `json:"name"`
 }
 type Model struct {
+	Id    int64  `json:"id"`
 	Name  string `json:"name"`
 	UID   string `json:"uid"`
 	Icon  string `json:"icon"`

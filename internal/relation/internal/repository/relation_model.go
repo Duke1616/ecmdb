@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
@@ -15,6 +16,8 @@ type RelationModelRepository interface {
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
+
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -51,10 +54,15 @@ func (r *modelRepository) FindModelDiagramBySrcUids(ctx context.Context, srcUids
 	}), err
 }
 
+func (r *modelRepository) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
+	return r.dao.DeleteModelRelation(ctx, id)
+}
+
 func (r *modelRepository) toEntity(req domain.ModelRelation) dao.ModelRelation {
 	return dao.ModelRelation{
 		SourceModelUid:  req.SourceModelUID,
 		TargetModelUid:  req.TargetModelUID,
+		RelationName:    fmt.Sprintf("%s_%s_%s", req.SourceModelUID, req.RelationTypeUID, req.TargetModelUID),
 		RelationTypeUid: req.RelationTypeUID,
 		Mapping:         req.Mapping,
 	}

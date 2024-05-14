@@ -52,6 +52,11 @@ type RetrieveAttributeList struct {
 	Total      int64            `json:"total,omitempty"`
 }
 
+type RetrieveAttributeFieldList struct {
+	Attributes []Attribute `json:"attribute_fields,omitempty"`
+	Total      int64       `json:"total,omitempty"`
+}
+
 func toDomain(req CreateAttributeReq) domain.Attribute {
 	return domain.Attribute{
 		FieldUid:  req.FieldUid,

@@ -40,7 +40,7 @@ func (a *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Contex
 	attrs, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
 
 	return slice.Map(attrs, func(idx int, src dao.Attribute) string {
-		return src.FieldName
+		return src.FieldUid
 	}), err
 }
 

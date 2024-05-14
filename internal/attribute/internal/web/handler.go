@@ -23,7 +23,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
 	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttributes))
-
+	g.POST("/list/field", ginx.WrapBody[ListAttributeReq](h.ListAttributeField))
 	g.POST("/custom/field", ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns))
 	g.POST("/delete", ginx.WrapBody[DeleteAttributeReq](h.DeleteAttribute))
 }
@@ -58,6 +58,23 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		Data: RetrieveAttributeList{
 			Total:      total,
 			Attributes: atgroups,
+		},
+	}, nil
+}
+
+func (h *Handler) ListAttributeField(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
+	attrs, total, err := h.svc.ListAttributes(ctx, req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	att := slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
+		return toAttributeVo(src)
+	})
+
+	return ginx.Result{
+		Data: RetrieveAttributeFieldList{
+			Total:      total,
+			Attributes: att,
 		},
 	}, nil
 }

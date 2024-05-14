@@ -15,6 +15,7 @@ type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
+	Count(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
 	ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
 }
@@ -90,6 +91,18 @@ func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, model
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *resourceDAO) Count(ctx context.Context, modelUid string) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"model_uid": modelUid}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error) {

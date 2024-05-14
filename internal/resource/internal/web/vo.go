@@ -55,3 +55,15 @@ type RetrieveDiagram struct {
 	DST    []ResourceRelation          `json:"dst"`
 	Assets map[string][]ResourceAssets `json:"assets"`
 }
+
+type Resource struct {
+	ID       int64         `json:"id"`
+	Name     string        `json:"name"`
+	ModelUID string        `json:"model_uid"`
+	Data     mongox.MapStr `json:"data"`
+}
+
+type RetrieveResources struct {
+	Resources []Resource `json:"resources"`
+	Total     int64      `json:"total"`
+}

@@ -75,14 +75,26 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 		return systemErrorResult, err
 	}
 
-	resp, err := h.svc.ListResource(ctx, fields, req.ModelUid, req.Offset, req.Limit)
+	resp, total, err := h.svc.ListResource(ctx, fields, req.ModelUid, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
+	rs := slice.Map(resp, func(idx int, src domain.Resource) Resource {
+		return Resource{
+			ID:       src.ID,
+			Name:     src.Name,
+			ModelUID: src.ModelUID,
+			Data:     src.Data,
+		}
+	})
+
 	return ginx.Result{
-		Data: resp,
-		Msg:  "查看资源列表成功",
+		Data: RetrieveResources{
+			Resources: rs,
+			Total:     total,
+		},
+		Msg: "查看资源列表成功",
 	}, nil
 }
 
@@ -114,7 +126,7 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 	}
 
 	// 排除已关联数据, 返回未关联数据
-	rrs, err := h.svc.ListExcludeResourceByids(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
+	rrs, err := h.svc.ListExcludeResourceByIds(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
 	if err != nil {
 		return systemErrorResult, err
 	}

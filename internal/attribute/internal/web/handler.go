@@ -20,7 +20,11 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/attribute")
+	// 字段分组
+	g.POST("/group/create", ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup))
+	g.POST("/group/list", ginx.WrapBody[ListAttributeGroupReq](h.ListAttributeGroup))
 
+	// 字段操作
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
 	g.POST("/list", ginx.WrapBody[ListAttributeReq](h.ListAttributes))
 	g.POST("/list/field", ginx.WrapBody[ListAttributeReq](h.ListAttributeField))
@@ -50,10 +54,8 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		return toAttributeVo(src)
 	})
 	atgroup1 := AttributeGroup{Attributes: att, GroupName: "基础信息", GroupId: 1, Expanded: true}
-	//atgroup2 := AttributeGroup{Attributes: att, GroupName: "字段2", GroupId: 2, Expanded: true}
 	var atgroups []AttributeGroup
 	atgroups = append(atgroups, atgroup1)
-	//atgroups = append(atgroups, atgroup2)
 	return ginx.Result{
 		Data: RetrieveAttributeList{
 			Total:      total,
@@ -98,4 +100,12 @@ func (h *Handler) DeleteAttribute(ctx *gin.Context, req DeleteAttributeReq) (gin
 	return ginx.Result{
 		Data: count,
 	}, nil
+}
+
+func (h *Handler) CreateAttributeGroup(ctx *gin.Context, req CreateAttributeGroup) (ginx.Result, error) {
+	return ginx.Result{}, nil
+}
+
+func (h *Handler) ListAttributeGroup(ctx *gin.Context, req ListAttributeGroupReq) (ginx.Result, error) {
+	return ginx.Result{}, nil
 }

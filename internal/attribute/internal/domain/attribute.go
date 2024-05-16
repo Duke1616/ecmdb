@@ -13,9 +13,10 @@ type Attribute struct {
 }
 
 type AttributeGroup struct {
-	ID    int64
-	Name  string
-	Index int64
+	ID       int64
+	Name     string
+	ModelUid string
+	Index    int64
 }
 
 // AttributeProjection 映射字段信息

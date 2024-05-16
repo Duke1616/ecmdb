@@ -23,6 +23,10 @@ type ListResourceReq struct {
 	ModelUid string `json:"model_uid"`
 }
 
+type DeleteResourceReq struct {
+	Id int64 `json:"id"`
+}
+
 // ListCanBeRelatedReq 查询可以关联的节点
 type ListCanBeRelatedReq struct {
 	Page

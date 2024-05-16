@@ -17,6 +17,8 @@ type Service interface {
 
 	// ListExcludeResourceByIds 排除部分的 ids
 	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
+
+	DeleteResource(ctx context.Context, id int64) (int64, error)
 }
 
 type service struct {
@@ -65,4 +67,8 @@ func (s *service) ListResourceByIds(ctx context.Context, fields []string, ids []
 
 func (s *service) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
 	return s.repo.ListExcludeResourceByIds(ctx, fields, modelUid, offset, limit, ids)
+}
+
+func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteResource(ctx, id)
 }

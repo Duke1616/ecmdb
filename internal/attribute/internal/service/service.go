@@ -16,9 +16,7 @@ type Service interface {
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
 	// ListAttributes 查询模型下的所有字段详情信息，前端使用
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, int64, error)
-
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
-
 	// CustomAttributeFieldColumns 自定义展示字段、以及排序
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 }

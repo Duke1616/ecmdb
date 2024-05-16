@@ -33,7 +33,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.WrapBody[DetailResourceReq](h.DetailResource))
 	// 根据模型 UID 查询资源列表
 	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
-
+	g.POST("/delete", ginx.WrapBody[DeleteResourceReq](h.DeleteResource))
 	// 资源关联关系
 	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReq](h.ListCanBeRelated))
 	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
@@ -191,6 +191,16 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 			DST:    dst,
 			Assets: assets,
 		},
+	}, nil
+}
+
+func (h *Handler) DeleteResource(ctx *gin.Context, req DeleteResourceReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteResource(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 

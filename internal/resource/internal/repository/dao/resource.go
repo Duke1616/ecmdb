@@ -18,6 +18,7 @@ type ResourceDAO interface {
 	Count(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
 	ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
+	DeleteResource(ctx context.Context, id int64) (int64, error)
 }
 
 type resourceDAO struct {
@@ -163,6 +164,18 @@ func (dao *resourceDAO) ListExcludeResourceByids(ctx context.Context, fields []s
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 type Resource struct {

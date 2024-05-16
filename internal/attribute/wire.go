@@ -14,7 +14,10 @@ import (
 
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
-	repository.NewAttributeRepository)
+	repository.NewAttributeRepository,
+	repository.NewAttributeGroupRepository,
+	service.NewGroupService,
+	dao.NewAttributeGroupDAO)
 
 func InitModule(db *mongox.Mongo) (*Module, error) {
 	wire.Build(

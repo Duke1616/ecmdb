@@ -12,6 +12,14 @@ type CreateAttributeReq struct {
 	Required  bool   `json:"required"`
 }
 
+type CreateAttributeGroup struct {
+	Name string `json:"name"`
+}
+
+type ListAttributeGroupReq struct {
+	ModelUid string `json:"model_uid"`
+}
+
 type ListAttributeReq struct {
 	ModelUid string `json:"model_uid"`
 }

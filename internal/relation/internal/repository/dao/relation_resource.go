@@ -229,17 +229,13 @@ func (dao *resourceDAO) ListSrcRelated(ctx context.Context, modelUid, relationNa
 			{"source_resource_id": id},
 		},
 	}
+
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
-
 	var result []int64
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-
 	for cursor.Next(ctx) {
 		var ins struct {
 			Id int64 `bson:"target_resource_id"`

@@ -14,6 +14,7 @@ type ResourceRepository interface {
 	Total(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
+	TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 }
 
@@ -57,11 +58,15 @@ func (r *resourceRepository) Total(ctx context.Context, modelUid string) (int64,
 }
 
 func (r *resourceRepository) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
-	rrs, err := r.dao.ListExcludeResourceByids(ctx, fields, modelUid, offset, limit, ids)
+	rrs, err := r.dao.ListExcludeResourceByIds(ctx, fields, modelUid, offset, limit, ids)
 
 	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
 		return r.toDomain(src)
 	}), err
+}
+
+func (r *resourceRepository) TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error) {
+	return r.dao.TotalExcludeResourceByIds(ctx, modelUid, ids)
 }
 
 func (r *resourceRepository) DeleteResource(ctx context.Context, id int64) (int64, error) {

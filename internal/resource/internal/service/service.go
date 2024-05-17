@@ -16,7 +16,7 @@ type Service interface {
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
 	// ListExcludeResourceByIds 排除部分的 ids
-	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
+	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, int64, error)
 
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 }
@@ -65,8 +65,26 @@ func (s *service) ListResourceByIds(ctx context.Context, fields []string, ids []
 	return s.repo.ListResourcesByIds(ctx, fields, ids)
 }
 
-func (s *service) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
-	return s.repo.ListExcludeResourceByIds(ctx, fields, modelUid, offset, limit, ids)
+func (s *service) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, int64, error) {
+	var (
+		total     int64
+		resources []domain.Resource
+		eg        errgroup.Group
+	)
+	eg.Go(func() error {
+		var err error
+		resources, err = s.repo.ListExcludeResourceByIds(ctx, fields, modelUid, offset, limit, ids)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalExcludeResourceByIds(ctx, modelUid, ids)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return resources, total, err
+	}
+	return resources, total, nil
 }
 
 func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {

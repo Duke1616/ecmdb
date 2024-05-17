@@ -17,7 +17,8 @@ type ResourceDAO interface {
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
 	Count(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
-	ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
+	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
+	TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 }
 
@@ -132,7 +133,7 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string,
 	return result, nil
 }
 
-func (dao *resourceDAO) ListExcludeResourceByids(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
+func (dao *resourceDAO) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
 
@@ -147,6 +148,7 @@ func (dao *resourceDAO) ListExcludeResourceByids(ctx context.Context, fields []s
 	}
 	projection["_id"] = 0
 	projection["id"] = 1
+	projection["model_uid"] = 1
 	projection["name"] = 1
 
 	opts := &options.FindOptions{
@@ -164,6 +166,24 @@ func (dao *resourceDAO) ListExcludeResourceByids(ctx context.Context, fields []s
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *resourceDAO) TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"model_uid": modelUid}
+
+	if len(ids) > 0 {
+		filter["id"] = bson.M{
+			"$nin": ids,
+		}
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, error) {

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
@@ -109,6 +110,10 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 		model_uid = physical
 		relation_name = "physical_run_mongo"
 	*/
+	if req.RelationName == "" {
+		return systemErrorResult, fmt.Errorf("关联名称为空")
+	}
+
 	rn := strings.Split(req.RelationName, "_")
 	if rn[0] == req.ModelUid {
 		mUid = rn[2]
@@ -126,12 +131,24 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 	}
 
 	// 排除已关联数据, 返回未关联数据
-	rrs, err := h.svc.ListExcludeResourceByIds(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
+	rrs, total, err := h.svc.ListExcludeResourceByIds(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
 	if err != nil {
 		return systemErrorResult, err
 	}
+
+	rs := slice.Map(rrs, func(idx int, src domain.Resource) Resource {
+		return Resource{
+			ID:       src.ID,
+			Name:     src.Name,
+			ModelUID: src.ModelUID,
+			Data:     src.Data,
+		}
+	})
 	return ginx.Result{
-		Data: rrs,
+		Data: RetrieveResources{
+			Resources: rs,
+			Total:     total,
+		},
 	}, nil
 }
 

@@ -51,8 +51,8 @@ type RetrieveRelationType struct {
 type RetrieveAggregatedAssets struct {
 	RelationName string  `json:"relation_name"`
 	ModelUid     string  `json:"model_uid"`
-	Count        int     `json:"count"`
-	ResourceIds  []int64 `bson:"resource_ids"`
+	Total        int     `json:"total"`
+	ResourceIds  []int64 `json:"resource_ids"`
 }
 
 type RetrieveRelationResource struct {

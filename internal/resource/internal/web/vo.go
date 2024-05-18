@@ -23,6 +23,11 @@ type ListResourceReq struct {
 	ModelUid string `json:"model_uid"`
 }
 
+type ListResourceByIdsReq struct {
+	ModelUid    string  `json:"model_uid"`
+	ResourceIds []int64 `json:"resource_ids"`
+}
+
 type DeleteResourceReq struct {
 	Id int64 `json:"id"`
 }

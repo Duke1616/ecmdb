@@ -38,6 +38,9 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 资源关联关系
 	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReq](h.ListCanBeRelated))
 	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
+
+	// 根据模型 UID 查询资源列表
+	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -208,6 +211,34 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 			DST:    dst,
 			Assets: assets,
 		},
+	}, nil
+}
+
+func (h *Handler) ListResourceByIds(ctx *gin.Context, req ListResourceByIdsReq) (ginx.Result, error) {
+	fields, err := h.attrSvc.SearchAttributeFieldsByModelUid(ctx, req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	resp, err := h.svc.ListResourceByIds(ctx, fields, req.ResourceIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	rs := slice.Map(resp, func(idx int, src domain.Resource) Resource {
+		return Resource{
+			ID:       src.ID,
+			Name:     src.Name,
+			ModelUID: src.ModelUID,
+			Data:     src.Data,
+		}
+	})
+
+	return ginx.Result{
+		Data: RetrieveResources{
+			Resources: rs,
+		},
+		Msg: "根据ID查询资源成功",
 	}, nil
 }
 

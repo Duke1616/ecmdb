@@ -161,7 +161,7 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 		{{"$match", filter}},
 		{{"$group", bson.D{
 			{"_id", "$relation_name"},
-			{"count", bson.D{{"$sum", 1}}},                             // 统计每个分组中的文档数量
+			{"total", bson.D{{"$sum", 1}}},                             // 统计每个分组中的文档数量
 			{"resource_ids", bson.D{{"$push", "$target_resource_id"}}}, // 将目标资源 Ids 添加到一个数组中
 			{"model_uid", bson.D{{"$first", "$target_model_uid"}}},     // 添加额外字段
 		}}},
@@ -197,7 +197,7 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 		{{"$match", filter}}, // 添加筛选条件
 		{{"$group", bson.D{
 			{"_id", "$relation_name"},
-			{"count", bson.D{{"$sum", 1}}},                             // 统计每个分组中的文档数量
+			{"total", bson.D{{"$sum", 1}}},                             // 统计每个分组中的文档数量
 			{"resource_ids", bson.D{{"$push", "$source_resource_id"}}}, // 将源资源 Ids 添加到一个数组中
 			{"model_uid", bson.D{{"$first", "$source_model_uid"}}},     // 添加额外字段
 		}}},
@@ -299,6 +299,6 @@ type ResourceRelation struct {
 type ResourceAggregatedAsset struct {
 	RelationName string  `bson:"_id"`
 	ModelUid     string  `bson:"model_uid"`
-	Count        int     `bson:"count"`
+	Total        int     `bson:"total"`
 	ResourceIds  []int64 `bson:"resource_ids"`
 }

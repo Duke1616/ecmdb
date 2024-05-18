@@ -13,8 +13,8 @@ type ResourceRelation struct {
 type ResourceAggregatedAssets struct {
 	RelationName string
 	ModelUid     string
-	Count        int
-	ResourceIds  []int64 `bson:"resource_ids"`
+	Total        int
+	ResourceIds  []int64
 }
 
 type ResourceDiagram struct {

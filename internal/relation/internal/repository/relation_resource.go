@@ -107,7 +107,7 @@ func (r *resourceRepository) toAggregatedAssetsDomain(src dao.ResourceAggregated
 	return domain.ResourceAggregatedAssets{
 		RelationName: src.RelationName,
 		ModelUid:     src.ModelUid,
-		Count:        src.Count,
+		Total:        src.Total,
 		ResourceIds:  src.ResourceIds,
 	}
 }

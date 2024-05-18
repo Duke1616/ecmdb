@@ -136,7 +136,7 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 			return RetrieveAggregatedAssets{
 				RelationName: src.RelationName,
 				ModelUid:     src.ModelUid,
-				Count:        src.Count,
+				Total:        src.Total,
 				ResourceIds:  src.ResourceIds,
 			}
 		}),
@@ -159,7 +159,7 @@ func (h *RelationResourceHandler) toAggregatedAssetsVo(src domain.ResourceAggreg
 	return RetrieveAggregatedAssets{
 		RelationName: src.RelationName,
 		ModelUid:     src.ModelUid,
-		Count:        src.Count,
+		Total:        src.Total,
 		ResourceIds:  src.ResourceIds,
 	}
 }

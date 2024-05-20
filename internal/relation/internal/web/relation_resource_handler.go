@@ -160,8 +160,7 @@ func (h *RelationResourceHandler) DeleteResourceRelation(ctx *gin.Context, req D
 
 	rn := strings.Split(req.RelationName, "_")
 	if rn[0] == req.ModelUid {
-		id, err = h.svc.DeleteSrcRelat
-		on(ctx, req.ResourceId, req.ModelUid, req.RelationName)
+		id, err = h.svc.DeleteSrcRelation(ctx, req.ResourceId, req.ModelUid, req.RelationName)
 	} else {
 		id, err = h.svc.DeleteDstRelation(ctx, req.ResourceId, req.ModelUid, req.RelationName)
 	}

@@ -63,3 +63,9 @@ type RetrieveRelationResource struct {
 type DeleteModelRelationReq struct {
 	Id int64 `json:"id"`
 }
+
+type DeleteResourceRelationReq struct {
+	ModelUid     string `json:"model_uid"`
+	ResourceId   int64  `json:"resource_id"`
+	RelationName string `json:"relation_name"`
+}

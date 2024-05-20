@@ -7,6 +7,8 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
+	"sort"
+	"strings"
 )
 
 type RelationResourceHandler struct {
@@ -32,6 +34,8 @@ func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
 	g.POST("/pipeline/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
 	g.POST("/pipeline/dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
 	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
+
+	g.POST("/delete", ginx.WrapBody[DeleteResourceRelationReq](h.DeleteResourceRelation))
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
@@ -131,6 +135,11 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 		return systemErrorResult, err
 	}
 	result := append(srcS, dstS...)
+	sort.Slice(result, func(i, j int) bool {
+		// 根据需要的排序逻辑进行排序，这里假设你有一个字段可以用来排序，比如 id
+		return result[i].Total < result[j].Total
+	})
+
 	return ginx.Result{
 		Data: slice.Map(result, func(idx int, src domain.ResourceAggregatedAssets) RetrieveAggregatedAssets {
 			return RetrieveAggregatedAssets{
@@ -140,6 +149,29 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 				ResourceIds:  src.ResourceIds,
 			}
 		}),
+	}, nil
+}
+
+func (h *RelationResourceHandler) DeleteResourceRelation(ctx *gin.Context, req DeleteResourceRelationReq) (ginx.Result, error) {
+	var (
+		id  int64
+		err error
+	)
+
+	rn := strings.Split(req.RelationName, "_")
+	if rn[0] == req.ModelUid {
+		id, err = h.svc.DeleteSrcRelat
+		on(ctx, req.ResourceId, req.ModelUid, req.RelationName)
+	} else {
+		id, err = h.svc.DeleteDstRelation(ctx, req.ResourceId, req.ModelUid, req.RelationName)
+	}
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: id,
 	}, nil
 }
 

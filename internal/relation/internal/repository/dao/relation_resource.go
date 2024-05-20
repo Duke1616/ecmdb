@@ -24,6 +24,11 @@ type RelationResourceDAO interface {
 
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+
+	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
+
+	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 }
 
 func NewRelationResourceDAO(db *mongox.Mongo) RelationResourceDAO {
@@ -281,6 +286,54 @@ func (dao *resourceDAO) ListDstRelated(ctx context.Context, modelUid, relationNa
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *resourceDAO) DeleteResourceRelation(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *resourceDAO) DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"source_model_uid": modelUid},
+			{"source_resource_id": resourceId},
+			{"relation_name": relationName},
+		},
+	}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *resourceDAO) DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{
+		"$and": []bson.M{
+			{"target_model_uid": modelUid},
+			{"target_resource_id": resourceId},
+			{"relation_name": relationName},
+		},
+	}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 type ResourceRelation struct {

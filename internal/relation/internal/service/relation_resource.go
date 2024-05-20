@@ -24,6 +24,11 @@ type RelationResourceService interface {
 	// ListSrcRelated 查询当前已经关联的数据，新增资源关联使用
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+
+	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
+
+	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 }
 
 type resourceService struct {
@@ -116,4 +121,16 @@ func (s *resourceService) ListSrcRelated(ctx context.Context, modelUid, relation
 
 func (s *resourceService) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
 	return s.repo.ListDstRelated(ctx, modelUid, relationName, id)
+}
+
+func (s *resourceService) DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	return s.repo.DeleteSrcRelation(ctx, resourceId, modelUid, relationName)
+}
+
+func (s *resourceService) DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	return s.repo.DeleteDstRelation(ctx, resourceId, modelUid, relationName)
+}
+
+func (s *resourceService) DeleteResourceRelation(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteResourceRelation(ctx, id)
 }

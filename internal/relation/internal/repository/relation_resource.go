@@ -23,6 +23,10 @@ type RelationResourceRepository interface {
 	// ListSrcRelated 查询当前已经关联的数据，新增资源关联使用
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+
+	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
+	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 }
 
 func NewRelationResourceRepository(dao dao.RelationResourceDAO) RelationResourceRepository {
@@ -81,6 +85,18 @@ func (r *resourceRepository) ListSrcRelated(ctx context.Context, modelUid, relat
 
 func (r *resourceRepository) ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
 	return r.dao.ListDstRelated(ctx, modelUid, relationName, id)
+}
+
+func (r *resourceRepository) DeleteResourceRelation(ctx context.Context, id int64) (int64, error) {
+	return r.dao.DeleteResourceRelation(ctx, id)
+}
+
+func (r *resourceRepository) DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	return r.dao.DeleteSrcRelation(ctx, resourceId, modelUid, relationName)
+}
+
+func (r *resourceRepository) DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	return r.dao.DeleteDstRelation(ctx, resourceId, modelUid, relationName)
 }
 
 func (r *resourceRepository) toEntity(req domain.ResourceRelation) dao.ResourceRelation {

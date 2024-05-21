@@ -66,27 +66,15 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 		UID:     req.UID,
 		Icon:    req.Icon,
 	})
-
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	// 创建默认字段
-	attr := attribute.Attribute{
-		ModelUid:     req.UID,
-		Index:        0,
-		Display:      true,
-		Required:     true,
-		FieldName:    "名称",
-		FieldType:    "string",
-		FieldUid:     "name",
-		FieldGroupId: 1,
-	}
-	_, err = h.AttrSvc.CreateAttribute(ctx, attr)
-
+	_, err = h.AttrSvc.CreateDefaultAttribute(ctx, req.UID)
 	if err != nil {
 		return systemErrorResult, err
 	}
+
 	return ginx.Result{
 		Data: id,
 		Msg:  "添加模型成功",

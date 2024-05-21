@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 	"github.com/gin-gonic/gin"
@@ -19,15 +20,20 @@ type Service interface {
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 	// CustomAttributeFieldColumns 自定义展示字段、以及排序
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+
+	// CreateDefaultAttribute 创建新模型，创建默认字段信息
+	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
 }
 
 type service struct {
-	repo repository.AttributeRepository
+	repo  repository.AttributeRepository
+	group repository.AttributeGroupRepository
 }
 
-func NewService(repo repository.AttributeRepository) Service {
+func NewService(repo repository.AttributeRepository, group repository.AttributeGroupRepository) Service {
 	return &service{
-		repo: repo,
+		repo:  repo,
+		group: group,
 	}
 }
 
@@ -85,4 +91,32 @@ func (s *service) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string,
 
 func (s *service) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteAttribute(ctx, id)
+}
+
+func (s *service) CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error) {
+	groupId, err := s.group.CreateAttributeGroup(ctx, domain.AttributeGroup{
+		Name:     "基础属性",
+		ModelUid: modelUid,
+		Index:    0,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	attr := s.defaultAttr(modelUid, groupId)
+
+	return s.repo.CreateAttribute(ctx, attr)
+}
+
+func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
+	return attribute.Attribute{
+		ModelUid:     modelUid,
+		Index:        0,
+		Display:      true,
+		Required:     true,
+		FieldName:    "名称",
+		FieldType:    "string",
+		FieldUid:     "name",
+		FieldGroupId: groupId,
+	}
 }

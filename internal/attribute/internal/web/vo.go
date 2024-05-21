@@ -13,11 +13,15 @@ type CreateAttributeReq struct {
 }
 
 type CreateAttributeGroup struct {
-	Name string `json:"name"`
+	Name  string `json:"name"`
+	Index int64  `json:"index"`
 }
 
 type ListAttributeGroupReq struct {
 	ModelUid string `json:"model_uid"`
+}
+type ListAttributeGroupByIdsReq struct {
+	Ids []int64 `json:"ids"`
 }
 
 type ListAttributeReq struct {
@@ -40,10 +44,10 @@ type Attribute struct {
 }
 
 type AttributeGroup struct {
-	GroupName  string      `json:"group_name"`
-	Expanded   bool        `json:"expanded"`
-	GroupId    int64       `json:"group_id"`
-	Attributes []Attribute `json:"attributes"`
+	GroupName string `json:"group_name"`
+	ModelUid  string `json:"model_uid"`
+	GroupId   int64  `json:"group_id"`
+	Index     int64  `json:"index"`
 }
 
 // CustomAttributeFieldColumnsReq 排序并展示数据
@@ -55,9 +59,23 @@ type CustomAttributeFieldColumnsReq struct {
 type RetrieveAttributeFieldsList struct {
 }
 
+type AttributeGroups struct {
+	GroupId    int64   `bson:"_id"`
+	Total      int     `bson:"total"`
+	Attributes []int64 `bson:"attributes"`
+}
+
+type AttributeList struct {
+	GroupId    int64       `json:"group_id"`
+	GroupName  string      `json:"group_name"`
+	Expanded   bool        `json:"expanded"`
+	Index      int64       `json:"index"`
+	Total      int         `json:"total"`
+	Attributes []Attribute `json:"attributes,omitempty"`
+}
+
 type RetrieveAttributeList struct {
-	Attributes []AttributeGroup `json:"ags,omitempty"`
-	Total      int64            `json:"total,omitempty"`
+	AttributeList []AttributeList `json:"attribute_groups"`
 }
 
 type RetrieveAttributeFieldList struct {

@@ -21,7 +21,9 @@ import (
 func InitModule(db *mongox.Mongo) (*Module, error) {
 	attributeDAO := InitAttributeDAO(db)
 	attributeRepository := repository.NewAttributeRepository(attributeDAO)
-	service := NewService(attributeRepository)
+	attributeGroupDAO := dao.NewAttributeGroupDAO(db)
+	attributeGroupRepository := repository.NewAttributeGroupRepository(attributeGroupDAO)
+	service := NewService(attributeRepository, attributeGroupRepository)
 	handler := web.NewHandler(service)
 	module := &Module{
 		Svc: service,
@@ -32,7 +34,7 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, repository.NewAttributeRepository, repository.NewAttributeGroupRepository, service.NewGroupService, dao.NewAttributeGroupDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, repository.NewAttributeRepository, repository.NewAttributeGroupRepository, dao.NewAttributeGroupDAO)
 
 var daoOnce = sync.Once{}
 
@@ -50,6 +52,6 @@ func InitAttributeDAO(db *mongox.Mongo) dao.AttributeDAO {
 	return dao.NewAttributeDAO(db)
 }
 
-func NewService(repo repository.AttributeRepository) Service {
-	return service.NewService(repo)
+func NewService(repo repository.AttributeRepository, repoGroup repository.AttributeGroupRepository) Service {
+	return service.NewService(repo, repoGroup)
 }

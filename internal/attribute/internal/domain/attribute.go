@@ -19,7 +19,8 @@ type AttributeGroup struct {
 	Index    int64
 }
 
-// AttributeProjection 映射字段信息
-type AttributeProjection struct {
-	Projection map[string]int
+type AttributePipeline struct {
+	GroupId    int64       `bson:"_id"`
+	Total      int         `bson:"total"`
+	Attributes []Attribute `bson:"attributes"`
 }

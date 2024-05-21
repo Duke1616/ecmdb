@@ -66,6 +66,7 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 		UID:     req.UID,
 		Icon:    req.Icon,
 	})
+
 	if err != nil {
 		return systemErrorResult, err
 	}

@@ -23,6 +23,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 字段分组
 	g.POST("/group/create", ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup))
 	g.POST("/group/list", ginx.WrapBody[ListAttributeGroupReq](h.ListAttributeGroup))
+	g.POST("/group/ids", ginx.WrapBody[ListAttributeGroupByIdsReq](h.ListAttributeGroupByIds))
 
 	// 字段操作
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
@@ -45,21 +46,42 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 }
 
 func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
-	attrs, total, err := h.svc.ListAttributes(ctx, req.ModelUid)
+	aps, err := h.svc.ListAttributePipeline(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	att := slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
-		return toAttributeVo(src)
+	groupIds := slice.Map(aps, func(idx int, src domain.AttributePipeline) int64 {
+		return src.GroupId
 	})
-	atgroup1 := AttributeGroup{Attributes: att, GroupName: "基础信息", GroupId: 1, Expanded: true}
-	var atgroups []AttributeGroup
-	atgroups = append(atgroups, atgroup1)
+	groups, err := h.svc.ListAttributeGroupByIds(ctx, groupIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	groupMap := make(map[int64]domain.AttributeGroup)
+	for _, g := range groups {
+		groupMap[g.ID] = g
+	}
+
 	return ginx.Result{
 		Data: RetrieveAttributeList{
-			Total:      total,
-			Attributes: atgroups,
+			AttributeList: slice.Map(aps, func(idx int, src domain.AttributePipeline) AttributeList {
+				mb := AttributeList{}
+				val, ok := groupMap[src.GroupId]
+				if ok {
+					mb.Index = val.Index
+					mb.GroupName = val.Name
+					mb.Expanded = true
+				}
+
+				mb.Total = src.Total
+				mb.Attributes = slice.Map(src.Attributes, func(idx int, src domain.Attribute) Attribute {
+					return toAttributeVo(src)
+				})
+
+				return mb
+			}),
 		},
 	}, nil
 }
@@ -103,9 +125,47 @@ func (h *Handler) DeleteAttribute(ctx *gin.Context, req DeleteAttributeReq) (gin
 }
 
 func (h *Handler) CreateAttributeGroup(ctx *gin.Context, req CreateAttributeGroup) (ginx.Result, error) {
-	return ginx.Result{}, nil
+	id, err := h.svc.CreateAttributeGroup(ctx.Request.Context(), h.toAttrGroupDomain(req))
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: id,
+		Msg:  "添加模型属性成功",
+	}, nil
 }
 
 func (h *Handler) ListAttributeGroup(ctx *gin.Context, req ListAttributeGroupReq) (ginx.Result, error) {
 	return ginx.Result{}, nil
+}
+
+func (h *Handler) ListAttributeGroupByIds(ctx *gin.Context, req ListAttributeGroupByIdsReq) (ginx.Result, error) {
+	ags, err := h.svc.ListAttributeGroupByIds(ctx, req.Ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Code: 0,
+		Msg:  "根据 ids 获取属性分组成功",
+		Data: slice.Map(ags, func(idx int, src domain.AttributeGroup) AttributeGroup {
+			return h.toAttrGroupVo(src)
+		}),
+	}, nil
+}
+
+func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
+	return AttributeGroup{
+		GroupName: src.Name,
+		GroupId:   src.ID,
+		Index:     src.Index,
+	}
+}
+
+func (h *Handler) toAttrGroupDomain(req CreateAttributeGroup) domain.AttributeGroup {
+	return domain.AttributeGroup{
+		Name:  req.Name,
+		Index: req.Index,
+	}
 }

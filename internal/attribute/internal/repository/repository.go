@@ -19,6 +19,8 @@ type AttributeRepository interface {
 
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 	CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+
+	ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error)
 }
 
 type attributeRepository struct {
@@ -68,12 +70,20 @@ func (a *attributeRepository) DeleteAttribute(ctx context.Context, id int64) (in
 	return a.dao.DeleteAttribute(ctx, id)
 }
 
+func (a *attributeRepository) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {
+	rrs, err := a.dao.ListAttributePipeline(ctx, modelUid)
+	return slice.Map(rrs, func(idx int, src dao.AttributePipeline) domain.AttributePipeline {
+		return a.toAttributeGroupsDomain(src)
+	}), err
+}
+
 func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 	return dao.Attribute{
 		ModelUID:  req.ModelUid,
 		FieldUid:  req.FieldUid,
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
+		GroupId:   req.FieldGroupId,
 		Required:  req.Required,
 		Index:     req.Index,
 		Display:   req.Display,
@@ -90,5 +100,15 @@ func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		Required:  attr.Required,
 		Display:   attr.Display,
 		Index:     attr.Index,
+	}
+}
+
+func (a *attributeRepository) toAttributeGroupsDomain(ags dao.AttributePipeline) domain.AttributePipeline {
+	return domain.AttributePipeline{
+		GroupId: ags.GroupId,
+		Total:   ags.Total,
+		Attributes: slice.Map(ags.Attributes, func(idx int, src dao.Attribute) domain.Attribute {
+			return a.toDomain(src)
+		}),
 	}
 }

@@ -10,6 +10,7 @@ import (
 type AttributeGroupRepository interface {
 	CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error)
 	ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error)
+	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
 }
 
 type attributeGroupRepository struct {
@@ -24,6 +25,14 @@ func NewAttributeGroupRepository(dao dao.AttributeGroupDAO) AttributeGroupReposi
 
 func (a *attributeGroupRepository) ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error) {
 	ags, err := a.dao.ListAttributeGroup(ctx, modelUid)
+
+	return slice.Map(ags, func(idx int, src dao.AttributeGroup) domain.AttributeGroup {
+		return a.toDomain(src)
+	}), err
+}
+
+func (a *attributeGroupRepository) ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error) {
+	ags, err := a.dao.ListAttributeGroupByIds(ctx, ids)
 
 	return slice.Map(ags, func(idx int, src dao.AttributeGroup) domain.AttributeGroup {
 		return a.toDomain(src)

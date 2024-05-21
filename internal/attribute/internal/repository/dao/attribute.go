@@ -24,6 +24,8 @@ type AttributeDAO interface {
 	UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error)
 
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
+
+	ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error)
 }
 
 type attributeDAO struct {
@@ -154,8 +156,41 @@ func (dao *attributeDAO) DeleteAttribute(ctx context.Context, id int64) (int64, 
 	return result.DeletedCount, nil
 }
 
+func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.D{
+		{"model_uid", modelUid},
+	}
+
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
+		{{"$group", bson.D{
+			{"_id", bson.D{{"$toLong", "$group_id"}}},
+			{"total", bson.D{{"$sum", 1}}},
+			{"attributes", bson.D{{"$push", "$$ROOT"}}},
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []AttributePipeline
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
+}
+
 type Attribute struct {
 	Id        int64  `bson:"id"`
+	GroupId   int64  `bson:"group_id"`   // 属性所属分组
 	ModelUID  string `bson:"model_uid"`  // 模型唯一标识
 	FieldUid  string `bson:"field_uid"`  // 字段唯一标识
 	FieldName string `bson:"field_name"` // 字段名称
@@ -165,4 +200,10 @@ type Attribute struct {
 	Index     int64  `bson:"index"`      // 字段前端展示顺序
 	Ctime     int64  `bson:"ctime"`
 	Utime     int64  `bson:"utime"`
+}
+
+type AttributePipeline struct {
+	GroupId    int64       `bson:"_id"`
+	Total      int         `bson:"total"`
+	Attributes []Attribute `bson:"attributes"`
 }

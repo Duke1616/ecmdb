@@ -16,7 +16,6 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	repository.NewAttributeRepository,
 	repository.NewAttributeGroupRepository,
-	service.NewGroupService,
 	dao.NewAttributeGroupDAO)
 
 func InitModule(db *mongox.Mongo) (*Module, error) {
@@ -45,6 +44,6 @@ func InitAttributeDAO(db *mongox.Mongo) dao.AttributeDAO {
 	return dao.NewAttributeDAO(db)
 }
 
-func NewService(repo repository.AttributeRepository) Service {
-	return service.NewService(repo)
+func NewService(repo repository.AttributeRepository, repoGroup repository.AttributeGroupRepository) Service {
+	return service.NewService(repo, repoGroup)
 }

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 	"github.com/gin-gonic/gin"
@@ -21,19 +20,24 @@ type Service interface {
 	// CustomAttributeFieldColumns 自定义展示字段、以及排序
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 
+	ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error)
 	// CreateDefaultAttribute 创建新模型，创建默认字段信息
 	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
+
+	CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error)
+	ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error)
+	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
 }
 
 type service struct {
-	repo  repository.AttributeRepository
-	group repository.AttributeGroupRepository
+	repo      repository.AttributeRepository
+	groupRepo repository.AttributeGroupRepository
 }
 
-func NewService(repo repository.AttributeRepository, group repository.AttributeGroupRepository) Service {
+func NewService(repo repository.AttributeRepository, groupRepo repository.AttributeGroupRepository) Service {
 	return &service{
-		repo:  repo,
-		group: group,
+		repo:      repo,
+		groupRepo: groupRepo,
 	}
 }
 
@@ -94,7 +98,7 @@ func (s *service) DeleteAttribute(ctx context.Context, id int64) (int64, error) 
 }
 
 func (s *service) CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error) {
-	groupId, err := s.group.CreateAttributeGroup(ctx, domain.AttributeGroup{
+	groupId, err := s.CreateAttributeGroup(ctx, domain.AttributeGroup{
 		Name:     "基础属性",
 		ModelUid: modelUid,
 		Index:    0,
@@ -103,13 +107,31 @@ func (s *service) CreateDefaultAttribute(ctx context.Context, modelUid string) (
 		return 0, err
 	}
 
+	fmt.Println("获取ID", groupId)
+
 	attr := s.defaultAttr(modelUid, groupId)
 
 	return s.repo.CreateAttribute(ctx, attr)
 }
 
+func (s *service) ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error) {
+	return s.groupRepo.ListAttributeGroupByIds(ctx, ids)
+}
+
+func (s *service) ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error) {
+	return s.groupRepo.ListAttributeGroup(ctx, modelUid)
+}
+
+func (s *service) CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error) {
+	return s.groupRepo.CreateAttributeGroup(ctx, req)
+}
+
+func (s *service) ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error) {
+	return s.repo.ListAttributePipeline(ctx, modelUid)
+}
+
 func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
-	return attribute.Attribute{
+	return domain.Attribute{
 		ModelUid:     modelUid,
 		Index:        0,
 		Display:      true,

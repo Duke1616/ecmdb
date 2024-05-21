@@ -14,6 +14,7 @@ const AttributeGroupCollection = "c_attribute_group"
 type AttributeGroupDAO interface {
 	CreateAttributeGroup(ctx context.Context, req AttributeGroup) (int64, error)
 	ListAttributeGroup(ctx context.Context, modelUid string) ([]AttributeGroup, error)
+	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]AttributeGroup, error)
 }
 
 type attributeGroupDAO struct {
@@ -28,7 +29,7 @@ func NewAttributeGroupDAO(db *mongox.Mongo) AttributeGroupDAO {
 
 func (dao *attributeGroupDAO) CreateAttributeGroup(ctx context.Context, req AttributeGroup) (int64, error) {
 	req.Id = dao.db.GetIdGenerator(AttributeGroupCollection)
-	col := dao.db.Collection(AttributeCollection)
+	col := dao.db.Collection(AttributeGroupCollection)
 	now := time.Now()
 	req.Ctime, req.Utime = now.UnixMilli(), now.UnixMilli()
 
@@ -36,6 +37,8 @@ func (dao *attributeGroupDAO) CreateAttributeGroup(ctx context.Context, req Attr
 	if err != nil {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
+
+	fmt.Print(req.Id, "创建ID")
 
 	return req.Id, nil
 }
@@ -61,11 +64,26 @@ func (dao *attributeGroupDAO) ListAttributeGroup(ctx context.Context, modelUid s
 	return result, nil
 }
 
+func (dao *attributeGroupDAO) ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]AttributeGroup, error) {
+	col := dao.db.Collection(AttributeGroupCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []AttributeGroup
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
 type AttributeGroup struct {
 	Id       int64  `bson:"id"`
 	Name     string `bson:"name"`
 	ModelUid string `bson:"model_uid"`
-	Index    string `bson:"index"`
+	Index    int64  `bson:"index"`
 	Ctime    int64  `bson:"ctime"`
 	Utime    int64  `bson:"utime"`
 }

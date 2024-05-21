@@ -41,8 +41,9 @@ type ListCanBeRelatedReq struct {
 }
 
 type ListDiagramReq struct {
-	ModelUid   string `json:"model_uid"`
-	ResourceId int64  `json:"resource_id"`
+	ModelUid     string `json:"model_uid"`
+	ResourceId   int64  `json:"resource_id"`
+	ResourceName string `json:"resource_name"`
 }
 
 type ResourceRelation struct {
@@ -63,6 +64,25 @@ type RetrieveDiagram struct {
 	SRC    []ResourceRelation          `json:"src"`
 	DST    []ResourceRelation          `json:"dst"`
 	Assets map[string][]ResourceAssets `json:"assets"`
+}
+
+type RetrieveGraph struct {
+	RootId string `json:"rootId"`
+	Nodes  []Node `json:"nodes"`
+	Lines  []Line `json:"lines"`
+}
+
+type Node struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+	// 扩展方向
+	ExpandHolderPosition string            `json:"expandHolderPosition,omitempty"`
+	Data                 map[string]string `json:"data,omitempty"`
+}
+
+type Line struct {
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 type Resource struct {

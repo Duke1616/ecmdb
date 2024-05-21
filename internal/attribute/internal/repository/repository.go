@@ -75,6 +75,8 @@ func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
 		Required:  req.Required,
+		Index:     req.Index,
+		Display:   req.Display,
 	}
 }
 

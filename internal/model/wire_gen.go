@@ -7,6 +7,7 @@
 package model
 
 import (
+	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
@@ -18,7 +19,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, rmModule *relation.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribute.Module) (*Module, error) {
 	modelDAO := dao.NewModelDAO(db)
 	modelRepository := repository.NewModelRepository(modelDAO)
 	serviceService := service.NewModelService(modelRepository)
@@ -26,7 +27,8 @@ func InitModule(db *mongox.Mongo, rmModule *relation.Module) (*Module, error) {
 	mgRepository := repository.NewMGRepository(modelGroupDAO)
 	mgService := service.NewMGService(mgRepository)
 	relationModelService := rmModule.RMSvc
-	handler := web.NewHandler(serviceService, mgService, relationModelService)
+	service2 := attrModule.Svc
+	handler := web.NewHandler(serviceService, mgService, relationModelService, service2)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,

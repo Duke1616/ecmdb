@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/relation"
@@ -10,16 +11,18 @@ import (
 )
 
 type Handler struct {
-	svc   service.Service
-	mgSvc service.MGService
-	RMSvc relation.RMSvc
+	svc     service.Service
+	mgSvc   service.MGService
+	RMSvc   relation.RMSvc
+	AttrSvc attribute.Service
 }
 
-func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.RMSvc) *Handler {
+func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.RMSvc, attrSvc attribute.Service) *Handler {
 	return &Handler{
-		svc:   svc,
-		mgSvc: groupSvc,
-		RMSvc: RMSvc,
+		svc:     svc,
+		mgSvc:   groupSvc,
+		AttrSvc: attrSvc,
+		RMSvc:   RMSvc,
 	}
 }
 
@@ -63,6 +66,23 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 		UID:     req.UID,
 		Icon:    req.Icon,
 	})
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 创建默认字段
+	attr := attribute.Attribute{
+		ModelUid:     req.UID,
+		Index:        0,
+		Display:      true,
+		Required:     true,
+		FieldName:    "名称",
+		FieldType:    "string",
+		FieldUid:     "name",
+		FieldGroupId: 1,
+	}
+	_, err = h.AttrSvc.CreateAttribute(ctx, attr)
 
 	if err != nil {
 		return systemErrorResult, err

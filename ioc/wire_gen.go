@@ -27,15 +27,15 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(mongo, module)
-	if err != nil {
-		return nil, err
-	}
-	handler := modelModule.Hdl
 	attributeModule, err := attribute.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
+	modelModule, err := model.InitModule(mongo, module, attributeModule)
+	if err != nil {
+		return nil, err
+	}
+	handler := modelModule.Hdl
 	webHandler := attributeModule.Hdl
 	resourceModule, err := resource.InitModule(mongo, attributeModule, module)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"strconv"
 	"strings"
 )
 
@@ -38,6 +39,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 资源关联关系
 	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReq](h.ListCanBeRelated))
 	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
+	g.POST("/relation/graph", ginx.WrapBody[ListDiagramReq](h.FindGraph))
 
 	// 根据模型 UID 查询资源列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
@@ -155,6 +157,81 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 	}, nil
 }
 
+func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
+	// 查询资产关联上下级拓扑
+	graph, _, err := h.RRSvc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	var (
+		srcId []int64
+		dstId []int64
+	)
+
+	rrs := append(graph.SRC, graph.DST...)
+	lines := slice.Map(rrs, func(idx int, src relation.ResourceRelation) Line {
+		return Line{
+			From: strconv.FormatInt(src.SourceResourceID, 10),
+			To:   strconv.FormatInt(src.TargetResourceID, 10),
+		}
+	})
+
+	// 查询关联的所有节点 ids
+	srcId = slice.Map(graph.SRC, func(idx int, src relation.ResourceRelation) int64 {
+		return src.TargetResourceID
+	})
+	dstId = slice.Map(graph.DST, func(idx int, src relation.ResourceRelation) int64 {
+		fmt.Println("src", src)
+		return src.SourceResourceID
+	})
+
+	fmt.Println(srcId, dstId)
+	ids := append(srcId, dstId...)
+
+	// 查询节点信息
+	rs, err := h.svc.ListResourceByIds(ctx, nil, ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	nodes := slice.Map(rs, func(idx int, src domain.Resource) Node {
+		data := make(map[string]string, 1)
+		data["model_uid"] = src.ModelUID
+		for _, id := range srcId {
+			if src.ID == id {
+				return Node{
+					ID:                   strconv.FormatInt(src.ID, 10),
+					Text:                 src.Name,
+					Data:                 data,
+					ExpandHolderPosition: "right",
+				}
+			}
+		}
+		return Node{
+			ID:                   strconv.FormatInt(src.ID, 10),
+			Text:                 src.Name,
+			ExpandHolderPosition: "left",
+			Data:                 data,
+		}
+	})
+
+	nodes = append(nodes, Node{
+		ID:   strconv.FormatInt(req.ResourceId, 10),
+		Text: req.ResourceName,
+		Data: map[string]string{
+			"model_uid": req.ModelUid,
+		},
+	})
+
+	return ginx.Result{
+		Data: RetrieveGraph{
+			Lines:  lines,
+			Nodes:  nodes,
+			RootId: strconv.FormatInt(req.ResourceId, 10),
+		},
+	}, nil
+}
+
 func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
 	// 查询资产关联上下级拓扑
 	diagram, _, err := h.RRSvc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
@@ -191,6 +268,7 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 		return systemErrorResult, err
 	}
 
+	fmt.Println(rs)
 	// 组合前端返回数据
 	assets := make(map[string][]ResourceAssets, len(diagram.DST)+len(diagram.SRC))
 	assets = slice.ToMapV(rs, func(element domain.Resource) (string, []ResourceAssets) {

@@ -1,0 +1,25 @@
+ldap:
+  url: "ldap://127.0.0.1:389"
+  base_dn: "DC=example,DC=com"
+  bind_dn: "CN=cn,OU=ou,DC=example,DC=com"
+  bind_password: "1234567890"
+  username_attribute: "sAMAccountName"
+  mail_attribute: "mail"
+  display_name_attribute: "displayName"
+  title_attribute: "title"
+  group_name_attribute: "cn"
+  user_filter: "(&(sAMAccountName={input})(!(UserAccountControl=514)))"
+  group_filter: "(|(member={dn}))"
+
+session:
+  session_encrypted_key: "1234567890"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: "1234567890"
+  db: 0
+
+mongodb:
+  dsn: mongodb://127.0.0.1:27017/cmdb
+  username: cmdb
+  password: 123456

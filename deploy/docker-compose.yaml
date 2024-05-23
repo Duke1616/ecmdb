@@ -9,6 +9,8 @@ services:
       - "8666:8000"
     environment:
       - TZ=Asia/Shanghai
+    volumes:
+      - ./prod.yaml:/app/config/prod.yaml
 networks:
   default:
     external:

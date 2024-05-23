@@ -53,6 +53,7 @@ type Model struct {
 	Name  string `json:"name"`
 	UID   string `json:"uid"`
 	Icon  string `json:"icon"`
+	Total int    `json:"total"`
 	Ctime string `json:"ctime"`
 	Utime string `json:"utime"`
 }
@@ -99,8 +100,17 @@ type RetrieveModelListByGroupId struct {
 }
 
 type ModelNode struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
+	ID   string            `json:"id"`
+	Text string            `json:"text"`
+	Data map[string]string `json:"data,omitempty"`
+}
+
+type DeleteModelByUidReq struct {
+	ModelUid string `json:"model_uid"`
+}
+
+type DeleteModelGroup struct {
+	ID int64 `json:"id"`
 }
 
 type ModelLine struct {

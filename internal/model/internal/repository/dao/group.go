@@ -13,6 +13,7 @@ type ModelGroupDAO interface {
 	CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]ModelGroup, error)
 	Count(ctx context.Context) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 }
 
 func NewModelGroupDAO(db *mongox.Mongo) ModelGroupDAO {
@@ -59,6 +60,18 @@ func (dao *groupDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *groupDAO) Delete(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(ModelGroupCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 func (dao *groupDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error) {

@@ -76,8 +76,9 @@ type Node struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
 	// 扩展方向
-	ExpandHolderPosition string            `json:"expandHolderPosition,omitempty"`
-	Data                 map[string]string `json:"data,omitempty"`
+	ExpandHolderPosition string         `json:"expandHolderPosition,omitempty"`
+	Expanded             bool           `json:"expanded"`
+	Data                 map[string]any `json:"data,omitempty"`
 }
 
 type Line struct {

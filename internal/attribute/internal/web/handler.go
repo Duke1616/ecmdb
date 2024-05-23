@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -36,6 +37,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
 	id, err := h.svc.CreateAttribute(ctx.Request.Context(), toDomain(req))
 
+	fmt.Println(req)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -46,42 +48,48 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 }
 
 func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
+	groups, err := h.svc.ListAttributeGroup(ctx, req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
 	aps, err := h.svc.ListAttributePipeline(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
+	apsMap := make(map[int64]domain.AttributePipeline)
+	for _, g := range aps {
+		apsMap[g.GroupId] = g
+	}
 
-	groupIds := slice.Map(aps, func(idx int, src domain.AttributePipeline) int64 {
-		return src.GroupId
+	attributeList := slice.Map(groups, func(idx int, src domain.AttributeGroup) AttributeList {
+		mb := AttributeList{}
+		val, ok := apsMap[src.ID]
+		if ok {
+			mb.GroupId = src.ID
+			mb.GroupName = src.Name
+			mb.Index = src.Index
+			mb.Expanded = true
+			mb.Total = val.Total
+			mb.Attributes = slice.Map(val.Attributes, func(idx int, src domain.Attribute) Attribute {
+				return toAttributeVo(src)
+			})
+
+			return mb
+		}
+
+		return AttributeList{
+			GroupId:   src.ID,
+			GroupName: src.Name,
+			Expanded:  true,
+			Index:     src.Index,
+			Total:     0,
+		}
 	})
-	groups, err := h.svc.ListAttributeGroupByIds(ctx, groupIds)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	groupMap := make(map[int64]domain.AttributeGroup)
-	for _, g := range groups {
-		groupMap[g.ID] = g
-	}
 
 	return ginx.Result{
 		Data: RetrieveAttributeList{
-			AttributeList: slice.Map(aps, func(idx int, src domain.AttributePipeline) AttributeList {
-				mb := AttributeList{}
-				val, ok := groupMap[src.GroupId]
-				if ok {
-					mb.Index = val.Index
-					mb.GroupName = val.Name
-					mb.Expanded = true
-				}
-
-				mb.Total = src.Total
-				mb.Attributes = slice.Map(src.Attributes, func(idx int, src domain.Attribute) Attribute {
-					return toAttributeVo(src)
-				})
-
-				return mb
-			}),
+			AttributeList: attributeList,
 		},
 	}, nil
 }
@@ -165,7 +173,8 @@ func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
 
 func (h *Handler) toAttrGroupDomain(req CreateAttributeGroup) domain.AttributeGroup {
 	return domain.AttributeGroup{
-		Name:  req.Name,
-		Index: req.Index,
+		Name:     req.Name,
+		ModelUid: req.ModelUid,
+		Index:    req.Index,
 	}
 }

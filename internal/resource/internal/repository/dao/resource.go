@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -20,6 +21,8 @@ type ResourceDAO interface {
 	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
 	TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
+
+	PipelineByModelUid(ctx context.Context) ([]Pipeline, error)
 }
 
 type resourceDAO struct {
@@ -198,11 +201,41 @@ func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, er
 	return result.DeletedCount, nil
 }
 
+func (dao *resourceDAO) PipelineByModelUid(ctx context.Context) ([]Pipeline, error) {
+	col := dao.db.Collection(ResourceCollection)
+	pipeline := mongo.Pipeline{
+		{{"$group", bson.D{
+			{"_id", "$model_uid"},
+			{"total", bson.D{{"$sum", 1}}},
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Pipeline
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
+}
+
 type Resource struct {
 	ID       int64         `bson:"id"`
-	Name     string        `bson:"name"`
 	ModelUID string        `bson:"model_uid"`
 	Data     mongox.MapStr `bson:",inline"`
 	Ctime    int64         `bson:"ctime"`
 	Utime    int64         `bson:"utime"`
+}
+
+type Pipeline struct {
+	ModelUid string `bson:"_id"`
+	Total    int    `bson:"total"`
 }

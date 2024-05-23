@@ -1,15 +1,15 @@
 package domain
 
 type Attribute struct {
-	ID           int64
-	ModelUid     string
-	FieldGroupId int64
-	FieldUid     string
-	FieldName    string
-	FieldType    string
-	Required     bool
-	Display      bool
-	Index        int64
+	ID        int64
+	GroupId   int64
+	ModelUid  string
+	FieldUid  string
+	FieldName string
+	FieldType string
+	Required  bool
+	Display   bool
+	Index     int64
 }
 
 type AttributeGroup struct {

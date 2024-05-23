@@ -13,8 +13,9 @@ type ModelRepository interface {
 	FindModelById(ctx context.Context, id int64) (domain.Model, error)
 	ListModels(ctx context.Context, offset, limit int64) ([]domain.Model, error)
 	Total(ctx context.Context) (int64, error)
-
 	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
+	DeleteModelById(ctx context.Context, id int64) (int64, error)
+	DeleteModelByUid(ctx context.Context, modelUid string) (int64, error)
 }
 
 func NewModelRepository(dao dao.ModelDAO) ModelRepository {
@@ -54,6 +55,14 @@ func (m *modelRepository) ListModelByGroupIds(ctx context.Context, mgids []int64
 	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
 		return toDomain(src)
 	}), err
+}
+
+func (m *modelRepository) DeleteModelById(ctx context.Context, id int64) (int64, error) {
+	return m.dao.DeleteModelById(ctx, id)
+}
+
+func (m *modelRepository) DeleteModelByUid(ctx context.Context, modelUid string) (int64, error) {
+	return m.dao.DeleteModelByUid(ctx, modelUid)
 }
 
 func toEntity(req domain.Model) dao.Model {

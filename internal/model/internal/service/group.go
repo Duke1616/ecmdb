@@ -10,10 +10,17 @@ import (
 type MGService interface {
 	CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error)
 	ListModelGroups(ctx context.Context, offset, limit int64) ([]domain.ModelGroup, int64, error)
+	DeleteModelGroup(ctx context.Context, id int64) (int64, error)
 }
 
 type groupService struct {
 	repo repository.MGRepository
+}
+
+func NewMGService(repo repository.MGRepository) MGService {
+	return &groupService{
+		repo: repo,
+	}
 }
 
 func (s *groupService) ListModelGroups(ctx context.Context, offset, limit int64) ([]domain.ModelGroup, int64, error) {
@@ -38,12 +45,10 @@ func (s *groupService) ListModelGroups(ctx context.Context, offset, limit int64)
 	return mgs, total, nil
 }
 
-func NewMGService(repo repository.MGRepository) MGService {
-	return &groupService{
-		repo: repo,
-	}
-}
-
 func (s *groupService) CreateModelGroup(ctx context.Context, req domain.ModelGroup) (int64, error) {
 	return s.repo.CreateModelGroup(ctx, req)
+}
+
+func (s *groupService) DeleteModelGroup(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteModelGroup(ctx, id)
 }

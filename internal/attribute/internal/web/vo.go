@@ -5,6 +5,7 @@ import (
 )
 
 type CreateAttributeReq struct {
+	GroupId   int64  `json:"group_id"`
 	FieldUid  string `json:"field_uid"`
 	ModelUid  string `json:"model_uid"`
 	FieldName string `json:"field_name"`
@@ -13,8 +14,9 @@ type CreateAttributeReq struct {
 }
 
 type CreateAttributeGroup struct {
-	Name  string `json:"name"`
-	Index int64  `json:"index"`
+	Name     string `json:"group_name"`
+	ModelUid string `json:"model_uid"`
+	Index    int64  `json:"index"`
 }
 
 type ListAttributeGroupReq struct {
@@ -85,6 +87,7 @@ type RetrieveAttributeFieldList struct {
 
 func toDomain(req CreateAttributeReq) domain.Attribute {
 	return domain.Attribute{
+		GroupId:   req.GroupId,
 		FieldUid:  req.FieldUid,
 		ModelUid:  req.ModelUid,
 		FieldName: req.FieldName,

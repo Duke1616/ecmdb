@@ -43,6 +43,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	// 根据模型 UID 查询资源列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
+
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -195,8 +196,10 @@ func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, 
 	}
 
 	nodes := slice.Map(rs, func(idx int, src domain.Resource) Node {
-		data := make(map[string]string, 1)
+		data := make(map[string]any, 1)
 		data["model_uid"] = src.ModelUID
+		data["isNeedLoadDataFromRemoteServer"] = true
+		data["childrenLoaded"] = false
 		for _, id := range srcId {
 			if src.ID == id {
 				return Node{
@@ -204,6 +207,7 @@ func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, 
 					Text:                 src.Name,
 					Data:                 data,
 					ExpandHolderPosition: "right",
+					Expanded:             false,
 				}
 			}
 		}
@@ -211,14 +215,16 @@ func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, 
 			ID:                   strconv.FormatInt(src.ID, 10),
 			Text:                 src.Name,
 			ExpandHolderPosition: "left",
+			Expanded:             false,
 			Data:                 data,
 		}
 	})
 
 	nodes = append(nodes, Node{
-		ID:   strconv.FormatInt(req.ResourceId, 10),
-		Text: req.ResourceName,
-		Data: map[string]string{
+		ID:       strconv.FormatInt(req.ResourceId, 10),
+		Text:     req.ResourceName,
+		Expanded: true,
+		Data: map[string]any{
 			"model_uid": req.ModelUid,
 		},
 	})

@@ -16,10 +16,26 @@ type ResourceRepository interface {
 	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
 	TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
+
+	PipelineByModelUid(ctx context.Context) (map[string]int, error)
 }
 
 type resourceRepository struct {
 	dao dao.ResourceDAO
+}
+
+func (r *resourceRepository) PipelineByModelUid(ctx context.Context) (map[string]int, error) {
+	pipeline, err := r.dao.PipelineByModelUid(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	p := make(map[string]int, len(pipeline))
+	for _, val := range pipeline {
+		p[val.ModelUid] = val.Total
+	}
+
+	return p, nil
 }
 
 func NewResourceRepository(dao dao.ResourceDAO) ResourceRepository {
@@ -76,16 +92,20 @@ func (r *resourceRepository) DeleteResource(ctx context.Context, id int64) (int6
 func (r *resourceRepository) toEntity(req domain.Resource) dao.Resource {
 	return dao.Resource{
 		ModelUID: req.ModelUID,
-		Name:     req.Name,
 		Data:     req.Data,
 	}
 }
 
 func (r *resourceRepository) toDomain(src dao.Resource) domain.Resource {
+	name := "undefined"
+	if val, ok := src.Data["name"]; ok {
+		name = val.(string)
+	}
+
 	return domain.Resource{
 		ID:       src.ID,
 		ModelUID: src.ModelUID,
 		Data:     src.Data,
-		Name:     src.Name,
+		Name:     name,
 	}
 }

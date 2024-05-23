@@ -31,16 +31,16 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(mongo, module, attributeModule)
+	resourceModule, err := resource.InitModule(mongo, attributeModule, module)
+	if err != nil {
+		return nil, err
+	}
+	modelModule, err := model.InitModule(mongo, module, attributeModule, resourceModule)
 	if err != nil {
 		return nil, err
 	}
 	handler := modelModule.Hdl
 	webHandler := attributeModule.Hdl
-	resourceModule, err := resource.InitModule(mongo, attributeModule, module)
-	if err != nil {
-		return nil, err
-	}
 	handler2 := resourceModule.Hdl
 	relationModelHandler := module.RMHdl
 	relationResourceHandler := module.RRHdl

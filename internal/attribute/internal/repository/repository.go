@@ -83,7 +83,7 @@ func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		FieldUid:  req.FieldUid,
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
-		GroupId:   req.FieldGroupId,
+		GroupId:   req.GroupId,
 		Required:  req.Required,
 		Index:     req.Index,
 		Display:   req.Display,

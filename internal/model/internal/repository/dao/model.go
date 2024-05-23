@@ -16,6 +16,8 @@ type ModelDAO interface {
 	Count(ctx context.Context) (int64, error)
 
 	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]Model, error)
+	DeleteModelById(ctx context.Context, id int64) (int64, error)
+	DeleteModelByUid(ctx context.Context, modelUid string) (int64, error)
 }
 
 func NewModelDAO(db *mongox.Mongo) ModelDAO {
@@ -119,4 +121,28 @@ func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *modelDAO) DeleteModelById(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(ModelCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *modelDAO) DeleteModelByUid(ctx context.Context, modelUid string) (int64, error) {
+	col := dao.db.Collection(ModelCollection)
+	filter := bson.M{"uid": modelUid}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }

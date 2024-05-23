@@ -5,24 +5,29 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/relation"
+	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 )
 
 type Handler struct {
-	svc     service.Service
-	mgSvc   service.MGService
-	RMSvc   relation.RMSvc
-	AttrSvc attribute.Service
+	svc         service.Service
+	mgSvc       service.MGService
+	resourceSvc resource.Service
+	RMSvc       relation.RMSvc
+	AttrSvc     attribute.Service
 }
 
-func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.RMSvc, attrSvc attribute.Service) *Handler {
+func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.RMSvc, attrSvc attribute.Service,
+	resourceSvc resource.Service) *Handler {
 	return &Handler{
-		svc:     svc,
-		mgSvc:   groupSvc,
-		AttrSvc: attrSvc,
-		RMSvc:   RMSvc,
+		svc:         svc,
+		mgSvc:       groupSvc,
+		AttrSvc:     attrSvc,
+		RMSvc:       RMSvc,
+		resourceSvc: resourceSvc,
 	}
 }
 
@@ -31,6 +36,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 模型分组
 	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateGroup))
 	g.POST("/group/list", ginx.WrapBody[Page](h.ListModelGroups))
+	g.POST("/group/delete", ginx.WrapBody[DeleteModelGroup](h.DeleteModelGroup))
 
 	// 模型操作
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
@@ -40,6 +46,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 获取模型并分组
 	g.POST("/list/pipeline", ginx.WrapBody[Page](h.ListModelsByGroupId))
 
+	g.POST("/delete", ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid))
 	// 模型关联关系
 	g.POST("/relation/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
 	g.POST("/relation/graph", ginx.WrapBody[Page](h.FindRelationModelGraph))
@@ -110,19 +117,55 @@ func (h *Handler) ListModelGroups(ctx *gin.Context, req Page) (ginx.Result, erro
 	}, nil
 }
 
-func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, error) {
-	mgs, total, err := h.mgSvc.ListModelGroups(ctx, req.Offset, req.Limit)
+func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteModelByUid(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
+	return ginx.Result{
+		Data: count,
+	}, nil
+}
 
-	mgids := make([]int64, total)
-	mgids = slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
-		return src.ID
+func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, error) {
+	var (
+		eg            errgroup.Group
+		mgs           []domain.ModelGroup
+		models        []domain.Model
+		total         int64
+		resourceCount map[string]int
+	)
+
+	eg.Go(func() error {
+		var err error
+		mgs, total, err = h.mgSvc.ListModelGroups(ctx, req.Offset, req.Limit)
+		if err != nil {
+			return err
+		}
+		mgids := make([]int64, total)
+		mgids = slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
+			return src.ID
+		})
+
+		models, err = h.svc.ListModelByGroupIds(ctx, mgids)
+		if err != nil {
+			return err
+		}
+
+		return err
 	})
 
-	models, err := h.svc.ListModelByGroupIds(ctx, mgids)
-	if err != nil {
+	eg.Go(func() error {
+		var err error
+		resourceCount, err = h.resourceSvc.PipelineByModelUid(ctx)
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
 		return systemErrorResult, err
 	}
 
@@ -130,12 +173,19 @@ func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, 
 	mds = slice.ToMapV(models, func(m domain.Model) (int64, []Model) {
 		return m.GroupId, slice.FilterMap(models, func(idx int, src domain.Model) (Model, bool) {
 			if m.GroupId == src.GroupId {
+				count := 0
+				if val, ok := resourceCount[src.UID]; ok {
+					count = val
+				}
+
 				return Model{
-					Id:   src.ID,
-					Name: src.Name,
-					UID:  src.UID,
-					Icon: src.Icon,
+					Id:    src.ID,
+					Name:  src.Name,
+					Total: count,
+					UID:   src.UID,
+					Icon:  src.Icon,
 				}, true
+
 			}
 			return Model{}, false
 		})
@@ -171,6 +221,16 @@ func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
 				return toModelVo(m)
 			}),
 		},
+	}, nil
+}
+
+func (h *Handler) DeleteModelGroup(ctx *gin.Context, req DeleteModelGroup) (ginx.Result, error) {
+	count, err := h.mgSvc.DeleteModelGroup(ctx, req.ID)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 
@@ -228,9 +288,12 @@ func (h *Handler) FindRelationModelGraph(ctx *gin.Context, req Page) (ginx.Resul
 	}
 	mn := make([]ModelNode, len(models))
 	mn = slice.Map(models, func(idx int, src domain.Model) ModelNode {
+		data := make(map[string]string, 1)
+		data["icon"] = src.Icon
 		return ModelNode{
 			ID:   src.UID,
 			Text: src.Name,
+			Data: data,
 		}
 	})
 

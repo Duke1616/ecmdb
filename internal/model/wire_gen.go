@@ -13,13 +13,14 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/model/internal/web"
 	"github.com/Duke1616/ecmdb/internal/relation"
+	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribute.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribute.Module, resourceSvc *resource.Module) (*Module, error) {
 	modelDAO := dao.NewModelDAO(db)
 	modelRepository := repository.NewModelRepository(modelDAO)
 	serviceService := service.NewModelService(modelRepository)
@@ -28,7 +29,8 @@ func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribu
 	mgService := service.NewMGService(mgRepository)
 	relationModelService := rmModule.RMSvc
 	service2 := attrModule.Svc
-	handler := web.NewHandler(serviceService, mgService, relationModelService, service2)
+	service3 := resourceSvc.Svc
+	handler := web.NewHandler(serviceService, mgService, relationModelService, service2, service3)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,

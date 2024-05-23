@@ -1,0 +1,15 @@
+version: '3'
+services:
+  ecmdb:
+    restart: always
+    container_name: ecmdb
+    image: duke1616/ecmdb:deploy-v1.0.0
+    command: ./ecmdb
+    ports:
+      - "8666:8000"
+    environment:
+      - TZ=Asia/Shanghai
+networks:
+  default:
+    external:
+      name: sre

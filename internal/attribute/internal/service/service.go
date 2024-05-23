@@ -132,13 +132,13 @@ func (s *service) ListAttributePipeline(ctx *gin.Context, modelUid string) ([]do
 
 func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
 	return domain.Attribute{
-		ModelUid:     modelUid,
-		Index:        0,
-		Display:      true,
-		Required:     true,
-		FieldName:    "名称",
-		FieldType:    "string",
-		FieldUid:     "name",
-		FieldGroupId: groupId,
+		ModelUid:  modelUid,
+		Index:     0,
+		Display:   true,
+		Required:  true,
+		FieldName: "名称",
+		FieldType: "string",
+		FieldUid:  "name",
+		GroupId:   groupId,
 	}
 }

@@ -19,6 +19,9 @@ type Service interface {
 	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, int64, error)
 
 	DeleteResource(ctx context.Context, id int64) (int64, error)
+
+	// PipelineByModelUid 聚合查看模型下的数量
+	PipelineByModelUid(ctx context.Context) (map[string]int, error)
 }
 
 type service struct {
@@ -89,4 +92,8 @@ func (s *service) ListExcludeResourceByIds(ctx context.Context, fields []string,
 
 func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteResource(ctx, id)
+}
+
+func (s *service) PipelineByModelUid(ctx context.Context) (map[string]int, error) {
+	return s.repo.PipelineByModelUid(ctx)
 }

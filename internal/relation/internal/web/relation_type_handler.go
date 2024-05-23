@@ -19,7 +19,7 @@ func NewRelationTypeHandler(svc service.RelationTypeService) *RelationTypeHandle
 }
 
 func (h *RelationTypeHandler) RegisterRoute(server *gin.Engine) {
-	g := server.Group("/relation")
+	g := server.Group("/api/relation")
 	// 关联类型
 	g.POST("/create", ginx.WrapBody[CreateRelationTypeReq](h.Create))
 	g.POST("/list", ginx.WrapBody[Page](h.List))

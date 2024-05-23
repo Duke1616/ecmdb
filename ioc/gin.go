@@ -18,6 +18,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
+
 	server.Use(mdls...)
 	ldapHdl.PublicRegisterRoutes(server)
 

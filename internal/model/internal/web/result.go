@@ -10,4 +10,9 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+
+	modelRelationIsNotFountResult = ginx.Result{
+		Code: errs.RelationIsNotFountResult.Code,
+		Msg:  errs.RelationIsNotFountResult.Msg,
+	}
 )

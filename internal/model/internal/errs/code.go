@@ -15,7 +15,8 @@
 package errs
 
 var (
-	SystemError = ErrorCode{Code: 501001, Msg: "系统错误"}
+	SystemError              = ErrorCode{Code: 501001, Msg: "系统错误"}
+	RelationIsNotFountResult = ErrorCode{Code: 501001, Msg: "模型关联关系不为空"}
 )
 
 type ErrorCode struct {

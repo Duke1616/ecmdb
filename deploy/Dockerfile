@@ -3,7 +3,7 @@ MAINTAINER luankz
 WORKDIR /app
 COPY . .
 ENV GOPROXY="https://goproxy.cn,direct"
-ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
+# ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 RUN go mod tidy
 RUN go build -a -o dist/ecmdb -ldflags="-w -s" main.go
 FROM alpine:latest as deploy

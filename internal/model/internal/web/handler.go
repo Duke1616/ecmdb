@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
@@ -118,12 +119,33 @@ func (h *Handler) ListModelGroups(ctx *gin.Context, req Page) (ginx.Result, erro
 }
 
 func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (ginx.Result, error) {
+	// TODO errorGroup改造
+	_, mTotal, err := h.RMSvc.ListModelUidRelation(ctx, 0, 1, req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	if mTotal != 0 {
+		return modelRelationIsNotFountResult, fmt.Errorf("模型关联不为空")
+	}
+
+	_, rTotal, err := h.resourceSvc.ListResource(ctx, nil, req.ModelUid, 0, 1)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	if rTotal != 0 {
+		return modelRelationIsNotFountResult, fmt.Errorf("模型关联资产数据不为空")
+	}
+
+	// TODO 删除模型，同步删除模型属性 +  模型属性分组
 	count, err := h.svc.DeleteModelByUid(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
 		Data: count,
+		Msg:  "删除模型成功",
 	}, nil
 }
 

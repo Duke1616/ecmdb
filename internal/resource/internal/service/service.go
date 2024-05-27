@@ -22,6 +22,8 @@ type Service interface {
 
 	// PipelineByModelUid 聚合查看模型下的数量
 	PipelineByModelUid(ctx context.Context) (map[string]int, error)
+
+	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 }
 
 type service struct {
@@ -96,4 +98,8 @@ func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {
 
 func (s *service) PipelineByModelUid(ctx context.Context) (map[string]int, error) {
 	return s.repo.PipelineByModelUid(ctx)
+}
+
+func (s *service) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
+	return s.repo.Search(ctx, text)
 }

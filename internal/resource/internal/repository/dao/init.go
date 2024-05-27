@@ -19,6 +19,11 @@ func InitIndexes(db *mongox.Mongo) error {
 			},
 			Options: options.Index().SetUnique(true),
 		},
+		// 创建支持中文的通配符文本索引
+		{
+			Keys:    bson.D{{Key: "$**", Value: "text"}},
+			Options: options.Index().SetDefaultLanguage("english"),
+		},
 	}
 
 	_, err := col.Indexes().CreateMany(context.Background(), indexes)

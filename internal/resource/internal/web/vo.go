@@ -86,6 +86,12 @@ type Line struct {
 	To   string `json:"to"`
 }
 
+type SearchReq struct {
+	Text    string   `json:"text"`
+	OrText  []string `json:"or_text"`
+	AndText []string `json:"and_text"`
+}
+
 type Resource struct {
 	ID       int64         `json:"id"`
 	Name     string        `json:"name"`
@@ -96,4 +102,10 @@ type Resource struct {
 type RetrieveResources struct {
 	Resources []Resource `json:"resources"`
 	Total     int64      `json:"total"`
+}
+
+type RetrieveSearchResources struct {
+	ModelUid string          `json:"model_uid"`
+	Total    int             `json:"total"`
+	Data     []mongox.MapStr `json:"data"`
 }

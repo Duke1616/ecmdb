@@ -79,7 +79,6 @@ func (s *service) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string,
 	eg.Go(func() error {
 		var err error
 		total, err = s.repo.CustomAttributeFieldColumns(ctx, modelUid, customField)
-		fmt.Print(err)
 		return err
 	})
 	eg.Go(func() error {

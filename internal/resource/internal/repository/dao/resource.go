@@ -23,6 +23,7 @@ type ResourceDAO interface {
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 
 	PipelineByModelUid(ctx context.Context) ([]Pipeline, error)
+	Search(ctx context.Context, text string) ([]SearchResource, error)
 }
 
 type resourceDAO struct {
@@ -227,6 +228,38 @@ func (dao *resourceDAO) PipelineByModelUid(ctx context.Context) ([]Pipeline, err
 	return result, nil
 }
 
+func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"$text": bson.M{"$search": text}}
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
+		{{"$group", bson.D{
+			{"_id", "$model_uid"},
+			{"total", bson.D{{"$sum", 1}}},
+			{"data", bson.D{{"$push", "$$ROOT"}}},
+		}}},
+		{{"$sort", bson.D{
+			{"total", -1}, // 以 total 字段降序排序
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []SearchResource
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
+}
+
 type Resource struct {
 	ID       int64         `bson:"id"`
 	ModelUID string        `bson:"model_uid"`
@@ -238,4 +271,10 @@ type Resource struct {
 type Pipeline struct {
 	ModelUid string `bson:"_id"`
 	Total    int    `bson:"total"`
+}
+
+type SearchResource struct {
+	ModelUid string          `bson:"_id"`
+	Total    int             `bson:"total"`
+	Data     []mongox.MapStr `bson:"data"`
 }

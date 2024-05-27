@@ -13,3 +13,9 @@ type ResourceRelation struct {
 	ModelUid  string
 	Resources []Resource
 }
+
+type SearchResource struct {
+	ModelUid string
+	Total    int `json:"total"`
+	Data     []mongox.MapStr
+}

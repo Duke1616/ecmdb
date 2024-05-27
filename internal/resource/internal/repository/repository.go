@@ -18,6 +18,7 @@ type ResourceRepository interface {
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 
 	PipelineByModelUid(ctx context.Context) (map[string]int, error)
+	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 }
 
 type resourceRepository struct {
@@ -87,6 +88,18 @@ func (r *resourceRepository) TotalExcludeResourceByIds(ctx context.Context, mode
 
 func (r *resourceRepository) DeleteResource(ctx context.Context, id int64) (int64, error) {
 	return r.dao.DeleteResource(ctx, id)
+}
+
+func (r *resourceRepository) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
+	search, err := r.dao.Search(ctx, text)
+	
+	return slice.Map(search, func(idx int, src dao.SearchResource) domain.SearchResource {
+		return domain.SearchResource{
+			ModelUid: src.ModelUid,
+			Total:    src.Total,
+			Data:     src.Data,
+		}
+	}), err
 }
 
 func (r *resourceRepository) toEntity(req domain.Resource) dao.Resource {

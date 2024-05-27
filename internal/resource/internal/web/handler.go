@@ -44,6 +44,8 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 根据模型 UID 查询资源列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
 
+	// 全文检索
+	g.POST("/search", ginx.WrapBody[SearchReq](h.Search))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -182,11 +184,9 @@ func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, 
 		return src.TargetResourceID
 	})
 	dstId = slice.Map(graph.DST, func(idx int, src relation.ResourceRelation) int64 {
-		fmt.Println("src", src)
 		return src.SourceResourceID
 	})
 
-	fmt.Println(srcId, dstId)
 	ids := append(srcId, dstId...)
 
 	// 查询节点信息
@@ -274,7 +274,6 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 		return systemErrorResult, err
 	}
 
-	fmt.Println(rs)
 	// 组合前端返回数据
 	assets := make(map[string][]ResourceAssets, len(diagram.DST)+len(diagram.SRC))
 	assets = slice.ToMapV(rs, func(element domain.Resource) (string, []ResourceAssets) {
@@ -324,6 +323,22 @@ func (h *Handler) ListResourceByIds(ctx *gin.Context, req ListResourceByIdsReq) 
 		},
 		Msg: "根据ID查询资源成功",
 	}, nil
+}
+
+func (h *Handler) Search(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
+	search, err := h.svc.Search(ctx, req.Text)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: slice.Map(search, func(idx int, src domain.SearchResource) RetrieveSearchResources {
+			return RetrieveSearchResources{
+				ModelUid: src.ModelUid,
+				Total:    src.Total,
+				Data:     src.Data,
+			}
+		}),
+	}, err
 }
 
 func (h *Handler) DeleteResource(ctx *gin.Context, req DeleteResourceReq) (ginx.Result, error) {

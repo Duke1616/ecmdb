@@ -38,8 +38,6 @@ func (dao *attributeGroupDAO) CreateAttributeGroup(ctx context.Context, req Attr
 		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
 
-	fmt.Print(req.Id, "创建ID")
-
 	return req.Id, nil
 }
 

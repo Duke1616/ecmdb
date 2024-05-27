@@ -274,7 +274,7 @@ func (dao *resourceDAO) TotalExcludeAndFilterResourceByIds(ctx context.Context, 
 		filters[filter.Name] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
 	}
 
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := col.CountDocuments(ctx, filters)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}

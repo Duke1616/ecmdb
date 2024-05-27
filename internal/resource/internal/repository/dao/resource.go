@@ -3,8 +3,10 @@ package dao
 import (
 	"context"
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -18,10 +20,11 @@ type ResourceDAO interface {
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
 	Count(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
-	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error)
-	TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
-
+	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
+		ids []int64, filter domain.Condition) ([]Resource, error)
+	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64,
+		filter domain.Condition) (int64, error)
 	PipelineByModelUid(ctx context.Context) ([]Pipeline, error)
 	Search(ctx context.Context, text string) ([]SearchResource, error)
 }
@@ -137,59 +140,6 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string,
 	return result, nil
 }
 
-func (dao *resourceDAO) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
-	filter := bson.M{"model_uid": modelUid}
-
-	if len(ids) > 0 {
-		filter["id"] = bson.M{
-			"$nin": ids,
-		}
-	}
-	projection := make(map[string]int, len(fields))
-	for _, v := range fields {
-		projection[v] = 1
-	}
-	projection["_id"] = 0
-	projection["id"] = 1
-	projection["model_uid"] = 1
-	projection["name"] = 1
-
-	opts := &options.FindOptions{
-		Projection: projection,
-		Limit:      &limit,
-		Skip:       &offset,
-	}
-
-	cursor, err := col.Find(ctx, filter, opts)
-	var result []Resource
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
-}
-
-func (dao *resourceDAO) TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
-	filter := bson.M{"model_uid": modelUid}
-
-	if len(ids) > 0 {
-		filter["id"] = bson.M{
-			"$nin": ids,
-		}
-	}
-
-	count, err := col.CountDocuments(ctx, filter)
-	if err != nil {
-		return 0, fmt.Errorf("文档计数错误: %w", err)
-	}
-
-	return count, nil
-}
-
 func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
@@ -258,6 +208,78 @@ func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResour
 	}
 
 	return result, nil
+}
+
+func (dao *resourceDAO) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string,
+	offset, limit int64, ids []int64, filter domain.Condition) ([]Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filters := bson.M{"model_uid": modelUid}
+	if len(ids) > 0 {
+		filters["id"] = bson.M{
+			"$nin": ids,
+		}
+	}
+
+	switch filter.Condition {
+	case "not_equal":
+		filters[filter.Name] = bson.M{"$ne": filter.Input}
+	case "equal":
+		filters[filter.Name] = filter.Input
+	case "contains":
+		filters[filter.Name] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
+	}
+
+	projection := make(map[string]int, len(fields))
+	for _, v := range fields {
+		projection[v] = 1
+	}
+	projection["_id"] = 0
+	projection["id"] = 1
+	projection["model_uid"] = 1
+	projection["name"] = 1
+
+	opts := &options.FindOptions{
+		Projection: projection,
+		Limit:      &limit,
+		Skip:       &offset,
+	}
+
+	cursor, err := col.Find(ctx, filters, opts)
+	var result []Resource
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *resourceDAO) TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string,
+	ids []int64, filter domain.Condition) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filters := bson.M{"model_uid": modelUid}
+	if len(ids) > 0 {
+		filters["id"] = bson.M{
+			"$nin": ids,
+		}
+	}
+
+	switch filter.Condition {
+	case "not_equal":
+		filters[filter.Name] = bson.M{"$ne": filter.Input}
+	case "equal":
+		filters[filter.Name] = filter.Input
+	case "contains":
+		filters[filter.Name] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 type Resource struct {

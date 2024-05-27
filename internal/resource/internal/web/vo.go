@@ -40,6 +40,17 @@ type ListCanBeRelatedReq struct {
 	RelationName string `json:"relation_name"` // 关联类型，以方便推断是数据正向 OR 反向
 }
 
+type ListCanBeRelatedReqByModel struct {
+	Page
+	ResourceId      int64  `json:"resource_id"`      // 当前资源ID
+	ModelUid        string `json:"model_uid"`        // 目标模型ID
+	RelationName    string `json:"relation_name"`    // 关联类型，以方便推断是数据正向 OR 反向
+	FilterName      string `json:"filter_name"`      // 过滤名称
+	FilterCondition string `json:"filter_condition"` // 过滤条件
+	FilterInput     string `json:"filter_input"`     // 过滤输入
+
+}
+
 type ListDiagramReq struct {
 	ModelUid     string `json:"model_uid"`
 	ResourceId   int64  `json:"resource_id"`

@@ -14,15 +14,12 @@ type Service interface {
 
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
-
-	// ListExcludeResourceByIds 排除部分的 ids
-	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, int64, error)
-
+	// ListExcludeAndFilterResourceByIds 排序以及过滤
+	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
+		ids []int64, filter domain.Condition) ([]domain.Resource, int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
-
 	// PipelineByModelUid 聚合查看模型下的数量
 	PipelineByModelUid(ctx context.Context) (map[string]int, error)
-
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 }
 
@@ -70,7 +67,8 @@ func (s *service) ListResourceByIds(ctx context.Context, fields []string, ids []
 	return s.repo.ListResourcesByIds(ctx, fields, ids)
 }
 
-func (s *service) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, int64, error) {
+func (s *service) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset,
+	limit int64, ids []int64, filter domain.Condition) ([]domain.Resource, int64, error) {
 	var (
 		total     int64
 		resources []domain.Resource
@@ -78,12 +76,12 @@ func (s *service) ListExcludeResourceByIds(ctx context.Context, fields []string,
 	)
 	eg.Go(func() error {
 		var err error
-		resources, err = s.repo.ListExcludeResourceByIds(ctx, fields, modelUid, offset, limit, ids)
+		resources, err = s.repo.ListExcludeAndFilterResourceByIds(ctx, fields, modelUid, offset, limit, ids, filter)
 		return err
 	})
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalExcludeResourceByIds(ctx, modelUid, ids)
+		total, err = s.repo.TotalExcludeAndFilterResourceByIds(ctx, modelUid, ids, filter)
 		return err
 	})
 	if err := eg.Wait(); err != nil {

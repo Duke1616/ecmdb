@@ -13,10 +13,10 @@ type ResourceRepository interface {
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
 	Total(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
-	ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error)
-	TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
-
+	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
+		ids []int64, filter domain.Condition) ([]domain.Resource, error)
+	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64, filter domain.Condition) (int64, error)
 	PipelineByModelUid(ctx context.Context) (map[string]int, error)
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 }
@@ -74,25 +74,13 @@ func (r *resourceRepository) Total(ctx context.Context, modelUid string) (int64,
 	return r.dao.Count(ctx, modelUid)
 }
 
-func (r *resourceRepository) ListExcludeResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64) ([]domain.Resource, error) {
-	rrs, err := r.dao.ListExcludeResourceByIds(ctx, fields, modelUid, offset, limit, ids)
-
-	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
-		return r.toDomain(src)
-	}), err
-}
-
-func (r *resourceRepository) TotalExcludeResourceByIds(ctx context.Context, modelUid string, ids []int64) (int64, error) {
-	return r.dao.TotalExcludeResourceByIds(ctx, modelUid, ids)
-}
-
 func (r *resourceRepository) DeleteResource(ctx context.Context, id int64) (int64, error) {
 	return r.dao.DeleteResource(ctx, id)
 }
 
 func (r *resourceRepository) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
 	search, err := r.dao.Search(ctx, text)
-	
+
 	return slice.Map(search, func(idx int, src dao.SearchResource) domain.SearchResource {
 		return domain.SearchResource{
 			ModelUid: src.ModelUid,
@@ -100,6 +88,20 @@ func (r *resourceRepository) Search(ctx context.Context, text string) ([]domain.
 			Data:     src.Data,
 		}
 	}), err
+}
+
+func (r *resourceRepository) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string,
+	offset, limit int64, ids []int64, filter domain.Condition) ([]domain.Resource, error) {
+	rrs, err := r.dao.ListExcludeAndFilterResourceByIds(ctx, fields, modelUid, offset, limit, ids, filter)
+
+	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+		return r.toDomain(src)
+	}), err
+}
+
+func (r *resourceRepository) TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64,
+	filter domain.Condition) (int64, error) {
+	return r.dao.TotalExcludeAndFilterResourceByIds(ctx, modelUid, ids, filter)
 }
 
 func (r *resourceRepository) toEntity(req domain.Resource) dao.Resource {

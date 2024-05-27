@@ -37,7 +37,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
 	g.POST("/delete", ginx.WrapBody[DeleteResourceReq](h.DeleteResource))
 	// 资源关联关系
-	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReq](h.ListCanBeRelated))
+	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReqByModel](h.ListCanBeFilterRelated))
 	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
 	g.POST("/relation/graph", ginx.WrapBody[ListDiagramReq](h.FindGraph))
 
@@ -107,7 +107,7 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 	}, nil
 }
 
-func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (ginx.Result, error) {
+func (h *Handler) ListCanBeFilterRelated(ctx *gin.Context, req ListCanBeRelatedReqByModel) (ginx.Result, error) {
 	var (
 		mUid       string
 		err        error
@@ -122,6 +122,7 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 		return systemErrorResult, fmt.Errorf("关联名称为空")
 	}
 
+	// 传递的是当前模型UID （特别注意）
 	rn := strings.Split(req.RelationName, "_")
 	if rn[0] == req.ModelUid {
 		mUid = rn[2]
@@ -130,16 +131,23 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 		mUid = rn[0]
 		excludeIds, err = h.RRSvc.ListDstRelated(ctx, rn[2], req.RelationName, req.ResourceId)
 	}
-
-	// 查看模型字段
-	// model_uid = mongo
-	fields, err := h.attrSvc.SearchAttributeFieldsByModelUid(ctx, mUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	// 排除已关联数据, 返回未关联数据
-	rrs, total, err := h.svc.ListExcludeResourceByIds(ctx, fields, mUid, req.Offset, req.Limit, excludeIds)
+	fields, err := h.attrSvc.SearchAttributeFieldsByModelUid(ctx, mUid)
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 排除已关联数据, 并且进行过滤，返回未关联数据
+	rrs, total, err := h.svc.ListExcludeAndFilterResourceByIds(ctx, fields, mUid, req.Offset, req.Limit, excludeIds,
+		domain.Condition{
+			Name:      req.FilterName,
+			Condition: req.FilterCondition,
+			Input:     req.FilterInput,
+		})
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -152,6 +160,7 @@ func (h *Handler) ListCanBeRelated(ctx *gin.Context, req ListCanBeRelatedReq) (g
 			Data:     src.Data,
 		}
 	})
+
 	return ginx.Result{
 		Data: RetrieveResources{
 			Resources: rs,

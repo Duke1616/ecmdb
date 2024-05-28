@@ -39,7 +39,9 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	// 资源关联关系
 	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReqByModel](h.ListCanBeFilterRelated))
 	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
-	g.POST("/relation/graph", ginx.WrapBody[ListDiagramReq](h.FindGraph))
+	g.POST("/relation/graph", ginx.WrapBody[ListDiagramReq](h.FindAllGraph))
+	g.POST("/relation/graph/add/left", ginx.WrapBody[ListDiagramReq](h.FindLeftGraph))
+	g.POST("/relation/graph/add/right", ginx.WrapBody[ListDiagramReq](h.FindRightGraph))
 
 	// 根据模型 UID 查询资源列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
@@ -169,7 +171,7 @@ func (h *Handler) ListCanBeFilterRelated(ctx *gin.Context, req ListCanBeRelatedR
 	}, nil
 }
 
-func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
+func (h *Handler) FindAllGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
 	// 查询资产关联上下级拓扑
 	graph, _, err := h.RRSvc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
 	if err != nil {
@@ -236,6 +238,108 @@ func (h *Handler) FindGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, 
 		Data: map[string]any{
 			"model_uid": req.ModelUid,
 		},
+	})
+
+	return ginx.Result{
+		Data: RetrieveGraph{
+			Lines:  lines,
+			Nodes:  nodes,
+			RootId: strconv.FormatInt(req.ResourceId, 10),
+		},
+	}, nil
+}
+
+func (h *Handler) FindLeftGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
+	// 查询资产关联上下级拓扑
+	graphLeft, _, err := h.RRSvc.ListDstResources(ctx, req.ModelUid, req.ResourceId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	var (
+		srcIds []int64
+	)
+
+	lines := slice.Map(graphLeft, func(idx int, src relation.ResourceRelation) Line {
+		return Line{
+			From: strconv.FormatInt(src.SourceResourceID, 10),
+			To:   strconv.FormatInt(src.TargetResourceID, 10),
+		}
+	})
+
+	// 查询关联的所有节点 ids
+	srcIds = slice.Map(graphLeft, func(idx int, src relation.ResourceRelation) int64 {
+		return src.TargetResourceID
+	})
+
+	// 查询节点信息
+	rs, err := h.svc.ListResourceByIds(ctx, nil, srcIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	nodes := slice.Map(rs, func(idx int, src domain.Resource) Node {
+		data := make(map[string]any, 1)
+		data["model_uid"] = src.ModelUID
+		data["isNeedLoadDataFromRemoteServer"] = true
+		data["childrenLoaded"] = false
+		return Node{
+			ID:                   strconv.FormatInt(src.ID, 10),
+			Text:                 src.Name,
+			ExpandHolderPosition: "left",
+			Expanded:             false,
+			Data:                 data,
+		}
+	})
+
+	return ginx.Result{
+		Data: RetrieveGraph{
+			Lines:  lines,
+			Nodes:  nodes,
+			RootId: strconv.FormatInt(req.ResourceId, 10),
+		},
+	}, nil
+}
+
+func (h *Handler) FindRightGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
+	// 查询资产关联上下级拓扑
+	graphRight, _, err := h.RRSvc.ListSrcResources(ctx, req.ModelUid, req.ResourceId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	var (
+		srcIds []int64
+	)
+
+	lines := slice.Map(graphRight, func(idx int, src relation.ResourceRelation) Line {
+		return Line{
+			From: strconv.FormatInt(src.SourceResourceID, 10),
+			To:   strconv.FormatInt(src.TargetResourceID, 10),
+		}
+	})
+
+	// 查询关联的所有节点 ids
+	srcIds = slice.Map(graphRight, func(idx int, src relation.ResourceRelation) int64 {
+		return src.TargetResourceID
+	})
+
+	// 查询节点信息
+	rs, err := h.svc.ListResourceByIds(ctx, nil, srcIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	nodes := slice.Map(rs, func(idx int, src domain.Resource) Node {
+		data := make(map[string]any, 1)
+		data["model_uid"] = src.ModelUID
+		data["isNeedLoadDataFromRemoteServer"] = true
+		data["childrenLoaded"] = false
+		return Node{
+			ID:                   strconv.FormatInt(src.ID, 10),
+			Text:                 src.Name,
+			ExpandHolderPosition: "right",
+			Expanded:             false,
+			Data:                 data,
+		}
 	})
 
 	return ginx.Result{

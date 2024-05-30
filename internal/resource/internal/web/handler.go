@@ -268,7 +268,7 @@ func (h *Handler) FindLeftGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Resu
 
 	// 查询关联的所有节点 ids
 	srcIds = slice.Map(graphLeft, func(idx int, src relation.ResourceRelation) int64 {
-		return src.TargetResourceID
+		return src.SourceResourceID
 	})
 
 	// 查询节点信息

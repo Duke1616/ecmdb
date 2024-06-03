@@ -48,6 +48,9 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	// 全文检索
 	g.POST("/search", ginx.WrapBody[SearchReq](h.Search))
+
+	// 查询加密字段信息
+	g.POST("/secure", ginx.WrapBody[FindSecureReq](h.FindSecureData))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -462,6 +465,17 @@ func (h *Handler) DeleteResource(ctx *gin.Context, req DeleteResourceReq) (ginx.
 	return ginx.Result{
 		Data: count,
 	}, nil
+}
+
+func (h *Handler) FindSecureData(ctx *gin.Context, req FindSecureReq) (ginx.Result, error) {
+	data, err := h.svc.FindSecureData(ctx, req.ID, req.FieldUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: data,
+	}, err
 }
 
 func (h *Handler) toDomain(req CreateResourceReq) domain.Resource {

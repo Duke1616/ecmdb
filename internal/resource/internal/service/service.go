@@ -10,7 +10,8 @@ import (
 type Service interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
-	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, int64, error)
+	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource,
+		int64, error)
 
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
@@ -21,6 +22,8 @@ type Service interface {
 	// PipelineByModelUid 聚合查看模型下的数量
 	PipelineByModelUid(ctx context.Context) (map[string]int, error)
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
+
+	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 }
 
 type service struct {
@@ -34,6 +37,7 @@ func NewService(repo repository.ResourceRepository) Service {
 }
 
 func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
+	// TODO 判断是否为加密模型，
 	return s.repo.CreateResource(ctx, req)
 }
 
@@ -100,4 +104,12 @@ func (s *service) PipelineByModelUid(ctx context.Context) (map[string]int, error
 
 func (s *service) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
 	return s.repo.Search(ctx, text)
+}
+
+func (s *service) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
+	return s.repo.FindSecureData(ctx, id, fieldUid)
+}
+
+func (s *service) desensitization(ctx context.Context, modelUid string) ([]domain.Resource, error) {
+	return nil, nil
 }

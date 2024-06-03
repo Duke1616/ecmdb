@@ -139,5 +139,6 @@ func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
 		FieldType: "string",
 		FieldUid:  "name",
 		GroupId:   groupId,
+		Secure:    false,
 	}
 }

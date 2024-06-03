@@ -27,10 +27,35 @@ type ResourceDAO interface {
 		filter domain.Condition) (int64, error)
 	PipelineByModelUid(ctx context.Context) ([]Pipeline, error)
 	Search(ctx context.Context, text string) ([]SearchResource, error)
+
+	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 }
 
 type resourceDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"id": id}
+	projection := make(map[string]int, 1)
+	projection[fieldUid] = 1
+	opts := &options.FindOneOptions{
+		Projection: projection,
+	}
+
+	var result = make(map[string]string)
+
+	if err := col.FindOne(ctx, filter, opts).Decode(&result); err != nil {
+		return "", fmt.Errorf("解码错误: %w", err)
+	}
+
+	fieldValue, ok := result[fieldUid]
+	if !ok {
+		return "", fmt.Errorf("未找到字段: %s", fieldUid)
+	}
+
+	return fieldValue, nil
 }
 
 func NewResourceDAO(db *mongox.Mongo) ResourceDAO {

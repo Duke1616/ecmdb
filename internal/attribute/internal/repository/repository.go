@@ -85,6 +85,7 @@ func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		FieldType: req.FieldType,
 		GroupId:   req.GroupId,
 		Required:  req.Required,
+		Secure:    req.Secure,
 		Index:     req.Index,
 		Display:   req.Display,
 	}
@@ -97,6 +98,7 @@ func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		FieldName: attr.FieldName,
 		FieldType: attr.FieldType,
 		ModelUid:  attr.ModelUID,
+		Secure:    attr.Secure,
 		Required:  attr.Required,
 		Display:   attr.Display,
 		Index:     attr.Index,

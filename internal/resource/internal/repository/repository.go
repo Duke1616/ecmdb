@@ -19,6 +19,8 @@ type ResourceRepository interface {
 	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64, filter domain.Condition) (int64, error)
 	PipelineByModelUid(ctx context.Context) (map[string]int, error)
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
+
+	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 }
 
 type resourceRepository struct {
@@ -102,6 +104,10 @@ func (r *resourceRepository) ListExcludeAndFilterResourceByIds(ctx context.Conte
 func (r *resourceRepository) TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64,
 	filter domain.Condition) (int64, error) {
 	return r.dao.TotalExcludeAndFilterResourceByIds(ctx, modelUid, ids, filter)
+}
+
+func (r *resourceRepository) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
+	return r.dao.FindSecureData(ctx, id, fieldUid)
 }
 
 func (r *resourceRepository) toEntity(req domain.Resource) dao.Resource {

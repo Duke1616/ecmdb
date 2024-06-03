@@ -103,6 +103,11 @@ type SearchReq struct {
 	AndText []string `json:"and_text"`
 }
 
+type FindSecureReq struct {
+	ID       int64  `json:"id"`
+	FieldUid string `json:"field_uid"`
+}
+
 type Resource struct {
 	ID       int64         `json:"id"`
 	Name     string        `json:"name"`

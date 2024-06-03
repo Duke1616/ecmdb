@@ -54,12 +54,15 @@ func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (i
 
 func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {
 	col := dao.db.Collection(AttributeCollection)
-	filer := bson.M{"model_uid": modelUid}
+	filter := bson.M{}
+	filter["model_uid"] = modelUid
+	filter["secure"] = bson.M{"$ne": true}
+
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	cursor, err := col.Find(ctx, filer, opt)
+	cursor, err := col.Find(ctx, filter, opt)
 	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
@@ -72,6 +75,7 @@ func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
+
 	return result, nil
 }
 
@@ -198,6 +202,7 @@ type Attribute struct {
 	Required  bool   `bson:"required"`   // 是否为必传
 	Display   bool   `bson:"display"`    // 是否前端展示
 	Index     int64  `bson:"index"`      // 字段前端展示顺序
+	Secure    bool   `bson:"secure"`     // 是否字段安全、脱敏、加密
 	Ctime     int64  `bson:"ctime"`
 	Utime     int64  `bson:"utime"`
 }

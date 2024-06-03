@@ -9,6 +9,7 @@ type Attribute struct {
 	FieldType string
 	Required  bool
 	Display   bool
+	Secure    bool
 	Index     int64
 }
 

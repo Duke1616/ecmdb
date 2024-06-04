@@ -206,16 +206,18 @@ func (dao *resourceDAO) PipelineByModelUid(ctx context.Context) ([]Pipeline, err
 func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResource, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"$text": bson.M{"$search": text}}
-	pipeline := mongo.Pipeline{
-		{{"$match", filter}},
-		{{"$group", bson.D{
+	groupStage := bson.D{
+		{"$group", bson.D{
 			{"_id", "$model_uid"},
 			{"total", bson.D{{"$sum", 1}}},
 			{"data", bson.D{{"$push", "$$ROOT"}}},
-		}}},
-		{{"$sort", bson.D{
-			{"total", -1}, // 以 total 字段降序排序
-		}}},
+		}},
+	}
+
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
+		groupStage,
+		{{"$sort", bson.D{{"total", -1}}}},
 	}
 
 	cursor, err := col.Aggregate(ctx, pipeline)

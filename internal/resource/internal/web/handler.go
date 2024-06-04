@@ -446,8 +446,28 @@ func (h *Handler) Search(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, err
 	}
+
+	modelUids := slice.Map(search, func(idx int, src domain.SearchResource) string {
+		return src.ModelUid
+	})
+
+	fields, err := h.attrSvc.SearchAttributeFieldsBySecure(ctx, modelUids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
 	return ginx.Result{
 		Data: slice.Map(search, func(idx int, src domain.SearchResource) RetrieveSearchResources {
+			val, ok := fields[src.ModelUid]
+			if ok {
+				for _, name := range src.Data {
+					for key := range name {
+						if contains(val, key) {
+							name[key] = ""
+						}
+					}
+				}
+			}
 			return RetrieveSearchResources{
 				ModelUid: src.ModelUid,
 				Total:    src.Total,
@@ -495,4 +515,13 @@ func (h *Handler) toResourceRelationVo(src relation.ResourceRelation) ResourceRe
 		RelationTypeUID:  src.RelationTypeUID,
 		RelationName:     src.RelationName,
 	}
+}
+
+func contains(slice []string, elem string) bool {
+	for _, e := range slice {
+		if e == elem {
+			return true
+		}
+	}
+	return false
 }

@@ -14,6 +14,8 @@ type Service interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 	// SearchAttributeFieldsByModelUid 查询模型下的所有字段信息，内部使用
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
+	// SearchAttributeFieldsBySecure 查询全有的安全字段
+	SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error)
 	// ListAttributes 查询模型下的所有字段详情信息，前端使用
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, int64, error)
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
@@ -127,6 +129,10 @@ func (s *service) CreateAttributeGroup(ctx context.Context, req domain.Attribute
 
 func (s *service) ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error) {
 	return s.repo.ListAttributePipeline(ctx, modelUid)
+}
+
+func (s *service) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error) {
+	return s.repo.SearchAttributeFieldsBySecure(ctx, modelUids)
 }
 
 func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {

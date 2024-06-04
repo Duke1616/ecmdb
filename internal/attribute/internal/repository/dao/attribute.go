@@ -16,7 +16,7 @@ const AttributeCollection = "c_attribute"
 type AttributeDAO interface {
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
 	SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error)
-
+	SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) ([]Attribute, error)
 	ListAttribute(ctx context.Context, modelUid string) ([]Attribute, error)
 	Count(ctx context.Context, modelUid string) (int64, error)
 
@@ -182,6 +182,33 @@ func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid str
 	}
 
 	var result []AttributePipeline
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
+}
+
+func (dao *attributeDAO) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) ([]Attribute, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{}
+	filter["secure"] = bson.M{"$eq": true}
+	filter["model_uid"] = bson.M{"$in": modelUids}
+
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, filter, opt)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Attribute
 	if err = cursor.All(ctx, &result); err != nil {
 		return nil, fmt.Errorf("解码错误: %w", err)
 	}

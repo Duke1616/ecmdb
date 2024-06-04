@@ -11,7 +11,7 @@ import (
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
-
+	SearchAttributeFieldsBySecure(ctx context.Context, modelUid []string) (map[string][]string, error)
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error)
 	Total(ctx context.Context, modelUID string) (int64, error)
 
@@ -74,6 +74,18 @@ func (a *attributeRepository) ListAttributePipeline(ctx context.Context, modelUi
 	rrs, err := a.dao.ListAttributePipeline(ctx, modelUid)
 	return slice.Map(rrs, func(idx int, src dao.AttributePipeline) domain.AttributePipeline {
 		return a.toAttributeGroupsDomain(src)
+	}), err
+}
+
+func (a *attributeRepository) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error) {
+	attrs, err := a.dao.SearchAttributeFieldsBySecure(ctx, modelUids)
+	return slice.ToMapV(attrs, func(element dao.Attribute) (string, []string) {
+		return element.ModelUID, slice.FilterMap(attrs, func(idx int, src dao.Attribute) (string, bool) {
+			if src.ModelUID == element.ModelUID {
+				return src.FieldUid, true
+			}
+			return "", false
+		})
 	}), err
 }
 

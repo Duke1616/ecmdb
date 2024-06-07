@@ -99,6 +99,7 @@ func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		Required:  req.Required,
 		Secure:    req.Secure,
 		Index:     req.Index,
+		Option:    req.Option,
 		Display:   req.Display,
 	}
 }
@@ -112,6 +113,7 @@ func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		ModelUid:  attr.ModelUID,
 		Secure:    attr.Secure,
 		Required:  attr.Required,
+		Option:    attr.Option,
 		Display:   attr.Display,
 		Index:     attr.Index,
 	}

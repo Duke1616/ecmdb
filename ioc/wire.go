@@ -7,11 +7,12 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis)
+var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis, InitMQ, InitWorkWx)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
@@ -28,6 +29,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*relation.Module), "RRHdl", "RMHdl", "RTHdl"),
 		user.InitModule,
 		wire.FieldsOf(new(*user.Module), "Hdl"),
+		template.InitModule,
+		wire.FieldsOf(new(*template.Module), "Hdl"),
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

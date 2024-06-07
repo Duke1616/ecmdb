@@ -11,6 +11,7 @@ type Attribute struct {
 	Display   bool
 	Secure    bool
 	Index     int64
+	Option    interface{}
 }
 
 type AttributeGroup struct {

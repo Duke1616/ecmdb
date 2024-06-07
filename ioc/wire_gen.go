@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/google/wire"
 )
@@ -51,7 +52,14 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler3 := userModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3)
+	mq := InitMQ(viper)
+	workwxApp := InitWorkWx(viper)
+	templateModule, err := template.InitModule(mq, workwxApp)
+	if err != nil {
+		return nil, err
+	}
+	handler4 := templateModule.Hdl
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3, handler4)
 	app := &App{
 		Web: engine,
 	}
@@ -60,4 +68,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis)
+var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis, InitMQ, InitWorkWx)

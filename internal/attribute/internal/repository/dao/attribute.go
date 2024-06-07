@@ -40,6 +40,7 @@ func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
 
 func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (int64, error) {
 	attr.Id = dao.db.GetIdGenerator(AttributeCollection)
+
 	col := dao.db.Collection(AttributeCollection)
 	now := time.Now()
 	attr.Ctime, attr.Utime = now.UnixMilli(), now.UnixMilli()
@@ -220,18 +221,19 @@ func (dao *attributeDAO) SearchAttributeFieldsBySecure(ctx context.Context, mode
 }
 
 type Attribute struct {
-	Id        int64  `bson:"id"`
-	GroupId   int64  `bson:"group_id"`   // 属性所属分组
-	ModelUID  string `bson:"model_uid"`  // 模型唯一标识
-	FieldUid  string `bson:"field_uid"`  // 字段唯一标识
-	FieldName string `bson:"field_name"` // 字段名称
-	FieldType string `bson:"field_type"` // 字段类型
-	Required  bool   `bson:"required"`   // 是否为必传
-	Display   bool   `bson:"display"`    // 是否前端展示
-	Index     int64  `bson:"index"`      // 字段前端展示顺序
-	Secure    bool   `bson:"secure"`     // 是否字段安全、脱敏、加密
-	Ctime     int64  `bson:"ctime"`
-	Utime     int64  `bson:"utime"`
+	Id        int64       `bson:"id"`
+	GroupId   int64       `bson:"group_id"`   // 属性所属分组
+	ModelUID  string      `bson:"model_uid"`  // 模型唯一标识
+	FieldUid  string      `bson:"field_uid"`  // 字段唯一标识
+	FieldName string      `bson:"field_name"` // 字段名称
+	FieldType string      `bson:"field_type"` // 字段类型
+	Required  bool        `bson:"required"`   // 是否为必传
+	Display   bool        `bson:"display"`    // 是否前端展示
+	Index     int64       `bson:"index"`      // 字段前端展示顺序
+	Secure    bool        `bson:"secure"`     // 是否字段安全、脱敏、加密
+	Option    interface{} `bson:"option"`     // TODO: 为了后续扩展，不同类型的 option 可能不同
+	Ctime     int64       `bson:"ctime"`
+	Utime     int64       `bson:"utime"`
 }
 
 type AttributePipeline struct {

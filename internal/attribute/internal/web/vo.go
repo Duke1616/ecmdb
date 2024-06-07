@@ -5,13 +5,14 @@ import (
 )
 
 type CreateAttributeReq struct {
-	GroupId   int64  `json:"group_id"`
-	FieldUid  string `json:"field_uid"`
-	ModelUid  string `json:"model_uid"`
-	FieldName string `json:"field_name"`
-	FieldType string `json:"field_type"`
-	Secure    bool   `json:"secure"`
-	Required  bool   `json:"required"`
+	GroupId   int64       `json:"group_id"`
+	FieldUid  string      `json:"field_uid"`
+	ModelUid  string      `json:"model_uid"`
+	FieldName string      `json:"field_name"`
+	FieldType string      `json:"field_type"`
+	Secure    bool        `json:"secure"`
+	Required  bool        `json:"required"`
+	Option    interface{} `json:"option"`
 }
 
 type CreateAttributeGroup struct {
@@ -36,15 +37,16 @@ type DeleteAttributeReq struct {
 }
 
 type Attribute struct {
-	ID        int64  `json:"id"`
-	ModelUid  string `json:"model_uid"`
-	FieldUid  string `json:"field_uid"`
-	FieldName string `json:"field_name"`
-	FieldType string `json:"field_type"`
-	Required  bool   `json:"required"`
-	Secure    bool   `json:"secure"`
-	Display   bool   `json:"display"`
-	Index     int64  `json:"index"`
+	ID        int64       `json:"id"`
+	ModelUid  string      `json:"model_uid"`
+	FieldUid  string      `json:"field_uid"`
+	FieldName string      `json:"field_name"`
+	FieldType string      `json:"field_type"`
+	Required  bool        `json:"required"`
+	Secure    bool        `json:"secure"`
+	Display   bool        `json:"display"`
+	Option    interface{} `json:"option"`
+	Index     int64       `json:"index"`
 }
 
 type AttributeGroup struct {
@@ -96,6 +98,7 @@ func toDomain(req CreateAttributeReq) domain.Attribute {
 		FieldType: req.FieldType,
 		Required:  req.Required,
 		Secure:    req.Secure,
+		Option:    req.Option,
 	}
 }
 
@@ -108,6 +111,7 @@ func toAttributeVo(attr domain.Attribute) Attribute {
 		FieldType: attr.FieldType,
 		Required:  attr.Required,
 		Display:   attr.Display,
+		Option:    attr.Option,
 		Secure:    attr.Secure,
 		Index:     attr.Index,
 	}

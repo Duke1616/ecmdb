@@ -15,7 +15,5 @@ func InitLdapConfig(viper *viper.Viper) ldapx.Config {
 		panic(fmt.Errorf("unable to decode into struct: %v", err))
 	}
 
-	fmt.Println(cfg)
-
 	return cfg
 }

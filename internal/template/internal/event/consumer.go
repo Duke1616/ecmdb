@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
+	"github.com/Duke1616/ecmdb/pkg/hash"
+
 	"log/slog"
 
 	"github.com/ecodeclub/mq-api"
@@ -67,25 +69,31 @@ func (c *WechatApprovalCallbackConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	template := domain.Template{
-		WechatApprovalInfo: evt,
-	}
-
-	detail, err := c.workApp.GetOATemplateDetail(evt.TemplateID)
+	OAInfo, err := c.workApp.GetOATemplateDetail(evt.TemplateID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("模版信息", detail)
+	wechatOAInfo := domain.WechatInfo{
+		Id:       evt.TemplateID,
+		Name:     OAInfo.TemplateNames[0].Text,
+		Controls: OAInfo.TemplateContent,
+	}
+
+	template := domain.Template{
+		CreateType:   domain.WechatCreate,
+		WechatOAInfo: wechatOAInfo,
+		UniqueHash:   hash.Hash(wechatOAInfo),
+	}
 
 	approvalDetail, err := c.workApp.GetOAApprovalDetail(evt.SpNo)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("审批详情", approvalDetail)
+	fmt.Println("订单号", approvalDetail)
 
-	if err = c.svc.CreateTemplate(ctx, template); err != nil {
+	if _, err = c.svc.FindOrCreateTemplate(ctx, template); err != nil {
 		slog.Error("新增模版信息", err)
 	}
 

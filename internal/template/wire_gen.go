@@ -9,8 +9,11 @@ package template
 import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/template/internal/event"
+	"github.com/Duke1616/ecmdb/internal/template/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/template/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
 	"github.com/Duke1616/ecmdb/internal/template/internal/web"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"github.com/xen0n/go-workwx"
@@ -18,8 +21,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, workAPP *workwx.WorkwxApp) (*Module, error) {
-	serviceService := service.NewService()
+func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
+	templateDAO := dao.NewTemplateDAO(db)
+	templateRepository := repository.NewTemplateRepository(templateDAO)
+	serviceService := service.NewService(templateRepository)
 	wechatApprovalCallbackConsumer := initConsumer(serviceService, q, workAPP)
 	handler := web.NewHandler(serviceService)
 	module := &Module{
@@ -32,7 +37,7 @@ func InitModule(q mq.MQ, workAPP *workwx.WorkwxApp) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTemplateRepository, dao.NewTemplateDAO)
 
 func initConsumer(svc service.Service, q mq.MQ, workAPP *workwx.WorkwxApp) *event.WechatApprovalCallbackConsumer {
 	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q, workAPP)

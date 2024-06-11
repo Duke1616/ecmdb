@@ -54,7 +54,7 @@ func InitApp() (*App, error) {
 	handler3 := userModule.Hdl
 	mq := InitMQ(viper)
 	workwxApp := InitWorkWx(viper)
-	templateModule, err := template.InitModule(mq, workwxApp)
+	templateModule, err := template.InitModule(mq, mongo, workwxApp)
 	if err != nil {
 		return nil, err
 	}

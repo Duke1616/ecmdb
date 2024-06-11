@@ -4,6 +4,8 @@ import (
 	"github.com/xen0n/go-workwx"
 )
 
-type WechatApprovalInfo struct {
-	Data workwx.OAApprovalInfo
+type WechatInfo struct {
+	Id       string
+	Name     string
+	Controls workwx.OATemplateControls
 }

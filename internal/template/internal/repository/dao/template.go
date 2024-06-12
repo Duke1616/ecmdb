@@ -18,7 +18,7 @@ const (
 )
 
 type TemplateDAO interface {
-	CreateTemplate(ctx context.Context, t Template) error
+	CreateTemplate(ctx context.Context, t Template) (int64, error)
 	FindByHash(ctx context.Context, hash string) (Template, error)
 }
 
@@ -32,7 +32,7 @@ type templateDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *templateDAO) CreateTemplate(ctx context.Context, t Template) error {
+func (dao *templateDAO) CreateTemplate(ctx context.Context, t Template) (int64, error) {
 	t.Id = dao.db.GetIdGenerator(TemplateCollection)
 	col := dao.db.Collection(TemplateCollection)
 	now := time.Now()
@@ -40,10 +40,10 @@ func (dao *templateDAO) CreateTemplate(ctx context.Context, t Template) error {
 
 	_, err := col.InsertOne(ctx, t)
 	if err != nil {
-		return fmt.Errorf("插入数据错误: %w", err)
+		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
 
-	return nil
+	return t.Id, nil
 }
 
 func (dao *templateDAO) FindByHash(ctx context.Context, hash string) (Template, error) {
@@ -59,17 +59,11 @@ func (dao *templateDAO) FindByHash(ctx context.Context, hash string) (Template, 
 }
 
 type Template struct {
-	Id           int64        `bson:"id"`
-	Name         string       `bson:"name"`
-	CreateType   uint8        `bson:"create_type"`
-	OAWechatInfo OAWechatInfo `bson:"wechat_info"`
-	UniqueHash   string       `bson:"unique_hash"`
-	Ctime        int64        `bson:"ctime"`
-	Utime        int64        `bson:"utime"`
-}
-
-type OAWechatInfo struct {
-	Id       string                    `bson:"id"`
-	Name     string                    `bson:"name"`
-	Controls workwx.OATemplateControls `bson:"controls,inline"`
+	Id               int64                     `bson:"id"`
+	Name             string                    `bson:"name"`
+	CreateType       uint8                     `bson:"create_type"`
+	WechatOAControls workwx.OATemplateControls `bson:"wechat_oa_controls"`
+	UniqueHash       string                    `bson:"unique_hash"`
+	Ctime            int64                     `bson:"ctime"`
+	Utime            int64                     `bson:"utime"`
 }

@@ -20,6 +20,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/template")
 	// 模型分组
 	g.POST("/create", ginx.WrapBody[CreateTemplateReq](h.CreateTemplate))
+
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {

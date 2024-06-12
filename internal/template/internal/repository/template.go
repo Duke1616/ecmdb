@@ -7,7 +7,7 @@ import (
 )
 
 type TemplateRepository interface {
-	CreateTemplate(ctx context.Context, req domain.Template) error
+	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	FindByHash(ctx context.Context, hash string) (domain.Template, error)
 }
 
@@ -21,7 +21,7 @@ type templateRepository struct {
 	dao dao.TemplateDAO
 }
 
-func (repo *templateRepository) CreateTemplate(ctx context.Context, req domain.Template) error {
+func (repo *templateRepository) CreateTemplate(ctx context.Context, req domain.Template) (int64, error) {
 	return repo.dao.CreateTemplate(ctx, repo.toEntity(req))
 }
 
@@ -32,26 +32,18 @@ func (repo *templateRepository) FindByHash(ctx context.Context, hash string) (do
 
 func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 	return dao.Template{
-		Name:       req.WechatOAInfo.Name,
-		CreateType: req.CreateType.ToUint8(),
-		UniqueHash: req.UniqueHash,
-		OAWechatInfo: dao.OAWechatInfo{
-			Id:       req.WechatOAInfo.Id,
-			Name:     req.WechatOAInfo.Name,
-			Controls: req.WechatOAInfo.Controls,
-		},
+		Name:             req.Name,
+		CreateType:       req.CreateType.ToUint8(),
+		UniqueHash:       req.UniqueHash,
+		WechatOAControls: req.WechatOAControls,
 	}
 }
 
 func (repo *templateRepository) toDomain(req dao.Template) domain.Template {
 	return domain.Template{
-		Id:         req.Id,
-		CreateType: domain.CreateType(req.CreateType),
-		WechatOAInfo: domain.WechatInfo{
-			Id:       req.OAWechatInfo.Id,
-			Name:     req.OAWechatInfo.Name,
-			Controls: req.OAWechatInfo.Controls,
-		},
-		UniqueHash: req.UniqueHash,
+		Id:               req.Id,
+		CreateType:       domain.CreateType(req.CreateType),
+		WechatOAControls: req.WechatOAControls,
+		UniqueHash:       req.UniqueHash,
 	}
 }

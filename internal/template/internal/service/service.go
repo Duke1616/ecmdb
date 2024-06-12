@@ -6,28 +6,48 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/repository"
+	"github.com/Duke1616/ecmdb/pkg/hash"
+	"github.com/xen0n/go-workwx"
 )
 
 type Service interface {
-	FindOrCreateTemplate(ctx context.Context, req domain.Template) (domain.Template, error)
+	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
 }
 
 type service struct {
-	repo repository.TemplateRepository
+	repo    repository.TemplateRepository
+	workApp *workwx.WorkwxApp
 }
 
-func NewService(repo repository.TemplateRepository) Service {
+func NewService(repo repository.TemplateRepository, workApp *workwx.WorkwxApp) Service {
 	return &service{
-		repo: repo,
+		repo:    repo,
+		workApp: workApp,
 	}
 }
 
-func (s *service) FindOrCreateTemplate(ctx context.Context, req domain.Template) (domain.Template, error) {
-	t, err := s.repo.FindByHash(ctx, req.UniqueHash)
+func (s *service) FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error) {
+	OAInfo, err := s.workApp.GetOATemplateDetail(req.TemplateId)
+	if err != nil {
+		return domain.Template{}, fmt.Errorf("获取模版详情失败: %w", err)
+	}
+
+	t, err := s.repo.FindByHash(ctx, hash.Hash(OAInfo.TemplateContent))
 	if !errors.Is(err, repository.ErrUserNotFound) {
-		fmt.Println(t, "系统存在了")
 		return t, err
 	}
 
-	return req, s.repo.CreateTemplate(ctx, req)
+	t = domain.Template{
+		CreateType:       domain.WechatCreate,
+		Name:             req.TemplateName,
+		WechatOAControls: OAInfo.TemplateContent,
+		UniqueHash:       hash.Hash(OAInfo.TemplateContent),
+	}
+
+	t.Id, err = s.repo.CreateTemplate(ctx, t)
+	if err != nil {
+		return domain.Template{}, err
+	}
+
+	return t, nil
 }

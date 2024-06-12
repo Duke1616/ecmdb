@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
-	"github.com/Duke1616/ecmdb/pkg/hash"
-
 	"log/slog"
 
 	"github.com/ecodeclub/mq-api"
@@ -30,11 +28,10 @@ import (
 
 type WechatApprovalCallbackConsumer struct {
 	svc      service.Service
-	workApp  *workwx.WorkwxApp
 	consumer mq.Consumer
 }
 
-func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ, workAPP *workwx.WorkwxApp) (*WechatApprovalCallbackConsumer, error) {
+func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ) (*WechatApprovalCallbackConsumer, error) {
 	groupID := "callback"
 	consumer, err := q.Consumer(CallbackEventName, groupID)
 	if err != nil {
@@ -43,7 +40,6 @@ func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ, workAPP *wo
 	return &WechatApprovalCallbackConsumer{
 		svc:      svc,
 		consumer: consumer,
-		workApp:  workAPP,
 	}, nil
 }
 
@@ -69,32 +65,12 @@ func (c *WechatApprovalCallbackConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	OAInfo, err := c.workApp.GetOATemplateDetail(evt.TemplateID)
-	if err != nil {
-		return err
-	}
-
-	wechatOAInfo := domain.WechatInfo{
-		Id:       evt.TemplateID,
-		Name:     OAInfo.TemplateNames[0].Text,
-		Controls: OAInfo.TemplateContent,
-	}
-
-	template := domain.Template{
-		CreateType:   domain.WechatCreate,
-		WechatOAInfo: wechatOAInfo,
-		UniqueHash:   hash.Hash(wechatOAInfo),
-	}
-
-	approvalDetail, err := c.workApp.GetOAApprovalDetail(evt.SpNo)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("订单号", approvalDetail)
-
-	if _, err = c.svc.FindOrCreateTemplate(ctx, template); err != nil {
-		slog.Error("新增模版信息", err)
+	if _, err = c.svc.FindOrCreateByWechat(ctx, domain.WechatInfo{
+		TemplateId:   evt.TemplateID,
+		TemplateName: evt.SpName,
+		SpNo:         evt.SpNo,
+	}); err != nil {
+		slog.Error("模版已经存在或新增模版失败", err)
 	}
 
 	return err

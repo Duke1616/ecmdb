@@ -30,8 +30,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, 
 	return new(Module), nil
 }
 
-func initConsumer(svc service.Service, q mq.MQ, workAPP *workwx.WorkwxApp) *event.WechatApprovalCallbackConsumer {
-	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q, workAPP)
+func initConsumer(svc service.Service, q mq.MQ) *event.WechatApprovalCallbackConsumer {
+	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}

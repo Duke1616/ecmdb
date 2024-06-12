@@ -1,5 +1,7 @@
 package domain
 
+import "github.com/xen0n/go-workwx"
+
 type CreateType uint8
 
 func (s CreateType) ToUint8() uint8 {
@@ -14,8 +16,9 @@ const (
 )
 
 type Template struct {
-	Id           int64
-	CreateType   CreateType
-	WechatOAInfo WechatInfo
-	UniqueHash   string
+	Id               int64
+	Name             string
+	CreateType       CreateType
+	UniqueHash       string
+	WechatOAControls workwx.OATemplateControls
 }

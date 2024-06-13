@@ -12,7 +12,6 @@ type Service interface {
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource,
 		int64, error)
-
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 	// ListExcludeAndFilterResourceByIds 排序以及过滤

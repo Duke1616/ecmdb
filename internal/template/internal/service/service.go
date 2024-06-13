@@ -8,11 +8,14 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/hash"
 	"github.com/xen0n/go-workwx"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
 	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
+	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
+	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
 }
 
 type service struct {
@@ -55,4 +58,31 @@ func (s *service) FindOrCreateByWechat(ctx context.Context, req domain.WechatInf
 
 func (s *service) CreateTemplate(ctx context.Context, req domain.Template) (int64, error) {
 	return s.repo.CreateTemplate(ctx, req)
+}
+
+func (s *service) DetailTemplate(ctx context.Context, id int64) (domain.Template, error) {
+	return s.repo.DetailTemplate(ctx, id)
+}
+
+func (s *service) ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Template
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListTemplate(ctx, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.Total(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }

@@ -25,4 +25,5 @@ type Template struct {
 	WechatOAControls workwx.OATemplateControls
 	Rules            []map[string]interface{}
 	Options          map[string]interface{}
+	Desc             string
 }

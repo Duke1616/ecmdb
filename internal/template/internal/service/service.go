@@ -12,6 +12,7 @@ import (
 
 type Service interface {
 	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
+	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
 }
 
 type service struct {
@@ -50,4 +51,8 @@ func (s *service) FindOrCreateByWechat(ctx context.Context, req domain.WechatInf
 	}
 
 	return t, nil
+}
+
+func (s *service) CreateTemplate(ctx context.Context, req domain.Template) (int64, error) {
+	return s.repo.CreateTemplate(ctx, req)
 }

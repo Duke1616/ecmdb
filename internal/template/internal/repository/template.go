@@ -36,6 +36,8 @@ func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 		CreateType:       req.CreateType.ToUint8(),
 		UniqueHash:       req.UniqueHash,
 		WechatOAControls: req.WechatOAControls,
+		Rules:            req.Rules,
+		Options:          req.Options,
 	}
 }
 
@@ -45,5 +47,7 @@ func (repo *templateRepository) toDomain(req dao.Template) domain.Template {
 		CreateType:       domain.CreateType(req.CreateType),
 		WechatOAControls: req.WechatOAControls,
 		UniqueHash:       req.UniqueHash,
+		Rules:            req.Rules,
+		Options:          req.Options,
 	}
 }

@@ -1,6 +1,8 @@
 package domain
 
-import "github.com/xen0n/go-workwx"
+import (
+	"github.com/xen0n/go-workwx"
+)
 
 type CreateType uint8
 
@@ -21,4 +23,6 @@ type Template struct {
 	CreateType       CreateType
 	UniqueHash       string
 	WechatOAControls workwx.OATemplateControls
+	Rules            []map[string]interface{}
+	Options          map[string]interface{}
 }

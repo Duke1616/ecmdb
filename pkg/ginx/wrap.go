@@ -13,6 +13,7 @@ func WrapBody[Req any](fn func(ctx *gin.Context, req Req) (Result, error)) gin.H
 			slog.Error("绑定参数失败", slog.Any("err", err))
 			return
 		}
+
 		res, err := fn(ctx, req)
 		if err != nil {
 			slog.Error("执行业务逻辑失败", slog.Any("err", err))

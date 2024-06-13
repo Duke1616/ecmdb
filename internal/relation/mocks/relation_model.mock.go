@@ -79,6 +79,45 @@ func (c *MockRelationModelServiceCreateModelRelationCall) DoAndReturn(f func(con
 	return c
 }
 
+// DeleteModelRelation mocks base method.
+func (m *MockRelationModelService) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteModelRelation", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteModelRelation indicates an expected call of DeleteModelRelation.
+func (mr *MockRelationModelServiceMockRecorder) DeleteModelRelation(ctx, id any) *MockRelationModelServiceDeleteModelRelationCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteModelRelation", reflect.TypeOf((*MockRelationModelService)(nil).DeleteModelRelation), ctx, id)
+	return &MockRelationModelServiceDeleteModelRelationCall{Call: call}
+}
+
+// MockRelationModelServiceDeleteModelRelationCall wrap *gomock.Call
+type MockRelationModelServiceDeleteModelRelationCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceDeleteModelRelationCall) Return(arg0 int64, arg1 error) *MockRelationModelServiceDeleteModelRelationCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceDeleteModelRelationCall) Do(f func(context.Context, int64) (int64, error)) *MockRelationModelServiceDeleteModelRelationCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceDeleteModelRelationCall) DoAndReturn(f func(context.Context, int64) (int64, error)) *MockRelationModelServiceDeleteModelRelationCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // FindModelDiagramBySrcUids mocks base method.
 func (m *MockRelationModelService) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
 	m.ctrl.T.Helper()

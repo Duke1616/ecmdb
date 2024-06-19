@@ -20,6 +20,10 @@ type ListTemplateReq struct {
 	Page
 }
 
+type DeleteTemplateReq struct {
+	Id int64 `json:"id"`
+}
+
 type CreateType uint8
 
 type Template struct {

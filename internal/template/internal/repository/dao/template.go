@@ -22,6 +22,7 @@ type TemplateDAO interface {
 	CreateTemplate(ctx context.Context, t Template) (int64, error)
 	FindByHash(ctx context.Context, hash string) (Template, error)
 	DetailTemplate(ctx context.Context, id int64) (Template, error)
+	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
 	Count(ctx context.Context) (int64, error)
 }
@@ -72,6 +73,18 @@ func (dao *templateDAO) DetailTemplate(ctx context.Context, id int64) (Template,
 	}
 
 	return t, nil
+}
+
+func (dao *templateDAO) DeleteTemplate(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(TemplateCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 func (dao *templateDAO) ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error) {

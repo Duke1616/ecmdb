@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -16,7 +17,7 @@ import (
 
 func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
-	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler) *gin.Engine {
+	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, codebookHdl *codebook.Handler) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
 
@@ -30,6 +31,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	rrHdl.RegisterRoute(server)
 	rtHdl.RegisterRoute(server)
 	templateHdl.RegisterRoutes(server)
+	codebookHdl.RegisterRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())

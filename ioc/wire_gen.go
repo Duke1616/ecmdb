@@ -8,6 +8,7 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -59,7 +60,12 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler4 := templateModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3, handler4)
+	codebookModule, err := codebook.InitModule(mq, mongo, workwxApp)
+	if err != nil {
+		return nil, err
+	}
+	handler5 := codebookModule.Hdl
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3, handler4, handler5)
 	app := &App{
 		Web: engine,
 	}

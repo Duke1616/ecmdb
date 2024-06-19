@@ -16,6 +16,7 @@ type Service interface {
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
+	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 }
 
 type service struct {
@@ -85,4 +86,8 @@ func (s *service) ListTemplate(ctx context.Context, offset, limit int64) ([]doma
 		return ts, total, err
 	}
 	return ts, total, nil
+}
+
+func (s *service) DeleteTemplate(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteTemplate(ctx, id)
 }

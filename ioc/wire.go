@@ -4,6 +4,7 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -31,6 +32,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*user.Module), "Hdl"),
 		template.InitModule,
 		wire.FieldsOf(new(*template.Module), "Hdl"),
+		codebook.InitModule,
+		wire.FieldsOf(new(*codebook.Module), "Hdl"),
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

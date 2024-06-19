@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateTemplateReq](h.CreateTemplate))
 	g.POST("/detail", ginx.WrapBody[DetailTemplateReq](h.DetailTemplate))
 	g.POST("/list", ginx.WrapBody[ListTemplateReq](h.ListTemplate))
+	g.POST("/delete", ginx.WrapBody[DeleteTemplateReq](h.DeleteTemplate))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -67,6 +68,16 @@ func (h *Handler) ListTemplate(ctx *gin.Context, req ListTemplateReq) (ginx.Resu
 				return h.toTemplateVo(src)
 			}),
 		},
+	}, nil
+}
+
+func (h *Handler) DeleteTemplate(ctx *gin.Context, req DeleteTemplateReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteTemplate(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 

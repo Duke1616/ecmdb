@@ -18,6 +18,8 @@ type CodebookDAO interface {
 	DetailCodebook(ctx context.Context, id int64) (Codebook, error)
 	ListCodebook(ctx context.Context, offset, limit int64) ([]Codebook, error)
 	Count(ctx context.Context) (int64, error)
+	UpdateCodebook(ctx context.Context, c Codebook) (int64, error)
+	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 }
 
 func NewCodebookDAO(db *mongox.Mongo) CodebookDAO {
@@ -91,6 +93,36 @@ func (dao *codebookDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *codebookDAO) UpdateCodebook(ctx context.Context, c Codebook) (int64, error) {
+	col := dao.db.Collection(CodebookCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":  c.Name,
+			"code":  c.Code,
+			"utime": time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": c.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
+}
+
+func (dao *codebookDAO) DeleteCodebook(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(CodebookCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 type Codebook struct {

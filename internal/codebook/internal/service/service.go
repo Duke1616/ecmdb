@@ -11,6 +11,8 @@ type Service interface {
 	CreateCodebook(ctx context.Context, req domain.Codebook) (int64, error)
 	DetailCodebook(ctx context.Context, id int64) (domain.Codebook, error)
 	ListCodebook(ctx context.Context, offset, limit int64) ([]domain.Codebook, int64, error)
+	UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error)
+	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 }
 
 type service struct {
@@ -52,4 +54,12 @@ func (s *service) ListCodebook(ctx context.Context, offset, limit int64) ([]doma
 		return ts, total, err
 	}
 	return ts, total, nil
+}
+
+func (s *service) UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error) {
+	return s.repo.UpdateCodebook(ctx, req)
+}
+
+func (s *service) DeleteCodebook(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteCodebook(ctx, id)
 }

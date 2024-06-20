@@ -23,6 +23,8 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateCodebookReq](h.CreateCodebook))
 	g.POST("/list", ginx.WrapBody[ListCodebookReq](h.ListCodebook))
 	g.POST("/detail", ginx.WrapBody[DetailCodebookReq](h.DetailCodebook))
+	g.POST("/update", ginx.WrapBody[UpdateCodebookReq](h.UpdateCodebook))
+	g.POST("/delete", ginx.WrapBody[DeleteCodebookReq](h.DeleteCodebook))
 }
 
 func (h *Handler) CreateCodebook(ctx *gin.Context, req CreateCodebookReq) (ginx.Result, error) {
@@ -64,8 +66,38 @@ func (h *Handler) ListCodebook(ctx *gin.Context, req ListCodebookReq) (ginx.Resu
 	}, nil
 }
 
+func (h *Handler) UpdateCodebook(ctx *gin.Context, req UpdateCodebookReq) (ginx.Result, error) {
+	t, err := h.svc.UpdateCodebook(ctx, h.toUpdateDomain(req))
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: t,
+	}, nil
+}
+
+func (h *Handler) DeleteCodebook(ctx *gin.Context, req DeleteCodebookReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteCodebook(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
+	}, nil
+}
+
 func (h *Handler) toDomain(req CreateCodebookReq) domain.Codebook {
 	return domain.Codebook{
+		Name:     req.Name,
+		Code:     req.Code,
+		Language: req.Language,
+	}
+}
+
+func (h *Handler) toUpdateDomain(req UpdateCodebookReq) domain.Codebook {
+	return domain.Codebook{
+		Id:       req.Id,
 		Name:     req.Name,
 		Code:     req.Code,
 		Language: req.Language,

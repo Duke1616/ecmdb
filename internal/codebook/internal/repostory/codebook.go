@@ -12,6 +12,8 @@ type CodebookRepository interface {
 	DetailCodebook(ctx context.Context, id int64) (domain.Codebook, error)
 	ListCodebook(ctx context.Context, offset, limit int64) ([]domain.Codebook, error)
 	Total(ctx context.Context) (int64, error)
+	UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error)
+	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 }
 
 func NewCodebookRepository(dao dao.CodebookDAO) CodebookRepository {
@@ -40,12 +42,21 @@ func (repo *codebookRepository) ListCodebook(ctx context.Context, offset, limit 
 	}), err
 }
 
+func (repo *codebookRepository) UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error) {
+	return repo.dao.UpdateCodebook(ctx, repo.toEntity(req))
+}
+
+func (repo *codebookRepository) DeleteCodebook(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.DeleteCodebook(ctx, id)
+}
+
 func (repo *codebookRepository) Total(ctx context.Context) (int64, error) {
 	return repo.dao.Count(ctx)
 }
 
 func (repo *codebookRepository) toEntity(req domain.Codebook) dao.Codebook {
 	return dao.Codebook{
+		Id:       req.Id,
 		Name:     req.Name,
 		Code:     req.Code,
 		Language: req.Language,

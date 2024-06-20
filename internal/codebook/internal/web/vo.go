@@ -10,6 +10,17 @@ type DetailCodebookReq struct {
 	Id int64 `json:"id"`
 }
 
+type UpdateCodebookReq struct {
+	Id       int64  `json:"id"`
+	Name     string `json:"name"`
+	Code     string `json:"code"`
+	Language string `json:"language"`
+}
+
+type DeleteCodebookReq struct {
+	Id int64 `json:"id"`
+}
+
 type Page struct {
 	Offset int64 `json:"offset,omitempty"`
 	Limit  int64 `json:"limit,omitempty"`

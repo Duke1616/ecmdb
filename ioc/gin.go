@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,7 @@ import (
 )
 
 func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
+	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, codebookHdl *codebook.Handler) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
@@ -32,6 +33,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	rtHdl.RegisterRoute(server)
 	templateHdl.RegisterRoutes(server)
 	codebookHdl.RegisterRoutes(server)
+	workerHdl.RegisterRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())

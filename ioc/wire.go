@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/google/wire"
 )
 
@@ -34,6 +35,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*template.Module), "Hdl"),
 		codebook.InitModule,
 		wire.FieldsOf(new(*codebook.Module), "Hdl"),
+		worker.InitModule,
+		wire.FieldsOf(new(*worker.Module), "Hdl"),
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

@@ -12,14 +12,12 @@ import (
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/service"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
-	"github.com/xen0n/go-workwx"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
+func InitModule(db *mongox.Mongo) (*Module, error) {
 	codebookDAO := dao.NewCodebookDAO(db)
 	codebookRepository := repository.NewCodebookRepository(codebookDAO)
 	serviceService := service.NewService(codebookRepository)

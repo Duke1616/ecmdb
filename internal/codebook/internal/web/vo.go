@@ -1,9 +1,10 @@
 package web
 
 type CreateCodebookReq struct {
-	Name     string `json:"name"`
-	Code     string `json:"code"`
-	Language string `json:"language"`
+	Name       string `json:"name"`
+	Code       string `json:"code"`
+	Language   string `json:"language"`
+	Identifier string `json:"identifier"`
 }
 
 type DetailCodebookReq struct {
@@ -31,10 +32,12 @@ type ListCodebookReq struct {
 }
 
 type Codebook struct {
-	Id       int64  `json:"id"`
-	Name     string `json:"name"`
-	Code     string `json:"code"`
-	Language string `json:"language"`
+	Id         int64  `json:"id"`
+	Name       string `json:"name"`
+	Identifier string `json:"identifier"`
+	Code       string `json:"code"`
+	Language   string `json:"language"`
+	Secret     string `json:"secret"`
 }
 
 type RetrieveCodebooks struct {

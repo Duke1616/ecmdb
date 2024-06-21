@@ -126,10 +126,12 @@ func (dao *codebookDAO) DeleteCodebook(ctx context.Context, id int64) (int64, er
 }
 
 type Codebook struct {
-	Id       int64  `bson:"id"`
-	Name     string `bson:"name"`
-	Code     string `bson:"code"`
-	Language string `bson:"language"`
-	Ctime    int64  `bson:"ctime"`
-	Utime    int64  `bson:"utime"`
+	Id         int64  `bson:"id"`
+	Name       string `bson:"name"`
+	Identifier string `bson:"identifier"` // 唯一标识
+	Code       string `bson:"code"`
+	Language   string `bson:"language"`
+	Secret     string `bson:"secret"` // 密钥信息
+	Ctime      int64  `bson:"ctime"`
+	Utime      int64  `bson:"utime"`
 }

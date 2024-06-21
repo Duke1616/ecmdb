@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/repostory/dao"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/google/uuid"
 )
 
 type CodebookRepository interface {
@@ -56,18 +57,22 @@ func (repo *codebookRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *codebookRepository) toEntity(req domain.Codebook) dao.Codebook {
 	return dao.Codebook{
-		Id:       req.Id,
-		Name:     req.Name,
-		Code:     req.Code,
-		Language: req.Language,
+		Id:         req.Id,
+		Name:       req.Name,
+		Code:       req.Code,
+		Language:   req.Language,
+		Secret:     uuid.NewString(),
+		Identifier: req.Identifier,
 	}
 }
 
 func (repo *codebookRepository) toDomain(req dao.Codebook) domain.Codebook {
 	return domain.Codebook{
-		Id:       req.Id,
-		Name:     req.Name,
-		Code:     req.Code,
-		Language: req.Language,
+		Id:         req.Id,
+		Name:       req.Name,
+		Code:       req.Code,
+		Language:   req.Language,
+		Secret:     req.Secret,
+		Identifier: req.Identifier,
 	}
 }

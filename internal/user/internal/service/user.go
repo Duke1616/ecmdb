@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
-	"github.com/Duke1616/ecmdb/internal/user/internal/repostory"
+	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -13,10 +13,10 @@ type Service interface {
 }
 
 type service struct {
-	repo repostory.UserRepository
+	repo repository.UserRepository
 }
 
-func NewService(repo repostory.UserRepository) Service {
+func NewService(repo repository.UserRepository) Service {
 	return &service{
 		repo: repo,
 	}

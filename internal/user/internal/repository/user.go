@@ -1,9 +1,9 @@
-package repostory
+package repository
 
 import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
-	"github.com/Duke1616/ecmdb/internal/user/internal/repostory/dao"
+	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
 )
 
 type UserRepository interface {

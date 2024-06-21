@@ -7,8 +7,8 @@
 package user
 
 import (
-	"github.com/Duke1616/ecmdb/internal/user/internal/repostory"
-	"github.com/Duke1616/ecmdb/internal/user/internal/repostory/dao"
+	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
@@ -20,7 +20,7 @@ import (
 
 func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
-	userRepository := repostory.NewResourceRepository(userDAO)
+	userRepository := repository.NewResourceRepository(userDAO)
 	serviceService := service.NewService(userRepository)
 	ldapService := service.NewLdapService(ldapConfig)
 	handler := web.NewHandler(serviceService, ldapService)
@@ -32,4 +32,4 @@ func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(service.NewLdapService, service.NewService, repostory.NewResourceRepository, dao.NewUserDao, web.NewHandler)
+var ProviderSet = wire.NewSet(service.NewLdapService, service.NewService, repository.NewResourceRepository, dao.NewUserDao, web.NewHandler)

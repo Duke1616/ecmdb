@@ -1,8 +1,10 @@
 package domain
 
 type Codebook struct {
-	Id       int64
-	Name     string
-	Code     string
-	Language string
+	Id         int64
+	Name       string
+	Code       string
+	Language   string
+	Secret     string
+	Identifier string
 }

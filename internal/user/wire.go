@@ -3,8 +3,8 @@
 package user
 
 import (
-	"github.com/Duke1616/ecmdb/internal/user/internal/repostory"
-	"github.com/Duke1616/ecmdb/internal/user/internal/repostory/dao"
+	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
@@ -15,7 +15,7 @@ import (
 var ProviderSet = wire.NewSet(
 	service.NewLdapService,
 	service.NewService,
-	repostory.NewResourceRepository,
+	repository.NewResourceRepository,
 	dao.NewUserDao,
 	web.NewHandler)
 

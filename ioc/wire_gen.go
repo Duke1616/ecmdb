@@ -14,6 +14,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/google/wire"
 )
 
@@ -46,26 +47,31 @@ func InitApp() (*App, error) {
 	handler2 := resourceModule.Hdl
 	relationModelHandler := module.RMHdl
 	relationResourceHandler := module.RRHdl
+	mq := InitMQ(viper)
+	workerModule, err := worker.InitModule(mq, mongo)
+	if err != nil {
+		return nil, err
+	}
+	handler3 := workerModule.Hdl
 	relationTypeHandler := module.RTHdl
 	config := InitLdapConfig(viper)
 	userModule, err := user.InitModule(mongo, config)
 	if err != nil {
 		return nil, err
 	}
-	handler3 := userModule.Hdl
-	mq := InitMQ(viper)
+	handler4 := userModule.Hdl
 	workwxApp := InitWorkWx(viper)
 	templateModule, err := template.InitModule(mq, mongo, workwxApp)
 	if err != nil {
 		return nil, err
 	}
-	handler4 := templateModule.Hdl
-	codebookModule, err := codebook.InitModule(mq, mongo, workwxApp)
+	handler5 := templateModule.Hdl
+	codebookModule, err := codebook.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	handler5 := codebookModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3, handler4, handler5)
+	handler6 := codebookModule.Hdl
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6)
 	app := &App{
 		Web: engine,
 	}

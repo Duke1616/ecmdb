@@ -8,9 +8,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/service"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/ecodeclub/mq-api"
-	"github.com/xen0n/go-workwx"
-
 	"github.com/google/wire"
 )
 
@@ -20,7 +17,7 @@ var ProviderSet = wire.NewSet(
 	repository.NewCodebookRepository,
 	dao.NewCodebookDAO)
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
+func InitModule(db *mongox.Mongo) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		wire.Struct(new(Module), "*"),

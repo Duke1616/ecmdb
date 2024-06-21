@@ -38,5 +38,3 @@ jobs:
           file: ./deploy/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: duke1616/ecmdb:latest
-
-

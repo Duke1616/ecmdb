@@ -19,7 +19,7 @@ func InitMongoDB(viper *viper.Viper) *mongox.Mongo {
 
 	monitor := &event.CommandMonitor{
 		Started: func(ctx context.Context, evt *event.CommandStartedEvent) {
-			fmt.Println(evt.Command)
+			//fmt.Println(evt.Command)
 		},
 	}
 

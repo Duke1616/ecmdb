@@ -62,8 +62,9 @@ func (c *TaskWorkerConsumer) Stop(_ context.Context) error {
 
 func (c *TaskWorkerConsumer) toDomain(req WorkerEvent) domain.Worker {
 	return domain.Worker{
-		Name:  req.Name,
-		Desc:  req.Desc,
-		Topic: req.Topic,
+		Name:   req.Name,
+		Desc:   req.Desc,
+		Topic:  req.Topic,
+		Status: domain.Status(req.Status),
 	}
 }

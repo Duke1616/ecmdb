@@ -10,6 +10,7 @@ type WorkerRepository interface {
 	CreateWorker(ctx context.Context, req domain.Worker) (int64, error)
 	FindByName(ctx context.Context, name string) (domain.Worker, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error)
+	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 	Total(ctx context.Context) (int64, error)
 }
 
@@ -32,6 +33,10 @@ func (repo *workerRepository) FindByName(ctx context.Context, name string) (doma
 	return repo.toDomain(worker), err
 }
 
+func (repo *workerRepository) UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error) {
+	return repo.dao.UpdateWorker(ctx, id, status)
+}
+
 func (repo *workerRepository) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error) {
 	//TODO implement me
 	panic("implement me")
@@ -44,16 +49,19 @@ func (repo *workerRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *workerRepository) toEntity(req domain.Worker) dao.Worker {
 	return dao.Worker{
-		Name:  req.Name,
-		Topic: req.Topic,
-		Desc:  req.Desc,
+		Name:   req.Name,
+		Topic:  req.Topic,
+		Desc:   req.Desc,
+		Status: domain.Status.ToUint8(req.Status),
 	}
 }
 
 func (repo *workerRepository) toDomain(req dao.Worker) domain.Worker {
 	return domain.Worker{
-		Name:  req.Name,
-		Desc:  req.Desc,
-		Topic: req.Topic,
+		Id:     req.Id,
+		Name:   req.Name,
+		Desc:   req.Desc,
+		Topic:  req.Topic,
+		Status: domain.Status(req.Status),
 	}
 }

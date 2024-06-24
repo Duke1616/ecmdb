@@ -36,8 +36,17 @@ func (s *service) RegisterWorker(ctx context.Context, req domain.Worker) error {
 }
 
 func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error) {
+	fmt.Println(req, "接收 kafka 数据")
 	worker, err := s.repo.FindByName(ctx, req.Name)
 	if !errors.Is(err, repository.ErrUserNotFound) {
+		if req.Status != worker.Status {
+			_, err = s.repo.UpdateStatus(ctx, worker.Id, domain.Status.ToUint8(req.Status))
+			if err != nil {
+				return worker, fmt.Errorf("修改状态失败: %x", err)
+			}
+			worker.Status = req.Status
+		}
+
 		return worker, err
 	}
 

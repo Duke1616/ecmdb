@@ -20,6 +20,7 @@ const (
 type WorkerDAO interface {
 	CreateWorker(ctx context.Context, t Worker) (int64, error)
 	FindByName(ctx context.Context, name string) (Worker, error)
+	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]Worker, error)
 	Count(ctx context.Context) (int64, error)
 }
@@ -60,6 +61,23 @@ func (dao *workerDAO) FindByName(ctx context.Context, name string) (Worker, erro
 	return w, nil
 }
 
+func (dao *workerDAO) UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error) {
+	col := dao.db.Collection(WorkerCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"status": status,
+			"utime":  time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
+}
+
 func (dao *workerDAO) ListWorker(ctx context.Context, offset, limit int64) ([]Worker, error) {
 	col := dao.db.Collection(WorkerCollection)
 	filter := bson.M{}
@@ -98,10 +116,11 @@ func (dao *workerDAO) Count(ctx context.Context) (int64, error) {
 }
 
 type Worker struct {
-	Id    int64  `json:"id"`
-	Name  string `bson:"name"`
-	Topic string `bson:"topic"`
-	Desc  string `bson:"desc"`
-	Ctime int64  `bson:"ctime"`
-	Utime int64  `bson:"utime"`
+	Id     int64  `json:"id"`
+	Name   string `bson:"name"`
+	Topic  string `bson:"topic"`
+	Desc   string `bson:"desc"`
+	Status uint8  `bson:"status"`
+	Ctime  int64  `bson:"ctime"`
+	Utime  int64  `bson:"utime"`
 }

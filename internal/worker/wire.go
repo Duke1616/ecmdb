@@ -4,6 +4,7 @@ package worker
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository/dao"
@@ -21,10 +22,11 @@ var ProviderSet = wire.NewSet(
 	repository.NewWorkerRepository,
 	dao.NewWorkerDAO)
 
-func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, runnerModule *runner.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initConsumer,
+		wire.FieldsOf(new(*runner.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

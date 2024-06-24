@@ -9,6 +9,8 @@ import (
 type WorkerRepository interface {
 	CreateWorker(ctx context.Context, req domain.Worker) (int64, error)
 	FindByName(ctx context.Context, name string) (domain.Worker, error)
+	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error)
+	Total(ctx context.Context) (int64, error)
 }
 
 func NewWorkerRepository(dao dao.WorkerDAO) WorkerRepository {
@@ -28,6 +30,16 @@ func (repo *workerRepository) CreateWorker(ctx context.Context, req domain.Worke
 func (repo *workerRepository) FindByName(ctx context.Context, name string) (domain.Worker, error) {
 	worker, err := repo.dao.FindByName(ctx, name)
 	return repo.toDomain(worker), err
+}
+
+func (repo *workerRepository) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (repo *workerRepository) Total(ctx context.Context) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (repo *workerRepository) toEntity(req domain.Worker) dao.Worker {

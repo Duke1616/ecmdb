@@ -2,8 +2,12 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 // ErrDataNotFound 通用的数据没找到
@@ -16,6 +20,8 @@ const (
 type WorkerDAO interface {
 	CreateWorker(ctx context.Context, t Worker) (int64, error)
 	FindByName(ctx context.Context, name string) (Worker, error)
+	ListWorker(ctx context.Context, offset, limit int64) ([]Worker, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 func NewWorkerDAO(db *mongox.Mongo) WorkerDAO {
@@ -28,18 +34,74 @@ type workerDAO struct {
 	db *mongox.Mongo
 }
 
-func (w workerDAO) CreateWorker(ctx context.Context, t Worker) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (dao *workerDAO) CreateWorker(ctx context.Context, t Worker) (int64, error) {
+	t.Id = dao.db.GetIdGenerator(WorkerCollection)
+	col := dao.db.Collection(WorkerCollection)
+	now := time.Now()
+	t.Ctime, t.Utime = now.UnixMilli(), now.UnixMilli()
+
+	_, err := col.InsertOne(ctx, t)
+	if err != nil {
+		return 0, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	return t.Id, nil
 }
 
-func (w workerDAO) FindByName(ctx context.Context, name string) (Worker, error) {
-	//TODO implement me
-	panic("implement me")
+func (dao *workerDAO) FindByName(ctx context.Context, name string) (Worker, error) {
+	col := dao.db.Collection(WorkerCollection)
+	var w Worker
+	filter := bson.M{"name": name}
+
+	if err := col.FindOne(ctx, filter).Decode(&w); err != nil {
+		return Worker{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return w, nil
+}
+
+func (dao *workerDAO) ListWorker(ctx context.Context, offset, limit int64) ([]Worker, error) {
+	col := dao.db.Collection(WorkerCollection)
+	filter := bson.M{}
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Worker
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *workerDAO) Count(ctx context.Context) (int64, error) {
+	col := dao.db.Collection(WorkerCollection)
+	filer := bson.M{}
+
+	count, err := col.CountDocuments(ctx, filer)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 type Worker struct {
+	Id    int64  `json:"id"`
 	Name  string `bson:"name"`
 	Topic string `bson:"topic"`
 	Desc  string `bson:"desc"`
+	Ctime int64  `bson:"ctime"`
+	Utime int64  `bson:"utime"`
 }

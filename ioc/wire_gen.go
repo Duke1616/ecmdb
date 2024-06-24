@@ -12,6 +12,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -48,7 +49,11 @@ func InitApp() (*App, error) {
 	relationModelHandler := module.RMHdl
 	relationResourceHandler := module.RRHdl
 	mq := InitMQ(viper)
-	workerModule, err := worker.InitModule(mq, mongo)
+	runnerModule, err := runner.InitModule(mq)
+	if err != nil {
+		return nil, err
+	}
+	workerModule, err := worker.InitModule(mq, mongo, runnerModule)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +76,8 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler6 := codebookModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6)
+	handler7 := runnerModule.Hdl
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7)
 	app := &App{
 		Web: engine,
 	}

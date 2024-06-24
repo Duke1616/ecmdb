@@ -16,7 +16,7 @@ type TaskWorkerConsumer struct {
 }
 
 func NewTaskWorkerConsumer(svc service.Service, mq mq.MQ) (*TaskWorkerConsumer, error) {
-	groupID := "task_worker"
+	groupID := "task_create_worker"
 	consumer, err := mq.Consumer(TaskWorkerEventName, groupID)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (c *TaskWorkerConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	if _, err = c.svc.FindOrCreateByName(ctx, c.toDomain(evt)); err != nil {
+	if _, err = c.svc.FindOrRegisterByName(ctx, c.toDomain(evt)); err != nil {
 		slog.Error("工作节点已经存在或新增工作节点失败", err)
 	}
 

@@ -8,6 +8,7 @@ package worker
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository/dao"
@@ -20,14 +21,15 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, runnerModule *runner.Module) (*Module, error) {
+	serviceService := runnerModule.Svc
 	workerDAO := dao.NewWorkerDAO(db)
 	workerRepository := repository.NewWorkerRepository(workerDAO)
-	serviceService := service.NewService(q, workerRepository)
-	taskWorkerConsumer := initConsumer(serviceService, q)
-	handler := web.NewHandler(serviceService)
+	service2 := service.NewService(q, serviceService, workerRepository)
+	taskWorkerConsumer := initConsumer(service2, q)
+	handler := web.NewHandler(service2)
 	module := &Module{
-		Svc: serviceService,
+		Svc: service2,
 		c:   taskWorkerConsumer,
 		Hdl: handler,
 	}

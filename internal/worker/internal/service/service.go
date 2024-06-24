@@ -8,12 +8,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/ecodeclub/mq-api"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
 	RegisterWorker(ctx context.Context, req domain.Worker) error
 	FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error)
-	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error)
+	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
 }
 
 type service struct {
@@ -68,7 +69,25 @@ func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (
 	return domain.Worker{}, nil
 }
 
-func (s *service) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *service) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Worker
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListWorker(ctx, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.Total(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }

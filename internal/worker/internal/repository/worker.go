@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository/dao"
+	"github.com/ecodeclub/ekit/slice"
 )
 
 type WorkerRepository interface {
@@ -38,13 +39,14 @@ func (repo *workerRepository) UpdateStatus(ctx context.Context, id int64, status
 }
 
 func (repo *workerRepository) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error) {
-	//TODO implement me
-	panic("implement me")
+	ts, err := repo.dao.ListWorker(ctx, offset, limit)
+	return slice.Map(ts, func(idx int, src dao.Worker) domain.Worker {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *workerRepository) Total(ctx context.Context) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+	return repo.dao.Count(ctx)
 }
 
 func (repo *workerRepository) toEntity(req domain.Worker) dao.Worker {

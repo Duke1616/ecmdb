@@ -26,7 +26,7 @@ func InitApp() (*App, error) {
 	cmdable := InitRedis(viper)
 	provider := InitSession(viper, cmdable)
 	v := InitGinMiddlewares()
-	mongo := InitMongoDB()
+	mongo := InitMongoDB(viper)
 	module, err := relation.InitModule(mongo)
 	if err != nil {
 		return nil, err

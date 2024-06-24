@@ -34,7 +34,7 @@ func (repo *workerRepository) FindByName(ctx context.Context, name string) (doma
 }
 
 func (repo *workerRepository) UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error) {
-	return repo.dao.UpdateWorker(ctx, id, status)
+	return repo.dao.UpdateStatus(ctx, id, status)
 }
 
 func (repo *workerRepository) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, error) {

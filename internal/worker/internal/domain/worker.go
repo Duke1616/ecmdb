@@ -11,10 +11,13 @@ const (
 	RUNNING Status = 1
 	// STOPPING 停止
 	STOPPING Status = 2
+	// OFFLINE 离线
+	OFFLINE Status = 3
 )
 
 type Worker struct {
 	Id     int64
+	Key    string
 	Name   string
 	Desc   string
 	Topic  string

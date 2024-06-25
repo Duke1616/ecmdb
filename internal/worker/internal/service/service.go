@@ -14,6 +14,7 @@ import (
 type Service interface {
 	RegisterWorker(ctx context.Context, req domain.Worker) error
 	FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error)
+	FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
 }
 
@@ -37,7 +38,6 @@ func (s *service) RegisterWorker(ctx context.Context, req domain.Worker) error {
 }
 
 func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error) {
-	fmt.Println(req, "接收 kafka 数据")
 	worker, err := s.repo.FindByName(ctx, req.Name)
 	if !errors.Is(err, repository.ErrUserNotFound) {
 		if req.Status != worker.Status {
@@ -51,22 +51,56 @@ func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (
 		return worker, err
 	}
 
-	_, err = s.repo.CreateWorker(ctx, req)
+	// 新增工作节点
+	id, err := s.repo.CreateWorker(ctx, req)
 	if err != nil {
 		return domain.Worker{}, fmt.Errorf("创建节点失败: %x", err)
 	}
+	worker.Id = id
 
-	// 新建 Topic
+	// 新增 Topic
 	if err = s.mq.CreateTopic(ctx, req.Topic, 1); err != nil {
 		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
 	}
 
-	// 开启 producer
+	// 新增 producer 监听
 	if err = s.runnerSvc.CreateProducer(req.Topic); err != nil {
 		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
 	}
+	return worker, nil
+}
 
-	return domain.Worker{}, nil
+func (s *service) FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error) {
+	worker, err := s.repo.FindByKey(ctx, req.Key)
+	if !errors.Is(err, repository.ErrUserNotFound) {
+		if req.Status != worker.Status {
+			_, err = s.repo.UpdateStatus(ctx, worker.Id, domain.Status.ToUint8(req.Status))
+			if err != nil {
+				return worker, fmt.Errorf("修改状态失败: %x", err)
+			}
+			worker.Status = req.Status
+		}
+
+		return worker, err
+	}
+
+	// 新增工作节点
+	id, err := s.repo.CreateWorker(ctx, req)
+	if err != nil {
+		return domain.Worker{}, fmt.Errorf("创建节点失败: %x", err)
+	}
+	worker.Id = id
+
+	// 新增 Topic
+	if err = s.mq.CreateTopic(ctx, req.Topic, 1); err != nil {
+		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
+	}
+
+	// 新增 producer 监听
+	if err = s.runnerSvc.CreateProducer(req.Topic); err != nil {
+		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
+	}
+	return worker, nil
 }
 
 func (s *service) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error) {

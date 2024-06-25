@@ -20,6 +20,7 @@ const (
 type WorkerDAO interface {
 	CreateWorker(ctx context.Context, t Worker) (int64, error)
 	FindByName(ctx context.Context, name string) (Worker, error)
+	FindByKey(ctx context.Context, key string) (Worker, error)
 	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]Worker, error)
 	Count(ctx context.Context) (int64, error)
@@ -53,6 +54,18 @@ func (dao *workerDAO) FindByName(ctx context.Context, name string) (Worker, erro
 	col := dao.db.Collection(WorkerCollection)
 	var w Worker
 	filter := bson.M{"name": name}
+
+	if err := col.FindOne(ctx, filter).Decode(&w); err != nil {
+		return Worker{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return w, nil
+}
+
+func (dao *workerDAO) FindByKey(ctx context.Context, key string) (Worker, error) {
+	col := dao.db.Collection(WorkerCollection)
+	var w Worker
+	filter := bson.M{"key": key}
 
 	if err := col.FindOne(ctx, filter).Decode(&w); err != nil {
 		return Worker{}, fmt.Errorf("解码错误，%w", err)
@@ -117,6 +130,7 @@ func (dao *workerDAO) Count(ctx context.Context) (int64, error) {
 
 type Worker struct {
 	Id     int64  `json:"id"`
+	Key    string `json:"key"`
 	Name   string `bson:"name"`
 	Topic  string `bson:"topic"`
 	Desc   string `bson:"desc"`

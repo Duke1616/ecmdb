@@ -49,11 +49,12 @@ func InitApp() (*App, error) {
 	relationModelHandler := module.RMHdl
 	relationResourceHandler := module.RRHdl
 	mq := InitMQ(viper)
+	client := InitEtcdClient(viper)
 	runnerModule, err := runner.InitModule(mq)
 	if err != nil {
 		return nil, err
 	}
-	workerModule, err := worker.InitModule(mq, mongo, runnerModule)
+	workerModule, err := worker.InitModule(mq, mongo, client, runnerModule)
 	if err != nil {
 		return nil, err
 	}
@@ -86,4 +87,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis, InitMQ, InitWorkWx)
+var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)

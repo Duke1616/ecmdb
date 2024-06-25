@@ -7,7 +7,6 @@
 package worker
 
 import (
-	"context"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
@@ -17,20 +16,21 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	"go.etcd.io/etcd/client/v3"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, runnerModule *runner.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, etcdClient *clientv3.Client, runnerModule *runner.Module) (*Module, error) {
 	serviceService := runnerModule.Svc
 	workerDAO := dao.NewWorkerDAO(db)
 	workerRepository := repository.NewWorkerRepository(workerDAO)
 	service2 := service.NewService(q, serviceService, workerRepository)
-	taskWorkerConsumer := initConsumer(service2, q)
+	taskWorkerWatch := initWatch(etcdClient, service2)
 	handler := web.NewHandler(service2)
 	module := &Module{
 		Svc: service2,
-		c:   taskWorkerConsumer,
+		w:   taskWorkerWatch,
 		Hdl: handler,
 	}
 	return module, nil
@@ -40,12 +40,12 @@ func InitModule(q mq.MQ, db *mongox.Mongo, runnerModule *runner.Module) (*Module
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewWorkerRepository, dao.NewWorkerDAO)
 
-func initConsumer(svc service.Service, q mq.MQ) *event.TaskWorkerConsumer {
-	consumer, err := event.NewTaskWorkerConsumer(svc, q)
+func initWatch(etcdClient *clientv3.Client, svc service.Service) *event.TaskWorkerWatch {
+	task, err := event.NewTaskWorkerWatch(etcdClient, svc)
 	if err != nil {
 		panic(err)
 	}
 
-	consumer.Start(context.Background())
-	return consumer
+	go task.Watch()
+	return task
 }

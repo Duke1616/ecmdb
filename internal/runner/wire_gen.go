@@ -29,7 +29,7 @@ func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, codebook
 	service2 := workerModule.Svc
 	service3 := codebookModule.Svc
 	handler := web.NewHandler(serviceService, service2, service3)
-	taskRunnerConsumer := initTaskRunnerConsumer(serviceService, q)
+	taskRunnerConsumer := initTaskRunnerConsumer(serviceService, q, service2, service3)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,
@@ -42,8 +42,8 @@ func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, codebook
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewRunnerRepository, dao.NewRunnerDAO)
 
-func initTaskRunnerConsumer(svc service.Service, mq2 mq.MQ) *event.TaskRunnerConsumer {
-	consumer, err := event.NewTaskRunnerConsumer(svc, mq2)
+func initTaskRunnerConsumer(svc service.Service, mq2 mq.MQ, workerSvc worker.Service, codebookSvc codebook.Service) *event.TaskRunnerConsumer {
+	consumer, err := event.NewTaskRunnerConsumer(svc, mq2, workerSvc, codebookSvc)
 	if err != nil {
 		panic(err)
 	}

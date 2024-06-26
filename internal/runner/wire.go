@@ -34,8 +34,8 @@ func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, codebook
 	return new(Module), nil
 }
 
-func initTaskRunnerConsumer(svc service.Service, mq mq.MQ) *event.TaskRunnerConsumer {
-	consumer, err := event.NewTaskRunnerConsumer(svc, mq)
+func initTaskRunnerConsumer(svc service.Service, mq mq.MQ, workerSvc worker.Service, codebookSvc codebook.Service) *event.TaskRunnerConsumer {
+	consumer, err := event.NewTaskRunnerConsumer(svc, mq, workerSvc, codebookSvc)
 	if err != nil {
 		panic(err)
 	}

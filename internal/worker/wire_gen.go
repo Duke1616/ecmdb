@@ -7,8 +7,10 @@
 package worker
 
 import (
-	"github.com/Duke1616/ecmdb/internal/runner"
+	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
+	"github.com/Duke1616/ecmdb/internal/worker/internal/event/watch"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/service"
@@ -17,19 +19,23 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"go.etcd.io/etcd/client/v3"
+	"sync"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, etcdClient *clientv3.Client, runnerModule *runner.Module) (*Module, error) {
-	serviceService := runnerModule.Svc
-	workerDAO := dao.NewWorkerDAO(db)
+func InitModule(q mq.MQ, db *mongox.Mongo, etcdClient *clientv3.Client) (*Module, error) {
+	taskWorkerEventProducer, err := event.NewTaskRunnerEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	workerDAO := InitWorkerDAO(db, taskWorkerEventProducer)
 	workerRepository := repository.NewWorkerRepository(workerDAO)
-	service2 := service.NewService(q, serviceService, workerRepository)
-	taskWorkerWatch := initWatch(etcdClient, service2)
-	handler := web.NewHandler(service2)
+	serviceService := service.NewService(q, workerRepository, taskWorkerEventProducer)
+	taskWorkerWatch := initWatch(etcdClient, serviceService)
+	handler := web.NewHandler(serviceService)
 	module := &Module{
-		Svc: service2,
+		Svc: serviceService,
 		w:   taskWorkerWatch,
 		Hdl: handler,
 	}
@@ -38,14 +44,36 @@ func InitModule(q mq.MQ, db *mongox.Mongo, etcdClient *clientv3.Client, runnerMo
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewWorkerRepository, dao.NewWorkerDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewWorkerRepository)
 
-func initWatch(etcdClient *clientv3.Client, svc service.Service) *event.TaskWorkerWatch {
-	task, err := event.NewTaskWorkerWatch(etcdClient, svc)
+func initWatch(etcdClient *clientv3.Client, svc service.Service) *watch.TaskWorkerWatch {
+	task, err := watch.NewTaskWorkerWatch(etcdClient, svc)
 	if err != nil {
 		panic(err)
 	}
 
 	go task.Watch()
 	return task
+}
+
+var (
+	daoOnce = sync.Once{}
+	d       dao.WorkerDAO
+)
+
+func InitProducer(producer event.TaskWorkerEventProducer) {
+	wt, err := d.ListWorkerTopic(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(wt)
+}
+
+func InitWorkerDAO(db *mongox.Mongo, producer event.TaskWorkerEventProducer) dao.WorkerDAO {
+	daoOnce.Do(func() {
+		d = dao.NewWorkerDAO(db)
+		InitProducer(producer)
+	})
+
+	return d
 }

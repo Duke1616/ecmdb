@@ -23,6 +23,7 @@ type WorkerDAO interface {
 	FindByKey(ctx context.Context, key string) (Worker, error)
 	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]Worker, error)
+	ListWorkerTopic(ctx context.Context) ([]Worker, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -126,6 +127,26 @@ func (dao *workerDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *workerDAO) ListWorkerTopic(ctx context.Context) ([]Worker, error) {
+	col := dao.db.Collection(WorkerCollection)
+	filter := bson.M{}
+	projection := bson.M{"topic": 1}
+	cursor, err := col.Find(ctx, filter, options.Find().SetProjection(projection))
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Worker
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 type Worker struct {

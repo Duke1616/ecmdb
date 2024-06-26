@@ -23,3 +23,17 @@ mongodb:
   dsn: mongodb://127.0.0.1:27017/cmdb
   username: cmdb
   password: 123456
+
+kafka:
+  network: tcp
+  addresses:
+    - 127.0.0.1:9092
+
+etcd:
+  endpoints:
+    - 127.0.0.1:2379
+
+wechat:
+  corpId: ""
+  corpSecret: ""
+  agentId: 1000002

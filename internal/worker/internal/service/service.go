@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/ecodeclub/mq-api"
 	"golang.org/x/sync/errgroup"
@@ -19,16 +19,16 @@ type Service interface {
 }
 
 type service struct {
-	repo      repository.WorkerRepository
-	runnerSvc runner.Service
-	mq        mq.MQ
+	repo     repository.WorkerRepository
+	producer event.TaskWorkerEventProducer
+	mq       mq.MQ
 }
 
-func NewService(mq mq.MQ, runnerSvc runner.Service, repo repository.WorkerRepository) Service {
+func NewService(mq mq.MQ, repo repository.WorkerRepository, producer event.TaskWorkerEventProducer) Service {
 	return &service{
-		mq:        mq,
-		repo:      repo,
-		runnerSvc: runnerSvc,
+		mq:       mq,
+		repo:     repo,
+		producer: producer,
 	}
 }
 
@@ -64,7 +64,7 @@ func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (
 	}
 
 	// 新增 producer 监听
-	if err = s.runnerSvc.CreateProducer(req.Topic); err != nil {
+	if err = s.producer.AddProducer(req.Topic); err != nil {
 		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
 	}
 	return worker, nil
@@ -97,7 +97,7 @@ func (s *service) FindOrRegisterByKey(ctx context.Context, req domain.Worker) (d
 	}
 
 	// 新增 producer 监听
-	if err = s.runnerSvc.CreateProducer(req.Topic); err != nil {
+	if err = s.producer.AddProducer(req.Topic); err != nil {
 		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
 	}
 	return worker, nil

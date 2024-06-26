@@ -50,11 +50,7 @@ func InitApp() (*App, error) {
 	relationResourceHandler := module.RRHdl
 	mq := InitMQ(viper)
 	client := InitEtcdClient(viper)
-	runnerModule, err := runner.InitModule(mq)
-	if err != nil {
-		return nil, err
-	}
-	workerModule, err := worker.InitModule(mq, mongo, client, runnerModule)
+	workerModule, err := worker.InitModule(mq, mongo, client)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +73,10 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler6 := codebookModule.Hdl
+	runnerModule, err := runner.InitModule(mq)
+	if err != nil {
+		return nil, err
+	}
 	handler7 := runnerModule.Hdl
 	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7)
 	app := &App{

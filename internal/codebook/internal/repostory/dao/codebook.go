@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
@@ -13,6 +14,9 @@ const (
 	CodebookCollection = "c_codebook"
 )
 
+// ErrDataNotFound 通用的数据没找到
+var ErrDataNotFound = mongo.ErrNoDocuments
+
 type CodebookDAO interface {
 	CreateCodebook(ctx context.Context, c Codebook) (int64, error)
 	DetailCodebook(ctx context.Context, id int64) (Codebook, error)
@@ -20,6 +24,7 @@ type CodebookDAO interface {
 	Count(ctx context.Context) (int64, error)
 	UpdateCodebook(ctx context.Context, c Codebook) (int64, error)
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
+	FindBySecret(ctx context.Context, identifier string, secret string) (Codebook, error)
 }
 
 func NewCodebookDAO(db *mongox.Mongo) CodebookDAO {
@@ -123,6 +128,19 @@ func (dao *codebookDAO) DeleteCodebook(ctx context.Context, id int64) (int64, er
 	}
 
 	return result.DeletedCount, nil
+}
+
+func (dao *codebookDAO) FindBySecret(ctx context.Context, identifier string, secret string) (Codebook, error) {
+	col := dao.db.Collection(CodebookCollection)
+	filter := bson.M{}
+	filter["identifier"] = identifier
+	filter["secret"] = secret
+
+	var result Codebook
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Codebook{}, fmt.Errorf("解码错误: %w", err)
+	}
+	return result, nil
 }
 
 type Codebook struct {

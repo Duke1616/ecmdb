@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/repostory"
 	"golang.org/x/sync/errgroup"
@@ -13,10 +14,20 @@ type Service interface {
 	ListCodebook(ctx context.Context, offset, limit int64) ([]domain.Codebook, int64, error)
 	UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error)
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
+	ValidationSecret(ctx context.Context, identifier string, secret string) (bool, error)
 }
 
 type service struct {
 	repo repository.CodebookRepository
+}
+
+func (s *service) ValidationSecret(ctx context.Context, identifier string, secret string) (bool, error) {
+	_, err := s.repo.FindBySecret(ctx, identifier, secret)
+	if !errors.Is(err, repository.ErrUserNotFound) {
+		return true, err
+	}
+
+	return false, err
 }
 
 func NewService(repo repository.CodebookRepository) Service {

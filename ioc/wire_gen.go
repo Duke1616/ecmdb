@@ -72,7 +72,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler6 := codebookModule.Hdl
-	runnerModule, err := runner.InitModule(mq)
+	runnerModule, err := runner.InitModule(mongo, mq, workerModule, codebookModule)
 	if err != nil {
 		return nil, err
 	}

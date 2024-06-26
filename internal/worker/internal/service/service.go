@@ -20,6 +20,7 @@ type Service interface {
 	// PushMessage 推送消息到Kafka
 	PushMessage(ctx context.Context, req domain.Message)
 	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
+	ValidationByName(ctx context.Context, name string) (bool, error)
 }
 
 type service struct {
@@ -124,6 +125,15 @@ func (s *service) FindOrRegisterByKey(ctx context.Context, req domain.Worker) (d
 
 func (s *service) UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error) {
 	return s.repo.UpdateStatus(ctx, id, status)
+}
+
+func (s *service) ValidationByName(ctx context.Context, name string) (bool, error) {
+	_, err := s.repo.FindByName(ctx, name)
+	if !errors.Is(err, repository.ErrUserNotFound) {
+		return true, err
+	}
+
+	return false, err
 }
 
 func (s *service) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error) {

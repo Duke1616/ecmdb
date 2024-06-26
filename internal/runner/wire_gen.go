@@ -7,24 +7,47 @@
 package runner
 
 import (
-	"github.com/Duke1616/ecmdb/internal/runner/event"
-	"github.com/Duke1616/ecmdb/internal/runner/service"
-	"github.com/Duke1616/ecmdb/internal/runner/web"
+	"context"
+	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/runner/internal/event"
+	"github.com/Duke1616/ecmdb/internal/runner/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/runner/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
+	"github.com/Duke1616/ecmdb/internal/runner/internal/web"
+	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ) (*Module, error) {
-	taskRunnerEventProducer, err := event.NewTaskRunnerEventProducer(q)
-	if err != nil {
-		return nil, err
-	}
-	serviceService := service.NewService(taskRunnerEventProducer)
-	handler := web.NewHandler(serviceService)
+func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, codebookModule *codebook.Module) (*Module, error) {
+	runnerDAO := dao.NewRunnerDAO(db)
+	runnerRepository := repository.NewRunnerRepository(runnerDAO)
+	serviceService := service.NewService(runnerRepository)
+	service2 := workerModule.Svc
+	service3 := codebookModule.Svc
+	handler := web.NewHandler(serviceService, service2, service3)
+	taskRunnerConsumer := initTaskRunnerConsumer(serviceService, q)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,
+		c:   taskRunnerConsumer,
 	}
 	return module, nil
+}
+
+// wire.go:
+
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewRunnerRepository, dao.NewRunnerDAO)
+
+func initTaskRunnerConsumer(svc service.Service, mq2 mq.MQ) *event.TaskRunnerConsumer {
+	consumer, err := event.NewTaskRunnerConsumer(svc, mq2)
+	if err != nil {
+		panic(err)
+	}
+
+	consumer.Start(context.Background())
+	return consumer
 }

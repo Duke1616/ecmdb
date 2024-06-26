@@ -15,6 +15,7 @@ type CodebookRepository interface {
 	Total(ctx context.Context) (int64, error)
 	UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error)
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
+	FindBySecret(ctx context.Context, identifier string, secret string) (domain.Codebook, error)
 }
 
 func NewCodebookRepository(dao dao.CodebookDAO) CodebookRepository {
@@ -49,6 +50,11 @@ func (repo *codebookRepository) UpdateCodebook(ctx context.Context, req domain.C
 
 func (repo *codebookRepository) DeleteCodebook(ctx context.Context, id int64) (int64, error) {
 	return repo.dao.DeleteCodebook(ctx, id)
+}
+
+func (repo *codebookRepository) FindBySecret(ctx context.Context, identifier string, secret string) (domain.Codebook, error) {
+	c, err := repo.dao.FindBySecret(ctx, identifier, secret)
+	return repo.toDomain(c), err
 }
 
 func (repo *codebookRepository) Total(ctx context.Context) (int64, error) {

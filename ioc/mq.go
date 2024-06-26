@@ -15,7 +15,7 @@ var (
 	mqInitOnce sync.Once
 )
 
-func InitMQ(viper *viper.Viper) mq.MQ {
+func InitMQ() mq.MQ {
 	mqInitOnce.Do(func() {
 		const maxInterval = 10 * time.Second
 		const maxRetries = 10
@@ -24,7 +24,7 @@ func InitMQ(viper *viper.Viper) mq.MQ {
 			panic(err)
 		}
 		for {
-			q, err = initMQ(viper)
+			q, err = initMQ()
 			if err == nil {
 				break
 			}
@@ -38,7 +38,7 @@ func InitMQ(viper *viper.Viper) mq.MQ {
 	return q
 }
 
-func initMQ(viper *viper.Viper) (mq.MQ, error) {
+func initMQ() (mq.MQ, error) {
 	type Config struct {
 		Network   string   `yaml:"network"`
 		Addresses []string `yaml:"addresses"`

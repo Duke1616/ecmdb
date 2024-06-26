@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitSession(viper *viper.Viper, cmd redis.Cmdable) session.Provider {
+func InitSession(cmd redis.Cmdable) session.Provider {
 	type Config struct {
 		SessionEncryptedKey string `mapstructure:"session_encrypted_key"`
 	}

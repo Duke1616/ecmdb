@@ -6,7 +6,7 @@ import (
 	"github.com/xen0n/go-workwx"
 )
 
-func InitWorkWx(viper *viper.Viper) *workwx.WorkwxApp {
+func InitWorkWx() *workwx.WorkwxApp {
 	type Config struct {
 		// CorpSecret 应用的凭证密钥，必填
 		CorpSecret string `yaml:"corpSecret"`

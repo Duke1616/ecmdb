@@ -8,7 +8,6 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event/watch"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
@@ -66,7 +65,13 @@ func InitProducer(producer event.TaskWorkerEventProducer) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(wt)
+
+	for _, item := range wt {
+		err = producer.AddProducer(item.Topic)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func InitWorkerDAO(db *mongox.Mongo, producer event.TaskWorkerEventProducer) dao.WorkerDAO {

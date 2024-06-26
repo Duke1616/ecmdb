@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitLdapConfig(viper *viper.Viper) ldapx.Config {
+func InitLdapConfig() ldapx.Config {
 	// 定义一个结构体实例
 	var cfg ldapx.Config
 

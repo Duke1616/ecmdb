@@ -22,11 +22,10 @@ import (
 // Injectors from wire.go:
 
 func InitApp() (*App, error) {
-	viper := InitViper()
-	cmdable := InitRedis(viper)
-	provider := InitSession(viper, cmdable)
+	cmdable := InitRedis()
+	provider := InitSession(cmdable)
 	v := InitGinMiddlewares()
-	mongo := InitMongoDB(viper)
+	mongo := InitMongoDB()
 	module, err := relation.InitModule(mongo)
 	if err != nil {
 		return nil, err
@@ -48,21 +47,21 @@ func InitApp() (*App, error) {
 	handler2 := resourceModule.Hdl
 	relationModelHandler := module.RMHdl
 	relationResourceHandler := module.RRHdl
-	mq := InitMQ(viper)
-	client := InitEtcdClient(viper)
+	mq := InitMQ()
+	client := InitEtcdClient()
 	workerModule, err := worker.InitModule(mq, mongo, client)
 	if err != nil {
 		return nil, err
 	}
 	handler3 := workerModule.Hdl
 	relationTypeHandler := module.RTHdl
-	config := InitLdapConfig(viper)
+	config := InitLdapConfig()
 	userModule, err := user.InitModule(mongo, config)
 	if err != nil {
 		return nil, err
 	}
 	handler4 := userModule.Hdl
-	workwxApp := InitWorkWx(viper)
+	workwxApp := InitWorkWx()
 	templateModule, err := template.InitModule(mq, mongo, workwxApp)
 	if err != nil {
 		return nil, err
@@ -87,4 +86,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitViper, InitMongoDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
+var BaseSet = wire.NewSet(InitMongoDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)

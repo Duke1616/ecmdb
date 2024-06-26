@@ -21,6 +21,7 @@ func NewHandler(svc service.Service) *Handler {
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/worker")
 	g.POST("/list", ginx.WrapBody[ListWorkerReq](h.ListWorker))
+	g.POST("/push", ginx.WrapBody[PushMessageReq](h.PushMessage))
 }
 
 func (h *Handler) ListWorker(ctx *gin.Context, req ListWorkerReq) (ginx.Result, error) {
@@ -37,6 +38,24 @@ func (h *Handler) ListWorker(ctx *gin.Context, req ListWorkerReq) (ginx.Result, 
 			}),
 		},
 	}, nil
+}
+
+func (h *Handler) PushMessage(ctx *gin.Context, req PushMessageReq) (ginx.Result, error) {
+	h.svc.PushMessage(ctx, h.toDomain(req))
+
+	return ginx.Result{
+		Msg: "",
+	}, nil
+}
+
+func (h *Handler) toDomain(req PushMessageReq) domain.Message {
+	return domain.Message{
+		Topic:    req.Topic,
+		Name:     req.Name,
+		UUID:     req.UUID,
+		Language: req.Language,
+		Code:     req.Code,
+	}
 }
 
 func (h *Handler) toWorkerVo(req domain.Worker) Worker {

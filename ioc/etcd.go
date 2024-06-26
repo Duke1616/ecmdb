@@ -6,7 +6,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func InitEtcdClient(viper *viper.Viper) *clientv3.Client {
+func InitEtcdClient() *clientv3.Client {
 	var cfg clientv3.Config
 
 	if err := viper.UnmarshalKey("etcd", &cfg); err != nil {

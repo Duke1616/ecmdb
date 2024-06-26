@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitRedis(viper *viper.Viper) redis.Cmdable {
+func InitRedis() redis.Cmdable {
 	type Config struct {
 		Addr     string `mapstructure:"addr"`
 		Password string `mapstructure:"password"`

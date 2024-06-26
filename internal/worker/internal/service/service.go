@@ -9,13 +9,15 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/ecodeclub/mq-api"
 	"golang.org/x/sync/errgroup"
+	"log/slog"
 )
 
 type Service interface {
-	RegisterWorker(ctx context.Context, req domain.Worker) error
 	FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
+	// PushMessage 推送消息到Kafka
+	PushMessage(ctx context.Context, req domain.Message)
 }
 
 type service struct {
@@ -24,17 +26,28 @@ type service struct {
 	mq       mq.MQ
 }
 
+func (s *service) PushMessage(ctx context.Context, req domain.Message) {
+	evt := event.RunnerEvent{
+		Language: req.Language,
+		Code:     req.Code,
+		Name:     req.Name,
+		UUID:     req.UUID,
+	}
+
+	if err := s.producer.Produce(ctx, req.Topic, evt); err != nil {
+		slog.Error("工作节点发送指令失败",
+			slog.Any("error", err),
+			slog.Any("event", evt),
+		)
+	}
+}
+
 func NewService(mq mq.MQ, repo repository.WorkerRepository, producer event.TaskWorkerEventProducer) Service {
 	return &service{
 		mq:       mq,
 		repo:     repo,
 		producer: producer,
 	}
-}
-
-func (s *service) RegisterWorker(ctx context.Context, req domain.Worker) error {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error) {

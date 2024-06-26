@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func InitMongoDB(viper *viper.Viper) *mongox.Mongo {
+func InitMongoDB() *mongox.Mongo {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

@@ -13,11 +13,13 @@ import (
 )
 
 type Service interface {
+	Register(ctx context.Context, req domain.Worker) (int64, error)
 	FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
 	// PushMessage 推送消息到Kafka
 	PushMessage(ctx context.Context, req domain.Message)
+	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 }
 
 type service struct {
@@ -48,6 +50,10 @@ func NewService(mq mq.MQ, repo repository.WorkerRepository, producer event.TaskW
 		repo:     repo,
 		producer: producer,
 	}
+}
+
+func (s *service) Register(ctx context.Context, req domain.Worker) (int64, error) {
+	return s.repo.CreateWorker(ctx, req)
 }
 
 func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error) {
@@ -114,6 +120,10 @@ func (s *service) FindOrRegisterByKey(ctx context.Context, req domain.Worker) (d
 		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
 	}
 	return worker, nil
+}
+
+func (s *service) UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error) {
+	return s.repo.UpdateStatus(ctx, id, status)
 }
 
 func (s *service) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error) {

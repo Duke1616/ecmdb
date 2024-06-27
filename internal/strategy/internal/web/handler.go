@@ -54,7 +54,7 @@ func (h *Handler) GetSpecifiedTemplate(ctx *gin.Context, req GetSpecifiedTemplat
 		}
 	}
 	return ginx.Result{
-		Data: domain.Strategies{Strategies: val},
+		Data: val,
 	}, nil
 }
 

@@ -1,7 +1,9 @@
 package web
 
 import (
+	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,6 +18,24 @@ func NewHandler(svc service.Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
-	server.Group("/api/order")
+	g := server.Group("/api/order")
+	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
+}
 
+func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
+	order, err := h.svc.CreateOrder(ctx, h.toDomain(req))
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: order,
+	}, nil
+}
+
+func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
+	return domain.Order{
+		Applicant: req.Applicant,
+		Data:      req.Data,
+	}
 }

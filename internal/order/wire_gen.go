@@ -9,15 +9,18 @@ package order
 import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
+	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
 	serviceService := service.NewService()
 	handler := web.NewHandler(serviceService)
 	wechatOrderConsumer := initConsumer(serviceService, q)
@@ -31,7 +34,7 @@ func InitModule(q mq.MQ) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
 
 func initConsumer(svc service.Service, q mq.MQ) *event.WechatOrderConsumer {
 	consumer, err := event.NewWechatOrderConsumer(svc, q)

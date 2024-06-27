@@ -84,7 +84,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	orderModule, err := order.InitModule(mq)
+	orderModule, err := order.InitModule(mq, mongo)
 	if err != nil {
 		return nil, err
 	}

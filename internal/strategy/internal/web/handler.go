@@ -26,6 +26,7 @@ func NewHandler(svc service.Service, templateSvc template.Service) *Handler {
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/strategy")
 	g.POST("/get_specified_template", ginx.WrapBody[GetSpecifiedTemplate](h.GetSpecifiedTemplate))
+	g.POST("/create", ginx.WrapBody[GetSpecifiedTemplate](h.GetSpecifiedTemplate))
 }
 
 // GetSpecifiedTemplate 获取指定模版下可用的规则选项
@@ -55,4 +56,8 @@ func (h *Handler) GetSpecifiedTemplate(ctx *gin.Context, req GetSpecifiedTemplat
 	return ginx.Result{
 		Data: domain.Strategies{Strategies: val},
 	}, nil
+}
+
+func (h *Handler) Validation(ctx *gin.Context, req GetSpecifiedTemplate) (ginx.Result, error) {
+	return ginx.Result{}, nil
 }

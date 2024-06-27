@@ -20,5 +20,6 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) (int64, err
 	// TODO 匹配相应的规则, 去创建工单
 
 	// TODO 去除重复
-	panic("implement me")
+
+	return s.CreateOrder(ctx, req)
 }

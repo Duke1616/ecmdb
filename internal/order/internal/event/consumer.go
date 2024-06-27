@@ -51,6 +51,7 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
+	fmt.Println(evt, "接收 工单")
 	return nil
 }
 

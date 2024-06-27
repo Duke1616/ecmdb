@@ -18,12 +18,13 @@ const (
 )
 
 type Template struct {
-	Id               int64
-	Name             string
-	CreateType       CreateType
-	UniqueHash       string
-	WechatOAControls workwx.OATemplateControls
-	Rules            []map[string]interface{}
-	Options          map[string]interface{}
-	Desc             string
+	Id                 int64
+	Name               string
+	CreateType         CreateType
+	UniqueHash         string
+	ExternalTemplateId string
+	WechatOAControls   workwx.OATemplateControls
+	Rules              []map[string]interface{}
+	Options            map[string]interface{}
+	Desc               string
 }

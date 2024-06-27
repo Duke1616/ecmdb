@@ -10,6 +10,7 @@ import (
 type TemplateRepository interface {
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	FindByHash(ctx context.Context, hash string) (domain.Template, error)
+	FindByExternalTemplateId(ctx context.Context, hash string) (domain.Template, error)
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error)
@@ -35,6 +36,11 @@ func (repo *templateRepository) FindByHash(ctx context.Context, hash string) (do
 	return repo.toDomain(t), err
 }
 
+func (repo *templateRepository) FindByExternalTemplateId(ctx context.Context, externalTemplateId string) (domain.Template, error) {
+	t, err := repo.dao.FindByExternalTemplateId(ctx, externalTemplateId)
+	return repo.toDomain(t), err
+}
+
 func (repo *templateRepository) DetailTemplate(ctx context.Context, id int64) (domain.Template, error) {
 	t, err := repo.dao.DetailTemplate(ctx, id)
 	return repo.toDomain(t), err
@@ -57,25 +63,27 @@ func (repo *templateRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 	return dao.Template{
-		Name:             req.Name,
-		CreateType:       req.CreateType.ToUint8(),
-		UniqueHash:       req.UniqueHash,
-		WechatOAControls: req.WechatOAControls,
-		Rules:            req.Rules,
-		Options:          req.Options,
-		Desc:             req.Desc,
+		Name:               req.Name,
+		CreateType:         req.CreateType.ToUint8(),
+		UniqueHash:         req.UniqueHash,
+		WechatOAControls:   req.WechatOAControls,
+		ExternalTemplateId: req.ExternalTemplateId,
+		Rules:              req.Rules,
+		Options:            req.Options,
+		Desc:               req.Desc,
 	}
 }
 
 func (repo *templateRepository) toDomain(req dao.Template) domain.Template {
 	return domain.Template{
-		Id:               req.Id,
-		Name:             req.Name,
-		CreateType:       domain.CreateType(req.CreateType),
-		WechatOAControls: req.WechatOAControls,
-		UniqueHash:       req.UniqueHash,
-		Rules:            req.Rules,
-		Options:          req.Options,
-		Desc:             req.Desc,
+		Id:                 req.Id,
+		Name:               req.Name,
+		CreateType:         domain.CreateType(req.CreateType),
+		WechatOAControls:   req.WechatOAControls,
+		UniqueHash:         req.UniqueHash,
+		ExternalTemplateId: req.ExternalTemplateId,
+		Rules:              req.Rules,
+		Options:            req.Options,
+		Desc:               req.Desc,
 	}
 }

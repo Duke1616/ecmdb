@@ -6,9 +6,11 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/model"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
+	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -40,8 +42,11 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*worker.Module), "Hdl"),
 		runner.InitModule,
 		wire.FieldsOf(new(*runner.Module), "Hdl"),
+		order.InitModule,
+		wire.FieldsOf(new(*order.Module), "Hdl"),
+		strategy.InitModule,
+		wire.FieldsOf(new(*strategy.Module), "Hdl"),
 		InitWebServer,
-
 		InitGinMiddlewares)
 	return new(App), nil
 }

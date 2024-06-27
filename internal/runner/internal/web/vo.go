@@ -33,10 +33,11 @@ type ListRunnerReq struct {
 }
 
 type Runner struct {
-	Id   int64    `json:"id"`
-	Name string   `json:"name"`
-	Tags []string `json:"tags"`
-	Desc string   `json:"desc"`
+	Id     int64    `json:"id"`
+	Name   string   `json:"name"`
+	Worker string   `json:"worker"`
+	Tags   []string `json:"tags"`
+	Desc   string   `json:"desc"`
 }
 
 type RetrieveWorkers struct {

@@ -81,9 +81,10 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 
 func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 	return Runner{
-		Id:   req.Id,
-		Name: req.Name,
-		Tags: req.Tags,
-		Desc: req.Desc,
+		Id:     req.Id,
+		Name:   req.Name,
+		Tags:   req.Tags,
+		Desc:   req.Desc,
+		Worker: req.WorkName,
 	}
 }

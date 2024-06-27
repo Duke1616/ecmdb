@@ -10,9 +10,11 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/model"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
+	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -67,17 +69,27 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler5 := templateModule.Hdl
+	strategyModule, err := strategy.InitModule(templateModule)
+	if err != nil {
+		return nil, err
+	}
+	handler6 := strategyModule.Hdl
 	codebookModule, err := codebook.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	handler6 := codebookModule.Hdl
+	handler7 := codebookModule.Hdl
 	runnerModule, err := runner.InitModule(mongo, mq, workerModule, codebookModule)
 	if err != nil {
 		return nil, err
 	}
-	handler7 := runnerModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7)
+	handler8 := runnerModule.Hdl
+	orderModule, err := order.InitModule(mq)
+	if err != nil {
+		return nil, err
+	}
+	handler9 := orderModule.Hdl
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9)
 	app := &App{
 		Web: engine,
 	}

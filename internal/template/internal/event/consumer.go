@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
-	"log/slog"
-
 	"github.com/ecodeclub/mq-api"
+	"github.com/gotomicro/ego/core/elog"
 	"github.com/xen0n/go-workwx"
 )
 
 type WechatApprovalCallbackConsumer struct {
 	svc      service.Service
 	consumer mq.Consumer
+	producer WechatOrderEventProducer
+	workApp  *workwx.WorkwxApp
+	logger   *elog.Component
 }
 
-func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ) (*WechatApprovalCallbackConsumer, error) {
+func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ, p WechatOrderEventProducer, workApp *workwx.WorkwxApp) (*WechatApprovalCallbackConsumer, error) {
 	groupID := "callback"
 	consumer, err := q.Consumer(CallbackEventName, groupID)
 	if err != nil {
@@ -26,6 +28,9 @@ func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ) (*WechatApp
 	return &WechatApprovalCallbackConsumer{
 		svc:      svc,
 		consumer: consumer,
+		logger:   elog.DefaultLogger,
+		producer: p,
+		workApp:  workApp,
 	}, nil
 }
 
@@ -34,7 +39,7 @@ func (c *WechatApprovalCallbackConsumer) Start(ctx context.Context) {
 		for {
 			err := c.Consume(ctx)
 			if err != nil {
-				slog.Error("同步事件失败", err)
+				elog.Error("同步事件失败", elog.Any("err", err))
 			}
 		}
 	}()
@@ -56,7 +61,25 @@ func (c *WechatApprovalCallbackConsumer) Consume(ctx context.Context) error {
 		TemplateName: evt.SpName,
 		SpNo:         evt.SpNo,
 	}); err != nil {
-		slog.Error("模版已经存在或新增模版失败", err)
+		elog.Error("模版已经存在或新增模版失败", elog.Any("err", err))
+		return err
+	}
+
+	return c.sendOrderEvent(ctx, evt.SpNo)
+}
+
+func (c *WechatApprovalCallbackConsumer) sendOrderEvent(ctx context.Context, spNo string) error {
+	spInfo, err := c.workApp.GetOAApprovalDetail(spNo)
+	if err != nil {
+		return err
+	}
+
+	err = c.producer.Produce(ctx, spInfo)
+	if err != nil {
+		elog.Error("传输企业微信工单失败",
+			elog.FieldErr(err),
+			elog.Any("event", spInfo.SpNo),
+		)
 	}
 
 	return err

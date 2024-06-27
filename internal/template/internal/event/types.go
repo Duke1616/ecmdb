@@ -14,4 +14,7 @@
 
 package event
 
-const CallbackEventName = "wechat_callback_events"
+const (
+	WechatOrderEventName = "wechat_order_events"
+	CallbackEventName    = "wechat_callback_events"
+)

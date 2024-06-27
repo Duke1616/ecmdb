@@ -24,14 +24,15 @@ var ProviderSet = wire.NewSet(
 func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
 	wire.Build(
 		ProviderSet,
+		event.NewWechatOrderEventProducer,
 		initConsumer,
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
 }
 
-func initConsumer(svc service.Service, q mq.MQ) *event.WechatApprovalCallbackConsumer {
-	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q)
+func initConsumer(svc service.Service, q mq.MQ, p event.WechatOrderEventProducer, workAPP *workwx.WorkwxApp) *event.WechatApprovalCallbackConsumer {
+	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q, p, workAPP)
 	if err != nil {
 		panic(err)
 	}

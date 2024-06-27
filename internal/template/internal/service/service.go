@@ -37,16 +37,22 @@ func (s *service) FindOrCreateByWechat(ctx context.Context, req domain.WechatInf
 		return domain.Template{}, fmt.Errorf("获取模版详情失败: %w", err)
 	}
 
-	t, err := s.repo.FindByHash(ctx, hash.Hash(OAInfo.TemplateContent))
+	t, err := s.repo.FindByExternalTemplateId(ctx, req.TemplateId)
 	if !errors.Is(err, repository.ErrUserNotFound) {
+		if hash.Hash(OAInfo.TemplateContent) != hash.Hash(t.WechatOAControls) {
+			// TODO 重新同步 Controls 数据
+
+		}
+
 		return t, err
 	}
 
 	t = domain.Template{
-		CreateType:       domain.WechatCreate,
-		Name:             req.TemplateName,
-		WechatOAControls: OAInfo.TemplateContent,
-		UniqueHash:       hash.Hash(OAInfo.TemplateContent),
+		CreateType:         domain.WechatCreate,
+		Name:               req.TemplateName,
+		ExternalTemplateId: req.TemplateId,
+		WechatOAControls:   OAInfo.TemplateContent,
+		UniqueHash:         hash.Hash(OAInfo.TemplateContent),
 	}
 
 	t.Id, err = s.repo.CreateTemplate(ctx, t)

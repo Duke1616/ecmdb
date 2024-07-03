@@ -11,13 +11,15 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitMongoDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
@@ -46,7 +48,11 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*order.Module), "Hdl"),
 		strategy.InitModule,
 		wire.FieldsOf(new(*strategy.Module), "Hdl"),
+		workflow.InitModule,
+		wire.FieldsOf(new(*workflow.Module), "Hdl"),
 		InitWebServer,
+		task.InitModule,
+		wire.FieldsOf(new(*task.Module), "Hdl"),
 		InitGinMiddlewares)
 	return new(App), nil
 }

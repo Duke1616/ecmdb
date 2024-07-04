@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -22,6 +23,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/workflow")
 	g.POST("/create", ginx.WrapBody[CreateReq](h.Create))
 	g.POST("/list", ginx.WrapBody[ListReq](h.List))
+	g.POST("/deploy", ginx.WrapBody[DeployReq](h.Deploy))
 }
 
 func (h *Handler) Create(ctx *gin.Context, req CreateReq) (ginx.Result, error) {
@@ -51,9 +53,28 @@ func (h *Handler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
 	}, nil
 }
 
+// Deploy 发布到流程控制系统
+func (h *Handler) Deploy(ctx *gin.Context, req DeployReq) (ginx.Result, error) {
+	flow, err := h.svc.Find(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("查询节点信息失败")
+	}
+
+	err = h.svc.Deploy(ctx, flow)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("发布失败")
+	}
+	return ginx.Result{
+		Data: flow,
+	}, nil
+}
+
 func (h *Handler) toDomain(req CreateReq) domain.Workflow {
 	return domain.Workflow{
-		FlowData:   req.FlowData,
+		FlowData: domain.LogicFlow{
+			Edges: req.FlowData.Edges,
+			Nodes: req.FlowData.Nodes,
+		},
 		Name:       req.Name,
 		Desc:       req.Desc,
 		Icon:       req.Icon,
@@ -70,6 +91,9 @@ func (h *Handler) toWorkflowVo(req domain.Workflow) Workflow {
 		Icon:       req.Icon,
 		Owner:      req.Owner,
 		TemplateId: req.TemplateId,
-		FlowData:   req.FlowData,
+		FlowData: LogicFlow{
+			Nodes: req.FlowData.Nodes,
+			Edges: req.FlowData.Edges,
+		},
 	}
 }

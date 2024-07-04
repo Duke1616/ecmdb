@@ -7,5 +7,10 @@ type Workflow struct {
 	Icon       string
 	Owner      string
 	Desc       string
-	FlowData   map[string]interface{}
+	FlowData   LogicFlow
+}
+
+type LogicFlow struct {
+	Edges []map[string]interface{} `json:"edges"`
+	Nodes []map[string]interface{} `json:"nodes"`
 }

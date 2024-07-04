@@ -11,6 +11,7 @@ type WorkflowRepository interface {
 	Create(ctx context.Context, req domain.Workflow) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Workflow, error)
 	Total(ctx context.Context) (int64, error)
+	Find(ctx context.Context, id int64) (domain.Workflow, error)
 }
 
 func NewWorkflowRepository(dao dao.WorkflowDAO) WorkflowRepository {
@@ -37,6 +38,11 @@ func (repo *workflowRepository) Total(ctx context.Context) (int64, error) {
 	return repo.dao.Count(ctx)
 }
 
+func (repo *workflowRepository) Find(ctx context.Context, id int64) (domain.Workflow, error) {
+	w, err := repo.dao.Find(ctx, id)
+	return repo.toDomain(w), err
+}
+
 func (repo *workflowRepository) toEntity(req domain.Workflow) dao.Workflow {
 	return dao.Workflow{
 		TemplateId: req.TemplateId,
@@ -44,7 +50,10 @@ func (repo *workflowRepository) toEntity(req domain.Workflow) dao.Workflow {
 		Icon:       req.Icon,
 		Owner:      req.Owner,
 		Desc:       req.Desc,
-		FlowData:   req.FlowData,
+		FlowData: dao.LogicFlow{
+			Edges: req.FlowData.Edges,
+			Nodes: req.FlowData.Nodes,
+		},
 	}
 }
 
@@ -56,6 +65,9 @@ func (repo *workflowRepository) toDomain(req dao.Workflow) domain.Workflow {
 		Icon:       req.Icon,
 		Owner:      req.Owner,
 		Desc:       req.Desc,
-		FlowData:   req.FlowData,
+		FlowData: domain.LogicFlow{
+			Edges: req.FlowData.Edges,
+			Nodes: req.FlowData.Nodes,
+		},
 	}
 }

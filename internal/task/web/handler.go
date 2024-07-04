@@ -15,7 +15,11 @@ func NewHandler() *Handler {
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
-	g := router.NewRouter(server, "/api/task", false, "")
+	// easy-workflow 路由注册
+	router.NewRouter(server, "/api/process", false, "")
+
+	// 本地服务路由注册
+	g := server.Group("/api/task")
 	g.POST("/create", ginx.WrapBody[CreateReq](h.CreateTask))
 }
 

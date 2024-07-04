@@ -13,7 +13,7 @@ func main() {
 		panic(err)
 	}
 
-	err = app.Web.Run(":8001")
+	err = app.Web.Run(":8000")
 	panic(err)
 }
 

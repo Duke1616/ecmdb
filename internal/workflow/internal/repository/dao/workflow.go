@@ -17,6 +17,7 @@ type WorkflowDAO interface {
 	Create(ctx context.Context, w Workflow) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]Workflow, error)
 	Count(ctx context.Context) (int64, error)
+	Find(ctx context.Context, id int64) (Workflow, error)
 }
 
 func NewWorkflowDAO(db *mongox.Mongo) WorkflowDAO {
@@ -80,14 +81,31 @@ func (dao *workflowDAO) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (dao *workflowDAO) Find(ctx context.Context, id int64) (Workflow, error) {
+	col := dao.db.Collection(WorkFlowCollection)
+	var w Workflow
+	filter := bson.M{"id": id}
+
+	if err := col.FindOne(ctx, filter).Decode(&w); err != nil {
+		return Workflow{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return w, nil
+}
+
 type Workflow struct {
-	Id         int64                  `bson:"id"`
-	TemplateId int64                  `bson:"template_id"`
-	Name       string                 `bson:"name"`
-	Icon       string                 `bson:"icon"`
-	Owner      string                 `bson:"owner"`
-	Desc       string                 `bson:"desc"`
-	FlowData   map[string]interface{} `bson:"flow_data"`
-	Ctime      int64                  `bson:"ctime"`
-	Utime      int64                  `bson:"utime"`
+	Id         int64     `bson:"id"`
+	TemplateId int64     `bson:"template_id"`
+	Name       string    `bson:"name"`
+	Icon       string    `bson:"icon"`
+	Owner      string    `bson:"owner"`
+	Desc       string    `bson:"desc"`
+	FlowData   LogicFlow `bson:"flow_data"`
+	Ctime      int64     `bson:"ctime"`
+	Utime      int64     `bson:"utime"`
+}
+
+type LogicFlow struct {
+	Edges []map[string]interface{} `bson:"edges"`
+	Nodes []map[string]interface{} `bson:"nodes"`
 }

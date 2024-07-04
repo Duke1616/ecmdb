@@ -25,6 +25,14 @@ type UserProperty struct {
 	Approved string `json:"approved"`
 }
 
+type StartProperty struct {
+	Name string `json:"name"`
+}
+
+type EndProperty struct {
+	Name string `json:"name"`
+}
+
 type ConditionProperty struct {
 	Name string `json:"name"`
 }

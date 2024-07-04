@@ -17,6 +17,8 @@ type WorkflowDAO interface {
 	Create(ctx context.Context, w Workflow) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]Workflow, error)
 	Count(ctx context.Context) (int64, error)
+	Update(ctx context.Context, c Workflow) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	Find(ctx context.Context, id int64) (Workflow, error)
 }
 
@@ -91,6 +93,37 @@ func (dao *workflowDAO) Find(ctx context.Context, id int64) (Workflow, error) {
 	}
 
 	return w, nil
+}
+
+func (dao *workflowDAO) Delete(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(WorkFlowCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *workflowDAO) Update(ctx context.Context, c Workflow) (int64, error) {
+	col := dao.db.Collection(WorkFlowCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":      c.Name,
+			"desc":      c.Desc,
+			"flow_data": c.FlowData,
+			"utime":     time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": c.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 type Workflow struct {

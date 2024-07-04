@@ -23,6 +23,8 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/workflow")
 	g.POST("/create", ginx.WrapBody[CreateReq](h.Create))
 	g.POST("/list", ginx.WrapBody[ListReq](h.List))
+	g.POST("/update", ginx.WrapBody[UpdateReq](h.Update))
+	g.POST("/delete", ginx.WrapBody[DeleteReq](h.Delete))
 	g.POST("/deploy", ginx.WrapBody[DeployReq](h.Deploy))
 }
 
@@ -69,6 +71,28 @@ func (h *Handler) Deploy(ctx *gin.Context, req DeployReq) (ginx.Result, error) {
 	}, nil
 }
 
+func (h *Handler) Update(ctx *gin.Context, req UpdateReq) (ginx.Result, error) {
+	t, err := h.svc.Update(ctx, h.toUpdateDomain(req))
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: t,
+	}, nil
+}
+
+func (h *Handler) Delete(ctx *gin.Context, req DeleteReq) (ginx.Result, error) {
+	count, err := h.svc.Delete(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
+	}, nil
+}
+
 func (h *Handler) toDomain(req CreateReq) domain.Workflow {
 	return domain.Workflow{
 		FlowData: domain.LogicFlow{
@@ -80,6 +104,17 @@ func (h *Handler) toDomain(req CreateReq) domain.Workflow {
 		Icon:       req.Icon,
 		Owner:      req.Owner,
 		TemplateId: req.TemplateId,
+	}
+}
+
+func (h *Handler) toUpdateDomain(req UpdateReq) domain.Workflow {
+	return domain.Workflow{
+		Id:   req.Id,
+		Name: req.Name,
+		FlowData: domain.LogicFlow{
+			Edges: req.FlowData.Edges,
+			Nodes: req.FlowData.Nodes,
+		},
 	}
 }
 

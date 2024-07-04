@@ -55,7 +55,12 @@ func (l *loginFlow) Deploy() (int, error) {
 }
 
 func (l *loginFlow) Start(node domain.Node) {
-	n := model.Node{NodeID: node.ID, NodeName: "Start",
+	NodeName := "Start"
+	property, _ := toNodeProperty[domain.StartProperty](node)
+	if property.Name != "" {
+		NodeName = property.Name
+	}
+	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 0, UserIDs: []string{"$starter"},
 		NodeEndEvents: []string{"EVENT_END"},
 	}
@@ -64,8 +69,13 @@ func (l *loginFlow) Start(node domain.Node) {
 }
 
 func (l *loginFlow) End(node domain.Node) {
-	n := model.Node{NodeID: node.ID, NodeName: "End",
-		NodeType: 3, PrevNodeIDs: []string{"GW-Day", "Boss"},
+	NodeName := "End"
+	property, _ := toNodeProperty[domain.EndProperty](node)
+	if property.Name != "" {
+		NodeName = property.Name
+	}
+	n := model.Node{NodeID: node.ID, NodeName: NodeName,
+		NodeType: 3, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
 		NodeStartEvents: []string{"MyEvent_Notify"}}
 
 	l.NodeList = append(l.NodeList, n)

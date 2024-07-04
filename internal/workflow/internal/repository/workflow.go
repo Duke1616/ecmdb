@@ -11,6 +11,8 @@ type WorkflowRepository interface {
 	Create(ctx context.Context, req domain.Workflow) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Workflow, error)
 	Total(ctx context.Context) (int64, error)
+	Update(ctx context.Context, req domain.Workflow) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	Find(ctx context.Context, id int64) (domain.Workflow, error)
 }
 
@@ -43,8 +45,17 @@ func (repo *workflowRepository) Find(ctx context.Context, id int64) (domain.Work
 	return repo.toDomain(w), err
 }
 
+func (repo *workflowRepository) Update(ctx context.Context, req domain.Workflow) (int64, error) {
+	return repo.dao.Update(ctx, repo.toEntity(req))
+}
+
+func (repo *workflowRepository) Delete(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.Delete(ctx, id)
+}
+
 func (repo *workflowRepository) toEntity(req domain.Workflow) dao.Workflow {
 	return dao.Workflow{
+		Id:         req.Id,
 		TemplateId: req.TemplateId,
 		Name:       req.Name,
 		Icon:       req.Icon,

@@ -27,6 +27,16 @@ type DeployReq struct {
 	Id int64
 }
 
+type UpdateReq struct {
+	Id       int64     `json:"id"`
+	Name     string    `json:"name"`
+	FlowData LogicFlow `json:"flow_data"`
+}
+
+type DeleteReq struct {
+	Id int64 `json:"id"`
+}
+
 type Workflow struct {
 	Id         int64     `json:"id"`
 	TemplateId int64     `json:"template_id"`

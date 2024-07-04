@@ -12,6 +12,8 @@ type Service interface {
 	Create(ctx context.Context, req domain.Workflow) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Workflow, int64, error)
 	Find(ctx context.Context, id int64) (domain.Workflow, error)
+	Update(ctx context.Context, req domain.Workflow) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	Deploy(ctx context.Context, flow domain.Workflow) error
 }
 
@@ -55,6 +57,14 @@ func (s *service) List(ctx context.Context, offset, limit int64) ([]domain.Workf
 
 func (s *service) Find(ctx context.Context, id int64) (domain.Workflow, error) {
 	return s.repo.Find(ctx, id)
+}
+
+func (s *service) Update(ctx context.Context, req domain.Workflow) (int64, error) {
+	return s.repo.Update(ctx, req)
+}
+
+func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
+	return s.repo.Delete(ctx, id)
 }
 
 func (s *service) Deploy(ctx context.Context, flow domain.Workflow) error {

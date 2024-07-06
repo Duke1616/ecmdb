@@ -109,8 +109,9 @@ func (h *Handler) toDomain(req CreateReq) domain.Workflow {
 
 func (h *Handler) toUpdateDomain(req UpdateReq) domain.Workflow {
 	return domain.Workflow{
-		Id:   req.Id,
-		Name: req.Name,
+		Id:    req.Id,
+		Name:  req.Name,
+		Owner: req.Owner,
 		FlowData: domain.LogicFlow{
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,

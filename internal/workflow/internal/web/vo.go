@@ -30,6 +30,7 @@ type DeployReq struct {
 type UpdateReq struct {
 	Id       int64     `json:"id"`
 	Name     string    `json:"name"`
+	Owner    string    `json:"owner"`
 	FlowData LogicFlow `json:"flow_data"`
 }
 

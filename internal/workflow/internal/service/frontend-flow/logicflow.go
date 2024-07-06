@@ -45,7 +45,7 @@ func (l *loginFlow) Deploy() (int, error) {
 	}
 
 	// 发布流程
-	process := model.Process{ProcessName: l.flow.Name, Source: "工单系统", RevokeEvents: []string{"EVENT_REVOKE"}, Nodes: l.NodeList}
+	process := model.Process{ProcessName: l.flow.Name, Source: "工单系统", RevokeEvents: []string{"EventRevoke"}, Nodes: l.NodeList}
 	j, err := engine.JSONMarshal(process, false)
 	if err != nil {
 		return 0, err
@@ -62,7 +62,7 @@ func (l *loginFlow) Start(node domain.Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 0, UserIDs: []string{"$starter"},
-		NodeEndEvents: []string{"EVENT_END"},
+		NodeEndEvents: []string{"EventEnd"},
 	}
 
 	l.NodeList = append(l.NodeList, n)
@@ -76,7 +76,7 @@ func (l *loginFlow) End(node domain.Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 3, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		NodeStartEvents: []string{"MyEvent_Notify"}}
+		NodeStartEvents: []string{"EventNotify"}}
 
 	l.NodeList = append(l.NodeList, n)
 }

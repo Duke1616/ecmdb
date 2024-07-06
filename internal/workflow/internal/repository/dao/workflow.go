@@ -113,6 +113,7 @@ func (dao *workflowDAO) Update(ctx context.Context, c Workflow) (int64, error) {
 		"$set": bson.M{
 			"name":      c.Name,
 			"desc":      c.Desc,
+			"owner":     c.Owner,
 			"flow_data": c.FlowData,
 			"utime":     time.Now().UnixMilli(),
 		},

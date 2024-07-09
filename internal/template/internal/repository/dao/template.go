@@ -24,6 +24,7 @@ type TemplateDAO interface {
 	FindByExternalTemplateId(ctx context.Context, externalTemplateId string) (Template, error)
 	DetailTemplate(ctx context.Context, id int64) (Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	UpdateTemplate(ctx context.Context, t Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
 	Count(ctx context.Context) (int64, error)
 }
@@ -98,6 +99,26 @@ func (dao *templateDAO) DeleteTemplate(ctx context.Context, id int64) (int64, er
 	}
 
 	return result.DeletedCount, nil
+}
+
+func (dao *templateDAO) UpdateTemplate(ctx context.Context, t Template) (int64, error) {
+	fmt.Println(t.Rules)
+	col := dao.db.Collection(TemplateCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":    t.Name,
+			"rules":   t.Rules,
+			"options": t.Options,
+			"utime":   time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": t.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *templateDAO) ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error) {

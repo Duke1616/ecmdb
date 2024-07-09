@@ -13,6 +13,7 @@ type TemplateRepository interface {
 	FindByExternalTemplateId(ctx context.Context, hash string) (domain.Template, error)
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	UpdateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error)
 	Total(ctx context.Context) (int64, error)
 }
@@ -50,6 +51,10 @@ func (repo *templateRepository) DeleteTemplate(ctx context.Context, id int64) (i
 	return repo.dao.DeleteTemplate(ctx, id)
 }
 
+func (repo *templateRepository) UpdateTemplate(ctx context.Context, req domain.Template) (int64, error) {
+	return repo.dao.UpdateTemplate(ctx, repo.toEntity(req))
+}
+
 func (repo *templateRepository) ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error) {
 	ts, err := repo.dao.ListTemplate(ctx, offset, limit)
 	return slice.Map(ts, func(idx int, src dao.Template) domain.Template {
@@ -63,6 +68,7 @@ func (repo *templateRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 	return dao.Template{
+		Id:                 req.Id,
 		Name:               req.Name,
 		CreateType:         req.CreateType.ToUint8(),
 		UniqueHash:         req.UniqueHash,

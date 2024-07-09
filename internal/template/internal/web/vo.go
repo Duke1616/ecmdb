@@ -39,3 +39,10 @@ type RetrieveTemplates struct {
 	Total     int64      `json:"total"`
 	Templates []Template `json:"templates"`
 }
+
+type UpdateTemplateReq struct {
+	Id      int64  `json:"id"`
+	Name    string `json:"name"`
+	Rules   string `json:"rules"`
+	Options string `json:"options"`
+}

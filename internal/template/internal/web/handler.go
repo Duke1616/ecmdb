@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/detail", ginx.WrapBody[DetailTemplateReq](h.DetailTemplate))
 	g.POST("/list", ginx.WrapBody[ListTemplateReq](h.ListTemplate))
 	g.POST("/delete", ginx.WrapBody[DeleteTemplateReq](h.DeleteTemplate))
+	g.POST("/update", ginx.WrapBody[UpdateTemplateReq](h.UpdateTemplate))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -81,6 +82,23 @@ func (h *Handler) DeleteTemplate(ctx *gin.Context, req DeleteTemplateReq) (ginx.
 	}, nil
 }
 
+func (h *Handler) UpdateTemplate(ctx *gin.Context, req UpdateTemplateReq) (ginx.Result, error) {
+	d, err := h.toUpdateDomain(req)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	t, err := h.svc.UpdateTemplate(ctx, d)
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: t,
+	}, nil
+}
+
 func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 	var rulesData []map[string]interface{}
 	if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
@@ -110,4 +128,24 @@ func (h *Handler) toTemplateVo(req domain.Template) Template {
 		CreateType: CreateType(req.CreateType),
 		Desc:       req.Desc,
 	}
+}
+
+func (h *Handler) toUpdateDomain(req UpdateTemplateReq) (domain.Template, error) {
+	var rulesData []map[string]interface{}
+	if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
+		return domain.Template{}, err
+	}
+
+	var optionsData map[string]interface{}
+	if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
+		return domain.Template{}, err
+	}
+
+	return domain.Template{
+		Id:      req.Id,
+		Name:    req.Name,
+		Rules:   rulesData,
+		Options: optionsData,
+	}, nil
+
 }

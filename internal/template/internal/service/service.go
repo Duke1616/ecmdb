@@ -17,6 +17,7 @@ type Service interface {
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
 }
 
 type service struct {
@@ -65,6 +66,10 @@ func (s *service) FindOrCreateByWechat(ctx context.Context, req domain.WechatInf
 
 func (s *service) CreateTemplate(ctx context.Context, req domain.Template) (int64, error) {
 	return s.repo.CreateTemplate(ctx, req)
+}
+
+func (s *service) UpdateTemplate(ctx context.Context, t domain.Template) (int64, error) {
+	return s.repo.UpdateTemplate(ctx, t)
 }
 
 func (s *service) DetailTemplate(ctx context.Context, id int64) (domain.Template, error) {

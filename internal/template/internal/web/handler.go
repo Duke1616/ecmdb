@@ -112,6 +112,9 @@ func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 
 	return domain.Template{
 		Name:       req.Name,
+		FlowId:     req.FlowId,
+		GroupId:    req.GroupId,
+		Icon:       req.Icon,
 		CreateType: domain.SystemCreate,
 		Rules:      rulesData,
 		Options:    optionsData,
@@ -123,6 +126,9 @@ func (h *Handler) toTemplateVo(req domain.Template) Template {
 	return Template{
 		Id:         req.Id,
 		Name:       req.Name,
+		FlowId:     req.FlowId,
+		GroupId:    req.GroupId,
+		Icon:       req.Icon,
 		Rules:      req.Rules,
 		Options:    req.Options,
 		CreateType: CreateType(req.CreateType),

@@ -70,6 +70,9 @@ func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 	return dao.Template{
 		Id:                 req.Id,
 		Name:               req.Name,
+		FlowId:             req.FlowId,
+		GroupId:            req.GroupId,
+		Icon:               req.Icon,
 		CreateType:         req.CreateType.ToUint8(),
 		UniqueHash:         req.UniqueHash,
 		WechatOAControls:   req.WechatOAControls,
@@ -84,6 +87,9 @@ func (repo *templateRepository) toDomain(req dao.Template) domain.Template {
 	return domain.Template{
 		Id:                 req.Id,
 		Name:               req.Name,
+		FlowId:             req.FlowId,
+		GroupId:            req.GroupId,
+		Icon:               req.Icon,
 		CreateType:         domain.CreateType(req.CreateType),
 		WechatOAControls:   req.WechatOAControls,
 		UniqueHash:         req.UniqueHash,

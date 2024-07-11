@@ -67,9 +67,14 @@ func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *service) Deploy(ctx context.Context, flow domain.Workflow) error {
-	f := frontend_flow.NewFrontendFlow(flow)
-	_, err := f.Deploy()
+func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
+	f := frontend_flow.NewFrontendFlow(wf)
+	// 发布到流程引擎
+	processId, err := f.Deploy()
+	if err != nil {
+		return err
+	}
 
-	return err
+	// 绑定此流程对应引擎的ID, 为了后续查询数据详情使用
+	return s.repo.UpdateProcessId(ctx, wf.Id, processId)
 }

@@ -31,17 +31,22 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, 
 	}
 	wechatApprovalCallbackConsumer := initConsumer(serviceService, q, wechatOrderEventProducer, workAPP)
 	handler := web.NewHandler(serviceService)
+	templateGroupDAO := dao.NewTemplateGroupDAO(db)
+	templateGroupRepository := repository.NewTemplateGroupRepository(templateGroupDAO)
+	groupService := service.NewGroupService(templateGroupRepository)
+	groupHandler := web.NewGroupHandler(groupService)
 	module := &Module{
-		Svc: serviceService,
-		c:   wechatApprovalCallbackConsumer,
-		Hdl: handler,
+		Svc:      serviceService,
+		c:        wechatApprovalCallbackConsumer,
+		Hdl:      handler,
+		GroupHdl: groupHandler,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTemplateRepository, dao.NewTemplateDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTemplateRepository, dao.NewTemplateDAO, web.NewGroupHandler, service.NewGroupService, repository.NewTemplateGroupRepository, dao.NewTemplateGroupDAO)
 
 func initConsumer(svc service.Service, q mq.MQ, p event.WechatOrderEventProducer, workAPP *workwx.WorkwxApp) *event.WechatApprovalCallbackConsumer {
 	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q, p, workAPP)

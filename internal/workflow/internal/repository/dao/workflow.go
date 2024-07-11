@@ -18,6 +18,7 @@ type WorkflowDAO interface {
 	List(ctx context.Context, offset, limit int64) ([]Workflow, error)
 	Count(ctx context.Context) (int64, error)
 	Update(ctx context.Context, c Workflow) (int64, error)
+	UpdateProcessId(ctx context.Context, id int64, processId int) error
 	Delete(ctx context.Context, id int64) (int64, error)
 	Find(ctx context.Context, id int64) (Workflow, error)
 }
@@ -127,6 +128,23 @@ func (dao *workflowDAO) Update(ctx context.Context, c Workflow) (int64, error) {
 	return count.ModifiedCount, nil
 }
 
+func (dao *workflowDAO) UpdateProcessId(ctx context.Context, id int64, processId int) error {
+	col := dao.db.Collection(WorkFlowCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"process_id": processId,
+			"utime":      time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": id}
+	_, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return nil
+}
+
 type Workflow struct {
 	Id         int64     `bson:"id"`
 	TemplateId int64     `bson:"template_id"`
@@ -134,6 +152,7 @@ type Workflow struct {
 	Icon       string    `bson:"icon"`
 	Owner      string    `bson:"owner"`
 	Desc       string    `bson:"desc"`
+	ProcessId  int       `bson:"process_id"`
 	FlowData   LogicFlow `bson:"flow_data"`
 	Ctime      int64     `bson:"ctime"`
 	Utime      int64     `bson:"utime"`

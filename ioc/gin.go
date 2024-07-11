@@ -25,7 +25,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
-	taskHdl *task.Handler,
+	taskHdl *task.Handler, templateGroupHdl *template.GroupHdl,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
@@ -47,6 +47,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	orderHdl.RegisterRoutes(server)
 	workflowHdl.RegisterRoutes(server)
 	taskHdl.RegisterRoutes(server)
+	templateGroupHdl.RegisterRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())

@@ -46,3 +46,19 @@ type UpdateTemplateReq struct {
 	Rules   string `json:"rules"`
 	Options string `json:"options"`
 }
+
+type CreateTemplateGroupReq struct {
+	Name string `json:"name"`
+	Icon string `json:"icon"`
+}
+
+type TemplateGroup struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+	Icon string `json:"icon"`
+}
+
+type RetrieveTemplateGroup struct {
+	TemplateGroups []TemplateGroup `json:"template_groups"`
+	Total          int64           `json:"total"`
+}

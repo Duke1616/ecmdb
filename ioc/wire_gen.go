@@ -102,7 +102,8 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler11 := taskModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11)
+	groupHandler := templateModule.GroupHdl
+	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, groupHandler)
 	app := &App{
 		Web: engine,
 	}

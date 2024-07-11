@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/xen0n/go-workwx"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -13,10 +12,6 @@ import (
 
 // ErrDataNotFound 通用的数据没找到
 var ErrDataNotFound = mongo.ErrNoDocuments
-
-const (
-	TemplateCollection = "c_template"
-)
 
 type TemplateDAO interface {
 	CreateTemplate(ctx context.Context, t Template) (int64, error)
@@ -156,18 +151,4 @@ func (dao *templateDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
-}
-
-type Template struct {
-	Id                 int64                     `bson:"id"`
-	Name               string                    `bson:"name"`
-	CreateType         uint8                     `bson:"create_type"`
-	Rules              []map[string]interface{}  `bson:"rules"`
-	Options            map[string]interface{}    `bson:"options"`
-	ExternalTemplateId string                    `bson:"external_template_id"`
-	UniqueHash         string                    `bson:"unique_hash"`
-	WechatOAControls   workwx.OATemplateControls `bson:"wechat_oa_controls,omitempty"`
-	Desc               string                    `bson:"desc,omitempty"`
-	Ctime              int64                     `bson:"ctime"`
-	Utime              int64                     `bson:"utime"`
 }

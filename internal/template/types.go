@@ -7,4 +7,6 @@ import (
 
 type Handler = web.Handler
 
+type GroupHdl = web.GroupHandler
+
 type Service = service.Service

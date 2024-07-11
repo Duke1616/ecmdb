@@ -37,7 +37,7 @@ func InitApp() (*App, error) {
 		user.InitModule,
 		wire.FieldsOf(new(*user.Module), "Hdl"),
 		template.InitModule,
-		wire.FieldsOf(new(*template.Module), "Hdl"),
+		wire.FieldsOf(new(*template.Module), "Hdl", "GroupHdl"),
 		codebook.InitModule,
 		wire.FieldsOf(new(*codebook.Module), "Hdl"),
 		worker.InitModule,

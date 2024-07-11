@@ -19,7 +19,12 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewService,
 	repository.NewTemplateRepository,
-	dao.NewTemplateDAO)
+	dao.NewTemplateDAO,
+	web.NewGroupHandler,
+	service.NewGroupService,
+	repository.NewTemplateGroupRepository,
+	dao.NewTemplateGroupDAO,
+)
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
 	wire.Build(

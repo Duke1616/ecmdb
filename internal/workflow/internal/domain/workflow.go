@@ -7,7 +7,8 @@ type Workflow struct {
 	Icon       string
 	Owner      string
 	Desc       string
-	FlowData   LogicFlow
+	FlowData   LogicFlow // 前端数据传递Flow数据
+	ProcessId  int       // 绑定对应的后端引擎 ID
 }
 
 type LogicFlow struct {

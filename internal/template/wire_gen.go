@@ -30,10 +30,10 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, 
 		return nil, err
 	}
 	wechatApprovalCallbackConsumer := initConsumer(serviceService, q, wechatOrderEventProducer, workAPP)
-	handler := web.NewHandler(serviceService)
 	templateGroupDAO := dao.NewTemplateGroupDAO(db)
 	templateGroupRepository := repository.NewTemplateGroupRepository(templateGroupDAO)
 	groupService := service.NewGroupService(templateGroupRepository)
+	handler := web.NewHandler(serviceService, groupService)
 	groupHandler := web.NewGroupHandler(groupService)
 	module := &Module{
 		Svc:      serviceService,

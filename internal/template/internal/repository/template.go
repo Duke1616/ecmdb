@@ -16,6 +16,7 @@ type TemplateRepository interface {
 	UpdateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error)
 	Total(ctx context.Context) (int64, error)
+	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 }
 
 func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
@@ -26,6 +27,19 @@ func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
 
 type templateRepository struct {
 	dao dao.TemplateDAO
+}
+
+func (repo *templateRepository) Pipeline(ctx context.Context) ([]domain.TemplateCombination, error) {
+	pipeline, err := repo.dao.Pipeline(ctx)
+	return slice.Map(pipeline, func(idx int, src dao.TemplatePipeline) domain.TemplateCombination {
+		return domain.TemplateCombination{
+			Id:    src.Id,
+			Total: src.Total,
+			Templates: slice.Map(src.Templates, func(idx int, src dao.Template) domain.Template {
+				return repo.toDomain(src)
+			}),
+		}
+	}), err
 }
 
 func (repo *templateRepository) CreateTemplate(ctx context.Context, req domain.Template) (int64, error) {

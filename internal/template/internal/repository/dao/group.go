@@ -13,6 +13,7 @@ type TemplateGroupDAO interface {
 	Create(ctx context.Context, t TemplateGroup) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]TemplateGroup, error)
 	Count(ctx context.Context) (int64, error)
+	ListByIds(ctx context.Context, ids []int64) ([]TemplateGroup, error)
 }
 
 func NewTemplateGroupDAO(db *mongox.Mongo) TemplateGroupDAO {
@@ -74,4 +75,19 @@ func (dao *templateGroupDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *templateGroupDAO) ListByIds(ctx context.Context, ids []int64) ([]TemplateGroup, error) {
+	col := dao.db.Collection(TemplateGroupCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []TemplateGroup
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }

@@ -11,6 +11,7 @@ type TemplateGroupRepository interface {
 	Create(ctx context.Context, req domain.TemplateGroup) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.TemplateGroup, error)
 	Total(ctx context.Context) (int64, error)
+	ListByIds(ctx context.Context, ids []int64) ([]domain.TemplateGroup, error)
 }
 
 func NewTemplateGroupRepository(dao dao.TemplateGroupDAO) TemplateGroupRepository {
@@ -36,6 +37,13 @@ func (repo *templateGroupRepository) List(ctx context.Context, offset, limit int
 
 func (repo *templateGroupRepository) Total(ctx context.Context) (int64, error) {
 	return repo.dao.Count(ctx)
+}
+
+func (repo *templateGroupRepository) ListByIds(ctx context.Context, ids []int64) ([]domain.TemplateGroup, error) {
+	ts, err := repo.dao.ListByIds(ctx, ids)
+	return slice.Map(ts, func(idx int, src dao.TemplateGroup) domain.TemplateGroup {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *templateGroupRepository) toEntity(req domain.TemplateGroup) dao.TemplateGroup {

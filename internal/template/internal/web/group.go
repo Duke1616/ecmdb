@@ -22,7 +22,6 @@ func (h *GroupHandler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/template/group")
 	g.POST("/create", ginx.WrapBody[CreateTemplateGroupReq](h.CreateTemplateGroup))
 	g.POST("/list", ginx.WrapBody[Page](h.ListTemplateGroup))
-
 }
 
 func (h *GroupHandler) CreateTemplateGroup(ctx *gin.Context, req CreateTemplateGroupReq) (ginx.Result, error) {

@@ -18,6 +18,7 @@ type Service interface {
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
+	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 }
 
 type service struct {
@@ -101,4 +102,8 @@ func (s *service) ListTemplate(ctx context.Context, offset, limit int64) ([]doma
 
 func (s *service) DeleteTemplate(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteTemplate(ctx, id)
+}
+
+func (s *service) Pipeline(ctx context.Context) ([]domain.TemplateCombination, error) {
+	return s.repo.Pipeline(ctx)
 }

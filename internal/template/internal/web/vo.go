@@ -68,3 +68,16 @@ type RetrieveTemplateGroup struct {
 	TemplateGroups []TemplateGroup `json:"template_groups"`
 	Total          int64           `json:"total"`
 }
+
+// TemplateCombination 一组数据
+type TemplateCombination struct {
+	Id        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Icon      string     `json:"icon"`
+	Total     int64      `json:"total"`
+	Templates []Template `json:"templates"`
+}
+
+type RetrieveTemplateCombination struct {
+	TemplateCombinations []TemplateCombination `json:"template_combinations"`
+}

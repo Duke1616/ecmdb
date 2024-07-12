@@ -31,3 +31,11 @@ type Template struct {
 	Options            map[string]interface{}
 	Desc               string
 }
+
+type TemplateCombination struct {
+	Id        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Icon      string     `json:"icon"`
+	Total     int        `json:"total"`
+	Templates []Template `json:"templates"`
+}

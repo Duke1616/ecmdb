@@ -31,3 +31,9 @@ type TemplateGroup struct {
 	Ctime int64  `bson:"ctime"`
 	Utime int64  `bson:"utime"`
 }
+
+type TemplatePipeline struct {
+	Id        int64      `bson:"_id"`
+	Total     int        `bson:"total"`
+	Templates []Template `bson:"templates"`
+}

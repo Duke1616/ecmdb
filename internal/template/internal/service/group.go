@@ -10,6 +10,7 @@ import (
 type GroupService interface {
 	Create(ctx context.Context, req domain.TemplateGroup) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.TemplateGroup, int64, error)
+	ListByIds(ctx context.Context, ids []int64) ([]domain.TemplateGroup, error)
 }
 
 type groupService struct {
@@ -47,4 +48,8 @@ func (s *groupService) List(ctx context.Context, offset, limit int64) ([]domain.
 		return ts, total, err
 	}
 	return ts, total, nil
+}
+
+func (s *groupService) ListByIds(ctx context.Context, ids []int64) ([]domain.TemplateGroup, error) {
+	return s.repo.ListByIds(ctx, ids)
 }

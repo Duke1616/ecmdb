@@ -21,6 +21,7 @@ type TemplateDAO interface {
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 	UpdateTemplate(ctx context.Context, t Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
+	Pipeline(ctx context.Context) ([]TemplatePipeline, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -151,4 +152,36 @@ func (dao *templateDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *templateDAO) Pipeline(ctx context.Context) ([]TemplatePipeline, error) {
+	col := dao.db.Collection(TemplateCollection)
+	pipeline := mongo.Pipeline{
+		{{"$group", bson.D{
+			{"_id", "$group_id"},
+			{"total", bson.D{{"$sum", 1}}},
+			// 使用 $push 累加器将选择的字段添加到 templates 数组中
+			{"templates", bson.D{{"$push", bson.D{
+				{"icon", "$icon"},
+				{"name", "$name"},
+				{"id", "$id"},
+			}}}},
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []TemplatePipeline
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
 }

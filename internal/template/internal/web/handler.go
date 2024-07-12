@@ -10,12 +10,14 @@ import (
 )
 
 type Handler struct {
-	svc service.Service
+	groupSvc service.GroupService
+	svc      service.Service
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, groupSvc service.GroupService) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:      svc,
+		groupSvc: groupSvc,
 	}
 }
 
@@ -26,6 +28,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.WrapBody[ListTemplateReq](h.ListTemplate))
 	g.POST("/delete", ginx.WrapBody[DeleteTemplateReq](h.DeleteTemplate))
 	g.POST("/update", ginx.WrapBody[UpdateTemplateReq](h.UpdateTemplate))
+	g.POST("/list/pipeline", ginx.Wrap(h.Pipeline))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -96,6 +99,44 @@ func (h *Handler) UpdateTemplate(ctx *gin.Context, req UpdateTemplateReq) (ginx.
 
 	return ginx.Result{
 		Data: t,
+	}, nil
+}
+
+func (h *Handler) Pipeline(ctx *gin.Context) (ginx.Result, error) {
+	// 根据 组ID 聚合查询所有数据
+	pipeline, err := h.svc.Pipeline(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 获取组信息
+	ids := slice.Map(pipeline, func(idx int, src domain.TemplateCombination) int64 {
+		return src.Id
+	})
+	gs, err := h.groupSvc.ListByIds(ctx, ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	gsMap := slice.ToMap(gs, func(element domain.TemplateGroup) int64 {
+		return element.Id
+	})
+
+	// 组合前端返回数据
+	tc := slice.Map(pipeline, func(idx int, src domain.TemplateCombination) TemplateCombination {
+		val, _ := gsMap[src.Id]
+		return TemplateCombination{
+			Id:    src.Id,
+			Name:  val.Name,
+			Icon:  val.Icon,
+			Total: src.Id,
+			Templates: slice.Map(src.Templates, func(idx int, src domain.Template) Template {
+				return h.toTemplateVo(src)
+			}),
+		}
+	})
+
+	return ginx.Result{
+		Data: RetrieveTemplateCombination{TemplateCombinations: tc},
 	}, nil
 }
 

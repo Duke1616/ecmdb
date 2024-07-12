@@ -35,7 +35,10 @@ func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result
 
 func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 	return domain.Order{
-		Applicant: req.Applicant,
-		Data:      req.Data,
+		CreateBy:   req.CreateBy,
+		TemplateId: req.TemplateId,
+		FlowId:     req.FlowId,
+		Data:       req.Data,
+		Status:     domain.START,
 	}
 }

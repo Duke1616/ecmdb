@@ -16,4 +16,10 @@ package event
 
 const (
 	WechatOrderEventName = "wechat_order_events"
+	CreateFLowEventName  = "create_flow_events"
 )
+
+type OrderEvent struct {
+	FlowId int64                  `json:"flow_id"`
+	Data   map[string]interface{} `json:"data"`
+}

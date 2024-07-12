@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	OrderCollection = "c_runner"
+	OrderCollection = "c_order"
 )
 
 type OrderDAO interface {
@@ -40,9 +40,12 @@ func (dao *orderDAO) CreateOrder(ctx context.Context, r Order) (int64, error) {
 }
 
 type Order struct {
-	Id        int64                  `bson:"id"`
-	Applicant string                 `bson:"applicant"`
-	Data      map[string]interface{} `bson:",inline"`
-	Ctime     int64                  `bson:"ctime"`
-	Utime     int64                  `bson:"utime"`
+	Id         int64                  `bson:"id"`
+	TemplateId int64                  `bson:"template_idp"`
+	FlowId     int64                  `bson:"flow_id"`
+	CreateBy   string                 `bson:"create_by"`
+	Data       map[string]interface{} `bson:"data"`
+	Status     uint8                  `bson:"status"`
+	Ctime      int64                  `bson:"ctime"`
+	Utime      int64                  `bson:"utime"`
 }

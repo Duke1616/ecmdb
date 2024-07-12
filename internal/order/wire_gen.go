@@ -21,7 +21,13 @@ import (
 // Injectors from wire.go:
 
 func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
-	serviceService := service.NewService()
+	orderDAO := dao.NewOrderDAO(db)
+	orderRepository := repository.NewOrderRepository(orderDAO)
+	createFlowEventProducer, err := event.NewCreateFlowEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	serviceService := service.NewService(orderRepository, createFlowEventProducer)
 	handler := web.NewHandler(serviceService)
 	wechatOrderConsumer := initConsumer(serviceService, q)
 	module := &Module{

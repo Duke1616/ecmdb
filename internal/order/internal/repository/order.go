@@ -26,7 +26,10 @@ func (repo *orderRepository) CreateOrder(ctx context.Context, req domain.Order) 
 
 func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 	return dao.Order{
-		Applicant: req.Applicant,
-		Data:      req.Data,
+		TemplateId: req.TemplateId,
+		Status:     req.Status.ToUint8(),
+		FlowId:     req.FlowId,
+		CreateBy:   req.CreateBy,
+		Data:       req.Data,
 	}
 }

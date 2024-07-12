@@ -24,6 +24,7 @@ var ProviderSet = wire.NewSet(
 func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
 	wire.Build(
 		ProviderSet,
+		event.NewCreateFlowEventProducer,
 		initConsumer,
 		wire.Struct(new(Module), "*"),
 	)

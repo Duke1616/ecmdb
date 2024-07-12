@@ -7,6 +7,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
+	"sort"
 )
 
 type Handler struct {
@@ -133,6 +134,11 @@ func (h *Handler) Pipeline(ctx *gin.Context) (ginx.Result, error) {
 				return h.toTemplateVo(src)
 			}),
 		}
+	})
+
+	sort.Slice(tc, func(i, j int) bool {
+		// 根据需要的排序逻辑进行排序，这里假设你有一个字段可以用来排序，比如 id
+		return tc[i].Total < tc[j].Total
 	})
 
 	return ginx.Result{

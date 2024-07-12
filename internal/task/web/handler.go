@@ -23,6 +23,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	// 本地服务路由注册
 	g := server.Group("/api/task")
+
 	g.POST("/start", ginx.WrapBody[StartTaskReq](h.StartTask))
 	g.POST("/todo", ginx.WrapBody[TodoListTaskReq](h.Todo))
 	g.POST("/pass", ginx.WrapBody[PassTaskReq](h.Pass))

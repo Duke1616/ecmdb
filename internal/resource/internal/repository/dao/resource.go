@@ -35,6 +35,12 @@ type resourceDAO struct {
 	db *mongox.Mongo
 }
 
+func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
+	return &resourceDAO{
+		db: db,
+	}
+}
+
 func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
@@ -56,12 +62,6 @@ func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid s
 	}
 
 	return fieldValue, nil
-}
-
-func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
-	return &resourceDAO{
-		db: db,
-	}
 }
 
 func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, error) {

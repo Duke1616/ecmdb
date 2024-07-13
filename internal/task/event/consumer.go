@@ -35,7 +35,7 @@ func (c *TaskEventConsumer) Start(ctx context.Context) {
 		for {
 			err := c.Consume(ctx)
 			if err != nil {
-				elog.Error("同步事件失败", elog.Any("err", err))
+				c.logger.Error("同步事件失败", elog.Any("err", err))
 			}
 		}
 	}()

@@ -81,6 +81,7 @@ func (repo *workflowRepository) toDomain(req dao.Workflow) domain.Workflow {
 		Icon:       req.Icon,
 		Owner:      req.Owner,
 		Desc:       req.Desc,
+		ProcessId:  req.ProcessId,
 		FlowData: domain.LogicFlow{
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,

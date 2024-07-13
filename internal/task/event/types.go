@@ -22,3 +22,8 @@ type OrderEvent struct {
 	FlowId int64                  `json:"flow_id"`
 	Data   map[string]interface{} `json:"data"`
 }
+
+type Variables struct {
+	Key   string
+	Value any
+}

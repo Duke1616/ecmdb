@@ -52,13 +52,8 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}
 
 	u := h.ToUserVo(user)
-	u.RefreshToken = ctx.GetHeader("refreshToken")
-	u.AccessToken = ctx.GetHeader("accessToken")
-
 	jwtData := make(map[string]string, 0)
-
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.ID).SetJwtData(jwtData).Build()
-
 	if err != nil {
 		return systemErrorResult, err
 	}

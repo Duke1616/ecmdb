@@ -7,9 +7,13 @@
 package task
 
 import (
+	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/task/event"
 	"github.com/Duke1616/ecmdb/internal/task/register"
 	"github.com/Duke1616/ecmdb/internal/task/web"
+	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 	"log"
@@ -18,10 +22,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module) (*Module, error) {
 	handler := InitEasyFlowOnce(db)
+	service := workflowModule.Svc
+	taskEventConsumer := InitConsumer(q, service)
 	module := &Module{
 		Hdl: handler,
+		c:   taskEventConsumer,
 	}
 	return module, nil
 }
@@ -44,4 +51,14 @@ func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
 	})
 
 	return web.NewHandler()
+}
+
+func InitConsumer(q mq.MQ, workflowSvc workflow.Service) *event.TaskEventConsumer {
+	consumer, err := event.NewTaskEventConsumer(q, workflowSvc)
+	if err != nil {
+		return nil
+	}
+
+	consumer.Start(context.Background())
+	return consumer
 }

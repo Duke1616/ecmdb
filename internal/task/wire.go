@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/event"
 	"github.com/Duke1616/ecmdb/internal/task/register"
 	"github.com/Duke1616/ecmdb/internal/task/web"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"gorm.io/gorm"
@@ -19,11 +20,12 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 )
 
-func InitModule(db *gorm.DB) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module) (*Module, error) {
 	wire.Build(
 		//ProviderSet,
 		InitEasyFlowOnce,
 		InitConsumer,
+		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -50,8 +52,8 @@ func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
 	return web.NewHandler()
 }
 
-func InitConsumer(q mq.MQ) *event.TaskEventConsumer {
-	consumer, err := event.NewTaskEventConsumer(q)
+func InitConsumer(q mq.MQ, workflowSvc workflow.Service) *event.TaskEventConsumer {
+	consumer, err := event.NewTaskEventConsumer(q, workflowSvc)
 	if err != nil {
 		return nil
 	}

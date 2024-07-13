@@ -4,7 +4,10 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ginx/gctx"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
+	"strconv"
 )
 
 type Handler struct {
@@ -23,7 +26,13 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
-	err := h.svc.CreateOrder(ctx, h.toDomain(req))
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	req.CreateBy = strconv.FormatInt(sess.Claims().Uid, 10)
+	err = h.svc.CreateOrder(ctx, h.toDomain(req))
 	if err != nil {
 		return systemErrorResult, err
 	}

@@ -36,6 +36,7 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
 }
 
 func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order) error {
+	req.Data["starter"] = req.CreateBy
 	evt := event.OrderEvent{
 		FlowId: req.FlowId,
 		Data:   req.Data,

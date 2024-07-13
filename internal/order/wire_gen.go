@@ -9,6 +9,7 @@ package order
 import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
+	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -42,12 +43,12 @@ func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
 
-func initConsumer(svc service.Service, q mq.MQ) *event.WechatOrderConsumer {
-	consumer, err := event.NewWechatOrderConsumer(svc, q)
+func initConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, q)
 	if err != nil {
 		panic(err)
 	}
 
-	consumer.Start(context.Background())
-	return consumer
+	c.Start(context.Background())
+	return c
 }

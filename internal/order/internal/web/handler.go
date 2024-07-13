@@ -23,13 +23,14 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
-	order, err := h.svc.CreateOrder(ctx, h.toDomain(req))
+	err := h.svc.CreateOrder(ctx, h.toDomain(req))
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: order,
+		Data: "",
+		Msg:  "创建工单成功",
 	}, nil
 }
 

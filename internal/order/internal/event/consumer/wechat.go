@@ -1,9 +1,10 @@
-package event
+package consumer
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
@@ -18,7 +19,7 @@ type WechatOrderConsumer struct {
 
 func NewWechatOrderConsumer(svc service.Service, q mq.MQ) (*WechatOrderConsumer, error) {
 	groupID := "wechat_order"
-	consumer, err := q.Consumer(WechatOrderEventName, groupID)
+	consumer, err := q.Consumer(event.WechatOrderEventName, groupID)
 	if err != nil {
 		return nil, err
 	}

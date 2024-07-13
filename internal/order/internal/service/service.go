@@ -40,6 +40,7 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order) e
 		FlowId: req.FlowId,
 		Data:   req.Data,
 	}
+
 	err := s.producer.Produce(ctx, evt)
 
 	if err != nil {

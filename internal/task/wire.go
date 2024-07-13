@@ -3,9 +3,12 @@
 package task
 
 import (
+	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/task/event"
 	"github.com/Duke1616/ecmdb/internal/task/register"
 	"github.com/Duke1616/ecmdb/internal/task/web"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 	"log"
@@ -20,6 +23,7 @@ func InitModule(db *gorm.DB) (*Module, error) {
 	wire.Build(
 		//ProviderSet,
 		InitEasyFlowOnce,
+		InitConsumer,
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -44,4 +48,14 @@ func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
 	})
 
 	return web.NewHandler()
+}
+
+func InitConsumer(q mq.MQ) *event.TaskEventConsumer {
+	consumer, err := event.NewTaskEventConsumer(q)
+	if err != nil {
+		return nil
+	}
+
+	consumer.Start(context.Background())
+	return consumer
 }

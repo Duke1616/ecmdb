@@ -6,10 +6,10 @@ import (
 	"github.com/ecodeclub/mq-api"
 )
 
-type CreateFlowEventProducer interface {
+type CreateProcessEventProducer interface {
 	Produce(ctx context.Context, evt OrderEvent) error
 }
 
-func NewCreateFlowEventProducer(q mq.MQ) (CreateFlowEventProducer, error) {
-	return mqx.NewGeneralProducer[OrderEvent](q, CreateFLowEventName)
+func NewCreateProcessEventProducer(q mq.MQ) (CreateProcessEventProducer, error) {
+	return mqx.NewGeneralProducer[OrderEvent](q, CreateProcessEventName)
 }

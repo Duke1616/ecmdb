@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"github.com/Duke1616/ecmdb/internal/task/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/repository/dao"
 )
 
 type TaskRepository interface {

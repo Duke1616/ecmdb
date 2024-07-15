@@ -14,6 +14,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
@@ -21,20 +22,23 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
-	createFlowEventProducer, err := event.NewCreateFlowEventProducer(q)
+	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(orderRepository, createFlowEventProducer)
+	serviceService := service.NewService(orderRepository, createProcessEventProducer)
 	handler := web.NewHandler(serviceService)
-	wechatOrderConsumer := initConsumer(serviceService, q)
+	wechatOrderConsumer := initWechatConsumer(serviceService, q)
+	service2 := workflowModule.Svc
+	processEventConsumer := InitProcessConsumer(q, service2, serviceService)
 	module := &Module{
 		Hdl: handler,
 		Svc: serviceService,
-		c:   wechatOrderConsumer,
+		cw:  wechatOrderConsumer,
+		cs:  processEventConsumer,
 	}
 	return module, nil
 }
@@ -43,10 +47,20 @@ func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
 
-func initConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+func initWechatConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsumer {
 	c, err := consumer.NewWechatOrderConsumer(svc, q)
 	if err != nil {
 		panic(err)
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Service) *consumer.ProcessEventConsumer {
+	c, err := consumer.NewProcessEventConsumer(q, workflowSvc, svc)
+	if err != nil {
+		return nil
 	}
 
 	c.Start(context.Background())

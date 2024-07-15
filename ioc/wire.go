@@ -5,13 +5,13 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
-	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -51,8 +51,8 @@ func InitApp() (*App, error) {
 		workflow.InitModule,
 		wire.FieldsOf(new(*workflow.Module), "Hdl"),
 		InitWebServer,
-		task.InitModule,
-		wire.FieldsOf(new(*task.Module), "Hdl"),
+		engine.InitModule,
+		wire.FieldsOf(new(*engine.Module), "Hdl"),
 		InitGinMiddlewares)
 	return new(App), nil
 }

@@ -9,13 +9,13 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
-	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -86,26 +86,26 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	orderModule, err := order.InitModule(mq, mongo)
-	if err != nil {
-		return nil, err
-	}
-	handler9 := orderModule.Hdl
 	workflowModule, err := workflow.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	handler10 := workflowModule.Hdl
-	db := InitMySQLDB()
-	taskModule, err := task.InitModule(db, mq, workflowModule, orderModule)
+	orderModule, err := order.InitModule(mq, mongo, workflowModule)
 	if err != nil {
 		return nil, err
 	}
-	handler11 := taskModule.Hdl
+	handler9 := orderModule.Hdl
+	handler10 := workflowModule.Hdl
+	db := InitMySQLDB()
+	engineModule, err := engine.InitModule(db)
+	if err != nil {
+		return nil, err
+	}
+	handler11 := engineModule.Hdl
 	groupHandler := templateModule.GroupHdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, groupHandler)
+	ginEngine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, groupHandler)
 	app := &App{
-		Web: engine,
+		Web: ginEngine,
 	}
 	return app, nil
 }

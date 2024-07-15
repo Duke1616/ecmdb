@@ -15,12 +15,17 @@
 package event
 
 const (
-	WechatOrderEventName = "wechat_order_events"
-	CreateFLowEventName  = "create_flow_events"
+	WechatOrderEventName   = "wechat_order_events"
+	CreateProcessEventName = "create_process_events"
 )
 
 type OrderEvent struct {
 	Id         int64                  `json:"id"`
 	WorkflowId int64                  `json:"workflow_id"`
 	Data       map[string]interface{} `json:"data"`
+}
+
+type Variables struct {
+	Key   string
+	Value any
 }

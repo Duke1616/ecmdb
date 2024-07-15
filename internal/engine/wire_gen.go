@@ -4,20 +4,15 @@
 //go:build !wireinject
 // +build !wireinject
 
-package task
+package engine
 
 import (
-	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/internal/order"
-	"github.com/Duke1616/ecmdb/internal/task/event"
-	"github.com/Duke1616/ecmdb/internal/task/register"
-	"github.com/Duke1616/ecmdb/internal/task/repository"
-	"github.com/Duke1616/ecmdb/internal/task/repository/dao"
-	"github.com/Duke1616/ecmdb/internal/task/service"
-	"github.com/Duke1616/ecmdb/internal/task/web"
-	"github.com/Duke1616/ecmdb/internal/workflow"
-	"github.com/ecodeclub/mq-api"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/service"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/web"
+	"github.com/Duke1616/ecmdb/internal/engine/register"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 	"log"
@@ -26,17 +21,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module, orderModule *order.Module) (*Module, error) {
+func InitModule(db *gorm.DB) (*Module, error) {
 	processEngineDAO := InitEasyFlowOnce(db)
 	taskRepository := repository.NewTaskRepository(processEngineDAO)
 	serviceService := service.NewService(taskRepository)
 	handler := web.NewHandler(serviceService)
-	service2 := workflowModule.Svc
-	service3 := orderModule.Svc
-	taskEventConsumer := InitConsumer(q, service2, service3)
 	module := &Module{
 		Hdl: handler,
-		c:   taskEventConsumer,
 	}
 	return module, nil
 }
@@ -59,14 +50,4 @@ func InitEasyFlowOnce(db *gorm.DB) dao.ProcessEngineDAO {
 	})
 
 	return dao.NewProcessEngineDAO(db)
-}
-
-func InitConsumer(q mq.MQ, workflowSvc workflow.Service, orderSvc order.Service) *event.TaskEventConsumer {
-	consumer, err := event.NewTaskEventConsumer(q, workflowSvc, orderSvc)
-	if err != nil {
-		return nil
-	}
-
-	consumer.Start(context.Background())
-	return consumer
 }

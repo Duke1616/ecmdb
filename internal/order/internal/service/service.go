@@ -19,7 +19,7 @@ type Service interface {
 
 type service struct {
 	repo     repository.OrderRepository
-	producer event.CreateFlowEventProducer
+	producer event.CreateProcessEventProducer
 	l        *elog.Component
 }
 
@@ -32,7 +32,7 @@ func (s *service) RegisterProcessInstanceId(ctx context.Context, id int64, insta
 	return s.repo.RegisterProcessInstanceId(ctx, id, instanceId, domain.PROCESS.ToUint8())
 }
 
-func NewService(repo repository.OrderRepository, producer event.CreateFlowEventProducer) Service {
+func NewService(repo repository.OrderRepository, producer event.CreateProcessEventProducer) Service {
 	return &service{
 		repo:     repo,
 		producer: producer,

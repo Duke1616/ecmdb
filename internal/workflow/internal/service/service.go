@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/internal/engine/register/easyflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
-	"github.com/Duke1616/ecmdb/internal/workflow/internal/service/frontend-flow"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -18,8 +18,7 @@ type Service interface {
 }
 
 type service struct {
-	repo            repository.WorkflowRepository
-	frontendFlowSvc frontend_flow.FrontendFlow
+	repo repository.WorkflowRepository
 }
 
 func NewService(repo repository.WorkflowRepository) Service {
@@ -68,7 +67,17 @@ func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
 }
 
 func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
-	f := frontend_flow.NewFrontendFlow(wf)
+	// 初始化转换应用
+	f := easyflow.NewLogicFlowToEngineConvert(easyflow.Workflow{
+		Id:    wf.Id,
+		Name:  wf.Name,
+		Owner: wf.Owner,
+		FlowData: easyflow.LogicFlow{
+			Edges: wf.FlowData.Edges,
+			Nodes: wf.FlowData.Nodes,
+		},
+	})
+
 	// 发布到流程引擎
 	processId, err := f.Deploy()
 	if err != nil {

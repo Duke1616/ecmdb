@@ -8,5 +8,6 @@ import (
 type Module struct {
 	Hdl *web.Handler
 	Svc Service
-	c   *consumer.WechatOrderConsumer
+	cw  *consumer.WechatOrderConsumer
+	cs  *consumer.ProcessEventConsumer
 }

@@ -1,7 +1,7 @@
 package web
 
 import (
-	"github.com/Duke1616/ecmdb/internal/task/errs"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 )
 

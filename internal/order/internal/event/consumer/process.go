@@ -1,39 +1,41 @@
-package event
+package consumer
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/order/internal/event"
+	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
 	"reflect"
 )
 
-type TaskEventConsumer struct {
+type ProcessEventConsumer struct {
 	workFlowSvc workflow.Service
-	orderSvc    order.Service
+	Svc         service.Service
 	consumer    mq.Consumer
 	logger      *elog.Component
 }
 
-func NewTaskEventConsumer(q mq.MQ, workFlowSvc workflow.Service, orderSvc order.Service) (*TaskEventConsumer, error) {
-	groupID := "task"
-	consumer, err := q.Consumer(CreateFLowEventName, groupID)
+func NewProcessEventConsumer(q mq.MQ, workFlowSvc workflow.Service, Svc service.Service) (*ProcessEventConsumer, error) {
+	groupID := "process_order"
+	consumer, err := q.Consumer(event.CreateProcessEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
-	return &TaskEventConsumer{
+
+	return &ProcessEventConsumer{
 		consumer:    consumer,
 		workFlowSvc: workFlowSvc,
-		orderSvc:    orderSvc,
+		Svc:         Svc,
 		logger:      elog.DefaultLogger,
 	}, nil
 }
 
-func (c *TaskEventConsumer) Start(ctx context.Context) {
+func (c *ProcessEventConsumer) Start(ctx context.Context) {
 	go func() {
 		for {
 			err := c.Consume(ctx)
@@ -44,12 +46,12 @@ func (c *TaskEventConsumer) Start(ctx context.Context) {
 	}()
 }
 
-func (c *TaskEventConsumer) Consume(ctx context.Context) error {
+func (c *ProcessEventConsumer) Consume(ctx context.Context) error {
 	cm, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
-	var evt OrderEvent
+	var evt event.OrderEvent
 	if err = json.Unmarshal(cm.Value, &evt); err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
@@ -64,15 +66,15 @@ func (c *TaskEventConsumer) Consume(ctx context.Context) error {
 		return err
 	}
 
-	return c.orderSvc.RegisterProcessInstanceId(ctx, evt.Id, engineId)
+	return c.Svc.RegisterProcessInstanceId(ctx, evt.Id, engineId)
 }
 
-func (c *TaskEventConsumer) Stop(_ context.Context) error {
+func (c *ProcessEventConsumer) Stop(_ context.Context) error {
 	return c.consumer.Close()
 }
 
-func (c *TaskEventConsumer) Variables(evt OrderEvent) []byte {
-	var vars []Variables
+func (c *ProcessEventConsumer) Variables(evt event.OrderEvent) []byte {
+	var vars []event.Variables
 	for key, value := range evt.Data {
 		// 判断如果浮点数类型，转换成string
 		strValue := value
@@ -81,7 +83,7 @@ func (c *TaskEventConsumer) Variables(evt OrderEvent) []byte {
 			strValue = fmt.Sprintf("%f", value)
 		}
 
-		vars = append(vars, Variables{
+		vars = append(vars, event.Variables{
 			Key:   key,
 			Value: strValue,
 		})

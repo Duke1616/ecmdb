@@ -5,7 +5,6 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
-	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
@@ -15,14 +14,12 @@ import (
 )
 
 type Handler struct {
-	svc     service.Service
-	taskSvc task.Service
+	svc service.Service
 }
 
-func NewHandler(svc service.Service, taskSvc task.Service) *Handler {
+func NewHandler(svc service.Service) *Handler {
 	return &Handler{
-		svc:     svc,
-		taskSvc: taskSvc,
+		svc: svc,
 	}
 }
 

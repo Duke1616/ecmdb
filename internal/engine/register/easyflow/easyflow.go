@@ -1,29 +1,28 @@
-package frontend_flow
+package easyflow
 
 import (
 	"encoding/json"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
-	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/ecodeclub/ekit/slice"
 )
 
-type loginFlow struct {
-	flow  domain.Workflow
-	Edges []domain.Edge
-	Nodes []domain.Node
+type logicFlow struct {
+	Workflow Workflow
+	Edges    []Edge
+	Nodes    []Node
 
 	// 后端存储结构体
 	NodeList []model.Node
 }
 
-func NewFrontendFlow(req domain.Workflow) FrontendFlow {
-	return &loginFlow{
-		flow: req,
+func NewLogicFlowToEngineConvert(workflow Workflow) ProcessEngineConvert {
+	return &logicFlow{
+		Workflow: workflow,
 	}
 }
 
-func (l *loginFlow) Deploy() (int, error) {
+func (l *logicFlow) Deploy() (int, error) {
 	if err := l.toEdges(); err != nil {
 		return 0, err
 	}
@@ -45,18 +44,18 @@ func (l *loginFlow) Deploy() (int, error) {
 	}
 
 	// 发布流程
-	process := model.Process{ProcessName: l.flow.Name, Source: "工单系统", RevokeEvents: []string{"EventRevoke"}, Nodes: l.NodeList}
+	process := model.Process{ProcessName: l.Workflow.Name, Source: "工单系统", RevokeEvents: []string{"EventRevoke"}, Nodes: l.NodeList}
 	j, err := engine.JSONMarshal(process, false)
 	if err != nil {
 		return 0, err
 	}
 
-	return engine.ProcessSave(string(j), l.flow.Owner)
+	return engine.ProcessSave(string(j), l.Workflow.Owner)
 }
 
-func (l *loginFlow) Start(node domain.Node) {
+func (l *logicFlow) Start(node Node) {
 	NodeName := "Start"
-	property, _ := toNodeProperty[domain.StartProperty](node)
+	property, _ := toNodeProperty[StartProperty](node)
 	if property.Name != "" {
 		NodeName = property.Name
 	}
@@ -68,9 +67,9 @@ func (l *loginFlow) Start(node domain.Node) {
 	l.NodeList = append(l.NodeList, n)
 }
 
-func (l *loginFlow) End(node domain.Node) {
+func (l *logicFlow) End(node Node) {
 	NodeName := "End"
-	property, _ := toNodeProperty[domain.EndProperty](node)
+	property, _ := toNodeProperty[EndProperty](node)
 	if property.Name != "" {
 		NodeName = property.Name
 	}
@@ -81,12 +80,12 @@ func (l *loginFlow) End(node domain.Node) {
 	l.NodeList = append(l.NodeList, n)
 }
 
-func (l *loginFlow) Condition(node domain.Node) {
+func (l *logicFlow) Condition(node Node) {
 	// 获取所有判断条件的连接线
 	edgesDst := l.FindTargetNodeId(node.ID)
 
 	// 组合 conditions 条件
-	conditions := slice.Map(edgesDst, func(idx int, src domain.Edge) model.Condition {
+	conditions := slice.Map(edgesDst, func(idx int, src Edge) model.Condition {
 		property, _ := toEdgeProperty(src)
 		return model.Condition{
 			Expression: property.Expression,
@@ -98,7 +97,7 @@ func (l *loginFlow) Condition(node domain.Node) {
 	GwCondition := model.HybridGateway{Conditions: conditions, InevitableNodes: []string{}, WaitForAllPrevNode: 0}
 
 	// node 节点录入
-	property, _ := toNodeProperty[domain.ConditionProperty](node)
+	property, _ := toNodeProperty[ConditionProperty](node)
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 2, GWConfig: GwCondition,
 		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
@@ -107,9 +106,9 @@ func (l *loginFlow) Condition(node domain.Node) {
 	l.NodeList = append(l.NodeList, n)
 }
 
-func (l *loginFlow) User(node domain.Node) {
+func (l *logicFlow) User(node Node) {
 	// node 节点录入
-	property, _ := toNodeProperty[domain.UserProperty](node)
+	property, _ := toNodeProperty[UserProperty](node)
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 1, UserIDs: []string{property.Approved},
 		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
@@ -119,53 +118,53 @@ func (l *loginFlow) User(node domain.Node) {
 }
 
 // FindPrevNodeIDs 查找上级节点的信息
-func (l *loginFlow) FindPrevNodeIDs(id string) []string {
+func (l *logicFlow) FindPrevNodeIDs(id string) []string {
 	edgesSrc := l.FindSourceNodeId(id)
-	return slice.Map(edgesSrc, func(idx int, src domain.Edge) string {
+	return slice.Map(edgesSrc, func(idx int, src Edge) string {
 		return src.SourceNodeId
 	})
 }
 
 // FindSourceNodeId 查找下级节点的连接线
-func (l *loginFlow) FindSourceNodeId(id string) []domain.Edge {
-	return slice.FilterMap(l.Edges, func(idx int, src domain.Edge) (domain.Edge, bool) {
+func (l *logicFlow) FindSourceNodeId(id string) []Edge {
+	return slice.FilterMap(l.Edges, func(idx int, src Edge) (Edge, bool) {
 		if src.TargetNodeId == id {
 			return src, true
 		}
 
-		return domain.Edge{}, false
+		return Edge{}, false
 	})
 }
 
 // FindTargetNodeId 查找上级节点的连接线
-func (l *loginFlow) FindTargetNodeId(id string) []domain.Edge {
-	return slice.FilterMap(l.Edges, func(idx int, src domain.Edge) (domain.Edge, bool) {
+func (l *logicFlow) FindTargetNodeId(id string) []Edge {
+	return slice.FilterMap(l.Edges, func(idx int, src Edge) (Edge, bool) {
 		if src.SourceNodeId == id {
 			return src, true
 		}
 
-		return domain.Edge{}, false
+		return Edge{}, false
 	})
 }
 
 // edge连线字段解析
-func toEdgeProperty(edges domain.Edge) (domain.EdgeProperty, error) {
+func toEdgeProperty(edges Edge) (EdgeProperty, error) {
 	edgesJson, err := json.Marshal(edges.Properties)
 	if err != nil {
-		return domain.EdgeProperty{}, err
+		return EdgeProperty{}, err
 	}
 
-	var edgesProperty domain.EdgeProperty
+	var edgesProperty EdgeProperty
 	err = json.Unmarshal(edgesJson, &edgesProperty)
 	if err != nil {
-		return domain.EdgeProperty{}, err
+		return EdgeProperty{}, err
 	}
 
 	return edgesProperty, nil
 }
 
 // node节点字段解析
-func toNodeProperty[T any](node domain.Node) (T, error) {
+func toNodeProperty[T any](node Node) (T, error) {
 	nodesJson, err := json.Marshal(node.Properties)
 	if err != nil {
 		return zeroValue[T](), err
@@ -180,13 +179,13 @@ func toNodeProperty[T any](node domain.Node) (T, error) {
 	return nodesProperty, nil
 }
 
-func (l *loginFlow) toEdges() error {
-	edgesJSON, err := json.Marshal(l.flow.FlowData.Edges)
+func (l *logicFlow) toEdges() error {
+	edgesJSON, err := json.Marshal(l.Workflow.FlowData.Edges)
 	if err != nil {
 		return err
 	}
 
-	var edges []domain.Edge
+	var edges []Edge
 	err = json.Unmarshal(edgesJSON, &edges)
 	if err != nil {
 		return err
@@ -196,13 +195,13 @@ func (l *loginFlow) toEdges() error {
 	return nil
 }
 
-func (l *loginFlow) toNodes() error {
-	nodesJSON, err := json.Marshal(l.flow.FlowData.Nodes)
+func (l *logicFlow) toNodes() error {
+	nodesJSON, err := json.Marshal(l.Workflow.FlowData.Nodes)
 	if err != nil {
 		return err
 	}
 
-	var nodes []domain.Node
+	var nodes []Node
 	err = json.Unmarshal(nodesJSON, &nodes)
 	if err != nil {
 		return err

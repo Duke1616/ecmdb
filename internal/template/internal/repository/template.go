@@ -84,7 +84,7 @@ func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 	return dao.Template{
 		Id:                 req.Id,
 		Name:               req.Name,
-		FlowId:             req.FlowId,
+		WorkflowId:         req.WorkflowId,
 		GroupId:            req.GroupId,
 		Icon:               req.Icon,
 		CreateType:         req.CreateType.ToUint8(),
@@ -101,7 +101,7 @@ func (repo *templateRepository) toDomain(req dao.Template) domain.Template {
 	return domain.Template{
 		Id:                 req.Id,
 		Name:               req.Name,
-		FlowId:             req.FlowId,
+		WorkflowId:         req.WorkflowId,
 		GroupId:            req.GroupId,
 		Icon:               req.Icon,
 		CreateType:         domain.CreateType(req.CreateType),

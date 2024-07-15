@@ -10,12 +10,26 @@ import (
 
 type Service interface {
 	CreateOrder(ctx context.Context, req domain.Order) error
+	UpdateStatus(ctx context.Context, id int64, status uint8) error
+	// RegisterProcessInstanceId 注册流程引擎ID
+	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error
+	// ListOrderByProcessEngineIds 获取代办流程
+	ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error)
 }
 
 type service struct {
 	repo     repository.OrderRepository
 	producer event.CreateFlowEventProducer
 	l        *elog.Component
+}
+
+func (s *service) UpdateStatus(ctx context.Context, id int64, status uint8) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *service) RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error {
+	return s.repo.RegisterProcessInstanceId(ctx, id, instanceId, domain.PROCESS.ToUint8())
 }
 
 func NewService(repo repository.OrderRepository, producer event.CreateFlowEventProducer) Service {
@@ -27,19 +41,28 @@ func NewService(repo repository.OrderRepository, producer event.CreateFlowEventP
 }
 
 func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
-	_, err := s.repo.CreateOrder(ctx, req)
+	orderId, err := s.repo.CreateOrder(ctx, req)
 	if err != nil {
 		return err
 	}
 
-	return s.sendGenerateFlowEvent(ctx, req)
+	go func() {
+		err = s.sendGenerateFlowEvent(ctx, req, orderId)
+	}()
+
+	return err
 }
 
-func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order) error {
+func (s *service) ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error) {
+	return s.repo.ListOrderByProcessEngineIds(ctx, engineIds)
+}
+
+func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, orderId int64) error {
 	req.Data["starter"] = req.CreateBy
 	evt := event.OrderEvent{
-		FlowId: req.FlowId,
-		Data:   req.Data,
+		Id:         orderId,
+		WorkflowId: req.WorkflowId,
+		Data:       req.Data,
 	}
 
 	err := s.producer.Produce(ctx, evt)

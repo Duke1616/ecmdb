@@ -20,9 +20,9 @@ const (
 type Template struct {
 	Id                 int64
 	Name               string
-	FlowId             int64
+	WorkflowId         int64
 	GroupId            int64
-	Icon               string `json:"icon"`
+	Icon               string
 	CreateType         CreateType
 	UniqueHash         string
 	ExternalTemplateId string

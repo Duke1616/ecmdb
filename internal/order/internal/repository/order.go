@@ -8,6 +8,8 @@ import (
 
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, req domain.Order) (int64, error)
+	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
+	ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error)
 }
 
 func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
@@ -24,11 +26,29 @@ func (repo *orderRepository) CreateOrder(ctx context.Context, req domain.Order) 
 	return repo.dao.CreateOrder(ctx, repo.toEntity(req))
 }
 
+func (repo *orderRepository) RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error {
+	return repo.dao.RegisterProcessInstanceId(ctx, id, instanceId, status)
+}
+
+func (repo *orderRepository) ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error) {
+	return domain.Order{}, nil
+}
+
 func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 	return dao.Order{
 		TemplateId: req.TemplateId,
 		Status:     req.Status.ToUint8(),
-		FlowId:     req.FlowId,
+		WorkflowId: req.WorkflowId,
+		CreateBy:   req.CreateBy,
+		Data:       req.Data,
+	}
+}
+
+func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
+	return domain.Order{
+		TemplateId: req.TemplateId,
+		Status:     domain.Status(req.Status),
+		WorkflowId: req.WorkflowId,
 		CreateBy:   req.CreateBy,
 		Data:       req.Data,
 	}

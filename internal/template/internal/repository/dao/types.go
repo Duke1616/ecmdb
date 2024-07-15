@@ -10,7 +10,7 @@ const (
 type Template struct {
 	Id                 int64                     `bson:"id"`
 	Name               string                    `bson:"name"`
-	FlowId             int64                     `bson:"flow_id"`
+	WorkflowId         int64                     `bson:"workflow_id"`
 	GroupId            int64                     `bson:"group_id"`
 	Icon               string                    `bson:"icon"`
 	CreateType         uint8                     `bson:"create_type"`

@@ -102,10 +102,13 @@ func (dao *templateDAO) UpdateTemplate(ctx context.Context, t Template) (int64, 
 	col := dao.db.Collection(TemplateCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
-			"name":    t.Name,
-			"rules":   t.Rules,
-			"options": t.Options,
-			"utime":   time.Now().UnixMilli(),
+			"name":        t.Name,
+			"workflow_id": t.WorkflowId,
+			"group_id":    t.GroupId,
+			"icon":        t.Icon,
+			"rules":       t.Rules,
+			"options":     t.Options,
+			"utime":       time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": t.Id}

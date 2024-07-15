@@ -4,16 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/Duke1616/ecmdb/internal/task/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type Handler struct {
+	svc service.Service
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(svc service.Service) *Handler {
+	return &Handler{
+		svc: svc,
+	}
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
@@ -54,14 +60,31 @@ func (h *Handler) Todo(ctx *gin.Context, req TodoListTaskReq) (ginx.Result, erro
 		return validateErrorResult, fmt.Errorf("参数传递错误：%w", err)
 	}
 
-	// 查询未处理工单
-	tasks, err := engine.GetTaskToDoList(req.UserId, req.ProcessName, req.SortByAsc, req.Idx, req.Rows)
+	// 查询待处理工单
+	tasks, total, err := h.svc.ListTodo(ctx, req.UserId, req.ProcessName, req.SortByAsc, req.Idx, req.Rows)
 	if err != nil {
 		return systemErrorResult, err
 	}
+
+	// 数据转换为前端可用
+	ts := slice.Map(tasks, func(idx int, src model.Task) Task {
+		return Task{
+			TaskId:             src.TaskID,
+			ProcessInstanceId:  src.ProcInstID,
+			Starter:            src.Starter,
+			Title:              src.ProcName,
+			CurrentStep:        src.NodeName,
+			ApprovedBy:         []string{src.UserID},
+			ProcInstCreateTime: src.ProcInstCreateTime,
+		}
+	})
+
 	return ginx.Result{
-		Data: tasks,
-		Msg:  "查看待办列表成功",
+		Data: RetrieveTasks{
+			Total: total,
+			Tasks: ts,
+		},
+		Msg: "查看待办工单列表成功",
 	}, err
 }
 

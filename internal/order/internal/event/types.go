@@ -20,6 +20,7 @@ const (
 )
 
 type OrderEvent struct {
-	FlowId int64                  `json:"flow_id"`
-	Data   map[string]interface{} `json:"data"`
+	Id         int64                  `json:"id"`
+	WorkflowId int64                  `json:"workflow_id"`
+	Data       map[string]interface{} `json:"data"`
 }

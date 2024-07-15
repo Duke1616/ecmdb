@@ -97,7 +97,7 @@ func InitApp() (*App, error) {
 	}
 	handler10 := workflowModule.Hdl
 	db := InitMySQLDB()
-	taskModule, err := task.InitModule(db, mq, workflowModule)
+	taskModule, err := task.InitModule(db, mq, workflowModule, orderModule)
 	if err != nil {
 		return nil, err
 	}

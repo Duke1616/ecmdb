@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
@@ -13,11 +14,12 @@ import (
 
 type TaskEventConsumer struct {
 	workFlowSvc workflow.Service
+	orderSvc    order.Service
 	consumer    mq.Consumer
 	logger      *elog.Component
 }
 
-func NewTaskEventConsumer(q mq.MQ, workFlowSvc workflow.Service) (*TaskEventConsumer, error) {
+func NewTaskEventConsumer(q mq.MQ, workFlowSvc workflow.Service, orderSvc order.Service) (*TaskEventConsumer, error) {
 	groupID := "task"
 	consumer, err := q.Consumer(CreateFLowEventName, groupID)
 	if err != nil {
@@ -26,6 +28,7 @@ func NewTaskEventConsumer(q mq.MQ, workFlowSvc workflow.Service) (*TaskEventCons
 	return &TaskEventConsumer{
 		consumer:    consumer,
 		workFlowSvc: workFlowSvc,
+		orderSvc:    orderSvc,
 		logger:      elog.DefaultLogger,
 	}, nil
 }
@@ -50,13 +53,18 @@ func (c *TaskEventConsumer) Consume(ctx context.Context) error {
 	if err = json.Unmarshal(cm.Value, &evt); err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
-	flow, err := c.workFlowSvc.Find(ctx, evt.FlowId)
+	flow, err := c.workFlowSvc.Find(ctx, evt.WorkflowId)
 	if err != nil {
 		return err
 	}
 
-	_, err = engine.InstanceStart(flow.ProcessId, "业务申请", flow.Name, string(c.Variables(evt)))
-	return err
+	// 启动流程引擎，配置工单与流程引擎关系ID
+	engineId, err := engine.InstanceStart(flow.ProcessId, "业务申请", flow.Name, string(c.Variables(evt)))
+	if err != nil {
+		return err
+	}
+
+	return c.orderSvc.RegisterProcessInstanceId(ctx, evt.Id, engineId)
 }
 
 func (c *TaskEventConsumer) Stop(_ context.Context) error {

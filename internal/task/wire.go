@@ -5,8 +5,12 @@ package task
 import (
 	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task/event"
 	"github.com/Duke1616/ecmdb/internal/task/register"
+	"github.com/Duke1616/ecmdb/internal/task/repository"
+	"github.com/Duke1616/ecmdb/internal/task/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/task/service"
 	"github.com/Duke1616/ecmdb/internal/task/web"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
@@ -18,14 +22,17 @@ import (
 
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
+	service.NewService,
+	repository.NewTaskRepository,
 )
 
-func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module) (*Module, error) {
+func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module, orderModule *order.Module) (*Module, error) {
 	wire.Build(
-		//ProviderSet,
+		ProviderSet,
 		InitEasyFlowOnce,
 		InitConsumer,
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
+		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -33,7 +40,7 @@ func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module) (*Module,
 
 var flowOnce = sync.Once{}
 
-func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
+func InitEasyFlowOnce(db *gorm.DB) dao.ProcessEngineDAO {
 	flowOnce.Do(func() {
 		engine.DB = db
 		if err := engine.DatabaseInitialize(); err != nil {
@@ -49,11 +56,11 @@ func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
 		log.Println("========================== easy workflow 启动成功 ========================== ")
 	})
 
-	return web.NewHandler()
+	return dao.NewProcessEngineDAO(db)
 }
 
-func InitConsumer(q mq.MQ, workflowSvc workflow.Service) *event.TaskEventConsumer {
-	consumer, err := event.NewTaskEventConsumer(q, workflowSvc)
+func InitConsumer(q mq.MQ, workflowSvc workflow.Service, orderSvc order.Service) *event.TaskEventConsumer {
+	consumer, err := event.NewTaskEventConsumer(q, workflowSvc, orderSvc)
 	if err != nil {
 		return nil
 	}

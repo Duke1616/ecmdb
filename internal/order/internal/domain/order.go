@@ -9,8 +9,8 @@ func (s Status) ToUint8() uint8 {
 const (
 	// START 等待开始
 	START Status = 1
-	// RUNNING 运行中
-	RUNNING Status = 2
+	// PROCESS 流程运行中
+	PROCESS Status = 2
 	// END 完成
 	END Status = 3
 	// RETRY 重试
@@ -20,7 +20,7 @@ const (
 type Order struct {
 	Id         int64
 	TemplateId int64
-	FlowId     int64
+	WorkflowId int64
 	Data       map[string]interface{}
 	Status     Status
 	CreateBy   string

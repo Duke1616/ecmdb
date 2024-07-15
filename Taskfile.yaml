@@ -7,7 +7,7 @@ tasks:
   run:
     desc: 启动服务
     cmds:
-      - go run main.go
+      -  EGO_DEBUG=true go run main.go
   gen:
     desc: 代码生成
     cmds:

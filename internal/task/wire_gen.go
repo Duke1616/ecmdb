@@ -9,8 +9,12 @@ package task
 import (
 	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task/event"
 	"github.com/Duke1616/ecmdb/internal/task/register"
+	"github.com/Duke1616/ecmdb/internal/task/repository"
+	"github.com/Duke1616/ecmdb/internal/task/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/task/service"
 	"github.com/Duke1616/ecmdb/internal/task/web"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
@@ -22,10 +26,14 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module) (*Module, error) {
-	handler := InitEasyFlowOnce(db)
-	service := workflowModule.Svc
-	taskEventConsumer := InitConsumer(q, service)
+func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module, orderModule *order.Module) (*Module, error) {
+	processEngineDAO := InitEasyFlowOnce(db)
+	taskRepository := repository.NewTaskRepository(processEngineDAO)
+	serviceService := service.NewService(taskRepository)
+	handler := web.NewHandler(serviceService)
+	service2 := workflowModule.Svc
+	service3 := orderModule.Svc
+	taskEventConsumer := InitConsumer(q, service2, service3)
 	module := &Module{
 		Hdl: handler,
 		c:   taskEventConsumer,
@@ -35,11 +43,11 @@ func InitModule(db *gorm.DB, q mq.MQ, workflowModule *workflow.Module) (*Module,
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTaskRepository)
 
 var flowOnce = sync.Once{}
 
-func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
+func InitEasyFlowOnce(db *gorm.DB) dao.ProcessEngineDAO {
 	flowOnce.Do(func() {
 		engine.DB = db
 		if err := engine.DatabaseInitialize(); err != nil {
@@ -50,11 +58,11 @@ func InitEasyFlowOnce(db *gorm.DB) *web.Handler {
 		log.Println("========================== easy workflow 启动成功 ========================== ")
 	})
 
-	return web.NewHandler()
+	return dao.NewProcessEngineDAO(db)
 }
 
-func InitConsumer(q mq.MQ, workflowSvc workflow.Service) *event.TaskEventConsumer {
-	consumer, err := event.NewTaskEventConsumer(q, workflowSvc)
+func InitConsumer(q mq.MQ, workflowSvc workflow.Service, orderSvc order.Service) *event.TaskEventConsumer {
+	consumer, err := event.NewTaskEventConsumer(q, workflowSvc, orderSvc)
 	if err != nil {
 		return nil
 	}

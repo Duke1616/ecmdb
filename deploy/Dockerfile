@@ -7,6 +7,7 @@ ENV GOPROXY="https://goproxy.cn,direct"
 RUN go mod tidy
 RUN go build -a -o dist/ecmdb -ldflags="-w -s" main.go
 FROM alpine:latest as deploy
+ENV EGO_DEBUG=true
 WORKDIR /app
 COPY --from=build /app/dist/ecmdb .
 EXPOSE 8000

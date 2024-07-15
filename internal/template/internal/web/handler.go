@@ -7,18 +7,21 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
+	"github.com/gotomicro/ego/core/elog"
 	"sort"
 )
 
 type Handler struct {
 	groupSvc service.GroupService
 	svc      service.Service
+	logger   *elog.Component
 }
 
 func NewHandler(svc service.Service, groupSvc service.GroupService) *Handler {
 	return &Handler{
 		svc:      svc,
 		groupSvc: groupSvc,
+		logger:   elog.DefaultLogger,
 	}
 }
 
@@ -159,7 +162,7 @@ func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 
 	return domain.Template{
 		Name:       req.Name,
-		FlowId:     req.FlowId,
+		WorkflowId: req.WorkflowId,
 		GroupId:    req.GroupId,
 		Icon:       req.Icon,
 		CreateType: domain.SystemCreate,
@@ -173,7 +176,7 @@ func (h *Handler) toTemplateVo(req domain.Template) Template {
 	return Template{
 		Id:         req.Id,
 		Name:       req.Name,
-		FlowId:     req.FlowId,
+		WorkflowId: req.WorkflowId,
 		GroupId:    req.GroupId,
 		Icon:       req.Icon,
 		Rules:      req.Rules,
@@ -195,10 +198,13 @@ func (h *Handler) toUpdateDomain(req UpdateTemplateReq) (domain.Template, error)
 	}
 
 	return domain.Template{
-		Id:      req.Id,
-		Name:    req.Name,
-		Rules:   rulesData,
-		Options: optionsData,
+		Id:         req.Id,
+		Name:       req.Name,
+		Icon:       req.Icon,
+		GroupId:    req.GroupId,
+		WorkflowId: req.WorkflowId,
+		Rules:      rulesData,
+		Options:    optionsData,
 	}, nil
 
 }

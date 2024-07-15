@@ -1,13 +1,13 @@
 package web
 
 type CreateTemplateReq struct {
-	Name    string `json:"name"`
-	FlowId  int64  `json:"flow_id"`
-	GroupId int64  `json:"group_id"`
-	Icon    string `json:"icon"`
-	Rules   string `json:"rules"`
-	Options string `json:"options"`
-	Desc    string `json:"desc"`
+	Name       string `json:"name"`
+	WorkflowId int64  `json:"workflow_id"`
+	GroupId    int64  `json:"group_id"`
+	Icon       string `json:"icon"`
+	Rules      string `json:"rules"`
+	Options    string `json:"options"`
+	Desc       string `json:"desc"`
 }
 
 type DetailTemplateReq struct {
@@ -32,7 +32,7 @@ type CreateType uint8
 type Template struct {
 	Id         int64                    `json:"id"`
 	Name       string                   `json:"name"`
-	FlowId     int64                    `json:"flow_id"`
+	WorkflowId int64                    `json:"workflow_id"`
 	Icon       string                   `json:"icon"`
 	GroupId    int64                    `json:"group_id"`
 	CreateType CreateType               `json:"create_type"`
@@ -47,10 +47,13 @@ type RetrieveTemplates struct {
 }
 
 type UpdateTemplateReq struct {
-	Id      int64  `json:"id"`
-	Name    string `json:"name"`
-	Rules   string `json:"rules"`
-	Options string `json:"options"`
+	Id         int64  `json:"id"`
+	GroupId    int64  `json:"group_id"`
+	Icon       string `json:"icon"`
+	WorkflowId int64  `json:"workflow_id"`
+	Name       string `json:"name"`
+	Rules      string `json:"rules"`
+	Options    string `json:"options"`
 }
 
 type CreateTemplateGroupReq struct {

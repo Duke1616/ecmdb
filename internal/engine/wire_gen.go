@@ -8,11 +8,12 @@ package engine
 
 import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/engine/event"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/service"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/web"
-	"github.com/Duke1616/ecmdb/internal/engine/register"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"gorm.io/gorm"
 	"log"
@@ -21,12 +22,18 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB) (*Module, error) {
-	processEngineDAO := InitEasyFlowOnce(db)
-	taskRepository := repository.NewTaskRepository(processEngineDAO)
-	serviceService := service.NewService(taskRepository)
+func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
+	orderStatusModifyEventProducer, err := event.NewOrderStatusModifyEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	processEvent := event.NewProcessEvent(orderStatusModifyEventProducer)
+	processEngineDAO := InitWorkflowEngineOnce(db, processEvent)
+	processEngineRepository := repository.NewProcessEngineRepository(processEngineDAO)
+	serviceService := service.NewService(processEngineRepository)
 	handler := web.NewHandler(serviceService)
 	module := &Module{
+		Svc: serviceService,
 		Hdl: handler,
 	}
 	return module, nil
@@ -34,19 +41,18 @@ func InitModule(db *gorm.DB) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTaskRepository)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewProcessEngineRepository)
 
-var flowOnce = sync.Once{}
+var engineOnce = sync.Once{}
 
-func InitEasyFlowOnce(db *gorm.DB) dao.ProcessEngineDAO {
-	flowOnce.Do(func() {
+func InitWorkflowEngineOnce(db *gorm.DB, event2 *event.ProcessEvent) dao.ProcessEngineDAO {
+	engineOnce.Do(func() {
 		engine.DB = db
 		if err := engine.DatabaseInitialize(); err != nil {
 			log.Fatalln("easy workflow 初始化数据表失败，错误:", err)
 		}
 		engine.IgnoreEventError = false
-		engine.RegisterEvents(&register.EasyFlowEvent{})
-		log.Println("========================== easy workflow 启动成功 ========================== ")
+		engine.RegisterEvents(event2)
 	})
 
 	return dao.NewProcessEngineDAO(db)

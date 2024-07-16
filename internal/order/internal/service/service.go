@@ -10,11 +10,11 @@ import (
 
 type Service interface {
 	CreateOrder(ctx context.Context, req domain.Order) error
-	UpdateStatus(ctx context.Context, id int64, status uint8) error
+	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
 	// RegisterProcessInstanceId 注册流程引擎ID
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error
-	// ListOrderByProcessEngineIds 获取代办流程
-	ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error)
+	// ListOrderByProcessInstanceIds 获取代办流程
+	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
 }
 
 type service struct {
@@ -23,9 +23,8 @@ type service struct {
 	l        *elog.Component
 }
 
-func (s *service) UpdateStatus(ctx context.Context, id int64, status uint8) error {
-	//TODO implement me
-	panic("implement me")
+func (s *service) UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error {
+	return s.repo.UpdateStatusByInstanceId(ctx, instanceId, status)
 }
 
 func (s *service) RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error {
@@ -53,8 +52,8 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
 	return err
 }
 
-func (s *service) ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error) {
-	return s.repo.ListOrderByProcessEngineIds(ctx, engineIds)
+func (s *service) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error) {
+	return s.repo.ListOrderByProcessInstanceIds(ctx, instanceIds)
 }
 
 func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, orderId int64) error {

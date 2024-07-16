@@ -1,4 +1,8 @@
-package domain
+package event
+
+const (
+	OrderStatusModifyEventName = "order_status_modify_events"
+)
 
 type Status uint8
 
@@ -17,16 +21,7 @@ const (
 	RETRY Status = 4
 )
 
-type Order struct {
-	Id         int64
-	TemplateId int64
-	WorkflowId int64
-	Data       map[string]interface{}
-	Status     Status
-	CreateBy   string
-	Process    Process
-}
-
-type Process struct {
-	InstanceId int
+type OrderStatusModifyEvent struct {
+	ProcessInstanceId int    `json:"process_instance_id"`
+	Status            Status `json:"status"`
 }

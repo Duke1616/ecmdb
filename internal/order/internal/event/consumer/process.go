@@ -15,12 +15,12 @@ import (
 
 type ProcessEventConsumer struct {
 	workFlowSvc workflow.Service
-	Svc         service.Service
+	svc         service.Service
 	consumer    mq.Consumer
 	logger      *elog.Component
 }
 
-func NewProcessEventConsumer(q mq.MQ, workFlowSvc workflow.Service, Svc service.Service) (*ProcessEventConsumer, error) {
+func NewProcessEventConsumer(q mq.MQ, workFlowSvc workflow.Service, svc service.Service) (*ProcessEventConsumer, error) {
 	groupID := "process_order"
 	consumer, err := q.Consumer(event.CreateProcessEventName, groupID)
 	if err != nil {
@@ -30,7 +30,7 @@ func NewProcessEventConsumer(q mq.MQ, workFlowSvc workflow.Service, Svc service.
 	return &ProcessEventConsumer{
 		consumer:    consumer,
 		workFlowSvc: workFlowSvc,
-		Svc:         Svc,
+		svc:         svc,
 		logger:      elog.DefaultLogger,
 	}, nil
 }
@@ -66,7 +66,7 @@ func (c *ProcessEventConsumer) Consume(ctx context.Context) error {
 		return err
 	}
 
-	return c.Svc.RegisterProcessInstanceId(ctx, evt.Id, engineId)
+	return c.svc.RegisterProcessInstanceId(ctx, evt.Id, engineId)
 }
 
 func (c *ProcessEventConsumer) Stop(_ context.Context) error {

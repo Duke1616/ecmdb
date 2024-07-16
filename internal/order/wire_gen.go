@@ -8,6 +8,7 @@ package order
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
@@ -22,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
@@ -30,15 +31,18 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module) (*Mo
 		return nil, err
 	}
 	serviceService := service.NewService(orderRepository, createProcessEventProducer)
-	handler := web.NewHandler(serviceService)
+	service2 := engineModule.Svc
+	handler := web.NewHandler(serviceService, service2)
 	wechatOrderConsumer := initWechatConsumer(serviceService, q)
-	service2 := workflowModule.Svc
-	processEventConsumer := InitProcessConsumer(q, service2, serviceService)
+	service3 := workflowModule.Svc
+	processEventConsumer := InitProcessConsumer(q, service3, serviceService)
+	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
 	module := &Module{
 		Hdl: handler,
 		Svc: serviceService,
 		cw:  wechatOrderConsumer,
 		cs:  processEventConsumer,
+		cms: orderStatusModifyEventConsumer,
 	}
 	return module, nil
 }
@@ -59,6 +63,16 @@ func initWechatConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsu
 
 func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Service) *consumer.ProcessEventConsumer {
 	c, err := consumer.NewProcessEventConsumer(q, workflowSvc, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatusModifyEventConsumer {
+	c, err := consumer.NewOrderStatusModifyEventConsumer(q, svc)
 	if err != nil {
 		return nil
 	}

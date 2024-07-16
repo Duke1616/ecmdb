@@ -16,13 +16,12 @@ type logicFlow struct {
 	NodeList []model.Node
 }
 
-func NewLogicFlowToEngineConvert(workflow Workflow) ProcessEngineConvert {
-	return &logicFlow{
-		Workflow: workflow,
-	}
+func NewLogicFlowToEngineConvert() ProcessEngineConvert {
+	return &logicFlow{}
 }
 
-func (l *logicFlow) Deploy() (int, error) {
+func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
+	l.Workflow = workflow
 	if err := l.toEdges(); err != nil {
 		return 0, err
 	}
@@ -75,8 +74,8 @@ func (l *logicFlow) End(node Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 3, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		NodeStartEvents: []string{"EventNotify"}}
-
+		NodeStartEvents: []string{"EventNotify", "EventClose"},
+	}
 	l.NodeList = append(l.NodeList, n)
 }
 

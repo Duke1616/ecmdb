@@ -9,7 +9,8 @@ import (
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, req domain.Order) (int64, error)
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
-	ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error)
+	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
+	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
 }
 
 func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
@@ -22,6 +23,10 @@ type orderRepository struct {
 	dao dao.OrderDAO
 }
 
+func (repo *orderRepository) UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error {
+	return repo.dao.UpdateStatusByInstanceId(ctx, instanceId, status)
+}
+
 func (repo *orderRepository) CreateOrder(ctx context.Context, req domain.Order) (int64, error) {
 	return repo.dao.CreateOrder(ctx, repo.toEntity(req))
 }
@@ -30,8 +35,8 @@ func (repo *orderRepository) RegisterProcessInstanceId(ctx context.Context, id i
 	return repo.dao.RegisterProcessInstanceId(ctx, id, instanceId, status)
 }
 
-func (repo *orderRepository) ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) (domain.Order, error) {
-	return domain.Order{}, nil
+func (repo *orderRepository) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error) {
+	return nil, nil
 }
 
 func (repo *orderRepository) toEntity(req domain.Order) dao.Order {

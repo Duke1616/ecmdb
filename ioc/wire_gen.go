@@ -90,20 +90,20 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	orderModule, err := order.InitModule(mq, mongo, workflowModule)
+	db := InitMySQLDB()
+	engineModule, err := engine.InitModule(db, mq)
+	if err != nil {
+		return nil, err
+	}
+	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule)
 	if err != nil {
 		return nil, err
 	}
 	handler9 := orderModule.Hdl
 	handler10 := workflowModule.Hdl
-	db := InitMySQLDB()
-	engineModule, err := engine.InitModule(db)
-	if err != nil {
-		return nil, err
-	}
-	handler11 := engineModule.Hdl
 	groupHandler := templateModule.GroupHdl
-	ginEngine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, handler11, groupHandler)
+	handler11 := engineModule.Hdl
+	ginEngine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11)
 	app := &App{
 		Web: ginEngine,
 	}

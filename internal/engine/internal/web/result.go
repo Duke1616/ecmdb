@@ -12,7 +12,7 @@ var (
 	}
 
 	validateErrorResult = ginx.Result{
-		Code: errs.ValidateError.Code,
-		Msg:  errs.ValidateError.Msg,
+		Code: errs.ValidationError.Code,
+		Msg:  errs.ValidationError.Msg,
 	}
 )

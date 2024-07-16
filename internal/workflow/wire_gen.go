@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/web"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
 )
@@ -20,7 +21,8 @@ import (
 func InitModule(db *mongox.Mongo) (*Module, error) {
 	workflowDAO := dao.NewWorkflowDAO(db)
 	workflowRepository := repository.NewWorkflowRepository(workflowDAO)
-	serviceService := service.NewService(workflowRepository)
+	processEngineConvert := easyflow.NewLogicFlowToEngineConvert()
+	serviceService := service.NewService(workflowRepository, processEngineConvert)
 	handler := web.NewHandler(serviceService)
 	module := &Module{
 		Hdl: handler,
@@ -31,4 +33,4 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewWorkflowRepository, dao.NewWorkflowDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewWorkflowRepository, dao.NewWorkflowDAO, easyflow.NewLogicFlowToEngineConvert)

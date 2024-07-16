@@ -4,6 +4,7 @@ package order
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
@@ -23,13 +24,15 @@ var ProviderSet = wire.NewSet(
 	dao.NewOrderDAO,
 )
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		event.NewCreateProcessEventProducer,
 		initWechatConsumer,
 		InitProcessConsumer,
+		InitModifyStatusConsumer,
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
+		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -47,6 +50,16 @@ func initWechatConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsu
 
 func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Service) *consumer.ProcessEventConsumer {
 	c, err := consumer.NewProcessEventConsumer(q, workflowSvc, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatusModifyEventConsumer {
+	c, err := consumer.NewOrderStatusModifyEventConsumer(q, svc)
 	if err != nil {
 		return nil
 	}

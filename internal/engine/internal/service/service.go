@@ -9,14 +9,26 @@ import (
 )
 
 type Service interface {
-	ListTodo(ctx context.Context, userId, processName string, sortByAse bool, idx, rows int) ([]model.Task, int64, error)
+	ListTodo(ctx context.Context, userId, processName string, sortByAse bool, offset, limit int) (
+		[]model.Task, int64, error)
+	Pass(ctx context.Context, taskId int64)
 }
 
 type service struct {
-	repo repository.TaskRepository
+	repo repository.ProcessEngineRepository
 }
 
-func (s *service) ListTodo(ctx context.Context, userId, processName string, sortByAse bool, idx, rows int) (
+func NewService(repo repository.ProcessEngineRepository) Service {
+	return &service{
+		repo: repo,
+	}
+}
+
+//func (s *service) UpdateOrderStatus(ctx context.Context, instanceId int, status uint8) error {
+//	return s.orderSvc.UpdateStatusByInstanceId(ctx, instanceId, status)
+//}
+
+func (s *service) ListTodo(ctx context.Context, userId, processName string, sortByAse bool, offset, limit int) (
 	[]model.Task, int64, error) {
 	var (
 		eg    errgroup.Group
@@ -25,7 +37,7 @@ func (s *service) ListTodo(ctx context.Context, userId, processName string, sort
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = engine.GetTaskToDoList(userId, processName, sortByAse, idx, rows)
+		ts, err = engine.GetTaskToDoList(userId, processName, sortByAse, offset, limit)
 		return err
 	})
 
@@ -40,8 +52,7 @@ func (s *service) ListTodo(ctx context.Context, userId, processName string, sort
 	return ts, total, nil
 }
 
-func NewService(repo repository.TaskRepository) Service {
-	return &service{
-		repo: repo,
-	}
+func (s *service) Pass(ctx context.Context, taskId int64) {
+	//TODO implement me
+	panic("implement me")
 }

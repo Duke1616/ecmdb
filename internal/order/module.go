@@ -10,4 +10,5 @@ type Module struct {
 	Svc Service
 	cw  *consumer.WechatOrderConsumer
 	cs  *consumer.ProcessEventConsumer
+	cms *consumer.OrderStatusModifyEventConsumer
 }

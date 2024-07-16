@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"github.com/Duke1616/ecmdb/internal/engine/register/easyflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -18,12 +18,14 @@ type Service interface {
 }
 
 type service struct {
-	repo repository.WorkflowRepository
+	repo         repository.WorkflowRepository
+	engineCovert easyflow.ProcessEngineConvert
 }
 
-func NewService(repo repository.WorkflowRepository) Service {
+func NewService(repo repository.WorkflowRepository, engineCovert easyflow.ProcessEngineConvert) Service {
 	return &service{
-		repo: repo,
+		repo:         repo,
+		engineCovert: engineCovert,
 	}
 }
 
@@ -67,8 +69,8 @@ func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
 }
 
 func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
-	// 初始化转换应用
-	f := easyflow.NewLogicFlowToEngineConvert(easyflow.Workflow{
+	// 发布到流程引擎
+	workflow := easyflow.Workflow{
 		Id:    wf.Id,
 		Name:  wf.Name,
 		Owner: wf.Owner,
@@ -76,10 +78,8 @@ func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 			Edges: wf.FlowData.Edges,
 			Nodes: wf.FlowData.Nodes,
 		},
-	})
-
-	// 发布到流程引擎
-	processId, err := f.Deploy()
+	}
+	processId, err := s.engineCovert.Deploy(workflow)
 	if err != nil {
 		return err
 	}

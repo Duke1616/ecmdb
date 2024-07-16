@@ -15,7 +15,8 @@ const (
 type OrderDAO interface {
 	CreateOrder(ctx context.Context, r Order) (int64, error)
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
-	ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) ([]Order, error)
+	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]Order, error)
+	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
 }
 
 func NewOrderDAO(db *mongox.Mongo) OrderDAO {
@@ -26,6 +27,23 @@ func NewOrderDAO(db *mongox.Mongo) OrderDAO {
 
 type orderDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *orderDAO) UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error {
+	col := dao.db.Collection(OrderCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"status": status,
+			"utime":  time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"process_instance_id": instanceId}
+	_, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return nil
 }
 
 func (dao *orderDAO) CreateOrder(ctx context.Context, r Order) (int64, error) {
@@ -60,9 +78,9 @@ func (dao *orderDAO) RegisterProcessInstanceId(ctx context.Context, id int64, in
 	return nil
 }
 
-func (dao *orderDAO) ListOrderByProcessEngineIds(ctx context.Context, engineIds []int) ([]Order, error) {
+func (dao *orderDAO) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]Order, error) {
 	col := dao.db.Collection(OrderCollection)
-	filter := bson.M{"process_engine_id": bson.M{"$in": engineIds}}
+	filter := bson.M{"process_instance_id": bson.M{"$in": instanceIds}}
 
 	cursor, err := col.Find(ctx, filter)
 	var result []Order

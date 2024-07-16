@@ -1,13 +1,15 @@
-package register
+package event
 
 import (
+	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/database"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/gotomicro/ego/core/elog"
 	"log"
 )
 
-// 这里创建了一个角色-用户的人员库，用来模拟数据库中存储的角色-用户对应关系
+// RoleUser 这里创建了一个角色-用户的人员库，用来模拟数据库中存储的角色-用户对应关系
 var RoleUser = make(map[string][]string)
 
 func init() {
@@ -18,13 +20,20 @@ func init() {
 	RoleUser["副总"] = []string{"赵总", "钱总", "孙总"}
 }
 
-type EasyFlowEvent struct{}
-
-func (e *EasyFlowEvent) EventRevoke(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	return nil
+type ProcessEvent struct {
+	producer OrderStatusModifyEventProducer
+	logger   *elog.Component
 }
 
-func (e *EasyFlowEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func NewProcessEvent(producer OrderStatusModifyEventProducer) *ProcessEvent {
+	return &ProcessEvent{
+		producer: producer,
+		logger:   elog.DefaultLogger,
+	}
+}
+
+// EventStart 节点结束事件
+func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	//可以做一些处理，比如通知流程开始人，节点到了哪个步骤
 	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
 	if err != nil {
@@ -34,45 +43,37 @@ func (e *EasyFlowEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node,
 	return nil
 }
 
-func (e *EasyFlowEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	return nil
-}
-
-// Start 节点结束事件
-func (e *EasyFlowEvent) Start(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	//可以做一些处理，比如通知流程开始人，节点到了哪个步骤
+// EventEnd 节点结束事件
+func (e *ProcessEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
 	if err != nil {
 		return err
 	}
+
+	e.logger.Info("节点结束了", elog.Any("processName", processName))
 	log.Printf("--------流程[%s]节点[%s]结束-------", processName, CurrentNode.NodeName)
 	return nil
 }
 
-// End 节点结束事件
-func (e *EasyFlowEvent) End(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	//可以做一些处理，比如通知流程开始人，节点到了哪个步骤
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
-	if err != nil {
-		return err
+// EventClose 流程结束，修改 Order 状态为已完成
+func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	evt := OrderStatusModifyEvent{
+		ProcessInstanceId: ProcessInstanceID,
+		Status:            END,
 	}
-	log.Printf("--------流程[%s]节点[%s]结束-------", processName, CurrentNode.NodeName)
-	return nil
-}
 
-// 节点结束事件
-func (e *EasyFlowEvent) MyEvent_End(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	//可以做一些处理，比如通知流程开始人，节点到了哪个步骤
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
+	err := e.producer.Produce(context.Background(), evt)
 	if err != nil {
-		return err
+		// 要做好监控和告警
+		e.logger.Error("发送修改 Order 事件失败",
+			elog.FieldErr(err),
+			elog.Any("evt", evt))
 	}
-	log.Printf("--------流程[%s]节点[%s]结束-------", processName, CurrentNode.NodeName)
 	return nil
 }
 
-// 通知
-func (e *EasyFlowEvent) MyEvent_Notify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+// EventNotify 通知
+func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
 	if err != nil {
 		return err
@@ -94,26 +95,10 @@ func (e *EasyFlowEvent) MyEvent_Notify(ProcessInstanceID int, CurrentNode *model
 	return nil
 }
 
-// 解析角色
-func (e *EasyFlowEvent) MyEvent_ResolveRoles(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
-	if err != nil {
-		return err
-	}
-	log.Printf("--------流程[%s]节点[%s],开始解析角色--------", processName, CurrentNode.NodeName)
-	//把用户库中对应角色的用户全部放到CurrentNode.UserIDs中去
-	for _, role := range CurrentNode.Roles {
-		if users, ok := RoleUser[role]; ok {
-			CurrentNode.UserIDs = append(CurrentNode.UserIDs, users...)
-		}
-	}
-	return nil
-}
-
-// 任务事件
+// EventTaskForceNodePass 任务事件
 // 在示例流程中，"副总审批"是一个会签节点，需要3个副总全部通过，节点才算通过
 // 现在通过任务事件改变会签通过人数，设为只要2人通过，即算通过
-func (e *EasyFlowEvent) MyEvent_TaskForceNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventTaskForceNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	taskInfo, err := engine.GetTaskInfo(TaskID)
 	if err != nil {
 		return err
@@ -156,7 +141,8 @@ func (e *EasyFlowEvent) MyEvent_TaskForceNodePass(TaskID int, CurrentNode *model
 	return nil
 }
 
-func (e *EasyFlowEvent) MyEvent_Revoke(ProcessInstanceID int, RevokeUserID string) error {
+// EventRevoke 流程撤销
+func (e *ProcessEvent) EventRevoke(ProcessInstanceID int, RevokeUserID string) error {
 	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
 	if err != nil {
 		return err

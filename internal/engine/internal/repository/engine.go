@@ -5,20 +5,20 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository/dao"
 )
 
-type TaskRepository interface {
+type ProcessEngineRepository interface {
 	CountTodo(ctx context.Context, userId, processName string) (int64, error)
 }
 
-type taskRepository struct {
+type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
 }
 
-func (repo *taskRepository) CountTodo(ctx context.Context, userId, processName string) (int64, error) {
+func (repo *processEngineRepository) CountTodo(ctx context.Context, userId, processName string) (int64, error) {
 	return repo.engineDao.TodoCount(ctx, userId, processName)
 }
 
-func NewTaskRepository(engineDao dao.ProcessEngineDAO) TaskRepository {
-	return &taskRepository{
+func NewProcessEngineRepository(engineDao dao.ProcessEngineDAO) ProcessEngineRepository {
+	return &processEngineRepository{
 		engineDao: engineDao,
 	}
 }

@@ -1,7 +1,7 @@
 package easyflow
 
 type ProcessEngineConvert interface {
-	Deploy() (int, error)
+	Deploy(workflow Workflow) (int, error)
 }
 
 type Workflow struct {

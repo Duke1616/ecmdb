@@ -50,9 +50,9 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*strategy.Module), "Hdl"),
 		workflow.InitModule,
 		wire.FieldsOf(new(*workflow.Module), "Hdl"),
-		InitWebServer,
 		engine.InitModule,
 		wire.FieldsOf(new(*engine.Module), "Hdl"),
+		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil
 }

@@ -25,6 +25,7 @@ type Order struct {
 	Status     Status
 	CreateBy   string
 	Process    Process
+	Ctime      int64
 }
 
 type Process struct {

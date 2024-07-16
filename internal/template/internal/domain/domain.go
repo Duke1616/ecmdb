@@ -33,9 +33,10 @@ type Template struct {
 }
 
 type TemplateCombination struct {
-	Id        int64      `json:"id"`
-	Name      string     `json:"name"`
-	Icon      string     `json:"icon"`
-	Total     int        `json:"total"`
-	Templates []Template `json:"templates"`
+	Id         int64  `json:"id"`
+	Name       string `json:"name"`
+	Icon       string `json:"icon"`
+	Total      int    `json:"total"`
+	CreateType CreateType
+	Templates  []Template `json:"templates"`
 }

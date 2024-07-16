@@ -159,7 +159,9 @@ func (dao *templateDAO) Count(ctx context.Context) (int64, error) {
 
 func (dao *templateDAO) Pipeline(ctx context.Context) ([]TemplatePipeline, error) {
 	col := dao.db.Collection(TemplateCollection)
+	filters := bson.M{"create_type": 1}
 	pipeline := mongo.Pipeline{
+		{{"$match", filters}},
 		{{"$group", bson.D{
 			{"_id", "$group_id"},
 			{"total", bson.D{{"$sum", 1}}},

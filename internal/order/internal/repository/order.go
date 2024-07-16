@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
+	"github.com/ecodeclub/ekit/slice"
 )
 
 type OrderRepository interface {
@@ -36,7 +37,10 @@ func (repo *orderRepository) RegisterProcessInstanceId(ctx context.Context, id i
 }
 
 func (repo *orderRepository) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error) {
-	return nil, nil
+	orders, err := repo.dao.ListOrderByProcessInstanceIds(ctx, instanceIds)
+	return slice.Map(orders, func(idx int, src dao.Order) domain.Order {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
@@ -54,7 +58,9 @@ func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 		TemplateId: req.TemplateId,
 		Status:     domain.Status(req.Status),
 		WorkflowId: req.WorkflowId,
+		Process:    domain.Process{InstanceId: req.ProcessInstanceId},
 		CreateBy:   req.CreateBy,
 		Data:       req.Data,
+		Ctime:      req.Ctime,
 	}
 }

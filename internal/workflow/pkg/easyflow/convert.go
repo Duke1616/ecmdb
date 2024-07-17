@@ -20,6 +20,10 @@ func NewLogicFlowToEngineConvert() ProcessEngineConvert {
 	return &logicFlow{}
 }
 
+func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error) {
+	return nil, nil
+}
+
 func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 	l.Workflow = workflow
 	if err := l.toEdges(); err != nil {

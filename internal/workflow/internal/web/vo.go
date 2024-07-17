@@ -52,3 +52,13 @@ type RetrieveWorkflows struct {
 	Total     int64      `json:"total"`
 	Workflows []Workflow `json:"workflows"`
 }
+
+type OrderGraphReq struct {
+	Id                int64 `json:"id"`
+	ProcessInstanceId int   `json:"process_instance_id"`
+}
+
+type RetrieveOrderGraph struct {
+	EdgeIds  []string `json:"edge_ids"`
+	Workflow Workflow `json:"workflow"`
+}

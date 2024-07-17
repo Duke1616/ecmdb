@@ -9,7 +9,7 @@ type CreateOrderReq struct {
 	Data       map[string]interface{} `json:"data"`
 }
 
-type DetailReq struct {
+type DetailProcessInstIdReq struct {
 	ProcessInstanceId int `json:"process_instance_id"`
 }
 
@@ -19,6 +19,20 @@ type Todo struct {
 	SortByAsc   bool   `json:"sort_by_asc" validate:"required"`
 	Offset      int    `json:"offset,omitempty"`
 	Limit       int    `json:"limit,omitempty" validate:"required"`
+}
+
+type PassOrderReq struct {
+	TaskId  int    `json:"task_id"`
+	Comment string `json:"comment"`
+}
+
+type RejectOrderReq struct {
+	TaskId  int    `json:"task_id"`
+	Comment string `json:"comment"`
+}
+
+type HistoryTaskReq struct {
+	ProcessInstId int `json:"process_inst_id"`
 }
 
 type StartUser struct {
@@ -33,16 +47,17 @@ type MyOrderReq struct {
 }
 
 type Order struct {
-	TaskId             int                 `json:"task_id"`               // 任务ID
-	ProcessInstanceId  int                 `json:"process_instance_id"`   // 流程实例ID
-	Starter            string              `json:"starter"`               // 提单人
-	Title              string              `json:"title"`                 // 标题
-	CurrentStep        string              `json:"current_step"`          // 当前步骤
-	ApprovedBy         []string            `json:"approved_by"`           // 当前处理人
-	ProcInstCreateTime *database.LocalTime `json:"proc_inst_create_time"` // 流程开始时间
-	Ctime              int64               `json:"ctime"`                 // 创建工单时间
-	TemplateId         int64               `json:"template_id"`
-	WorkflowId         int64               `json:"workflow_id"`
+	TaskId             int                    `json:"task_id"`               // 任务ID
+	ProcessInstanceId  int                    `json:"process_instance_id"`   // 流程实例ID
+	Starter            string                 `json:"starter"`               // 提单人
+	Title              string                 `json:"title"`                 // 标题
+	CurrentStep        string                 `json:"current_step"`          // 当前步骤
+	ApprovedBy         []string               `json:"approved_by"`           // 当前处理人
+	ProcInstCreateTime *database.LocalTime    `json:"proc_inst_create_time"` // 流程开始时间
+	Ctime              int64                  `json:"ctime"`                 // 创建工单时间
+	TemplateId         int64                  `json:"template_id"`
+	WorkflowId         int64                  `json:"workflow_id"`
+	Data               map[string]interface{} `json:"data"`
 }
 
 type RetrieveOrders struct {

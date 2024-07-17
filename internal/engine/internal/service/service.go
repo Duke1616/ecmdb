@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository"
 	"golang.org/x/sync/errgroup"
@@ -10,11 +12,27 @@ import (
 type Service interface {
 	ListTodo(ctx context.Context, userId, processName string, sortByAse bool, offset, limit int) (
 		[]domain.Instance, int64, error)
-	ListByStartUser(ctx context.Context, userId, processName string, offset, limit int) ([]domain.Instance, int64, error)
+	ListByStartUser(ctx context.Context, userId, processName string, offset, limit int) (
+		[]domain.Instance, int64, error)
+	TaskHistory(ctx context.Context, processInstId int) ([]model.Task, error)
+	Pass(ctx context.Context, taskId int, comment string) error
+	Reject(ctx context.Context, taskId int, comment string) error
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) Reject(ctx context.Context, taskId int, comment string) error {
+	return engine.TaskReject(taskId, comment, "")
+}
+
+func (s *service) Pass(ctx context.Context, taskId int, comment string) error {
+	return engine.TaskPass(taskId, comment, "", false)
+}
+
+func (s *service) TaskHistory(ctx context.Context, processInstId int) ([]model.Task, error) {
+	return engine.GetInstanceTaskHistory(processInstId)
 }
 
 func NewService(repo repository.ProcessEngineRepository) Service {

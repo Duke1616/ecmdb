@@ -86,12 +86,12 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	workflowModule, err := workflow.InitModule(mongo)
+	db := InitMySQLDB()
+	engineModule, err := engine.InitModule(db, mq)
 	if err != nil {
 		return nil, err
 	}
-	db := InitMySQLDB()
-	engineModule, err := engine.InitModule(db, mq)
+	workflowModule, err := workflow.InitModule(mongo, engineModule)
 	if err != nil {
 		return nil, err
 	}

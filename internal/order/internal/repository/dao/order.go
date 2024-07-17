@@ -14,6 +14,7 @@ const (
 
 type OrderDAO interface {
 	CreateOrder(ctx context.Context, r Order) (int64, error)
+	DetailByProcessInstId(ctx context.Context, instanceId int) (Order, error)
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]Order, error)
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
@@ -76,6 +77,18 @@ func (dao *orderDAO) RegisterProcessInstanceId(ctx context.Context, id int64, in
 	}
 
 	return nil
+}
+
+func (dao *orderDAO) DetailByProcessInstId(ctx context.Context, instanceId int) (Order, error) {
+	col := dao.db.Collection(OrderCollection)
+	filter := bson.M{"process_instance_id": instanceId}
+
+	var result Order
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Order{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *orderDAO) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]Order, error) {

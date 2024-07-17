@@ -3,6 +3,7 @@
 package workflow
 
 import (
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
@@ -20,9 +21,10 @@ var ProviderSet = wire.NewSet(
 	easyflow.NewLogicFlowToEngineConvert,
 )
 
-func InitModule(db *mongox.Mongo) (*Module, error) {
+func InitModule(db *mongox.Mongo, engineModule *engine.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
+		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

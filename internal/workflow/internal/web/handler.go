@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -10,12 +11,14 @@ import (
 )
 
 type Handler struct {
-	svc service.Service
+	svc       service.Service
+	engineSvc engine.Service
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, engineSvc engine.Service) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:       svc,
+		engineSvc: engineSvc,
 	}
 }
 
@@ -26,6 +29,9 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/update", ginx.WrapBody[UpdateReq](h.Update))
 	g.POST("/delete", ginx.WrapBody[DeleteReq](h.Delete))
 	g.POST("/deploy", ginx.WrapBody[DeployReq](h.Deploy))
+
+	// 工单流程图
+	g.POST("/order/graph", ginx.WrapBody[OrderGraphReq](h.FindOrderGraph))
 }
 
 func (h *Handler) Create(ctx *gin.Context, req CreateReq) (ginx.Result, error) {
@@ -66,6 +72,7 @@ func (h *Handler) Deploy(ctx *gin.Context, req DeployReq) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("发布失败")
 	}
+
 	return ginx.Result{
 		Data: flow,
 	}, nil
@@ -90,6 +97,30 @@ func (h *Handler) Delete(ctx *gin.Context, req DeleteReq) (ginx.Result, error) {
 	}
 	return ginx.Result{
 		Data: count,
+	}, nil
+}
+
+func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Result, error) {
+	flow, err := h.svc.Find(ctx, req.Id)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	tasks, err := h.engineSvc.TaskHistory(ctx, req.ProcessInstanceId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	edgeIds, err := h.svc.FindPassEdgeIds(ctx, flow, tasks)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: RetrieveOrderGraph{
+			EdgeIds:  edgeIds,
+			Workflow: h.toWorkflowVo(flow),
+		},
 	}, nil
 }
 

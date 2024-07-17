@@ -7,6 +7,7 @@
 package workflow
 
 import (
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
@@ -18,12 +19,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo) (*Module, error) {
+func InitModule(db *mongox.Mongo, engineModule *engine.Module) (*Module, error) {
 	workflowDAO := dao.NewWorkflowDAO(db)
 	workflowRepository := repository.NewWorkflowRepository(workflowDAO)
 	processEngineConvert := easyflow.NewLogicFlowToEngineConvert()
 	serviceService := service.NewService(workflowRepository, processEngineConvert)
-	handler := web.NewHandler(serviceService)
+	service2 := engineModule.Svc
+	handler := web.NewHandler(serviceService, service2)
 	module := &Module{
 		Hdl: handler,
 		Svc: serviceService,

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/web_api/router"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -28,11 +29,17 @@ func NewHandler(svc service.Service, engineSvc engine.Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
+	router.NewRouter(server, "/api/process", false, "")
+
 	g := server.Group("/api/order")
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
-	g.POST("/detail", ginx.WrapBody[DetailReq](h.Detail))
+	g.POST("/detail/process_inst_id", ginx.WrapBody[DetailProcessInstIdReq](h.Detail))
 	g.POST("/todo", ginx.WrapBody[Todo](h.Todo))
+	g.POST("/task/history", ginx.WrapBody[HistoryTaskReq](h.TaskHistory))
+	g.POST("/task/graph", ginx.WrapBody[HistoryTaskReq](h.TaskHistory))
 	g.POST("/start/user", ginx.WrapBody[StartUser](h.StartUser))
+	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
+	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
 	g.POST("/list", ginx.WrapBody[Todo](h.Todo))
 }
 
@@ -69,7 +76,7 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}
 
 	// 数据处理
-	orders, err := h.toVoOrder(ctx, instances)
+	orders, err := h.toVoEngineOrder(ctx, instances)
 	if err != nil {
 		return ginx.Result{}, err
 	}
@@ -83,6 +90,42 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}, err
 }
 
+func (h *Handler) TaskHistory(ctx *gin.Context, req HistoryTaskReq) (ginx.Result, error) {
+	tasks, err := h.engineSvc.TaskHistory(ctx, req.ProcessInstId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "同意审批",
+		Data: tasks,
+	}, nil
+}
+
+func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) {
+	err := h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "同意审批",
+		Data: nil,
+	}, nil
+}
+
+func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, error) {
+	err := h.engineSvc.Reject(ctx, req.TaskId, req.Comment)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "驳回审批",
+		Data: nil,
+	}, nil
+}
+
 func (h *Handler) StartUser(ctx *gin.Context, req StartUser) (ginx.Result, error) {
 	instances, total, err := h.engineSvc.ListByStartUser(ctx, req.UserId, req.ProcessName, req.Offset, req.Limit)
 	if err != nil {
@@ -90,9 +133,9 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUser) (ginx.Result, error
 	}
 
 	// 数据处理
-	orders, err := h.toVoOrder(ctx, instances)
+	orders, err := h.toVoEngineOrder(ctx, instances)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
@@ -104,8 +147,15 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUser) (ginx.Result, error
 	}, err
 }
 
-func (h *Handler) Detail(ctx *gin.Context, req DetailReq) (ginx.Result, error) {
-	return ginx.Result{}, nil
+func (h *Handler) Detail(ctx *gin.Context, req DetailProcessInstIdReq) (ginx.Result, error) {
+	order, err := h.svc.DetailByProcessInstId(ctx, req.ProcessInstanceId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: h.toVoOrder(order),
+	}, nil
 }
 
 func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
@@ -118,7 +168,13 @@ func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 	}
 }
 
-func (h *Handler) toVoOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
+func (h *Handler) toVoOrder(req domain.Order) Order {
+	return Order{
+		Data: req.Data,
+	}
+}
+
+func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
 	procInstIds := slice.Map(instances, func(idx int, src engine.Instance) int {
 		return src.ProcInstID
 	})

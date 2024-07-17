@@ -1,7 +1,10 @@
 package easyflow
 
+import "github.com/Bunny3th/easy-workflow/workflow/model"
+
 type ProcessEngineConvert interface {
 	Deploy(workflow Workflow) (int, error)
+	Edge(workflow Workflow, tasks []model.Task) ([]string, error)
 }
 
 type Workflow struct {

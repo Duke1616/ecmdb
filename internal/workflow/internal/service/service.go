@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
@@ -15,6 +16,9 @@ type Service interface {
 	Update(ctx context.Context, req domain.Workflow) (int64, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	Deploy(ctx context.Context, flow domain.Workflow) error
+
+	// FindPassEdgeIds 查找所有已经完成的边id
+	FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error)
 }
 
 type service struct {
@@ -68,9 +72,23 @@ func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
 	return s.repo.Delete(ctx, id)
 }
 
+func (s *service) FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error) {
+	return s.engineCovert.Edge(s.toEasyWorkflow(wf), tasks)
+}
+
 func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 	// 发布到流程引擎
-	workflow := easyflow.Workflow{
+	processId, err := s.engineCovert.Deploy(s.toEasyWorkflow(wf))
+	if err != nil {
+		return err
+	}
+
+	// 绑定此流程对应引擎的ID, 为了后续查询数据详情使用
+	return s.repo.UpdateProcessId(ctx, wf.Id, processId)
+}
+
+func (s *service) toEasyWorkflow(wf domain.Workflow) easyflow.Workflow {
+	return easyflow.Workflow{
 		Id:    wf.Id,
 		Name:  wf.Name,
 		Owner: wf.Owner,
@@ -79,11 +97,4 @@ func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 			Nodes: wf.FlowData.Nodes,
 		},
 	}
-	processId, err := s.engineCovert.Deploy(workflow)
-	if err != nil {
-		return err
-	}
-
-	// 绑定此流程对应引擎的ID, 为了后续查询数据详情使用
-	return s.repo.UpdateProcessId(ctx, wf.Id, processId)
 }

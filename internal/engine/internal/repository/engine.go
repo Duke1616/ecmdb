@@ -79,7 +79,7 @@ func (repo *processEngineRepository) toDomainByTask(req model.Task) domain.Insta
 		Starter:         req.Starter,
 		CurrentNodeID:   req.NodeID,
 		CurrentNodeName: req.NodeName,
-		CreateTime:      (*database.LocalTime)(req.CreateTime),
+		CreateTime:      req.CreateTime,
 		ApprovedBy:      []string{req.UserID},
 		Status:          req.Status,
 	}

@@ -40,8 +40,9 @@ type EdgeProperty struct {
 }
 
 type UserProperty struct {
-	Name     string `json:"name"`
-	Approved string `json:"approved"`
+	Name       string `json:"name"`
+	Approved   string `json:"approved"`
+	IsCosigned bool   `json:"is_cosigned"`
 }
 
 type StartProperty struct {

@@ -2,6 +2,7 @@ package easyflow
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/ecodeclub/ekit/slice"
@@ -25,6 +26,7 @@ func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error
 }
 
 func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
+	fmt.Println(workflow, "1")
 	l.Workflow = workflow
 	if err := l.toEdges(); err != nil {
 		return 0, err
@@ -43,6 +45,8 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 			l.User(node)
 		case "condition":
 			l.Condition(node)
+		case "parallel":
+			l.Parallel(node)
 		}
 	}
 
@@ -83,6 +87,28 @@ func (l *logicFlow) End(node Node) {
 	l.NodeList = append(l.NodeList, n)
 }
 
+func (l *logicFlow) Parallel(node Node) {
+	// 查看下级 node 节点 id
+	edgesDst := l.FindTargetNodeId(node.ID)
+	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
+		return src.TargetNodeId
+	})
+	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
+
+	// 查看上级 node 节点 id
+	edgesSrc := l.FindSourceNodeId(node.ID)
+	preNodeIds := slice.Map(edgesSrc, func(idx int, src Edge) string {
+		return src.SourceNodeId
+	})
+
+	n := model.Node{NodeID: node.ID, NodeName: "并行网关",
+		NodeType: 2, GWConfig: gwParallel,
+		PrevNodeIDs: preNodeIds,
+	}
+
+	l.NodeList = append(l.NodeList, n)
+}
+
 func (l *logicFlow) Condition(node Node) {
 	// 获取所有判断条件的连接线
 	edgesDst := l.FindTargetNodeId(node.ID)
@@ -112,9 +138,18 @@ func (l *logicFlow) Condition(node Node) {
 func (l *logicFlow) User(node Node) {
 	// node 节点录入
 	property, _ := toNodeProperty[UserProperty](node)
+
+	// 判断是否为会签节点
+	IsCosigned := 0
+	if property.IsCosigned == true {
+		IsCosigned = 1
+	}
+
+	// 录入数据
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 1, UserIDs: []string{property.Approved},
 		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
+		IsCosigned:  IsCosigned,
 	}
 
 	l.NodeList = append(l.NodeList, n)

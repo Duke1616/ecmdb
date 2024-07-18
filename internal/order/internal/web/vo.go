@@ -21,6 +21,14 @@ type Todo struct {
 	Limit       int    `json:"limit,omitempty" validate:"required"`
 }
 
+type HistoryReq struct {
+	UserId      string `json:"user_id"`
+	ProcessName string `json:"proc_name"`
+	SortByAsc   bool   `json:"sort_by_asc" validate:"required"`
+	Offset      int64  `json:"offset,omitempty"`
+	Limit       int64  `json:"limit,omitempty" validate:"required"`
+}
+
 type PassOrderReq struct {
 	TaskId  int    `json:"task_id"`
 	Comment string `json:"comment"`
@@ -31,8 +39,10 @@ type RejectOrderReq struct {
 	Comment string `json:"comment"`
 }
 
-type HistoryTaskReq struct {
+type RecordTaskReq struct {
 	ProcessInstId int `json:"process_inst_id"`
+	Offset        int `json:"offset,omitempty"`
+	Limit         int `json:"limit,omitempty" validate:"required"`
 }
 
 type StartUser struct {
@@ -63,4 +73,19 @@ type Order struct {
 type RetrieveOrders struct {
 	Total int64   `json:"total"`
 	Tasks []Order `json:"orders"`
+}
+
+type TaskRecord struct {
+	Nodename     string              `json:"nodename"`      // 当前步骤
+	ApprovedBy   string              `json:"approved_by"`   // 处理人
+	IsCosigned   int                 `json:"is_cosigned"`   // 是否会签
+	Status       int                 `json:"status"`        // 任务状态:0:初始 1:通过 2:驳回
+	Comment      string              `json:"comment"`       // 评论
+	IsFinished   int                 `json:"is_finished"`   // 0:任务未完成 1:处理完成
+	FinishedTime *database.LocalTime `json:"finished_time"` // 处理任务时间
+}
+
+type RetrieveTaskRecords struct {
+	TaskRecords []TaskRecord `json:"task_records"`
+	Total       int64        `json:"total"`
 }

@@ -17,6 +17,8 @@ type ProcessEngineRepository interface {
 	CountStartUser(ctx context.Context, userId, processName string) (int64, error)
 	ListStartUser(ctx context.Context, userId, processName string, offset, limit int) (
 		[]domain.Instance, error)
+	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
+	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
 }
 
 type processEngineRepository struct {
@@ -44,6 +46,14 @@ func (repo *processEngineRepository) CountTodo(ctx context.Context, userId, proc
 
 func (repo *processEngineRepository) CountStartUser(ctx context.Context, userId, processName string) (int64, error) {
 	return repo.engineDao.CountStartUser(ctx, userId, processName)
+}
+
+func (repo *processEngineRepository) ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error) {
+	return repo.engineDao.ListTaskRecord(ctx, processInstId, offset, limit)
+}
+
+func (repo *processEngineRepository) CountTaskRecord(ctx context.Context, processInstId int) (int64, error) {
+	return repo.engineDao.CountTaskRecord(ctx, processInstId)
 }
 
 func NewProcessEngineRepository(engineDao dao.ProcessEngineDAO) ProcessEngineRepository {

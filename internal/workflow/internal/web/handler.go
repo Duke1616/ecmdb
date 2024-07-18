@@ -106,7 +106,7 @@ func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Resu
 		return ginx.Result{}, err
 	}
 
-	tasks, err := h.engineSvc.TaskHistory(ctx, req.ProcessInstanceId)
+	tasks, _, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstanceId, 0, 100)
 	if err != nil {
 		return systemErrorResult, err
 	}

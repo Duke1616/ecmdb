@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Bunny3th/easy-workflow/workflow/web_api/router"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
@@ -35,8 +36,8 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
 	g.POST("/detail/process_inst_id", ginx.WrapBody[DetailProcessInstIdReq](h.Detail))
 	g.POST("/todo", ginx.WrapBody[Todo](h.Todo))
-	g.POST("/task/history", ginx.WrapBody[HistoryTaskReq](h.TaskHistory))
-	g.POST("/task/graph", ginx.WrapBody[HistoryTaskReq](h.TaskHistory))
+	g.POST("/task/record", ginx.WrapBody[RecordTaskReq](h.TaskRecord))
+	g.POST("/history", ginx.WrapBody[HistoryReq](h.History))
 	g.POST("/start/user", ginx.WrapBody[StartUser](h.StartUser))
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
@@ -90,15 +91,18 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}, err
 }
 
-func (h *Handler) TaskHistory(ctx *gin.Context, req HistoryTaskReq) (ginx.Result, error) {
-	tasks, err := h.engineSvc.TaskHistory(ctx, req.ProcessInstId)
+func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error) {
+	os, _, err := h.svc.ListHistoryOrder(ctx, req.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
+	instIds := slice.Map(os, func(idx int, src domain.Order) int {
+		return src.Process.InstanceId
+	})
+
 	return ginx.Result{
-		Msg:  "同意审批",
-		Data: tasks,
+		Data: instIds,
 	}, nil
 }
 
@@ -158,6 +162,24 @@ func (h *Handler) Detail(ctx *gin.Context, req DetailProcessInstIdReq) (ginx.Res
 	}, nil
 }
 
+func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, error) {
+	ts, total, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstId, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	records := slice.Map(ts, func(idx int, src model.Task) TaskRecord {
+		return h.toVoTaskRecords(src)
+	})
+
+	return ginx.Result{
+		Data: RetrieveTaskRecords{
+			TaskRecords: records,
+			Total:       total,
+		},
+	}, nil
+}
+
 func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 	return domain.Order{
 		CreateBy:   req.CreateBy,
@@ -171,6 +193,18 @@ func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 func (h *Handler) toVoOrder(req domain.Order) Order {
 	return Order{
 		Data: req.Data,
+	}
+}
+
+func (h *Handler) toVoTaskRecords(req model.Task) TaskRecord {
+	return TaskRecord{
+		Nodename:     req.NodeName,
+		ApprovedBy:   req.UserID,
+		IsCosigned:   req.IsCosigned,
+		Status:       req.Status,
+		Comment:      req.Comment,
+		IsFinished:   req.IsFinished,
+		FinishedTime: req.FinishedTime,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
 	"github.com/gotomicro/ego/core/elog"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
@@ -16,6 +17,9 @@ type Service interface {
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error
 	// ListOrderByProcessInstanceIds 获取代办流程
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
+
+	// ListHistoryOrder 获取历史order列表
+	ListHistoryOrder(ctx context.Context, userId string, offset, limit int64) ([]domain.Order, int64, error)
 }
 
 type service struct {
@@ -59,6 +63,30 @@ func (s *service) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds
 
 func (s *service) DetailByProcessInstId(ctx context.Context, instanceId int) (domain.Order, error) {
 	return s.repo.DetailByProcessInstId(ctx, instanceId)
+}
+
+func (s *service) ListHistoryOrder(ctx context.Context, userId string, offset, limit int64) (
+	[]domain.Order, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Order
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListOrder(ctx, userId, domain.END.ToUint8(), offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.CountOrder(ctx, userId, domain.END.ToUint8())
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }
 
 func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, orderId int64) error {

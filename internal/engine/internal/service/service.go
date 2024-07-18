@@ -14,7 +14,7 @@ type Service interface {
 		[]domain.Instance, int64, error)
 	ListByStartUser(ctx context.Context, userId, processName string, offset, limit int) (
 		[]domain.Instance, int64, error)
-	TaskHistory(ctx context.Context, processInstId int) ([]model.Task, error)
+	TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error)
 	Pass(ctx context.Context, taskId int, comment string) error
 	Reject(ctx context.Context, taskId int, comment string) error
 }
@@ -31,8 +31,27 @@ func (s *service) Pass(ctx context.Context, taskId int, comment string) error {
 	return engine.TaskPass(taskId, comment, "", false)
 }
 
-func (s *service) TaskHistory(ctx context.Context, processInstId int) ([]model.Task, error) {
-	return engine.GetInstanceTaskHistory(processInstId)
+func (s *service) TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error) {
+	var (
+		eg      errgroup.Group
+		records []model.Task
+		total   int64
+	)
+	eg.Go(func() error {
+		var err error
+		records, err = s.repo.ListTaskRecord(ctx, processInstId, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.CountTaskRecord(ctx, processInstId)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return records, total, err
+	}
+	return records, total, nil
 }
 
 func NewService(repo repository.ProcessEngineRepository) Service {

@@ -62,6 +62,10 @@ func (s *service) DetailByProcessInstId(ctx context.Context, instanceId int) (do
 }
 
 func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, orderId int64) error {
+	if req.Data == nil {
+		req.Data = make(map[string]interface{})
+	}
+
 	req.Data["starter"] = req.CreateBy
 	evt := event.OrderEvent{
 		Id:         orderId,

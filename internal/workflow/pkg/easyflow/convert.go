@@ -2,10 +2,10 @@ package easyflow
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/ecodeclub/ekit/slice"
+	"sync"
 )
 
 type logicFlow struct {
@@ -15,10 +15,13 @@ type logicFlow struct {
 
 	// 后端存储结构体
 	NodeList []model.Node
+	mu       sync.Mutex
 }
 
 func NewLogicFlowToEngineConvert() ProcessEngineConvert {
-	return &logicFlow{}
+	return &logicFlow{
+		mu: sync.Mutex{},
+	}
 }
 
 func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error) {
@@ -26,8 +29,16 @@ func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error
 }
 
 func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
-	fmt.Println(workflow, "1")
+	// 加锁
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// 赋值数据
 	l.Workflow = workflow
+
+	// 清空 NodeList
+	l.NodeList = []model.Node{}
+
 	if err := l.toEdges(); err != nil {
 		return 0, err
 	}
@@ -47,11 +58,17 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 			l.Condition(node)
 		case "parallel":
 			l.Parallel(node)
+		case "inclusion":
+			l.Inclusion(node)
 		}
 	}
 
 	// 发布流程
 	process := model.Process{ProcessName: l.Workflow.Name, Source: "工单系统", RevokeEvents: []string{"EventRevoke"}, Nodes: l.NodeList}
+
+	// 列表重新为空
+	l.NodeList = nil
+
 	j, err := engine.JSONMarshal(process, false)
 	if err != nil {
 		return 0, err
@@ -93,7 +110,7 @@ func (l *logicFlow) Parallel(node Node) {
 	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
 		return src.TargetNodeId
 	})
-	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
+	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 1}
 
 	// 查看上级 node 节点 id
 	edgesSrc := l.FindSourceNodeId(node.ID)
@@ -102,6 +119,28 @@ func (l *logicFlow) Parallel(node Node) {
 	})
 
 	n := model.Node{NodeID: node.ID, NodeName: "并行网关",
+		NodeType: 2, GWConfig: gwParallel,
+		PrevNodeIDs: preNodeIds,
+	}
+
+	l.NodeList = append(l.NodeList, n)
+}
+
+func (l *logicFlow) Inclusion(node Node) {
+	// 查看下级 node 节点 id
+	edgesDst := l.FindTargetNodeId(node.ID)
+	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
+		return src.TargetNodeId
+	})
+	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
+
+	// 查看上级 node 节点 id
+	edgesSrc := l.FindSourceNodeId(node.ID)
+	preNodeIds := slice.Map(edgesSrc, func(idx int, src Edge) string {
+		return src.SourceNodeId
+	})
+
+	n := model.Node{NodeID: node.ID, NodeName: "包容网关",
 		NodeType: 2, GWConfig: gwParallel,
 		PrevNodeIDs: preNodeIds,
 	}
@@ -147,7 +186,7 @@ func (l *logicFlow) User(node Node) {
 
 	// 录入数据
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
-		NodeType: 1, UserIDs: []string{property.Approved},
+		NodeType: 1, UserIDs: property.Approved,
 		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
 		IsCosigned:  IsCosigned,
 	}

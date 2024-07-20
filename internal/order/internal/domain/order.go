@@ -18,14 +18,15 @@ const (
 )
 
 type Order struct {
-	Id         int64
-	TemplateId int64
-	WorkflowId int64
-	Data       map[string]interface{}
-	Status     Status
-	CreateBy   string
-	Process    Process
-	Ctime      int64
+	Id           int64
+	TemplateId   int64
+	TemplateName string
+	WorkflowId   int64
+	Data         map[string]interface{}
+	Status       Status
+	CreateBy     string
+	Process      Process
+	Ctime        int64
 }
 
 type Process struct {

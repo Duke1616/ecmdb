@@ -64,22 +64,24 @@ func (repo *orderRepository) CountOrder(ctx context.Context, userId string, stat
 
 func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 	return dao.Order{
-		TemplateId: req.TemplateId,
-		Status:     req.Status.ToUint8(),
-		WorkflowId: req.WorkflowId,
-		CreateBy:   req.CreateBy,
-		Data:       req.Data,
+		TemplateId:   req.TemplateId,
+		TemplateName: req.TemplateName,
+		Status:       req.Status.ToUint8(),
+		WorkflowId:   req.WorkflowId,
+		CreateBy:     req.CreateBy,
+		Data:         req.Data,
 	}
 }
 
 func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 	return domain.Order{
-		TemplateId: req.TemplateId,
-		Status:     domain.Status(req.Status),
-		WorkflowId: req.WorkflowId,
-		Process:    domain.Process{InstanceId: req.ProcessInstanceId},
-		CreateBy:   req.CreateBy,
-		Data:       req.Data,
-		Ctime:      req.Ctime,
+		TemplateId:   req.TemplateId,
+		TemplateName: req.TemplateName,
+		Status:       domain.Status(req.Status),
+		WorkflowId:   req.WorkflowId,
+		Process:      domain.Process{InstanceId: req.ProcessInstanceId},
+		CreateBy:     req.CreateBy,
+		Data:         req.Data,
+		Ctime:        req.Ctime,
 	}
 }

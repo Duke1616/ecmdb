@@ -158,6 +158,7 @@ func (dao *orderDAO) CountOrder(ctx context.Context, userId string, status uint8
 type Order struct {
 	Id                int64                  `bson:"id"`
 	TemplateId        int64                  `bson:"template_id"`
+	TemplateName      string                 `bson:"template_name"`
 	WorkflowId        int64                  `bson:"workflow_id"`
 	ProcessInstanceId int                    `bson:"process_instance_id"`
 	CreateBy          string                 `bson:"create_by"`

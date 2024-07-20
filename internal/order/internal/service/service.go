@@ -20,12 +20,38 @@ type Service interface {
 
 	// ListHistoryOrder 获取历史order列表
 	ListHistoryOrder(ctx context.Context, userId string, offset, limit int64) ([]domain.Order, int64, error)
+
+	// ListOrdersByUser 查看自己提交的工单
+	ListOrdersByUser(ctx context.Context, userId string, offset, limit int64) ([]domain.Order, int64, error)
 }
 
 type service struct {
 	repo     repository.OrderRepository
 	producer event.CreateProcessEventProducer
 	l        *elog.Component
+}
+
+func (s *service) ListOrdersByUser(ctx context.Context, userId string, offset, limit int64) ([]domain.Order, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Order
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListOrder(ctx, userId, domain.PROCESS.ToUint8(), offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.CountOrder(ctx, userId, domain.PROCESS.ToUint8())
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }
 
 func (s *service) UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error {

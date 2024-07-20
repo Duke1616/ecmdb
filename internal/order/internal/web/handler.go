@@ -38,7 +38,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/todo", ginx.WrapBody[Todo](h.Todo))
 	g.POST("/task/record", ginx.WrapBody[RecordTaskReq](h.TaskRecord))
 	g.POST("/history", ginx.WrapBody[HistoryReq](h.History))
-	g.POST("/start/user", ginx.WrapBody[StartUser](h.StartUser))
+	g.POST("/start/user", ginx.WrapBody[StartUserReq](h.StartUser))
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
 	g.POST("/list", ginx.WrapBody[Todo](h.Todo))
@@ -71,7 +71,8 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}
 
 	// 查询待处理工单
-	instances, total, err := h.engineSvc.ListTodo(ctx, req.UserId, req.ProcessName, req.SortByAsc, req.Offset, req.Limit)
+	instances, total, err := h.engineSvc.ListTodoTasks(ctx, req.UserId, req.ProcessName, req.SortByAsc,
+		req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -130,22 +131,53 @@ func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, err
 	}, nil
 }
 
-func (h *Handler) StartUser(ctx *gin.Context, req StartUser) (ginx.Result, error) {
-	instances, total, err := h.engineSvc.ListByStartUser(ctx, req.UserId, req.ProcessName, req.Offset, req.Limit)
+func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, error) {
+	// 获取登录用户 sess 获取ID
+	sess, err := session.Get(&gctx.Context{Context: ctx})
 	if err != nil {
-		return systemErrorResult, err
+		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+	}
+	starter := strconv.FormatInt(sess.Claims().Uid, 10)
+
+	// 查找本地存储，关于我的工单（未完成）
+	orders, total, err := h.svc.ListOrdersByUser(ctx, starter, req.Offset, req.Limit)
+	if err != nil {
+		return ginx.Result{}, err
 	}
 
-	// 数据处理
-	orders, err := h.toVoEngineOrder(ctx, instances)
+	// 查找出所有的流程ID
+	procInstIds := slice.Map(orders, func(idx int, src domain.Order) int {
+		return src.Process.InstanceId
+	})
+
+	// 查询所有流程等待运行的信息 ( 当前步骤、审批人 ）
+	processTasks, err := h.engineSvc.ListPendingStepsOfMyTask(ctx, procInstIds, starter)
 	if err != nil {
-		return systemErrorResult, err
+		return ginx.Result{}, err
 	}
+
+	// 查找ProcessInstId对应流程下面的所有任务 生成map结构
+	tasks := h.toTasks(processTasks)
+
+	// 转换前端进行展示
+	resp := slice.Map(orders, func(idx int, src domain.Order) Order {
+		val, _ := tasks[src.Process.InstanceId]
+		return Order{
+			TaskId:            int(src.Id),
+			ProcessInstanceId: src.Process.InstanceId,
+			Starter:           src.CreateBy,
+			Title:             "123",
+			Steps:             h.toSteps(val),
+			TemplateId:        src.TemplateId,
+			WorkflowId:        src.WorkflowId,
+			Ctime:             src.Ctime,
+		}
+	})
 
 	return ginx.Result{
 		Data: RetrieveOrders{
 			Total: total,
-			Tasks: orders,
+			Tasks: resp,
 		},
 		Msg: "查看我的工单列表成功",
 	}, err
@@ -208,6 +240,42 @@ func (h *Handler) toVoTaskRecords(req model.Task) TaskRecord {
 	}
 }
 
+func (h *Handler) toTasks(instances []engine.Instance) map[int][]engine.Instance {
+	var tasks map[int][]engine.Instance
+	tasks = slice.ToMapV(instances, func(m engine.Instance) (int, []engine.Instance) {
+		return m.ProcInstID, slice.FilterMap(instances, func(idx int, src engine.Instance) (engine.Instance, bool) {
+			if m.ProcInstID == src.ProcInstID {
+				return src, true
+			}
+			return engine.Instance{}, false
+		})
+	})
+
+	return tasks
+}
+
+func (h *Handler) toSteps(instances []engine.Instance) []Steps {
+	var tempSteps map[string][]string
+	tempSteps = slice.ToMapV(instances, func(m engine.Instance) (string, []string) {
+		return m.CurrentNodeName, slice.FilterMap(instances, func(idx int, src engine.Instance) (string, bool) {
+			if m.CurrentNodeName == src.CurrentNodeName {
+				return src.ApprovedBy, true
+			}
+			return "", false
+		})
+	})
+
+	var steps []Steps
+	for k, v := range tempSteps {
+		steps = append(steps, Steps{
+			CurrentStep: k,
+			ApprovedBy:  v,
+		})
+	}
+
+	return steps
+}
+
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
 	procInstIds := slice.Map(instances, func(idx int, src engine.Instance) int {
 		return src.ProcInstID
@@ -230,8 +298,6 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 			ProcessInstanceId:  src.ProcInstID,
 			Starter:            src.Starter,
 			Title:              src.ProcName,
-			CurrentStep:        src.CurrentNodeName,
-			ApprovedBy:         src.ApprovedBy,
 			ProcInstCreateTime: src.CreateTime,
 			TemplateId:         val.TemplateId,
 			WorkflowId:         val.WorkflowId,

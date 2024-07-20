@@ -52,6 +52,13 @@ type StartUser struct {
 	Limit       int    `json:"limit,omitempty" validate:"required"`
 }
 
+type StartUserReq struct {
+	ProcessInstId int    `json:"process_inst_id"`
+	Starter       string `json:"starter"`
+	Offset        int64  `json:"offset,omitempty"`
+	Limit         int64  `json:"limit,omitempty"`
+}
+
 type MyOrderReq struct {
 	CreateBy string `json:"create_by"`
 }
@@ -61,13 +68,17 @@ type Order struct {
 	ProcessInstanceId  int                    `json:"process_instance_id"`   // 流程实例ID
 	Starter            string                 `json:"starter"`               // 提单人
 	Title              string                 `json:"title"`                 // 标题
-	CurrentStep        string                 `json:"current_step"`          // 当前步骤
-	ApprovedBy         []string               `json:"approved_by"`           // 当前处理人
+	Steps              []Steps                `json:"steps"`                 // 步骤
 	ProcInstCreateTime *database.LocalTime    `json:"proc_inst_create_time"` // 流程开始时间
 	Ctime              int64                  `json:"ctime"`                 // 创建工单时间
 	TemplateId         int64                  `json:"template_id"`
 	WorkflowId         int64                  `json:"workflow_id"`
 	Data               map[string]interface{} `json:"data"`
+}
+
+type Steps struct {
+	CurrentStep string   `json:"current_step"`
+	ApprovedBy  []string `json:"approved_by"` // 处理人
 }
 
 type RetrieveOrders struct {

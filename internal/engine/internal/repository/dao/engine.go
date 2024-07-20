@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/database"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"gorm.io/gorm"
 	"time"
@@ -17,10 +18,42 @@ type ProcessEngineDAO interface {
 
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
+	SearchStartByProcessInstIds(ctx context.Context, processInstIds []int) ([]Instance, error)
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	CountReject(ctx context.Context, taskId int) (int64, error)
+
+	ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) ([]model.Task, error)
 }
 
 type processEngineDAO struct {
 	db *gorm.DB
+}
+
+func (g *processEngineDAO) ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) (
+	[]model.Task, error) {
+	var res []model.Task
+	err := g.db.WithContext(ctx).Model(&model.Task{}).Table("proc_task").
+		Where("starter = ? AND is_finished = 0 AND proc_inst_id IN ?", starter, processInstIds).
+		Find(&res).Error
+
+	return res, err
+}
+
+func (g *processEngineDAO) CountReject(ctx context.Context, taskId int) (int64, error) {
+	var res int64
+	err := g.db.WithContext(ctx).Model(&database.ProcTask{}).
+		Where("id = ? AND status = ?", taskId, 2).
+		Select("COUNT(id)").Count(&res).Error
+	return res, err
+}
+
+func (g *processEngineDAO) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
+	proTask := database.ProcTask{IsFinished: 1, Comment: "其余节点进行驳回，系统判定无法继续审批",
+		FinishedTime: database.LTime.Now()}
+
+	return g.db.WithContext(ctx).
+		Where("prev_node_id = ? AND is_finished = ? AND status = ?", nodeId, 0, 0).
+		Updates(proTask).Error
 }
 
 func NewProcessEngineDAO(db *gorm.DB) ProcessEngineDAO {
@@ -91,6 +124,11 @@ func (g *processEngineDAO) CountTodo(ctx context.Context, userId, processName st
 	db = db.Where("is_finished = ?", 0)
 	err := db.Count(&res).Error
 	return res, err
+}
+
+func (g *processEngineDAO) SearchStartByProcessInstIds(ctx context.Context, processInstIds []int) ([]Instance, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (g *processEngineDAO) ListHistory(ctx context.Context, userId, processName string, offset, limit int) {

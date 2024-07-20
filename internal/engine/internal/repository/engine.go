@@ -19,10 +19,29 @@ type ProcessEngineRepository interface {
 		[]domain.Instance, error)
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	CountReject(ctx context.Context, taskId int) (int64, error)
+	ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 }
 
 type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
+}
+
+func (repo *processEngineRepository) ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) (
+	[]domain.Instance, error) {
+	ts, err := repo.engineDao.ListTasksByProcInstId(ctx, processInstIds, starter)
+	return slice.Map(ts, func(idx int, src model.Task) domain.Instance {
+		return repo.toDomainByTask(src)
+	}), err
+}
+
+func (repo *processEngineRepository) CountReject(ctx context.Context, taskId int) (int64, error) {
+	return repo.engineDao.CountReject(ctx, taskId)
+}
+
+func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
+	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId)
 }
 
 func (repo *processEngineRepository) ListTodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {
@@ -74,7 +93,7 @@ func (repo *processEngineRepository) toDomainByInstance(req dao.Instance) domain
 		CurrentNodeID:   req.CurrentNodeID,
 		CurrentNodeName: req.CurrentNodeName,
 		BusinessID:      req.BusinessID,
-		ApprovedBy:      []string{req.ApprovedBy},
+		ApprovedBy:      req.ApprovedBy,
 		Starter:         req.Starter,
 	}
 }
@@ -90,7 +109,7 @@ func (repo *processEngineRepository) toDomainByTask(req model.Task) domain.Insta
 		CurrentNodeID:   req.NodeID,
 		CurrentNodeName: req.NodeName,
 		CreateTime:      req.CreateTime,
-		ApprovedBy:      []string{req.UserID},
+		ApprovedBy:      req.UserID,
 		Status:          req.Status,
 	}
 }

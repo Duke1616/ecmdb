@@ -132,8 +132,8 @@ func (l *logicFlow) Inclusion(node Node) {
 	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
 		return src.TargetNodeId
 	})
-	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
 
+	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
 	// 查看上级 node 节点 id
 	edgesSrc := l.FindSourceNodeId(node.ID)
 	preNodeIds := slice.Map(edgesSrc, func(idx int, src Edge) string {
@@ -184,11 +184,25 @@ func (l *logicFlow) User(node Node) {
 		IsCosigned = 1
 	}
 
+	// 判断下级节点是否为网关，如果是网关则需要注册事件
+	var taskFinishEvents []string
+	nodeId := l.ToTargetNode(node.ID)
+	if nodeId != "" {
+		info := l.GetNodeInfo(nodeId)
+		switch info.Type {
+		case "parallel":
+			taskFinishEvents = append(taskFinishEvents, "EventTaskParallelNodePass")
+		case "inclusion":
+			taskFinishEvents = append(taskFinishEvents, "EventTaskInclusionNodePass")
+		}
+	}
+
 	// 录入数据
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 1, UserIDs: property.Approved,
-		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		IsCosigned:  IsCosigned,
+		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
+		TaskFinishEvents: taskFinishEvents,
+		IsCosigned:       IsCosigned,
 	}
 
 	l.NodeList = append(l.NodeList, n)
@@ -222,6 +236,26 @@ func (l *logicFlow) FindTargetNodeId(id string) []Edge {
 
 		return Edge{}, false
 	})
+}
+
+func (l *logicFlow) ToTargetNode(nodeId string) string {
+	for _, edge := range l.Edges {
+		if edge.SourceNodeId == nodeId {
+			return edge.TargetNodeId
+		}
+	}
+
+	return ""
+}
+
+func (l *logicFlow) GetNodeInfo(nodeId string) Node {
+	for _, node := range l.Nodes {
+		if node.ID == nodeId {
+			return node
+		}
+	}
+
+	return Node{}
 }
 
 // edge连线字段解析

@@ -4,7 +4,8 @@ package engine
 
 import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/internal/engine/event"
+	engineEvent "github.com/Duke1616/ecmdb/internal/engine/internal/event/engine"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/service"
@@ -20,13 +21,13 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewService,
 	repository.NewProcessEngineRepository,
+	dao.NewProcessEngineDAO,
 )
 
 func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 	wire.Build(
 		ProviderSet,
-		event.NewProcessEvent,
-		event.NewOrderStatusModifyEventProducer,
+		producer.NewOrderStatusModifyEventProducer,
 		InitWorkflowEngineOnce,
 		wire.Struct(new(Module), "*"),
 	)
@@ -35,7 +36,9 @@ func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
 
 var engineOnce = sync.Once{}
 
-func InitWorkflowEngineOnce(db *gorm.DB, event *event.ProcessEvent) dao.ProcessEngineDAO {
+func InitWorkflowEngineOnce(db *gorm.DB, producer producer.OrderStatusModifyEventProducer, svc service.Service) *engineEvent.ProcessEvent {
+	event := engineEvent.NewProcessEvent(producer, svc)
+
 	engineOnce.Do(func() {
 		engine.DB = db
 		if err := engine.DatabaseInitialize(); err != nil {
@@ -48,5 +51,5 @@ func InitWorkflowEngineOnce(db *gorm.DB, event *event.ProcessEvent) dao.ProcessE
 		engine.RegisterEvents(event)
 	})
 
-	return dao.NewProcessEngineDAO(db)
+	return event
 }

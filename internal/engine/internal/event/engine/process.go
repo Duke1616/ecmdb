@@ -1,11 +1,15 @@
-package event
+package engine
 
 import (
 	"context"
-	"github.com/Bunny3th/easy-workflow/workflow/database"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/event"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/event/producer"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/service"
 	"github.com/gotomicro/ego/core/elog"
+	"time"
+
 	"log"
 )
 
@@ -21,14 +25,16 @@ func init() {
 }
 
 type ProcessEvent struct {
-	producer OrderStatusModifyEventProducer
+	producer producer.OrderStatusModifyEventProducer
+	svc      service.Service
 	logger   *elog.Component
 }
 
-func NewProcessEvent(producer OrderStatusModifyEventProducer) *ProcessEvent {
+func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, svc service.Service) *ProcessEvent {
 	return &ProcessEvent{
 		producer: producer,
 		logger:   elog.DefaultLogger,
+		svc:      svc,
 	}
 }
 
@@ -57,9 +63,9 @@ func (e *ProcessEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node, 
 
 // EventClose 流程结束，修改 Order 状态为已完成
 func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	evt := OrderStatusModifyEvent{
+	evt := event.OrderStatusModifyEvent{
 		ProcessInstanceId: ProcessInstanceID,
-		Status:            END,
+		Status:            event.END,
 	}
 
 	err := e.producer.Produce(context.Background(), evt)
@@ -95,47 +101,62 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	return nil
 }
 
-// EventTaskForceNodePass 任务事件
-// 在示例流程中，"副总审批"是一个会签节点，需要3个副总全部通过，节点才算通过
-// 现在通过任务事件改变会签通过人数，设为只要2人通过，即算通过
-func (e *ProcessEvent) EventTaskForceNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	taskInfo, err := engine.GetTaskInfo(TaskID)
+// EventTaskInclusionNodePass 用户任务并行包容处理事件
+// 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
+func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	taskNum, passNum, rejectNum, err := engine.TaskNodeStatus(TaskID)
+	e.logger.Info("处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
+		elog.Any("Node节点", PrevNode.NodeID),
+		elog.Any("任务数量", taskNum),
+		elog.Any("通过数量", passNum),
+		elog.Any("驳回数量", rejectNum))
+
 	if err != nil {
 		return err
 	}
 
-	processName, err := engine.GetProcessNameByInstanceID(taskInfo.ProcInstID)
+	if rejectNum > 0 {
+		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+	}
+
+	task, err := engine.GetTaskInfo(TaskID)
 	if err != nil {
 		return err
 	}
-	log.Printf("--------流程[%s]节点[%s],开始任务ID[%d]结束事件--------", processName, CurrentNode.NodeName, taskInfo.TaskID)
-	_, PassNum, _, err := engine.TaskNodeStatus(taskInfo.TaskID)
+
+	// 如果不是会签节点，直接修改所有
+	if task.IsCosigned != 1 {
+		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+	}
+
+	// 会签节点 pass + task 数量相同才修改
+	if passNum == taskNum {
+		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+	}
+
+	return nil
+}
+
+// EventTaskParallelNodePass 用户任务并行处理事件
+// 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
+func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	// 查看错误数量
+	IsReject, err := e.svc.IsReject(ctx, TaskID)
 	if err != nil {
 		return err
 	}
-	//如果通过数>=2，则:
-	//1、直接把节点中所有任务都置为通过and结束，这样节点就强制被完成
-	//2、自动生成comment，以免其他被代表的用户疑惑
 
-	if PassNum >= 2 {
-		tx := engine.DB.Begin()
-
-		//找到本节点那些还没有通过的task
-		var tasks []database.ProcTask
-		result := tx.Where("proc_inst_id=? AND node_id=? AND batch_code=? AND is_finished=0",
-			taskInfo.ProcInstID, taskInfo.NodeID, taskInfo.BatchCode).Find(&tasks)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		//代表他们通过
-		result = tx.Model(&database.ProcTask{}).
-			Where("proc_inst_id=? AND node_id=? AND batch_code=? AND is_finished=0", taskInfo.ProcInstID, taskInfo.NodeID, taskInfo.BatchCode).
-			Updates(database.ProcTask{Comment: "通过人数已满2人，系统自动代表你通过", IsFinished: 1, Status: 1})
-		if result.Error != nil {
-			return result.Error
-		}
-		tx.Commit()
+	e.logger.Info("处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
+		elog.Any("Node节点", PrevNode.NodeID),
+		elog.Any("是否驳回", IsReject))
+	if IsReject {
+		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 
 	return nil

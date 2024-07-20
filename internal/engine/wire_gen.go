@@ -7,8 +7,9 @@
 package engine
 
 import (
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/internal/engine/event"
+	engine2 "github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/event/engine"
+	"github.com/Duke1616/ecmdb/internal/engine/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/service"
@@ -23,37 +24,40 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *gorm.DB, q mq.MQ) (*Module, error) {
-	orderStatusModifyEventProducer, err := event.NewOrderStatusModifyEventProducer(q)
-	if err != nil {
-		return nil, err
-	}
-	processEvent := event.NewProcessEvent(orderStatusModifyEventProducer)
-	processEngineDAO := InitWorkflowEngineOnce(db, processEvent)
+	processEngineDAO := dao.NewProcessEngineDAO(db)
 	processEngineRepository := repository.NewProcessEngineRepository(processEngineDAO)
 	serviceService := service.NewService(processEngineRepository)
 	handler := web.NewHandler(serviceService)
+	orderStatusModifyEventProducer, err := producer.NewOrderStatusModifyEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	processEvent := InitWorkflowEngineOnce(db, orderStatusModifyEventProducer, serviceService)
 	module := &Module{
-		Svc: serviceService,
-		Hdl: handler,
+		Svc:   serviceService,
+		Hdl:   handler,
+		event: processEvent,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewProcessEngineRepository)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewProcessEngineRepository, dao.NewProcessEngineDAO)
 
 var engineOnce = sync.Once{}
 
-func InitWorkflowEngineOnce(db *gorm.DB, event2 *event.ProcessEvent) dao.ProcessEngineDAO {
+func InitWorkflowEngineOnce(db *gorm.DB, producer2 producer.OrderStatusModifyEventProducer, svc service.Service) *engine.ProcessEvent {
+	event := engine.NewProcessEvent(producer2, svc)
+
 	engineOnce.Do(func() {
-		engine.DB = db
-		if err := engine.DatabaseInitialize(); err != nil {
+		engine2.DB = db
+		if err := engine2.DatabaseInitialize(); err != nil {
 			log.Fatalln("easy workflow 初始化数据表失败，错误:", err)
 		}
-		engine.IgnoreEventError = false
-		engine.RegisterEvents(event2)
+		engine2.IgnoreEventError = false
+		engine2.RegisterEvents(event)
 	})
 
-	return dao.NewProcessEngineDAO(db)
+	return event
 }

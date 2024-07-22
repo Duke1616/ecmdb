@@ -1,4 +1,4 @@
-package event
+package producer
 
 const (
 	OrderStatusModifyEventName = "order_status_modify_events"

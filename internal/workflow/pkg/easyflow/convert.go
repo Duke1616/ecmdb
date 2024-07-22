@@ -60,6 +60,8 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 			l.Parallel(node)
 		case "inclusion":
 			l.Inclusion(node)
+		case "automation":
+			l.Automation(node)
 		}
 	}
 
@@ -99,7 +101,21 @@ func (l *logicFlow) End(node Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 3, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		NodeStartEvents: []string{"EventNotify", "EventClose"},
+		NodeStartEvents: []string{"EventNotify"},
+	}
+	l.NodeList = append(l.NodeList, n)
+}
+
+func (l *logicFlow) Automation(node Node) {
+	NodeName := "自动化节点"
+	property, _ := toNodeProperty[AutomationProperty](node)
+	if property.Name != "" {
+		NodeName = property.Name
+	}
+
+	n := model.Node{NodeID: node.ID, NodeName: NodeName,
+		NodeType: 1, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
+		NodeStartEvents: []string{"EventAutomation"},
 	}
 	l.NodeList = append(l.NodeList, n)
 }

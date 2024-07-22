@@ -44,12 +44,14 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	workerHdl.RegisterRoutes(server)
 	runnerHdl.RegisterRoutes(server)
 	strategyHdl.RegisterRoutes(server)
-	orderHdl.RegisterRoutes(server)
+
 	workflowHdl.RegisterRoutes(server)
 	templateGroupHdl.RegisterRoutes(server)
 	engineHdl.RegisterRoutes(server)
+
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
+	orderHdl.RegisterRoutes(server)
 
 	return server
 }

@@ -56,3 +56,7 @@ type EndProperty struct {
 type ConditionProperty struct {
 	Name string `json:"name"`
 }
+
+type AutomationProperty struct {
+	Name string `json:"name"`
+}

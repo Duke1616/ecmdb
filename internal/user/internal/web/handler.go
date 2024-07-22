@@ -26,6 +26,7 @@ func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
+	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 
 }
 
@@ -62,6 +63,14 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 		Data: u,
 		Msg:  "登录用户成功",
 	}, nil
+}
+
+func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
+	err := session.RenewAccessToken(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "OK"}, nil
 }
 
 func (h *Handler) Info(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {

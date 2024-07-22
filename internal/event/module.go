@@ -1,11 +1,9 @@
-package ioc
+package event
 
 import (
 	"github.com/Duke1616/ecmdb/internal/event/easyflow"
-	"github.com/gin-gonic/gin"
 )
 
-type App struct {
-	Web   *gin.Engine
+type Module struct {
 	Event *easyflow.ProcessEvent
 }

@@ -1,12 +1,11 @@
-package engine
+package easyflow
 
 import (
 	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
-	"github.com/Duke1616/ecmdb/internal/engine/internal/event"
-	"github.com/Duke1616/ecmdb/internal/engine/internal/event/producer"
-	"github.com/Duke1616/ecmdb/internal/engine/internal/service"
+	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
+	"github.com/Duke1616/ecmdb/internal/event/producer"
 	"github.com/gotomicro/ego/core/elog"
 	"time"
 
@@ -25,16 +24,16 @@ func init() {
 }
 
 type ProcessEvent struct {
-	producer producer.OrderStatusModifyEventProducer
-	svc      service.Service
-	logger   *elog.Component
+	producer  producer.OrderStatusModifyEventProducer
+	engineSvc engineSvc.Service
+	logger    *elog.Component
 }
 
-func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, svc service.Service) *ProcessEvent {
+func NewProcessEvent(engineSvc engineSvc.Service, producer producer.OrderStatusModifyEventProducer) *ProcessEvent {
 	return &ProcessEvent{
-		producer: producer,
-		logger:   elog.DefaultLogger,
-		svc:      svc,
+		logger:    elog.DefaultLogger,
+		engineSvc: engineSvc,
+		producer:  producer,
 	}
 }
 
@@ -63,9 +62,9 @@ func (e *ProcessEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node, 
 
 // EventClose 流程结束，修改 Order 状态为已完成
 func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	evt := event.OrderStatusModifyEvent{
+	evt := producer.OrderStatusModifyEvent{
 		ProcessInstanceId: ProcessInstanceID,
-		Status:            event.END,
+		Status:            producer.END,
 	}
 
 	err := e.producer.Produce(context.Background(), evt)
@@ -119,7 +118,7 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 	}
 
 	if rejectNum > 0 {
-		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 
 	task, err := engine.GetTaskInfo(TaskID)
@@ -129,12 +128,12 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 
 	// 如果不是会签节点，直接修改所有
 	if task.IsCosigned != 1 {
-		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 
 	// 会签节点 pass + task 数量相同才修改
 	if passNum == taskNum {
-		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 
 	return nil
@@ -147,7 +146,7 @@ func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.
 	defer cancel()
 
 	// 查看错误数量
-	IsReject, err := e.svc.IsReject(ctx, TaskID)
+	IsReject, err := e.engineSvc.IsReject(ctx, TaskID)
 	if err != nil {
 		return err
 	}
@@ -156,7 +155,7 @@ func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.
 		elog.Any("Node节点", PrevNode.NodeID),
 		elog.Any("是否驳回", IsReject))
 	if IsReject {
-		return e.svc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 
 	return nil

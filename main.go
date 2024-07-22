@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/ioc"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -12,6 +13,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	engine.RegisterEvents(app.Event)
 
 	err = app.Web.Run(":8000")
 	panic(err)

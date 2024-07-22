@@ -7,17 +7,25 @@
 package task
 
 import (
+	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 )
 
 // Injectors from wire.go:
 
-func InitModule(orderModule *order.Module) (*Module, error) {
+func InitModule(orderModule *order.Module, workflowModule *workflow.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
 	serviceService := orderModule.Svc
-	service2 := service.NewService(serviceService)
+	service2 := workflowModule.Svc
+	service3 := codebookModule.Svc
+	service4 := runnerModule.Svc
+	service5 := workerModule.Svc
+	service6 := service.NewService(serviceService, service2, service3, service4, service5)
 	module := &Module{
-		Svc: service2,
+		Svc: service6,
 	}
 	return module, nil
 }

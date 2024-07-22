@@ -5,9 +5,9 @@ const TaskRunnerEventName = "task_runner_events"
 type Action uint8
 
 type TaskRunnerEvent struct {
-	TaskIdentifier string
-	TaskSecret     string
-	WorkName       string
+	CodebookUid    string
+	CodebookSecret string
+	WorkerName     string
 	Name           string
 	Tags           []string
 	Desc           string

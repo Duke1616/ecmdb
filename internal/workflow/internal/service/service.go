@@ -19,11 +19,16 @@ type Service interface {
 
 	// FindPassEdgeIds 查找所有已经完成的边id
 	FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error)
+	GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error)
 }
 
 type service struct {
 	repo         repository.WorkflowRepository
 	engineCovert easyflow.ProcessEngineConvert
+}
+
+func (s *service) GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error) {
+	return s.engineCovert.GetAutomationProperty(workflow, nodeId)
 }
 
 func NewService(repo repository.WorkflowRepository, engineCovert easyflow.ProcessEngineConvert) Service {

@@ -32,13 +32,13 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 func (h *Handler) Register(ctx *gin.Context, req RegisterRunnerReq) (ginx.Result, error) {
 	//  验证代码模版密钥是否正确
-	exist, err := h.codebookSvc.ValidationSecret(ctx, req.TaskIdentifier, req.TaskSecret)
+	exist, err := h.codebookSvc.ValidationSecret(ctx, req.CodebookUid, req.CodebookSecret)
 	if exist != true {
 		return systemErrorResult, err
 	}
 
 	// 验证节点是否存在
-	exist, err = h.workerSvc.ValidationByName(ctx, req.WorkName)
+	exist, err = h.workerSvc.ValidationByName(ctx, req.WorkerName)
 	if exist != true {
 		return validationErrorResult, err
 	}
@@ -71,9 +71,9 @@ func (h *Handler) ListRunner(ctx *gin.Context, req ListRunnerReq) (ginx.Result, 
 func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 	return domain.Runner{
 		Name:           req.Name,
-		TaskIdentifier: req.TaskIdentifier,
-		TaskSecret:     req.TaskSecret,
-		WorkName:       req.WorkName,
+		CodebookSecret: req.CodebookSecret,
+		CodebookUid:    req.CodebookUid,
+		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
 		Action:         domain.Action(REGISTER),
 	}
@@ -81,10 +81,11 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 
 func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 	return Runner{
-		Id:     req.Id,
-		Name:   req.Name,
-		Tags:   req.Tags,
-		Desc:   req.Desc,
-		Worker: req.WorkName,
+		Id:          req.Id,
+		Name:        req.Name,
+		CodebookUid: req.CodebookUid,
+		Tags:        req.Tags,
+		Desc:        req.Desc,
+		WorkerName:  req.WorkerName,
 	}
 }

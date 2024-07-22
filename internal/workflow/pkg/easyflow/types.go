@@ -5,6 +5,7 @@ import "github.com/Bunny3th/easy-workflow/workflow/model"
 type ProcessEngineConvert interface {
 	Deploy(workflow Workflow) (int, error)
 	Edge(workflow Workflow, tasks []model.Task) ([]string, error)
+	GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error)
 }
 
 type Workflow struct {
@@ -58,5 +59,6 @@ type ConditionProperty struct {
 }
 
 type AutomationProperty struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	CodebookUid string `json:"codebook_uid"`
 }

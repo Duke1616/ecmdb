@@ -54,13 +54,13 @@ func (c *TaskRunnerConsumer) Consume(ctx context.Context) error {
 	}
 
 	//  验证代码模版密钥是否正确
-	exist, err := c.codebookSvc.ValidationSecret(ctx, evt.TaskIdentifier, evt.TaskSecret)
+	exist, err := c.codebookSvc.ValidationSecret(ctx, evt.CodebookUid, evt.CodebookSecret)
 	if exist != true {
 		slog.Error("runner 注册失败", err)
 	}
 
 	// 验证节点是否存在
-	exist, err = c.workerSvc.ValidationByName(ctx, evt.WorkName)
+	exist, err = c.workerSvc.ValidationByName(ctx, evt.WorkerName)
 	if exist != true {
 		slog.Error("runner 注册失败", err)
 	}
@@ -79,9 +79,9 @@ func (c *TaskRunnerConsumer) Stop(_ context.Context) error {
 
 func (c *TaskRunnerConsumer) toDomain(req TaskRunnerEvent) domain.Runner {
 	return domain.Runner{
-		TaskIdentifier: req.TaskIdentifier,
-		TaskSecret:     req.TaskSecret,
-		WorkName:       req.WorkName,
+		CodebookUid:    req.CodebookUid,
+		CodebookSecret: req.CodebookSecret,
+		WorkerName:     req.WorkerName,
 		Name:           req.Name,
 		Tags:           req.Tags,
 		Desc:           req.Desc,

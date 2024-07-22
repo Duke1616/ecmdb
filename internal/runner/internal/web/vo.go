@@ -15,9 +15,9 @@ const (
 
 type RegisterRunnerReq struct {
 	Name           string   `json:"name"`
-	TaskIdentifier string   `json:"task_identifier"`
-	TaskSecret     string   `json:"task_secret"`
-	WorkName       string   `json:"work_name"`
+	CodebookUid    string   `json:"codebook_uid"`
+	CodebookSecret string   `json:"codebook_secret"`
+	WorkerName     string   `json:"worker_name"`
 	Tags           []string `json:"tags"`
 	Desc           string   `json:"desc"`
 	Action         Action   `json:"action"`
@@ -33,11 +33,12 @@ type ListRunnerReq struct {
 }
 
 type Runner struct {
-	Id     int64    `json:"id"`
-	Name   string   `json:"name"`
-	Worker string   `json:"worker"`
-	Tags   []string `json:"tags"`
-	Desc   string   `json:"desc"`
+	Id          int64    `json:"id"`
+	Name        string   `json:"name"`
+	CodebookUid string   `json:"codebook_uid"`
+	WorkerName  string   `json:"worker_name"`
+	Tags        []string `json:"tags"`
+	Desc        string   `json:"desc"`
 }
 
 type RetrieveWorkers struct {

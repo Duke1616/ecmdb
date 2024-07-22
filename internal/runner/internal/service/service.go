@@ -10,10 +10,15 @@ import (
 type Service interface {
 	Register(ctx context.Context, req domain.Runner) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, int64, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string) (domain.Runner, error)
 }
 
 type service struct {
 	repo repository.RunnerRepository
+}
+
+func (s *service) FindByCodebookUid(ctx context.Context, codebookUid string) (domain.Runner, error) {
+	return s.repo.FindByCodebookUid(ctx, codebookUid)
 }
 
 func NewService(repo repository.RunnerRepository) Service {

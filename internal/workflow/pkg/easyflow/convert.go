@@ -24,6 +24,28 @@ func NewLogicFlowToEngineConvert() ProcessEngineConvert {
 	}
 }
 
+func (l *logicFlow) GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error) {
+	nodesJSON, err := json.Marshal(workflow.FlowData.Nodes)
+	if err != nil {
+		return AutomationProperty{}, err
+	}
+
+	var nodes []Node
+	err = json.Unmarshal(nodesJSON, &nodes)
+	if err != nil {
+		return AutomationProperty{}, err
+	}
+
+	property := AutomationProperty{}
+	for _, node := range nodes {
+		if node.ID == nodeId {
+			property, _ = toNodeProperty[AutomationProperty](node)
+		}
+	}
+
+	return property, err
+}
+
 func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error) {
 	return nil, nil
 }
@@ -115,6 +137,7 @@ func (l *logicFlow) Automation(node Node) {
 
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 1, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
+		UserIDs:         []string{"automation"},
 		NodeStartEvents: []string{"EventAutomation"},
 	}
 	l.NodeList = append(l.NodeList, n)

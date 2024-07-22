@@ -18,9 +18,10 @@ type Service interface {
 	FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
 	// PushMessage 推送消息到Kafka
-	PushMessage(ctx context.Context, req domain.Message)
+	PushMessage(ctx context.Context, req domain.Message) error
 	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 	ValidationByName(ctx context.Context, name string) (bool, error)
+	FindByName(ctx context.Context, name string) (domain.Worker, error)
 }
 
 type service struct {
@@ -29,7 +30,11 @@ type service struct {
 	mq       mq.MQ
 }
 
-func (s *service) PushMessage(ctx context.Context, req domain.Message) {
+func (s *service) FindByName(ctx context.Context, name string) (domain.Worker, error) {
+	return s.repo.FindByName(ctx, name)
+}
+
+func (s *service) PushMessage(ctx context.Context, req domain.Message) error {
 	evt := event.RunnerEvent{
 		Language: req.Language,
 		Code:     req.Code,
@@ -37,12 +42,15 @@ func (s *service) PushMessage(ctx context.Context, req domain.Message) {
 		UUID:     req.UUID,
 	}
 
-	if err := s.producer.Produce(ctx, req.Topic, evt); err != nil {
+	err := s.producer.Produce(ctx, req.Topic, evt)
+	if err != nil {
 		slog.Error("工作节点发送指令失败",
 			slog.Any("error", err),
 			slog.Any("event", evt),
 		)
 	}
+
+	return err
 }
 
 func NewService(mq mq.MQ, repo repository.WorkerRepository, producer event.TaskWorkerEventProducer) Service {

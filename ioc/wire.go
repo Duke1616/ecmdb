@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -55,6 +56,7 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*engine.Module), "Hdl"),
 		event.InitModule,
 		wire.FieldsOf(new(*event.Module), "Event"),
+		task.InitModule,
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

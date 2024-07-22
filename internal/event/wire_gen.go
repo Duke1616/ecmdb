@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/ecodeclub/mq-api"
 	"gorm.io/gorm"
 	"log"
@@ -19,13 +20,14 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module) (*Module, error) {
 	service := engineModule.Svc
 	orderStatusModifyEventProducer, err := producer.NewOrderStatusModifyEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	processEvent := InitWorkflowEngineOnce(db, service, orderStatusModifyEventProducer)
+	serviceService := taskModule.Svc
+	processEvent := InitWorkflowEngineOnce(db, service, orderStatusModifyEventProducer, serviceService)
 	module := &Module{
 		Event: processEvent,
 	}
@@ -36,9 +38,9 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module) (*Module, err
 
 var engineOnce = sync.Once{}
 
-func InitWorkflowEngineOnce(db *gorm.DB, svc engine.Service, producer2 producer.OrderStatusModifyEventProducer,
-) *easyflow.ProcessEvent {
-	event := easyflow.NewProcessEvent(svc, producer2)
+func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 producer.OrderStatusModifyEventProducer,
+	taskSvc task.Service) *easyflow.ProcessEvent {
+	event := easyflow.NewProcessEvent(producer2, engineSvc, taskSvc)
 	engineOnce.Do(func() {
 		engine2.DB = db
 		if err := engine2.DatabaseInitialize(); err != nil {

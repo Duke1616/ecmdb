@@ -17,6 +17,7 @@ type RunnerDAO interface {
 	CreateRunner(ctx context.Context, r Runner) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error)
 	Count(ctx context.Context) (int64, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string) (Runner, error)
 }
 
 func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
@@ -27,6 +28,18 @@ func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
 
 type runnerDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *runnerDAO) FindByCodebookUid(ctx context.Context, codebookUid string) (Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"codebook_uid": codebookUid}
+
+	var result Runner
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Runner{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *runnerDAO) CreateRunner(ctx context.Context, r Runner) (int64, error) {
@@ -83,9 +96,9 @@ func (dao *runnerDAO) Count(ctx context.Context) (int64, error) {
 type Runner struct {
 	Id             int64    `bson:"id"`
 	Name           string   `bson:"name"`
-	TaskIdentifier string   `bson:"task_identifier"`
-	TaskSecret     string   `bson:"task_secret"`
-	WorkName       string   `bson:"work_name"`
+	CodebookUid    string   `bson:"codebook_uid"`
+	CodebookSecret string   `bson:"codebook_secret"`
+	WorkerName     string   `bson:"worker_name"`
 	Tags           []string `bson:"tags"`
 	Action         uint8    `bson:"action"`
 	Desc           string   `json:"desc"`

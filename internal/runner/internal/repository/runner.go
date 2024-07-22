@@ -11,6 +11,7 @@ type RunnerRepository interface {
 	RegisterRunner(ctx context.Context, req domain.Runner) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, error)
 	Total(ctx context.Context) (int64, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string) (domain.Runner, error)
 }
 
 func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
@@ -21,6 +22,11 @@ func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
 
 type runnerRepository struct {
 	dao dao.RunnerDAO
+}
+
+func (repo *runnerRepository) FindByCodebookUid(ctx context.Context, codebookUid string) (domain.Runner, error) {
+	runner, err := repo.dao.FindByCodebookUid(ctx, codebookUid)
+	return repo.toDomain(runner), err
 }
 
 func (repo *runnerRepository) RegisterRunner(ctx context.Context, req domain.Runner) (int64, error) {
@@ -40,9 +46,9 @@ func (repo *runnerRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 	return dao.Runner{
-		TaskIdentifier: req.TaskIdentifier,
-		TaskSecret:     req.TaskSecret,
-		WorkName:       req.WorkName,
+		CodebookSecret: req.CodebookSecret,
+		CodebookUid:    req.CodebookUid,
+		WorkerName:     req.WorkerName,
 		Name:           req.Name,
 		Tags:           req.Tags,
 		Desc:           req.Desc,
@@ -54,9 +60,9 @@ func (repo *runnerRepository) toDomain(req dao.Runner) domain.Runner {
 	return domain.Runner{
 		Id:             req.Id,
 		Name:           req.Name,
-		TaskIdentifier: req.TaskIdentifier,
-		TaskSecret:     req.TaskSecret,
-		WorkName:       req.WorkName,
+		CodebookSecret: req.CodebookSecret,
+		CodebookUid:    req.CodebookUid,
+		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
 		Desc:           req.Desc,
 		Action:         domain.Action(req.Action),

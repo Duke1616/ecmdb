@@ -16,9 +16,9 @@ const (
 type Runner struct {
 	Id             int64
 	Name           string
-	TaskIdentifier string
-	TaskSecret     string
-	WorkName       string
+	CodebookUid    string
+	CodebookSecret string
+	WorkerName     string
 	Tags           []string
 	Desc           string
 	Action         Action

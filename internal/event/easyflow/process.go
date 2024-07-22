@@ -6,6 +6,7 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/gotomicro/ego/core/elog"
 	"time"
 
@@ -25,14 +26,17 @@ func init() {
 
 type ProcessEvent struct {
 	producer  producer.OrderStatusModifyEventProducer
+	taskSvc   task.Service
 	engineSvc engineSvc.Service
 	logger    *elog.Component
 }
 
-func NewProcessEvent(engineSvc engineSvc.Service, producer producer.OrderStatusModifyEventProducer) *ProcessEvent {
+func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc engineSvc.Service,
+	taskSvc task.Service) *ProcessEvent {
 	return &ProcessEvent{
 		logger:    elog.DefaultLogger,
 		engineSvc: engineSvc,
+		taskSvc:   taskSvc,
 		producer:  producer,
 	}
 }
@@ -46,6 +50,14 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	}
 	log.Printf("--------流程[%s]节点[%s]结束-------", processName, CurrentNode.NodeName)
 	return nil
+}
+
+// EventAutomation 自动化任务处理（创建任务）
+func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	return e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
 }
 
 // EventEnd 节点结束事件

@@ -1,3 +1,5 @@
+//go:build wireinject
+
 package event
 
 import (

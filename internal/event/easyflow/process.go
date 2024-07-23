@@ -2,7 +2,6 @@ package easyflow
 
 import (
 	"context"
-	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -55,12 +54,38 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventAutomation 自动化任务处理（创建任务）
 func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
-	//defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
-	err := e.taskSvc.CreateTask(context.Background(), ProcessInstanceID, CurrentNode.NodeID)
-	fmt.Println(ProcessInstanceID, CurrentNode.NodeID)
-	return err
+	// 使用goroutine执行任务创建，并等待其完成
+	var err error
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		err = e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
+		if err != nil {
+			e.logger.Error("创建自动化任务失败",
+				elog.Any("流程ID", ProcessInstanceID),
+				elog.Any("节点ID", CurrentNode.NodeID),
+				elog.Any("错误信息", err),
+			)
+		}
+	}()
+
+	// 等待goroutine完成或超时
+	select {
+	case <-done:
+		// goroutine正常完成
+		if err != nil {
+			return err
+		}
+	case <-ctx.Done():
+		// 超时或取消
+		e.logger.Error("创建自动化任务超时或被取消")
+		return ctx.Err()
+	}
+
+	return nil
 }
 
 // EventEnd 节点结束事件

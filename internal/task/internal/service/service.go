@@ -15,6 +15,7 @@ import (
 type Service interface {
 	// CreateTask 创建自动化任务
 	CreateTask(ctx context.Context, processInstId int, nodeId string) error
+	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 }
 
 type service struct {
@@ -24,6 +25,10 @@ type service struct {
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
 	workerSvc   worker.Service
+}
+
+func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {
+	return s.repo.UpdateTaskStatus(ctx, req)
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
@@ -91,7 +96,7 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 	}
 
 	// TODO 创建一份任务到数据库中，后续执行失败，重试机制
-	_, err = s.repo.CreateTask(ctx, domain.Task{
+	taskId, err := s.repo.CreateTask(ctx, domain.Task{
 		// 字段可有可无
 		ProcessInstId: processInstId,
 		WorkerName:    workerResp.Name,
@@ -108,9 +113,9 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 		return err
 	}
 
-	// 发送任务
+	// 发送任务执行
 	return s.workerSvc.Execute(ctx, worker.Execute{
-		Name:     "自动化流程",
+		TaskId:   taskId,
 		Topic:    workerResp.Topic,
 		Code:     codebookResp.Code,
 		Language: codebookResp.Language,

@@ -23,8 +23,7 @@ type WorkerEvent struct {
 }
 
 type EworkRunnerExecuteEvent struct {
-	Name     string // 执行名称
-	UUID     string // 唯一标识
-	Language string // 语言
-	Code     string // 代码
+	TaskId   int64  `json:"task_id"`
+	Language string `json:"language"`
+	Code     string `json:"code"`
 }

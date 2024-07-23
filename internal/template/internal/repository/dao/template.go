@@ -98,7 +98,6 @@ func (dao *templateDAO) DeleteTemplate(ctx context.Context, id int64) (int64, er
 }
 
 func (dao *templateDAO) UpdateTemplate(ctx context.Context, t Template) (int64, error) {
-	fmt.Println(t.Rules)
 	col := dao.db.Collection(TemplateCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{

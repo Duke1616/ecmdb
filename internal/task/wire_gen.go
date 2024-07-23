@@ -7,21 +7,24 @@
 package task
 
 import (
+	"context"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
+	"github.com/Duke1616/ecmdb/internal/task/internal/event"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
 	taskDAO := dao.NewTaskDAO(db)
 	taskRepository := repository.NewTaskRepository(taskDAO)
 	serviceService := orderModule.Svc
@@ -30,8 +33,10 @@ func InitModule(db *mongox.Mongo, orderModule *order.Module, workflowModule *wor
 	service4 := runnerModule.Svc
 	service5 := workerModule.Svc
 	service6 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5)
+	executeResultConsumer := initConsumer(service6, q)
 	module := &Module{
 		Svc: service6,
+		c:   executeResultConsumer,
 	}
 	return module, nil
 }
@@ -39,3 +44,13 @@ func InitModule(db *mongox.Mongo, orderModule *order.Module, workflowModule *wor
 // wire.go:
 
 var ProviderSet = wire.NewSet(service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
+
+func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
+	consumer, err := event.NewExecuteResultConsumer(q, svc)
+	if err != nil {
+		panic(err)
+	}
+
+	consumer.Start(context.Background())
+	return consumer
+}

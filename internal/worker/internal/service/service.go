@@ -39,8 +39,7 @@ func (s *service) Execute(ctx context.Context, req domain.Execute) error {
 	evt := event.EworkRunnerExecuteEvent{
 		Language: req.Language,
 		Code:     req.Code,
-		Name:     req.Name,
-		UUID:     req.UUID,
+		TaskId:   req.TaskId,
 	}
 
 	err := s.producer.Produce(ctx, req.Topic, evt)

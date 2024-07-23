@@ -8,10 +8,15 @@ import (
 
 type TaskRepository interface {
 	CreateTask(ctx context.Context, req domain.Task) (int64, error)
+	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 }
 
 type taskRepository struct {
 	dao dao.TaskDAO
+}
+
+func (repo *taskRepository) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {
+	return repo.dao.UpdateTaskStatus(ctx, repo.toUpdateEntity(req))
 }
 
 func (repo *taskRepository) CreateTask(ctx context.Context, req domain.Task) (int64, error) {
@@ -21,6 +26,14 @@ func (repo *taskRepository) CreateTask(ctx context.Context, req domain.Task) (in
 func NewTaskRepository(dao dao.TaskDAO) TaskRepository {
 	return &taskRepository{
 		dao: dao,
+	}
+}
+
+func (repo *taskRepository) toUpdateEntity(req domain.TaskResult) dao.Task {
+	return dao.Task{
+		Id:     req.Id,
+		Result: req.Result,
+		Status: req.Status.ToUint8(),
 	}
 }
 

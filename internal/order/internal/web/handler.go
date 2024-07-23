@@ -36,6 +36,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
 	g.POST("/detail/process_inst_id", ginx.WrapBody[DetailProcessInstIdReq](h.Detail))
 	g.POST("/todo", ginx.WrapBody[Todo](h.Todo))
+	g.POST("/todo/user", ginx.WrapBody[Todo](h.TodoByUser))
 	g.POST("/task/record", ginx.WrapBody[RecordTaskReq](h.TaskRecord))
 	g.POST("/history", ginx.WrapBody[HistoryReq](h.History))
 	g.POST("/start/user", ginx.WrapBody[StartUserReq](h.StartUser))
@@ -72,6 +73,41 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 
 	// 查询待处理工单
 	instances, total, err := h.engineSvc.ListTodoTasks(ctx, req.UserId, req.ProcessName, req.SortByAsc,
+		req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 数据处理
+	orders, err := h.toVoEngineOrder(ctx, instances)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: RetrieveOrders{
+			Total: total,
+			Tasks: orders,
+		},
+		Msg: "查看待办工单列表成功",
+	}, err
+}
+
+func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
+	// 校验传递参数
+	validate := validator.New()
+	err := validate.Struct(req)
+	if err != nil {
+		return validateErrorResult, fmt.Errorf("参数传递错误：%w", err)
+	}
+
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+	}
+
+	// 查询待处理工单
+	instances, total, err := h.engineSvc.ListTodoTasks(ctx, strconv.FormatInt(sess.Claims().Uid, 10), req.ProcessName, req.SortByAsc,
 		req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err

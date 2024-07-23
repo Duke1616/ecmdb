@@ -31,7 +31,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g.POST("/deploy", ginx.WrapBody[DeployReq](h.Deploy))
 
 	// 工单流程图
-	g.POST("/order/graph", ginx.WrapBody[OrderGraphReq](h.FindOrderGraph))
+	g.POST("/graph", ginx.WrapBody[OrderGraphReq](h.FindOrderGraph))
 }
 
 func (h *Handler) Create(ctx *gin.Context, req CreateReq) (ginx.Result, error) {

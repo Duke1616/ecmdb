@@ -2,6 +2,7 @@ package easyflow
 
 import (
 	"context"
+	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -54,10 +55,12 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventAutomation 自动化任务处理（创建任务）
 func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	//defer cancel()
 
-	return e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
+	err := e.taskSvc.CreateTask(context.Background(), ProcessInstanceID, CurrentNode.NodeID)
+	fmt.Println(ProcessInstanceID, CurrentNode.NodeID)
+	return err
 }
 
 // EventEnd 节点结束事件

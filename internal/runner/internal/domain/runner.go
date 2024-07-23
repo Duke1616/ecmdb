@@ -23,3 +23,8 @@ type Runner struct {
 	Desc           string
 	Action         Action
 }
+
+type RunnerTags struct {
+	CodebookUid string
+	Tags        []string
+}

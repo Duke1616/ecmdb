@@ -61,4 +61,5 @@ type ConditionProperty struct {
 type AutomationProperty struct {
 	Name        string `json:"name"`
 	CodebookUid string `json:"codebook_uid"`
+	Tag         string `json:"tag"`
 }

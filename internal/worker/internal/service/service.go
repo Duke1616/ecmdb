@@ -17,11 +17,12 @@ type Service interface {
 	FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error)
 	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
-	// PushMessage 推送消息到Kafka
-	PushMessage(ctx context.Context, req domain.Message) error
 	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
 	ValidationByName(ctx context.Context, name string) (bool, error)
 	FindByName(ctx context.Context, name string) (domain.Worker, error)
+
+	// Execute 推送消息到Kafka
+	Execute(ctx context.Context, req domain.Execute) error
 }
 
 type service struct {
@@ -34,8 +35,8 @@ func (s *service) FindByName(ctx context.Context, name string) (domain.Worker, e
 	return s.repo.FindByName(ctx, name)
 }
 
-func (s *service) PushMessage(ctx context.Context, req domain.Message) error {
-	evt := event.RunnerEvent{
+func (s *service) Execute(ctx context.Context, req domain.Execute) error {
+	evt := event.EworkRunnerExecuteEvent{
 		Language: req.Language,
 		Code:     req.Code,
 		Name:     req.Name,

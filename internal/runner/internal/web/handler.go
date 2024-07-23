@@ -28,6 +28,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/runner")
 	g.POST("/register", ginx.WrapBody[RegisterRunnerReq](h.Register))
 	g.POST("/list", ginx.WrapBody[ListRunnerReq](h.ListRunner))
+	g.POST("/list/tags", ginx.Wrap(h.ListTags))
 }
 
 func (h *Handler) Register(ctx *gin.Context, req RegisterRunnerReq) (ginx.Result, error) {
@@ -63,6 +64,25 @@ func (h *Handler) ListRunner(ctx *gin.Context, req ListRunnerReq) (ginx.Result, 
 			Total: total,
 			Runners: slice.Map(ws, func(idx int, src domain.Runner) Runner {
 				return h.toRunnerVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
+	tags, err := h.svc.ListTagsPipelineByCodebookUid(ctx)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Msg: "查询 runner tags 列表成功",
+		Data: RetrieveRunnerTags{
+			RunnerTags: slice.Map(tags, func(idx int, src domain.RunnerTags) RunnerTags {
+				return RunnerTags{
+					CodebookUid: src.CodebookUid,
+					Tags:        src.Tags,
+				}
 			}),
 		},
 	}, nil

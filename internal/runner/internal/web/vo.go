@@ -20,7 +20,6 @@ type RegisterRunnerReq struct {
 	WorkerName     string   `json:"worker_name"`
 	Tags           []string `json:"tags"`
 	Desc           string   `json:"desc"`
-	Action         Action   `json:"action"`
 }
 
 type Page struct {
@@ -44,4 +43,13 @@ type Runner struct {
 type RetrieveWorkers struct {
 	Total   int64    `json:"total"`
 	Runners []Runner `json:"runners"`
+}
+
+type RunnerTags struct {
+	CodebookUid string   `json:"codebook_uid"`
+	Tags        []string `json:"tags"`
+}
+
+type RetrieveRunnerTags struct {
+	RunnerTags []RunnerTags `json:"runner_tags"`
 }

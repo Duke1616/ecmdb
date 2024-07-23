@@ -20,8 +20,8 @@ type TaskRunnerConsumer struct {
 }
 
 func NewTaskRunnerConsumer(svc service.Service, mq mq.MQ, workerSvc worker.Service, codebookSvc codebook.Service) (*TaskRunnerConsumer, error) {
-	groupID := "task_runner"
-	consumer, err := mq.Consumer(TaskRunnerEventName, groupID)
+	groupID := "task_register_runner"
+	consumer, err := mq.Consumer(TaskRegisterRunnerEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,13 +56,13 @@ func (c *TaskRunnerConsumer) Consume(ctx context.Context) error {
 	//  验证代码模版密钥是否正确
 	exist, err := c.codebookSvc.ValidationSecret(ctx, evt.CodebookUid, evt.CodebookSecret)
 	if exist != true {
-		slog.Error("runner 注册失败", err)
+		return err
 	}
 
 	// 验证节点是否存在
 	exist, err = c.workerSvc.ValidationByName(ctx, evt.WorkerName)
 	if exist != true {
-		slog.Error("runner 注册失败", err)
+		return err
 	}
 
 	// 注册服务

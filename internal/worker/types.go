@@ -10,4 +10,10 @@ type Handler = web.Handler
 
 type Service = service.Service
 
-type Message = domain.Message
+type Execute = domain.Execute
+
+const (
+	RUNNING  = domain.RUNNING
+	STOPPING = domain.STOPPING
+	OFFLINE  = domain.OFFLINE
+)

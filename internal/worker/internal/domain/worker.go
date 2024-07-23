@@ -24,7 +24,7 @@ type Worker struct {
 	Status Status
 }
 
-type Message struct {
+type Execute struct {
 	Topic    string
 	Name     string // 执行名称
 	UUID     string // 唯一标识

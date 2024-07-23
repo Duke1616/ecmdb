@@ -11,7 +11,8 @@ type RunnerRepository interface {
 	RegisterRunner(ctx context.Context, req domain.Runner) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, error)
 	Total(ctx context.Context) (int64, error)
-	FindByCodebookUid(ctx context.Context, codebookUid string) (domain.Runner, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error)
+	ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error)
 }
 
 func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
@@ -24,8 +25,25 @@ type runnerRepository struct {
 	dao dao.RunnerDAO
 }
 
-func (repo *runnerRepository) FindByCodebookUid(ctx context.Context, codebookUid string) (domain.Runner, error) {
-	runner, err := repo.dao.FindByCodebookUid(ctx, codebookUid)
+func (repo *runnerRepository) ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error) {
+	pipeline, err := repo.dao.ListTagsPipelineByCodebookUid(ctx)
+	return slice.Map(pipeline, func(idx int, src dao.RunnerPipeline) domain.RunnerTags {
+		var tags []string
+		for _, runner := range src.RunnerTags {
+			if runner.CodebookUid == src.CodebookUid {
+				tags = append(tags, runner.Tags...)
+			}
+		}
+
+		return domain.RunnerTags{
+			CodebookUid: src.CodebookUid,
+			Tags:        tags,
+		}
+	}), err
+}
+
+func (repo *runnerRepository) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error) {
+	runner, err := repo.dao.FindByCodebookUid(ctx, codebookUid, tag)
 	return repo.toDomain(runner), err
 }
 

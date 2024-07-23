@@ -21,7 +21,7 @@ type ProcessEventConsumer struct {
 }
 
 func NewProcessEventConsumer(q mq.MQ, workFlowSvc workflow.Service, svc service.Service) (*ProcessEventConsumer, error) {
-	groupID := "process_order"
+	groupID := "create_process_instance"
 	consumer, err := q.Consumer(event.CreateProcessEventName, groupID)
 	if err != nil {
 		return nil, err

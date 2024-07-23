@@ -22,7 +22,7 @@ type WorkerEvent struct {
 	Status Status `json:"status"`
 }
 
-type RunnerEvent struct {
+type EworkRunnerExecuteEvent struct {
 	Name     string // 执行名称
 	UUID     string // 唯一标识
 	Language string // 语言

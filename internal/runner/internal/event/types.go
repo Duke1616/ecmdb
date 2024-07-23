@@ -1,6 +1,6 @@
 package event
 
-const TaskRunnerEventName = "task_runner_events"
+const TaskRegisterRunnerEventName = "register_runner_event"
 
 type Action uint8
 

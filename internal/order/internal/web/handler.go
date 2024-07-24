@@ -321,6 +321,7 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 	return slice.Map(instances, func(idx int, src engine.Instance) Order {
 		val, _ := m[src.ProcInstID]
 		return Order{
+			Id:                 val.Id,
 			TaskId:             src.TaskID,
 			ProcessInstanceId:  src.ProcInstID,
 			Starter:            src.Starter,

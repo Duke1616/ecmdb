@@ -12,9 +12,14 @@ const (
 	// FAILED 失败
 	failed
 	FAILED Status = 2
+	// RUNNING 运行中
+	RUNNING Status = 3
+	// WAITING 等待运行
+	WAITING Status = 3
 )
 
 type Task struct {
+	Id            int64
 	ProcessInstId int
 	OrderId       int64
 	CodebookUid   string

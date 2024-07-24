@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -25,7 +26,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
-	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler,
+	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
@@ -52,7 +53,7 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
 	orderHdl.RegisterRoutes(server)
-
+	taskHdl.RegisterRoutes(server)
 	return server
 }
 

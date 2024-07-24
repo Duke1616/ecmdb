@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/Duke1616/ecmdb/internal/task/internal/web"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
@@ -19,6 +20,7 @@ import (
 )
 
 var ProviderSet = wire.NewSet(
+	web.NewHandler,
 	service.NewService,
 	repository.NewTaskRepository,
 	dao.NewTaskDAO,

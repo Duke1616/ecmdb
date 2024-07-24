@@ -10,12 +10,16 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
 	// CreateTask 创建自动化任务
 	CreateTask(ctx context.Context, processInstId int, nodeId string) error
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
+
+	// ListTask 列表任务
+	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
 }
 
 type service struct {
@@ -25,6 +29,29 @@ type service struct {
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
 	workerSvc   worker.Service
+}
+
+func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Task
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListTask(ctx, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.Total(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }
 
 func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {
@@ -108,6 +135,7 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 		Code:     codebookResp.Code,
 		Topic:    workerResp.Topic,
 		Language: codebookResp.Language,
+		Status:   domain.RUNNING,
 	})
 	if err != nil {
 		return err

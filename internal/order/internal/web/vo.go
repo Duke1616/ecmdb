@@ -65,6 +65,7 @@ type MyOrderReq struct {
 }
 
 type Order struct {
+	Id                 int64                  `json:"id"`
 	TaskId             int                    `json:"task_id"`             // 任务ID
 	ProcessInstanceId  int                    `json:"process_instance_id"` // 流程实例ID
 	Starter            string                 `json:"starter"`             // 提单人

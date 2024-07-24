@@ -75,6 +75,7 @@ func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 
 func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 	return domain.Order{
+		Id:           req.Id,
 		TemplateId:   req.TemplateId,
 		TemplateName: req.TemplateName,
 		Status:       domain.Status(req.Status),

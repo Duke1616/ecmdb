@@ -57,6 +57,7 @@ func InitApp() (*App, error) {
 		event.InitModule,
 		wire.FieldsOf(new(*event.Module), "Event"),
 		task.InitModule,
+		wire.FieldsOf(new(*task.Module), "Hdl"),
 		InitWebServer,
 		InitGinMiddlewares)
 	return new(App), nil

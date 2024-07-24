@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/Duke1616/ecmdb/internal/task/internal/web"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
@@ -33,9 +34,11 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service4 := runnerModule.Svc
 	service5 := workerModule.Svc
 	service6 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5)
+	handler := web.NewHandler(service6)
 	executeResultConsumer := initConsumer(service6, q)
 	module := &Module{
 		Svc: service6,
+		Hdl: handler,
 		c:   executeResultConsumer,
 	}
 	return module, nil
@@ -43,7 +46,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
 
 func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
 	consumer, err := event.NewExecuteResultConsumer(q, svc)

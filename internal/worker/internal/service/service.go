@@ -40,8 +40,10 @@ func (s *service) Execute(ctx context.Context, req domain.Execute) error {
 		Language: req.Language,
 		Code:     req.Code,
 		TaskId:   req.TaskId,
+		Args:     req.Args,
 	}
 
+	fmt.Println(req.Args, "传递参数")
 	err := s.producer.Produce(ctx, req.Topic, evt)
 	if err != nil {
 		slog.Error("工作节点发送指令失败",

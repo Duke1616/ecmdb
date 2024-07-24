@@ -98,17 +98,18 @@ func (dao *taskDAO) Count(ctx context.Context) (int64, error) {
 }
 
 type Task struct {
-	Id            int64  `bson:"id"`
-	OrderId       int64  `json:"order_id"`
-	ProcessInstId int    `bson:"process_inst_id"`
-	CodebookUid   string `bson:"codebook_uid"`
-	WorkerName    string `bson:"worker_name"`
-	WorkflowId    int64  `bson:"workflow_id"`
-	Code          string `bson:"code"`
-	Topic         string `bson:"topic"`
-	Language      string `bson:"language"`
-	Status        uint8  `bson:"status"`
-	Result        string `bson:"result"`
-	Ctime         int64  `bson:"ctime"`
-	Utime         int64  `bson:"utime"`
+	Id            int64                  `bson:"id"`
+	OrderId       int64                  `json:"order_id"`
+	ProcessInstId int                    `bson:"process_inst_id"`
+	CodebookUid   string                 `bson:"codebook_uid"`
+	WorkerName    string                 `bson:"worker_name"`
+	WorkflowId    int64                  `bson:"workflow_id"`
+	Code          string                 `bson:"code"`
+	Topic         string                 `bson:"topic"`
+	Language      string                 `bson:"language"`
+	Args          map[string]interface{} `json:"args"`
+	Status        uint8                  `bson:"status"`
+	Result        string                 `bson:"result"`
+	Ctime         int64                  `bson:"ctime"`
+	Utime         int64                  `bson:"utime"`
 }

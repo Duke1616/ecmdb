@@ -136,6 +136,7 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 		Topic:    workerResp.Topic,
 		Language: codebookResp.Language,
 		Status:   domain.RUNNING,
+		Args:     orderResp.Data,
 	})
 	if err != nil {
 		return err
@@ -147,5 +148,6 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 		Topic:    workerResp.Topic,
 		Code:     codebookResp.Code,
 		Language: codebookResp.Language,
+		Args:     orderResp.Data,
 	})
 }

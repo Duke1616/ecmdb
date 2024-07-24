@@ -61,6 +61,7 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		Code:          req.Code,
 		Topic:         req.Topic,
 		Language:      req.Language,
+		Args:          req.Args,
 		Status:        req.Status.ToUint8(),
 	}
 }
@@ -75,6 +76,7 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		WorkflowId:    req.WorkflowId,
 		Code:          req.Code,
 		Topic:         req.Topic,
+		Args:          req.Args,
 		Language:      req.Language,
 		Result:        req.Result,
 		Status:        domain.Status(req.Status),

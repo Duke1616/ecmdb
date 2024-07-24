@@ -29,4 +29,5 @@ type Execute struct {
 	TaskId   int64
 	Language string
 	Code     string
+	Args     map[string]interface{}
 }

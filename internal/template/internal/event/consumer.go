@@ -20,8 +20,8 @@ type WechatApprovalCallbackConsumer struct {
 }
 
 func NewWechatApprovalCallbackConsumer(svc service.Service, q mq.MQ, p WechatOrderEventProducer, workApp *workwx.WorkwxApp) (*WechatApprovalCallbackConsumer, error) {
-	groupID := "callback"
-	consumer, err := q.Consumer(CallbackEventName, groupID)
+	groupID := "wechat_oa_callback"
+	consumer, err := q.Consumer(WechatCallbackEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,10 +65,10 @@ func (c *WechatApprovalCallbackConsumer) Consume(ctx context.Context) error {
 		return err
 	}
 
-	return c.sendOrderEvent(ctx, evt.SpNo)
+	return c.sendCreateOrderEvent(ctx, evt.SpNo)
 }
 
-func (c *WechatApprovalCallbackConsumer) sendOrderEvent(ctx context.Context, spNo string) error {
+func (c *WechatApprovalCallbackConsumer) sendCreateOrderEvent(ctx context.Context, spNo string) error {
 	spInfo, err := c.workApp.GetOAApprovalDetail(spNo)
 	if err != nil {
 		return err

@@ -30,6 +30,7 @@ type Task struct {
 	Language      string
 	Result        string
 	Status        Status
+	Args          map[string]interface{}
 }
 
 type TaskResult struct {

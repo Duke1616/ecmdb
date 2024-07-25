@@ -95,7 +95,13 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Action:         domain.Action(REGISTER),
+		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
+			return domain.Variables{
+				Key:   src.Key,
+				Value: src.Value,
+			}
+		}),
+		Action: domain.Action(REGISTER),
 	}
 }
 
@@ -106,6 +112,12 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 		CodebookUid: req.CodebookUid,
 		Tags:        req.Tags,
 		Desc:        req.Desc,
-		WorkerName:  req.WorkerName,
+		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) Variables {
+			return Variables{
+				Key:   src.Key,
+				Value: src.Value,
+			}
+		}),
+		WorkerName: req.WorkerName,
 	}
 }

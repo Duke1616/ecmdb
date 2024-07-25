@@ -22,6 +22,12 @@ type Runner struct {
 	Tags           []string
 	Desc           string
 	Action         Action
+	Variables      []Variables
+}
+
+type Variables struct {
+	Key   string
+	Value any
 }
 
 type RunnerTags struct {

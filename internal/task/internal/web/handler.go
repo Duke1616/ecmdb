@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -21,6 +22,8 @@ func NewHandler(svc service.Service) *Handler {
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/task")
 	g.POST("/list", ginx.WrapBody[ListTaskReq](h.ListTask))
+	g.POST("/update/args", ginx.WrapBody[UpdateArgsReq](h.UpdateArgs))
+	g.POST("/retry", ginx.WrapBody[RetryReq](h.Retry))
 }
 
 func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, error) {
@@ -39,7 +42,29 @@ func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, erro
 	}, nil
 }
 
+func (h *Handler) UpdateArgs(ctx *gin.Context, req UpdateArgsReq) (ginx.Result, error) {
+	count, err := h.svc.UpdateArgs(ctx, req.Id, req.Args)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
+		Msg:  "修改Args成功",
+	}, nil
+}
+
+func (h *Handler) Retry(ctx *gin.Context, req RetryReq) (ginx.Result, error) {
+	err := h.svc.RetryTask(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "重试任务成功",
+	}, nil
+}
+
 func (h *Handler) toTaskVo(req domain.Task) Task {
+	args, _ := json.Marshal(req.Args)
 	return Task{
 		Id:          req.Id,
 		OrderId:     req.OrderId,
@@ -49,5 +74,6 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		CodebookUid: req.CodebookUid,
 		Status:      Status(req.Status),
 		Result:      req.Result,
+		Args:        string(args),
 	}
 }

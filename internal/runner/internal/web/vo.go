@@ -14,12 +14,18 @@ const (
 )
 
 type RegisterRunnerReq struct {
-	Name           string   `json:"name"`
-	CodebookUid    string   `json:"codebook_uid"`
-	CodebookSecret string   `json:"codebook_secret"`
-	WorkerName     string   `json:"worker_name"`
-	Tags           []string `json:"tags"`
-	Desc           string   `json:"desc"`
+	Name           string      `json:"name"`
+	CodebookUid    string      `json:"codebook_uid"`
+	CodebookSecret string      `json:"codebook_secret"`
+	WorkerName     string      `json:"worker_name"`
+	Tags           []string    `json:"tags"`
+	Desc           string      `json:"desc"`
+	Variables      []Variables `json:"variables"`
+}
+
+type Variables struct {
+	Key   string
+	Value any
 }
 
 type Page struct {
@@ -32,12 +38,13 @@ type ListRunnerReq struct {
 }
 
 type Runner struct {
-	Id          int64    `json:"id"`
-	Name        string   `json:"name"`
-	CodebookUid string   `json:"codebook_uid"`
-	WorkerName  string   `json:"worker_name"`
-	Tags        []string `json:"tags"`
-	Desc        string   `json:"desc"`
+	Id          int64       `json:"id"`
+	Name        string      `json:"name"`
+	CodebookUid string      `json:"codebook_uid"`
+	WorkerName  string      `json:"worker_name"`
+	Tags        []string    `json:"tags"`
+	Variables   []Variables `json:"variables"`
+	Desc        string      `json:"desc"`
 }
 
 type RetrieveWorkers struct {

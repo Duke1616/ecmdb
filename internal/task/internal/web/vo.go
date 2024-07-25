@@ -40,7 +40,17 @@ type Task struct {
 	Status      Status `json:"status"`
 	Code        string `json:"code"`
 	Language    string `json:"language"`
+	Args        string `json:"args"`
 	Result      string `json:"result"`
+}
+
+type RetryReq struct {
+	Id int64 `json:"id"`
+}
+
+type UpdateArgsReq struct {
+	Id   int64                  `json:"id"`
+	Args map[string]interface{} `json:"args"`
 }
 
 type RetrieveTasks struct {

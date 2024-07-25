@@ -62,7 +62,7 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		err = e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
+		err = e.taskSvc.StartTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
 		if err != nil {
 			e.logger.Error("创建自动化任务失败",
 				elog.Any("流程ID", ProcessInstanceID),

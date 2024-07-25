@@ -69,8 +69,14 @@ func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 		WorkerName:     req.WorkerName,
 		Name:           req.Name,
 		Tags:           req.Tags,
-		Desc:           req.Desc,
-		Action:         req.Action.ToUint8(),
+		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
+			return dao.Variables{
+				Key:   src.Key,
+				Value: src.Value,
+			}
+		}),
+		Desc:   req.Desc,
+		Action: req.Action.ToUint8(),
 	}
 }
 
@@ -82,7 +88,13 @@ func (repo *runnerRepository) toDomain(req dao.Runner) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Desc:           req.Desc,
-		Action:         domain.Action(req.Action),
+		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
+			return domain.Variables{
+				Key:   src.Key,
+				Value: src.Value,
+			}
+		}),
+		Desc:   req.Desc,
+		Action: domain.Action(req.Action),
 	}
 }

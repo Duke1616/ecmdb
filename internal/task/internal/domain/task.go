@@ -15,26 +15,34 @@ const (
 	// RUNNING 运行中
 	RUNNING Status = 3
 	// WAITING 等待运行
-	WAITING Status = 3
+	WAITING Status = 4
+	// PENDING 运行某处意外无法执行
+	PENDING Status = 5
+	// SCHEDULE 等待调度
+	SCHEDULE Status = 6
 )
 
 type Task struct {
 	Id            int64
 	ProcessInstId int
-	OrderId       int64
-	CodebookUid   string
-	WorkerName    string
-	WorkflowId    int64
-	Code          string
-	Topic         string
-	Language      string
-	Result        string
-	Status        Status
-	Args          map[string]interface{}
+	// 触发位置、比如错误等
+	TriggerPosition string
+	CurrentNodeId   string
+	OrderId         int64
+	CodebookUid     string
+	WorkerName      string
+	WorkflowId      int64
+	Code            string
+	Topic           string
+	Language        string
+	Result          string
+	Status          Status
+	Args            map[string]interface{}
 }
 
 type TaskResult struct {
-	Id     int64  `json:"id"`
-	Result string `json:"result"`
-	Status Status `json:"status"`
+	Id              int64  `json:"id"`
+	TriggerPosition string `json:"trigger_position"`
+	Result          string `json:"result"`
+	Status          Status `json:"status"`
 }

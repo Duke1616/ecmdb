@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// ErrDataNotFound 通用的数据没找到
+var ErrDataNotFound = mongo.ErrNoDocuments
+
 const (
 	RunnerCollection = "c_runner"
 )
@@ -131,17 +134,23 @@ func (dao *runnerDAO) ListTagsPipelineByCodebookUid(ctx context.Context) ([]Runn
 }
 
 type Runner struct {
-	Id             int64    `bson:"id"`
-	Name           string   `bson:"name"`
-	CodebookUid    string   `bson:"codebook_uid"`
-	CodebookSecret string   `bson:"codebook_secret"`
-	WorkerName     string   `bson:"worker_name"`
-	Topic          string   `json:"topic"`
-	Tags           []string `bson:"tags"`
-	Action         uint8    `bson:"action"`
-	Desc           string   `json:"desc"`
-	Ctime          int64    `bson:"ctime"`
-	Utime          int64    `bson:"utime"`
+	Id             int64       `bson:"id"`
+	Name           string      `bson:"name"`
+	CodebookUid    string      `bson:"codebook_uid"`
+	CodebookSecret string      `bson:"codebook_secret"`
+	WorkerName     string      `bson:"worker_name"`
+	Topic          string      `bson:"topic"`
+	Tags           []string    `bson:"tags"`
+	Action         uint8       `bson:"action"`
+	Desc           string      `bson:"desc"`
+	Variables      []Variables `bson:"variables"`
+	Ctime          int64       `bson:"ctime"`
+	Utime          int64       `bson:"utime"`
+}
+
+type Variables struct {
+	Key   string
+	Value any
 }
 
 type RunnerPipeline struct {

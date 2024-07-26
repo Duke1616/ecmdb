@@ -9,6 +9,8 @@ import (
 
 type RunnerRepository interface {
 	RegisterRunner(ctx context.Context, req domain.Runner) (int64, error)
+	Update(ctx context.Context, req domain.Runner) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, error)
 	Total(ctx context.Context) (int64, error)
 	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error)
@@ -23,6 +25,14 @@ func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
 
 type runnerRepository struct {
 	dao dao.RunnerDAO
+}
+
+func (repo *runnerRepository) Delete(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.Delete(ctx, id)
+}
+
+func (repo *runnerRepository) Update(ctx context.Context, req domain.Runner) (int64, error) {
+	return repo.dao.Update(ctx, repo.toEntity(req))
 }
 
 func (repo *runnerRepository) ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error) {
@@ -64,6 +74,7 @@ func (repo *runnerRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 	return dao.Runner{
+		Id:             req.Id,
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,

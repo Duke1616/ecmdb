@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -22,6 +23,7 @@ type Service interface {
 	RetryTask(ctx context.Context, id int64) error
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
 	// ListTask 列表任务
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
 }
@@ -104,6 +106,9 @@ func (s *service) UpdateArgs(ctx context.Context, id int64, args map[string]inte
 	return s.repo.UpdateArgs(ctx, id, args)
 }
 
+func (s *service) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+	return s.repo.UpdateVariables(ctx, id, variables)
+}
 func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error) {
 	var (
 		eg    errgroup.Group
@@ -133,11 +138,12 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 
 func (s *service) retry(ctx context.Context, task domain.Task) error {
 	return s.workerSvc.Execute(ctx, worker.Execute{
-		TaskId:   task.Id,
-		Topic:    task.Topic,
-		Code:     task.Code,
-		Language: task.Language,
-		Args:     task.Args,
+		TaskId:    task.Id,
+		Topic:     task.Topic,
+		Code:      task.Code,
+		Language:  task.Language,
+		Args:      task.Args,
+		Variables: task.Variables,
 	})
 }
 
@@ -238,6 +244,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	}
 
 	// TODO 创建一份任务到数据库中，后续执行失败，重试机制
+	vars, _ := json.Marshal(runnerResp.Variables)
 	_, err = s.repo.UpdateTask(ctx, domain.Task{
 		// 字段可有可无
 		Id:            task.Id,
@@ -247,12 +254,13 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		CodebookUid:   codebookResp.Identifier,
 
 		// 必传字段
-		OrderId:  orderResp.Id,
-		Code:     codebookResp.Code,
-		Topic:    workerResp.Topic,
-		Language: codebookResp.Language,
-		Status:   domain.RUNNING,
-		Args:     orderResp.Data,
+		OrderId:   orderResp.Id,
+		Code:      codebookResp.Code,
+		Topic:     workerResp.Topic,
+		Language:  codebookResp.Language,
+		Status:    domain.RUNNING,
+		Args:      orderResp.Data,
+		Variables: string(vars),
 	})
 	if err != nil {
 		return err
@@ -260,10 +268,11 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 
 	// 发送任务执行
 	return s.workerSvc.Execute(ctx, worker.Execute{
-		TaskId:   task.Id,
-		Topic:    workerResp.Topic,
-		Code:     codebookResp.Code,
-		Language: codebookResp.Language,
-		Args:     orderResp.Data,
+		TaskId:    task.Id,
+		Topic:     workerResp.Topic,
+		Code:      codebookResp.Code,
+		Language:  codebookResp.Language,
+		Args:      orderResp.Data,
+		Variables: string(vars),
 	})
 }

@@ -25,9 +25,10 @@ type Worker struct {
 }
 
 type Execute struct {
-	Topic    string
-	TaskId   int64
-	Language string
-	Code     string
-	Args     map[string]interface{}
+	Topic     string
+	TaskId    int64
+	Language  string
+	Code      string
+	Args      map[string]interface{}
+	Variables string
 }

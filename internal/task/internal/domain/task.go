@@ -37,6 +37,7 @@ type Task struct {
 	Language        string
 	Result          string
 	Status          Status
+	Variables       string
 	Args            map[string]interface{}
 }
 

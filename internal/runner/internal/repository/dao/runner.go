@@ -19,6 +19,8 @@ const (
 
 type RunnerDAO interface {
 	CreateRunner(ctx context.Context, r Runner) (int64, error)
+	Update(ctx context.Context, req Runner) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error)
 	Count(ctx context.Context) (int64, error)
 	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error)
@@ -33,6 +35,40 @@ func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
 
 type runnerDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *runnerDAO) Delete(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *runnerDAO) Update(ctx context.Context, req Runner) (int64, error) {
+	col := dao.db.Collection(RunnerCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":            req.Name,
+			"codebook_secret": req.CodebookSecret,
+			"worker_name":     req.WorkerName,
+			"tags":            req.Tags,
+			"desc":            req.Desc,
+			"variables":       req.Variables,
+			"utime":           time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": req.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *runnerDAO) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error) {
@@ -129,7 +165,6 @@ func (dao *runnerDAO) ListTagsPipelineByCodebookUid(ctx context.Context) ([]Runn
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
-	fmt.Println(result)
 	return result, nil
 }
 

@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -23,6 +24,7 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/task")
 	g.POST("/list", ginx.WrapBody[ListTaskReq](h.ListTask))
 	g.POST("/update/args", ginx.WrapBody[UpdateArgsReq](h.UpdateArgs))
+	g.POST("/update/variables", ginx.WrapBody[UpdateVariablesReq](h.UpdateVariableReq))
 	g.POST("/retry", ginx.WrapBody[RetryReq](h.Retry))
 }
 
@@ -44,6 +46,18 @@ func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, erro
 
 func (h *Handler) UpdateArgs(ctx *gin.Context, req UpdateArgsReq) (ginx.Result, error) {
 	count, err := h.svc.UpdateArgs(ctx, req.Id, req.Args)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
+		Msg:  "修改Args成功",
+	}, nil
+}
+
+func (h *Handler) UpdateVariableReq(ctx *gin.Context, req UpdateVariablesReq) (ginx.Result, error) {
+	fmt.Print(req.Variables)
+	count, err := h.svc.UpdateVariables(ctx, req.Id, req.Variables)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -75,5 +89,6 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		Status:      Status(req.Status),
 		Result:      req.Result,
 		Args:        string(args),
+		Variables:   req.Variables,
 	}
 }

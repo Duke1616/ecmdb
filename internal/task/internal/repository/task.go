@@ -16,6 +16,7 @@ type TaskRepository interface {
 	FindById(ctx context.Context, id int64) (domain.Task, error)
 	UpdateTask(ctx context.Context, req domain.Task) (int64, error)
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error)
 	Total(ctx context.Context) (int64, error)
 
@@ -24,6 +25,10 @@ type TaskRepository interface {
 
 type taskRepository struct {
 	dao dao.TaskDAO
+}
+
+func (repo *taskRepository) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+	return repo.dao.UpdateVariables(ctx, id, variables)
 }
 
 func (repo *taskRepository) FindById(ctx context.Context, id int64) (domain.Task, error) {
@@ -109,6 +114,7 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		Topic:           req.Topic,
 		Language:        req.Language,
 		Args:            req.Args,
+		Variables:       req.Variables,
 		Status:          req.Status.ToUint8(),
 	}
 }
@@ -125,6 +131,7 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		Code:          req.Code,
 		Topic:         req.Topic,
 		Args:          req.Args,
+		Variables:     req.Variables,
 		Language:      req.Language,
 		Result:        req.Result,
 		Status:        domain.Status(req.Status),

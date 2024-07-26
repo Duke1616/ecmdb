@@ -37,13 +37,13 @@ func (s *service) FindByName(ctx context.Context, name string) (domain.Worker, e
 
 func (s *service) Execute(ctx context.Context, req domain.Execute) error {
 	evt := event.EworkRunnerExecuteEvent{
-		Language: req.Language,
-		Code:     req.Code,
-		TaskId:   req.TaskId,
-		Args:     req.Args,
+		Language:  req.Language,
+		Code:      req.Code,
+		TaskId:    req.TaskId,
+		Args:      req.Args,
+		Variables: req.Variables,
 	}
 
-	fmt.Println(req.Args, "传递参数")
 	err := s.producer.Produce(ctx, req.Topic, evt)
 	if err != nil {
 		slog.Error("工作节点发送指令失败",

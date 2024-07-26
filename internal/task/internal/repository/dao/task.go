@@ -17,6 +17,7 @@ type TaskDAO interface {
 	FindById(ctx context.Context, id int64) (Task, error)
 	UpdateTask(ctx context.Context, t Task) (int64, error)
 	UpdateTaskStatus(ctx context.Context, req Task) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]Task, error)
 	Count(ctx context.Context) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
@@ -24,6 +25,24 @@ type TaskDAO interface {
 
 type taskDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *taskDAO) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+	col := dao.db.Collection(TaskCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"variables": variables,
+			"utime":     time.Now().UnixMilli(),
+		},
+	}
+
+	filter := bson.M{"id": id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *taskDAO) FindById(ctx context.Context, id int64) (Task, error) {
@@ -89,6 +108,7 @@ func (dao *taskDAO) UpdateTask(ctx context.Context, t Task) (int64, error) {
 			"topic":            t.Topic,
 			"language":         t.Language,
 			"args":             t.Args,
+			"variables":        t.Variables,
 			"status":           t.Status,
 			"result":           t.Result,
 			"trigger_position": t.TriggerPosition,
@@ -185,6 +205,7 @@ type Task struct {
 	Topic           string                 `bson:"topic"`
 	Language        string                 `bson:"language"`
 	Args            map[string]interface{} `bson:"args"`
+	Variables       string                 `json:"variables"`
 	Status          uint8                  `bson:"status"`
 	Result          string                 `bson:"result"`
 	TriggerPosition string                 `bson:"trigger_position"`

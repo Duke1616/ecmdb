@@ -23,9 +23,24 @@ type RegisterRunnerReq struct {
 	Variables      []Variables `json:"variables"`
 }
 
+type UpdateRunnerReq struct {
+	Id             int64       `json:"id"`
+	Name           string      `json:"name"`
+	CodebookUid    string      `json:"codebook_uid"`
+	CodebookSecret string      `json:"codebook_secret"`
+	WorkerName     string      `json:"worker_name"`
+	Tags           []string    `json:"tags"`
+	Desc           string      `json:"desc"`
+	Variables      []Variables `json:"variables"`
+}
+
+type DeleteRunnerReq struct {
+	Id int64 `json:"id"`
+}
+
 type Variables struct {
-	Key   string
-	Value any
+	Key   string `json:"key"`
+	Value any    `json:"value"`
 }
 
 type Page struct {

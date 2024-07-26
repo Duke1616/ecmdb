@@ -37,3 +37,6 @@ wechat:
   corpId: ""
   corpSecret: ""
   agentId: 1000002
+
+cronjob:
+  enabled: true

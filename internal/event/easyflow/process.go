@@ -54,7 +54,7 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventAutomation 自动化任务处理（创建任务）
 func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	// 使用goroutine执行任务创建，并等待其完成
@@ -62,7 +62,7 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		err = e.taskSvc.StartTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
+		err = e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
 		if err != nil {
 			e.logger.Error("创建自动化任务失败",
 				elog.Any("流程ID", ProcessInstanceID),
@@ -85,7 +85,7 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 		return ctx.Err()
 	}
 
-	return nil
+	return err
 }
 
 // EventEnd 节点结束事件

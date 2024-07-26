@@ -15,6 +15,8 @@ const (
 	END Status = 3
 	// RETRY 重试
 	RETRY Status = 4
+	// AUTOMATION 自动化
+	AUTOMATION Status = 5
 )
 
 type Order struct {

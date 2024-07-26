@@ -6,7 +6,8 @@ import (
 )
 
 type Module struct {
-	Svc Service
-	Hdl *web.Handler
-	c   *event.ExecuteResultConsumer
+	Svc          Service
+	Hdl          *web.Handler
+	c            *event.ExecuteResultConsumer
+	StartTaskJob *StartTaskJob
 }

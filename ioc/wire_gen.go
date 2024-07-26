@@ -116,9 +116,12 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	processEvent := eventModule.Event
+	startTaskJob := taskModule.StartTaskJob
+	v2 := initCronJobs(startTaskJob)
 	app := &App{
 		Web:   ginEngine,
 		Event: processEvent,
+		Jobs:  v2,
 	}
 	return app, nil
 }

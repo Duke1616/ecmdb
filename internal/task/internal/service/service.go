@@ -18,13 +18,16 @@ import (
 )
 
 type Service interface {
+	// CreateTask 创建任务
+	CreateTask(ctx context.Context, processInstId int, nodeId string) error
 	// StartTask 启动任务
 	StartTask(ctx context.Context, processInstId int, nodeId string) error
 	RetryTask(ctx context.Context, id int64) error
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
 	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
-	// ListTask 列表任务
+	// ListTaskByStatus 列表任务
+	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
 }
 
@@ -36,6 +39,40 @@ type service struct {
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
 	workerSvc   worker.Service
+}
+
+func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Task
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListTask(ctx, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.Total(ctx, 0)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
+}
+
+func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId string) error {
+	_, err := s.repo.CreateTask(ctx, domain.Task{
+		ProcessInstId:   processInstId,
+		TriggerPosition: "任务等待",
+		CurrentNodeId:   nodeId,
+		Status:          domain.WAITING,
+	})
+
+	return err
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
@@ -109,7 +146,8 @@ func (s *service) UpdateArgs(ctx context.Context, id int64, args map[string]inte
 func (s *service) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
 	return s.repo.UpdateVariables(ctx, id, variables)
 }
-func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error) {
+
+func (s *service) ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error) {
 	var (
 		eg    errgroup.Group
 		ts    []domain.Task
@@ -117,13 +155,13 @@ func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.T
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListTask(ctx, offset, limit)
+		ts, err = s.repo.ListTaskByStatus(ctx, offset, limit, status)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.Total(ctx)
+		total, err = s.repo.Total(ctx, status)
 		return err
 	})
 	if err := eg.Wait(); err != nil {

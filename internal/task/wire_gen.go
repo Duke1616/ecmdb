@@ -12,6 +12,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/event"
+	"github.com/Duke1616/ecmdb/internal/task/internal/job"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
@@ -36,10 +37,12 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service6 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5)
 	handler := web.NewHandler(service6)
 	executeResultConsumer := initConsumer(service6, q)
+	startTaskJob := initStartTaskJob(service6)
 	module := &Module{
-		Svc: service6,
-		Hdl: handler,
-		c:   executeResultConsumer,
+		Svc:          service6,
+		Hdl:          handler,
+		c:            executeResultConsumer,
+		StartTaskJob: startTaskJob,
 	}
 	return module, nil
 }
@@ -56,4 +59,9 @@ func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
 
 	consumer.Start(context.Background())
 	return consumer
+}
+
+func initStartTaskJob(svc service.Service) *StartTaskJob {
+	limit := int64(100)
+	return job.NewStartTaskJob(svc, limit)
 }

@@ -14,6 +14,13 @@ func main() {
 		panic(err)
 	}
 
+	for _, name := range app.Jobs {
+		err = name.Start()
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	engine.RegisterEvents(app.Event)
 
 	err = app.Web.Run(":8000")

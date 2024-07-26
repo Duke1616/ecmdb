@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/event"
+	"github.com/Duke1616/ecmdb/internal/task/internal/job"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
@@ -30,6 +31,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
+		initStartTaskJob,
 		initConsumer,
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
@@ -50,4 +52,9 @@ func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
 
 	consumer.Start(context.Background())
 	return consumer
+}
+
+func initStartTaskJob(svc service.Service) *StartTaskJob {
+	limit := int64(100)
+	return job.NewStartTaskJob(svc, limit)
 }

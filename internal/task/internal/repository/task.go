@@ -18,13 +18,21 @@ type TaskRepository interface {
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error)
-	Total(ctx context.Context) (int64, error)
+	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
+	Total(ctx context.Context, status uint8) (int64, error)
 
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
 }
 
 type taskRepository struct {
 	dao dao.TaskDAO
+}
+
+func (repo *taskRepository) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error) {
+	ts, err := repo.dao.ListTask(ctx, offset, limit)
+	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *taskRepository) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
@@ -66,15 +74,15 @@ func (repo *taskRepository) UpdateTask(ctx context.Context, req domain.Task) (in
 	return repo.dao.UpdateTask(ctx, repo.toEntity(req))
 }
 
-func (repo *taskRepository) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error) {
-	ts, err := repo.dao.ListTask(ctx, offset, limit)
+func (repo *taskRepository) ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error) {
+	ts, err := repo.dao.ListTaskByStatus(ctx, offset, limit, status)
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *taskRepository) Total(ctx context.Context) (int64, error) {
-	return repo.dao.Count(ctx)
+func (repo *taskRepository) Total(ctx context.Context, status uint8) (int64, error) {
+	return repo.dao.Count(ctx, status)
 }
 
 func (repo *taskRepository) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {

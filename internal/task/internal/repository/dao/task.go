@@ -19,12 +19,39 @@ type TaskDAO interface {
 	UpdateTaskStatus(ctx context.Context, req Task) (int64, error)
 	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]Task, error)
-	Count(ctx context.Context) (int64, error)
+	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
+	Count(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
 }
 
 type taskDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Task
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *taskDAO) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
@@ -157,9 +184,13 @@ func (dao *taskDAO) CreateTask(ctx context.Context, t Task) (int64, error) {
 	return t.Id, nil
 }
 
-func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, error) {
+func (dao *taskDAO) ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
+	if status != 0 {
+		filter["status"] = status
+	}
+
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -182,11 +213,14 @@ func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, 
 	return result, nil
 }
 
-func (dao *taskDAO) Count(ctx context.Context) (int64, error) {
+func (dao *taskDAO) Count(ctx context.Context, status uint8) (int64, error) {
 	col := dao.db.Collection(TaskCollection)
-	filer := bson.M{}
+	filter := bson.M{}
+	if status != 0 {
+		filter["status"] = status
+	}
 
-	count, err := col.CountDocuments(ctx, filer)
+	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}

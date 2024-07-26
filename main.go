@@ -14,11 +14,8 @@ func main() {
 		panic(err)
 	}
 
-	for _, name := range app.Jobs {
-		err = name.Start()
-		if err != nil {
-			panic(err)
-		}
+	for _, job := range app.Jobs {
+		go job.Start()
 	}
 
 	engine.RegisterEvents(app.Event)

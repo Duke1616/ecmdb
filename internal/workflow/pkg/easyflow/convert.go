@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+const AutomationApproval = "automation"
+
 type logicFlow struct {
 	Workflow Workflow
 	Edges    []Edge
@@ -137,7 +139,7 @@ func (l *logicFlow) Automation(node Node) {
 
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 1, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		UserIDs:         []string{"automation"},
+		UserIDs:         []string{AutomationApproval},
 		NodeStartEvents: []string{"EventAutomation"},
 	}
 	l.NodeList = append(l.NodeList, n)

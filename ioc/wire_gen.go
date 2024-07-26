@@ -105,7 +105,7 @@ func InitApp() (*App, error) {
 	handler10 := workflowModule.Hdl
 	groupHandler := templateModule.GroupHdl
 	handler11 := engineModule.Hdl
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, codebookModule, workerModule, runnerModule)
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,8 @@ func InitApp() (*App, error) {
 	}
 	processEvent := eventModule.Event
 	startTaskJob := taskModule.StartTaskJob
-	v2 := initCronJobs(startTaskJob)
+	passProcessTaskJob := taskModule.PassProcessTaskJob
+	v2 := initCronJobs(startTaskJob, passProcessTaskJob)
 	app := &App{
 		Web:   ginEngine,
 		Event: processEvent,

@@ -22,10 +22,15 @@ type ProcessEngineRepository interface {
 	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 	ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
+	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
 }
 
 type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
+}
+
+func (repo *processEngineRepository) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error) {
+	return repo.engineDao.GetAutomationTask(ctx, currentNodeId, processInstId)
 }
 
 func (repo *processEngineRepository) ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) (

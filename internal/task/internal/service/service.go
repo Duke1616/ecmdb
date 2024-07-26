@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
@@ -29,16 +30,42 @@ type Service interface {
 	// ListTaskByStatus 列表任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
+
+	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error)
 }
 
 type service struct {
 	repo        repository.TaskRepository
 	logger      *elog.Component
 	orderSvc    order.Service
+	engineSvc   engine.Service
 	workflowSvc workflow.Service
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
 	workerSvc   worker.Service
+}
+
+func (s *service) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Task
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListTasksByCtime(ctx, offset, limit, ctime)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalByCtime(ctx, ctime)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }
 
 func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error) {
@@ -76,7 +103,7 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service) Service {
+	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service) Service {
 	return &service{
 		repo:        repo,
 		logger:      elog.DefaultLogger,
@@ -85,6 +112,7 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 		codebookSvc: codebookSvc,
 		runnerSvc:   runnerSvc,
 		workerSvc:   workerSvc,
+		engineSvc:   engineSvc,
 	}
 }
 
@@ -209,13 +237,6 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		})
 		return err
 	}
-
-	// 更新状态为运行
-	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-		Id:              task.Id,
-		TriggerPosition: "开始运行",
-		Status:          domain.RUNNING,
-	})
 
 	// 获取自动化提交信息
 	automation, err := s.workflowSvc.GetAutomationProperty(easyflow.Workflow{

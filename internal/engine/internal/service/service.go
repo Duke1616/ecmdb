@@ -27,10 +27,16 @@ type Service interface {
 	Reject(ctx context.Context, taskId int, comment string) error
 	// ListPendingStepsOfMyTask 列出我的任务待处理步骤
 	ListPendingStepsOfMyTask(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
+	// GetAutomationTask 获取自动化完成任务
+	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error) {
+	return s.repo.GetAutomationTask(ctx, currentNodeId, processInstId)
 }
 
 func (s *service) ListPendingStepsOfMyTask(ctx context.Context, processInstIds []int, starter string) (

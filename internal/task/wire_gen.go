@@ -9,6 +9,7 @@ package task
 import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/event"
@@ -22,11 +23,12 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	"time"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
 	taskDAO := dao.NewTaskDAO(db)
 	taskRepository := repository.NewTaskRepository(taskDAO)
 	serviceService := orderModule.Svc
@@ -34,15 +36,18 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service3 := codebookModule.Svc
 	service4 := runnerModule.Svc
 	service5 := workerModule.Svc
-	service6 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5)
-	handler := web.NewHandler(service6)
-	executeResultConsumer := initConsumer(service6, q)
-	startTaskJob := initStartTaskJob(service6)
+	service6 := engineModule.Svc
+	service7 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6)
+	handler := web.NewHandler(service7)
+	executeResultConsumer := initConsumer(service7, q)
+	startTaskJob := initStartTaskJob(service7)
+	passProcessTaskJob := initPassProcessTaskJob(service7, service6)
 	module := &Module{
-		Svc:          service6,
-		Hdl:          handler,
-		c:            executeResultConsumer,
-		StartTaskJob: startTaskJob,
+		Svc:                service7,
+		Hdl:                handler,
+		c:                  executeResultConsumer,
+		StartTaskJob:       startTaskJob,
+		PassProcessTaskJob: passProcessTaskJob,
 	}
 	return module, nil
 }
@@ -63,5 +68,15 @@ func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
 
 func initStartTaskJob(svc service.Service) *StartTaskJob {
 	limit := int64(100)
-	return job.NewStartTaskJob(svc, limit)
+	initialInterval := 10 * time.Second
+	maxInterval := 30 * time.Second
+	maxRetries := int32(3)
+	return job.NewStartTaskJob(svc, limit, initialInterval, maxInterval, maxRetries)
+}
+
+func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {
+	minutes := int64(30)
+	seconds := int64(10)
+	limit := int64(100)
+	return job.NewPassProcessTaskJob(svc, engineSvc, minutes, seconds, limit)
 }

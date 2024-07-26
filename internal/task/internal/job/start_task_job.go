@@ -5,20 +5,32 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/ecodeclub/ekit/retry"
+	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
+	"time"
 )
 
 var _ ecron.NamedJob = (*StartTaskJob)(nil)
 
 type StartTaskJob struct {
-	svc   service.Service
-	limit int64
+	svc             service.Service
+	initialInterval time.Duration
+	maxInterval     time.Duration
+	logger          *elog.Component
+	maxRetries      int32
+	limit           int64
 }
 
-func NewStartTaskJob(svc service.Service, limit int64) *StartTaskJob {
+func NewStartTaskJob(svc service.Service, limit int64, initialInterval time.Duration,
+	maxInterval time.Duration, maxRetries int32) *StartTaskJob {
 	return &StartTaskJob{
-		svc:   svc,
-		limit: limit,
+		svc:             svc,
+		logger:          elog.DefaultLogger,
+		limit:           limit,
+		initialInterval: initialInterval,
+		maxInterval:     maxInterval,
+		maxRetries:      maxRetries,
 	}
 }
 
@@ -34,11 +46,7 @@ func (c *StartTaskJob) Run(ctx context.Context) error {
 		}
 
 		for _, task := range tasks {
-			err = c.svc.StartTask(ctx, task.ProcessInstId, task.CurrentNodeId)
-
-			if err != nil {
-				return fmt.Errorf("启动任务失败: %w", err)
-			}
+			return c.start(ctx, task.ProcessInstId, task.CurrentNodeId)
 		}
 
 		if len(tasks) < int(c.limit) {
@@ -50,4 +58,31 @@ func (c *StartTaskJob) Run(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (c *StartTaskJob) start(ctx context.Context, processInstId int, currentNodeId string) error {
+	strategy, er := retry.NewExponentialBackoffRetryStrategy(c.initialInterval, c.maxInterval, c.maxRetries)
+	if er != nil {
+		return er
+	}
+
+	var err error
+	for {
+		d, ok := strategy.Next()
+		if !ok {
+			c.logger.Warn("处理执行任务超过最大重试次数",
+				elog.Any("processInstId", processInstId),
+				elog.Any("currentNodeId", currentNodeId),
+			)
+			return fmt.Errorf("超过最大重试次数")
+		}
+
+		err = c.svc.StartTask(ctx, processInstId, currentNodeId)
+		if err != nil {
+			time.Sleep(d)
+			continue
+		}
+
+		return nil
+	}
 }

@@ -8,12 +8,18 @@ import (
 	"time"
 )
 
-func initCronJobs(tJob *task.StartTaskJob) []*ecron.Component {
+func initCronJobs(tJob *task.StartTaskJob, pJob *task.PassProcessTaskJob) []*ecron.Component {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 
 	return []*ecron.Component{
 		ecron.DefaultContainer().Build(
 			ecron.WithJob(funcJobWrapper(tJob)),
+			ecron.WithSeconds(),
+			ecron.WithSpec("*/10 * * * * *"),
+			ecron.WithLocation(loc),
+		),
+		ecron.DefaultContainer().Build(
+			ecron.WithJob(funcJobWrapper(pJob)),
 			ecron.WithSeconds(),
 			ecron.WithSpec("*/10 * * * * *"),
 			ecron.WithLocation(loc),

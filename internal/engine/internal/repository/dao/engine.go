@@ -23,10 +23,22 @@ type ProcessEngineDAO interface {
 	CountReject(ctx context.Context, taskId int) (int64, error)
 
 	ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) ([]model.Task, error)
+
+	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
 }
 
 type processEngineDAO struct {
 	db *gorm.DB
+}
+
+func (g *processEngineDAO) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (
+	model.Task, error) {
+	var res model.Task
+	err := g.db.WithContext(ctx).Model(&model.Task{}).Table("proc_task").
+		Where("node_id = ? AND proc_inst_id = ? AND is_finished = ? AND status = ?",
+			currentNodeId, processInstId, 0, 0).
+		First(&res).Error
+	return res, err
 }
 
 func (g *processEngineDAO) ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) (

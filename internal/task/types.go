@@ -11,3 +11,5 @@ type Service = service.Service
 type Handler = web.Handler
 
 type StartTaskJob = job.StartTaskJob
+
+type PassProcessTaskJob = job.PassProcessTaskJob

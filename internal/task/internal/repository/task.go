@@ -20,12 +20,24 @@ type TaskRepository interface {
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error)
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 	Total(ctx context.Context, status uint8) (int64, error)
-
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
+	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error)
+	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
 }
 
 type taskRepository struct {
 	dao dao.TaskDAO
+}
+
+func (repo *taskRepository) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error) {
+	ts, err := repo.dao.ListTasksByCtime(ctx, offset, limit, ctime)
+	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *taskRepository) TotalByCtime(ctx context.Context, ctime int64) (int64, error) {
+	return repo.dao.TotalByCtime(ctx, ctime)
 }
 
 func (repo *taskRepository) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error) {

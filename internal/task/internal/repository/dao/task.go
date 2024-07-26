@@ -22,10 +22,52 @@ type TaskDAO interface {
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
 	Count(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
+	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error)
+	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
 }
 
 type taskDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *taskDAO) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+	filter["ctime"] = bson.M{"$gte": ctime}
+
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Task
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *taskDAO) TotalByCtime(ctx context.Context, ctime int64) (int64, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+	filter["ctime"] = bson.M{"$lte": ctime}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, error) {

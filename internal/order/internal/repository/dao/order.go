@@ -162,6 +162,7 @@ type Order struct {
 	WorkflowId        int64                  `bson:"workflow_id"`
 	ProcessInstanceId int                    `bson:"process_instance_id"`
 	CreateBy          string                 `bson:"create_by"`
+	Provide           uint8                  `json:"provide"`
 	Data              map[string]interface{} `bson:"data"`
 	Status            uint8                  `bson:"status"`
 	Ctime             int64                  `bson:"ctime"`

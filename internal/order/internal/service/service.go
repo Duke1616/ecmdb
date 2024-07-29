@@ -123,6 +123,7 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, o
 	req.Data["starter"] = req.CreateBy
 	evt := event.OrderEvent{
 		Id:         orderId,
+		Provide:    event.Provide(req.Provide),
 		WorkflowId: req.WorkflowId,
 		Data:       req.Data,
 	}

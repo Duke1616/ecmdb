@@ -46,13 +46,16 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
-	sess, err := session.Get(&gctx.Context{Context: ctx})
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+	if req.CreateBy == "" {
+		sess, err := session.Get(&gctx.Context{Context: ctx})
+		if err != nil {
+			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+		}
+
+		req.CreateBy = strconv.FormatInt(sess.Claims().Uid, 10)
 	}
 
-	req.CreateBy = strconv.FormatInt(sess.Claims().Uid, 10)
-	err = h.svc.CreateOrder(ctx, h.toDomain(req))
+	err := h.svc.CreateOrder(ctx, h.toDomain(req))
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("创建工单失败, %w", err)
 	}
@@ -244,6 +247,7 @@ func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 		WorkflowId:   req.WorkflowId,
 		Data:         req.Data,
 		Status:       domain.START,
+		Provide:      domain.SYSTEM,
 	}
 }
 

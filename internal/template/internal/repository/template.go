@@ -13,6 +13,7 @@ type TemplateRepository interface {
 	FindByExternalTemplateId(ctx context.Context, hash string) (domain.Template, error)
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error)
 	UpdateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error)
 	Total(ctx context.Context) (int64, error)
@@ -27,6 +28,12 @@ func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
 
 type templateRepository struct {
 	dao dao.TemplateDAO
+}
+
+func (repo *templateRepository) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (
+	domain.Template, error) {
+	t, err := repo.dao.DetailTemplateByExternalTemplateId(ctx, externalId)
+	return repo.toDomain(t), err
 }
 
 func (repo *templateRepository) Pipeline(ctx context.Context) ([]domain.TemplateCombination, error) {

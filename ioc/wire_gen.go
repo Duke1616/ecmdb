@@ -97,7 +97,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule)
+	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule)
 	if err != nil {
 		return nil, err
 	}

@@ -40,7 +40,7 @@ func (c *ProcessEventConsumer) Start(ctx context.Context) {
 		for {
 			err := c.Consume(ctx)
 			if err != nil {
-				c.logger.Error("同步事件失败", elog.Any("err", err))
+				c.logger.Error("同步创建流程实例事件失败", elog.Any("err", err))
 			}
 		}
 	}()
@@ -57,13 +57,13 @@ func (c *ProcessEventConsumer) Consume(ctx context.Context) error {
 	}
 	flow, err := c.workFlowSvc.Find(ctx, evt.WorkflowId)
 	if err != nil {
-		return err
+		return fmt.Errorf("查询流程信息失败: %w", err)
 	}
 
 	// 启动流程引擎，配置工单与流程引擎关系ID
 	engineId, err := engine.InstanceStart(flow.ProcessId, "业务申请", flow.Name, string(c.Variables(evt)))
 	if err != nil {
-		return err
+		return fmt.Errorf("启动流程引擎: %w", err)
 	}
 
 	// 需要特别注意：如果流程是从开始直接流向自动化节点，引擎会执行到相应自动化节点Event事件，但是Order表没有记录数据，是无法正常运行
@@ -77,20 +77,31 @@ func (c *ProcessEventConsumer) Stop(_ context.Context) error {
 
 func (c *ProcessEventConsumer) Variables(evt event.OrderEvent) []byte {
 	var vars []event.Variables
-	for key, value := range evt.Data {
-		// 判断如果浮点数类型，转换成string
-		strValue := value
-		valueType := reflect.TypeOf(value)
-		if valueType.Kind() == reflect.Float64 {
-			strValue = fmt.Sprintf("%f", value)
+	switch evt.Provide {
+	case event.WECHAT:
+		val, ok := evt.Data["starter"]
+		if ok {
+			vars = append(vars, event.Variables{
+				Key:   "starter",
+				Value: val,
+			})
 		}
+	case event.SYSTEM:
+		for key, value := range evt.Data {
+			// 判断如果浮点数类型，转换成string
+			strValue := value
+			valueType := reflect.TypeOf(value)
+			if valueType.Kind() == reflect.Float64 {
+				strValue = fmt.Sprintf("%f", value)
+			}
 
-		vars = append(vars, event.Variables{
-			Key:   key,
-			Value: strValue,
-		})
+			vars = append(vars, event.Variables{
+				Key:   key,
+				Value: strValue,
+			})
+		}
 	}
-	VariablesJson, _ := json.Marshal(vars)
 
+	VariablesJson, _ := json.Marshal(vars)
 	return VariablesJson
 }

@@ -18,6 +18,7 @@ type TemplateDAO interface {
 	FindByHash(ctx context.Context, hash string) (Template, error)
 	FindByExternalTemplateId(ctx context.Context, externalTemplateId string) (Template, error)
 	DetailTemplate(ctx context.Context, id int64) (Template, error)
+	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 	UpdateTemplate(ctx context.Context, t Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
@@ -33,6 +34,18 @@ func NewTemplateDAO(db *mongox.Mongo) TemplateDAO {
 
 type templateDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *templateDAO) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (Template, error) {
+	col := dao.db.Collection(TemplateCollection)
+	filter := bson.M{"external_template_id": externalId}
+
+	var t Template
+	if err := col.FindOne(ctx, filter).Decode(&t); err != nil {
+		return Template{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return t, nil
 }
 
 func (dao *templateDAO) CreateTemplate(ctx context.Context, t Template) (int64, error) {

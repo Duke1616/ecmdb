@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
+	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
@@ -23,7 +24,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
@@ -33,9 +34,10 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	serviceService := service.NewService(orderRepository, createProcessEventProducer)
 	service2 := engineModule.Svc
 	handler := web.NewHandler(serviceService, service2)
-	wechatOrderConsumer := initWechatConsumer(serviceService, q)
-	service3 := workflowModule.Svc
-	processEventConsumer := InitProcessConsumer(q, service3, serviceService)
+	service3 := templateModule.Svc
+	wechatOrderConsumer := initWechatConsumer(serviceService, service3, q)
+	service4 := workflowModule.Svc
+	processEventConsumer := InitProcessConsumer(q, service4, serviceService)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
 	module := &Module{
 		Hdl: handler,
@@ -51,8 +53,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
 
-func initWechatConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsumer {
-	c, err := consumer.NewWechatOrderConsumer(svc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
 	if err != nil {
 		panic(err)
 	}

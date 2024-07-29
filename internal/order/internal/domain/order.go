@@ -19,6 +19,19 @@ const (
 	AUTOMATION Status = 5
 )
 
+type Provide uint8
+
+func (s Provide) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// SYSTEM 本系统
+	SYSTEM Provide = 1
+	// WECHAT 企业微信
+	WECHAT Provide = 2
+)
+
 type Order struct {
 	Id           int64
 	TemplateId   int64
@@ -26,6 +39,7 @@ type Order struct {
 	WorkflowId   int64
 	Data         map[string]interface{}
 	Status       Status
+	Provide      Provide
 	CreateBy     string
 	Process      Process
 	Ctime        int64

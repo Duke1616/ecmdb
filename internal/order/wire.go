@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
+	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
@@ -24,7 +25,8 @@ var ProviderSet = wire.NewSet(
 	dao.NewOrderDAO,
 )
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module,
+	templateModule *template.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		event.NewCreateProcessEventProducer,
@@ -33,13 +35,14 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 		InitModifyStatusConsumer,
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.FieldsOf(new(*engine.Module), "Svc"),
+		wire.FieldsOf(new(*template.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
 }
 
-func initWechatConsumer(svc service.Service, q mq.MQ) *consumer.WechatOrderConsumer {
-	c, err := consumer.NewWechatOrderConsumer(svc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
 	if err != nil {
 		panic(err)
 	}

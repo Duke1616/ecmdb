@@ -3,7 +3,7 @@ ECMDB 提供了模型的统一抽象管理，以及模型之间的相互关联�
 
 ## 技术栈
 - 数据库：MongoDB
-- 中间件：Redis、kafka
+- 中间件：Redis、kafka、Etcd、EasyFlow
 - 框架：Gin、Gorm、Wire
 
 ## 目录介绍
@@ -13,3 +13,8 @@ ECMDB 提供了模型的统一抽象管理，以及模型之间的相互关联�
 
 TODO 未来可能会支持点击自动触发工单，当审批同意后，自动密码发送到相应申请人邮箱
 ![](docs/img/attribute-secret.png)
+
+
+# 工单系统
+## 任务流程图
+![](docs/img/工单流程图.png)

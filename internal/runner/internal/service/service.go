@@ -9,11 +9,31 @@ import (
 
 type Service interface {
 	Register(ctx context.Context, req domain.Runner) (int64, error)
+	Update(ctx context.Context, req domain.Runner) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, int64, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error)
+	ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error)
 }
 
 type service struct {
 	repo repository.RunnerRepository
+}
+
+func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
+	return s.repo.Delete(ctx, id)
+}
+
+func (s *service) Update(ctx context.Context, req domain.Runner) (int64, error) {
+	return s.repo.Update(ctx, req)
+}
+
+func (s *service) ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error) {
+	return s.repo.ListTagsPipelineByCodebookUid(ctx)
+}
+
+func (s *service) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error) {
+	return s.repo.FindByCodebookUid(ctx, codebookUid, tag)
 }
 
 func NewService(repo repository.RunnerRepository) Service {

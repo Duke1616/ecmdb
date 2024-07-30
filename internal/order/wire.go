@@ -4,11 +4,15 @@ package order
 
 import (
 	"context"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
+	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
+	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
@@ -21,21 +25,48 @@ var ProviderSet = wire.NewSet(
 	dao.NewOrderDAO,
 )
 
-func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module,
+	templateModule *template.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
-		initConsumer,
+		event.NewCreateProcessEventProducer,
+		initWechatConsumer,
+		InitProcessConsumer,
+		InitModifyStatusConsumer,
+		wire.FieldsOf(new(*workflow.Module), "Svc"),
+		wire.FieldsOf(new(*engine.Module), "Svc"),
+		wire.FieldsOf(new(*template.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
 }
 
-func initConsumer(svc service.Service, q mq.MQ) *event.WechatOrderConsumer {
-	consumer, err := event.NewWechatOrderConsumer(svc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
 	if err != nil {
 		panic(err)
 	}
 
-	consumer.Start(context.Background())
-	return consumer
+	c.Start(context.Background())
+	return c
+}
+
+func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Service) *consumer.ProcessEventConsumer {
+	c, err := consumer.NewProcessEventConsumer(q, workflowSvc, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatusModifyEventConsumer {
+	c, err := consumer.NewOrderStatusModifyEventConsumer(q, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
 }

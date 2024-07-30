@@ -9,15 +9,19 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/engine"
+	"github.com/Duke1616/ecmdb/internal/event"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/google/wire"
 )
 
@@ -84,18 +88,45 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	orderModule, err := order.InitModule(mq, mongo)
+	db := InitMySQLDB()
+	engineModule, err := engine.InitModule(db)
+	if err != nil {
+		return nil, err
+	}
+	workflowModule, err := workflow.InitModule(mongo, engineModule)
+	if err != nil {
+		return nil, err
+	}
+	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule)
 	if err != nil {
 		return nil, err
 	}
 	handler9 := orderModule.Hdl
-	engine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9)
+	handler10 := workflowModule.Hdl
+	groupHandler := templateModule.GroupHdl
+	handler11 := engineModule.Hdl
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule)
+	if err != nil {
+		return nil, err
+	}
+	handler12 := taskModule.Hdl
+	ginEngine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12)
+	eventModule, err := event.InitModule(mq, db, engineModule, taskModule)
+	if err != nil {
+		return nil, err
+	}
+	processEvent := eventModule.Event
+	startTaskJob := taskModule.StartTaskJob
+	passProcessTaskJob := taskModule.PassProcessTaskJob
+	v2 := initCronJobs(startTaskJob, passProcessTaskJob)
 	app := &App{
-		Web: engine,
+		Web:   ginEngine,
+		Event: processEvent,
+		Jobs:  v2,
 	}
 	return app, nil
 }
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)

@@ -41,18 +41,19 @@ func (h *Handler) ListWorker(ctx *gin.Context, req ListWorkerReq) (ginx.Result, 
 }
 
 func (h *Handler) PushMessage(ctx *gin.Context, req PushMessageReq) (ginx.Result, error) {
-	h.svc.PushMessage(ctx, h.toDomain(req))
+	err := h.svc.Execute(ctx, h.toDomain(req))
+	if err != nil {
+		return ginx.Result{}, err
+	}
 
 	return ginx.Result{
 		Msg: "",
 	}, nil
 }
 
-func (h *Handler) toDomain(req PushMessageReq) domain.Message {
-	return domain.Message{
+func (h *Handler) toDomain(req PushMessageReq) domain.Execute {
+	return domain.Execute{
 		Topic:    req.Topic,
-		Name:     req.Name,
-		UUID:     req.UUID,
 		Language: req.Language,
 		Code:     req.Code,
 	}

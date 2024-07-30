@@ -14,13 +14,33 @@ const (
 )
 
 type RegisterRunnerReq struct {
-	Name           string   `json:"name"`
-	TaskIdentifier string   `json:"task_identifier"`
-	TaskSecret     string   `json:"task_secret"`
-	WorkName       string   `json:"work_name"`
-	Tags           []string `json:"tags"`
-	Desc           string   `json:"desc"`
-	Action         Action   `json:"action"`
+	Name           string      `json:"name"`
+	CodebookUid    string      `json:"codebook_uid"`
+	CodebookSecret string      `json:"codebook_secret"`
+	WorkerName     string      `json:"worker_name"`
+	Tags           []string    `json:"tags"`
+	Desc           string      `json:"desc"`
+	Variables      []Variables `json:"variables"`
+}
+
+type UpdateRunnerReq struct {
+	Id             int64       `json:"id"`
+	Name           string      `json:"name"`
+	CodebookUid    string      `json:"codebook_uid"`
+	CodebookSecret string      `json:"codebook_secret"`
+	WorkerName     string      `json:"worker_name"`
+	Tags           []string    `json:"tags"`
+	Desc           string      `json:"desc"`
+	Variables      []Variables `json:"variables"`
+}
+
+type DeleteRunnerReq struct {
+	Id int64 `json:"id"`
+}
+
+type Variables struct {
+	Key   string `json:"key"`
+	Value any    `json:"value"`
 }
 
 type Page struct {
@@ -33,14 +53,25 @@ type ListRunnerReq struct {
 }
 
 type Runner struct {
-	Id     int64    `json:"id"`
-	Name   string   `json:"name"`
-	Worker string   `json:"worker"`
-	Tags   []string `json:"tags"`
-	Desc   string   `json:"desc"`
+	Id          int64       `json:"id"`
+	Name        string      `json:"name"`
+	CodebookUid string      `json:"codebook_uid"`
+	WorkerName  string      `json:"worker_name"`
+	Tags        []string    `json:"tags"`
+	Variables   []Variables `json:"variables"`
+	Desc        string      `json:"desc"`
 }
 
 type RetrieveWorkers struct {
 	Total   int64    `json:"total"`
 	Runners []Runner `json:"runners"`
+}
+
+type RunnerTags struct {
+	CodebookUid string   `json:"codebook_uid"`
+	Tags        []string `json:"tags"`
+}
+
+type RetrieveRunnerTags struct {
+	RunnerTags []RunnerTags `json:"runner_tags"`
 }

@@ -26,6 +26,7 @@ func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
+	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 
 }
 
@@ -52,13 +53,8 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}
 
 	u := h.ToUserVo(user)
-	u.RefreshToken = ctx.GetHeader("refreshToken")
-	u.AccessToken = ctx.GetHeader("accessToken")
-
 	jwtData := make(map[string]string, 0)
-
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.ID).SetJwtData(jwtData).Build()
-
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -67,6 +63,14 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 		Data: u,
 		Msg:  "登录用户成功",
 	}, nil
+}
+
+func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
+	err := session.RenewAccessToken(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "OK"}, nil
 }
 
 func (h *Handler) Info(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {

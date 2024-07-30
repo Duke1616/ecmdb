@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
+
+// ErrDataNotFound 通用的数据没找到
+var ErrDataNotFound = mongo.ErrNoDocuments
 
 const (
 	RunnerCollection = "c_runner"
@@ -15,8 +19,12 @@ const (
 
 type RunnerDAO interface {
 	CreateRunner(ctx context.Context, r Runner) (int64, error)
+	Update(ctx context.Context, req Runner) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error)
 	Count(ctx context.Context) (int64, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error)
+	ListTagsPipelineByCodebookUid(ctx context.Context) ([]RunnerPipeline, error)
 }
 
 func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
@@ -27,6 +35,56 @@ func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
 
 type runnerDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *runnerDAO) Delete(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *runnerDAO) Update(ctx context.Context, req Runner) (int64, error) {
+	col := dao.db.Collection(RunnerCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":            req.Name,
+			"codebook_secret": req.CodebookSecret,
+			"worker_name":     req.WorkerName,
+			"tags":            req.Tags,
+			"desc":            req.Desc,
+			"variables":       req.Variables,
+			"utime":           time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": req.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
+}
+
+func (dao *runnerDAO) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{}
+	filter["codebook_uid"] = codebookUid
+	filter["tags"] = bson.M{
+		"$elemMatch": bson.M{"$eq": tag},
+	}
+
+	var result Runner
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Runner{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *runnerDAO) CreateRunner(ctx context.Context, r Runner) (int64, error) {
@@ -80,15 +138,62 @@ func (dao *runnerDAO) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (dao *runnerDAO) ListTagsPipelineByCodebookUid(ctx context.Context) ([]RunnerPipeline, error) {
+	col := dao.db.Collection(RunnerCollection)
+	pipeline := mongo.Pipeline{
+		{{"$group", bson.D{
+			{"_id", "$codebook_uid"},
+			// 使用 $push 累加器将选择的字段添加到 runners 数组中
+			{"runner_tags", bson.D{{"$push", bson.D{
+				{"tags", "$tags"},
+				{"codebook_uid", "$codebook_uid"},
+			}}}},
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []RunnerPipeline
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
+}
+
 type Runner struct {
-	Id             int64    `bson:"id"`
-	Name           string   `bson:"name"`
-	TaskIdentifier string   `bson:"task_identifier"`
-	TaskSecret     string   `bson:"task_secret"`
-	WorkName       string   `bson:"work_name"`
-	Tags           []string `bson:"tags"`
-	Action         uint8    `bson:"action"`
-	Desc           string   `json:"desc"`
-	Ctime          int64    `bson:"ctime"`
-	Utime          int64    `bson:"utime"`
+	Id             int64       `bson:"id"`
+	Name           string      `bson:"name"`
+	CodebookUid    string      `bson:"codebook_uid"`
+	CodebookSecret string      `bson:"codebook_secret"`
+	WorkerName     string      `bson:"worker_name"`
+	Topic          string      `bson:"topic"`
+	Tags           []string    `bson:"tags"`
+	Action         uint8       `bson:"action"`
+	Desc           string      `bson:"desc"`
+	Variables      []Variables `bson:"variables"`
+	Ctime          int64       `bson:"ctime"`
+	Utime          int64       `bson:"utime"`
+}
+
+type Variables struct {
+	Key   string
+	Value any
+}
+
+type RunnerPipeline struct {
+	CodebookUid string       `bson:"_id"`
+	RunnerTags  []RunnerTags `bson:"runner_tags"`
+}
+
+type RunnerTags struct {
+	CodebookUid string   `bson:"codebook_uid"`
+	Tags        []string `json:"tags"`
 }

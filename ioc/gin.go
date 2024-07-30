@@ -3,15 +3,18 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
+	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -22,7 +25,8 @@ import (
 func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
-	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler,
+	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
+	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
@@ -41,10 +45,15 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	workerHdl.RegisterRoutes(server)
 	runnerHdl.RegisterRoutes(server)
 	strategyHdl.RegisterRoutes(server)
-	orderHdl.RegisterRoutes(server)
+
+	workflowHdl.RegisterRoutes(server)
+	templateGroupHdl.RegisterRoutes(server)
+	engineHdl.RegisterRoutes(server)
+
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
-
+	orderHdl.RegisterRoutes(server)
+	taskHdl.RegisterRoutes(server)
 	return server
 }
 

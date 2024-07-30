@@ -15,10 +15,15 @@ type Service interface {
 	UpdateCodebook(ctx context.Context, req domain.Codebook) (int64, error)
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 	ValidationSecret(ctx context.Context, identifier string, secret string) (bool, error)
+	FindByUid(ctx context.Context, identifier string) (domain.Codebook, error)
 }
 
 type service struct {
 	repo repository.CodebookRepository
+}
+
+func (s *service) FindByUid(ctx context.Context, identifier string) (domain.Codebook, error) {
+	return s.repo.FindByUid(ctx, identifier)
 }
 
 func (s *service) ValidationSecret(ctx context.Context, identifier string, secret string) (bool, error) {

@@ -15,13 +15,20 @@ type Service interface {
 	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
+	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
+	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 }
 
 type service struct {
 	repo    repository.TemplateRepository
 	workApp *workwx.WorkwxApp
+}
+
+func (s *service) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error) {
+	return s.repo.DetailTemplateByExternalTemplateId(ctx, externalId)
 }
 
 func NewService(repo repository.TemplateRepository, workApp *workwx.WorkwxApp) Service {
@@ -67,6 +74,10 @@ func (s *service) CreateTemplate(ctx context.Context, req domain.Template) (int6
 	return s.repo.CreateTemplate(ctx, req)
 }
 
+func (s *service) UpdateTemplate(ctx context.Context, t domain.Template) (int64, error) {
+	return s.repo.UpdateTemplate(ctx, t)
+}
+
 func (s *service) DetailTemplate(ctx context.Context, id int64) (domain.Template, error) {
 	return s.repo.DetailTemplate(ctx, id)
 }
@@ -96,4 +107,8 @@ func (s *service) ListTemplate(ctx context.Context, offset, limit int64) ([]doma
 
 func (s *service) DeleteTemplate(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteTemplate(ctx, id)
+}
+
+func (s *service) Pipeline(ctx context.Context) ([]domain.TemplateCombination, error) {
+	return s.repo.Pipeline(ctx)
 }

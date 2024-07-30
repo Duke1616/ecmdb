@@ -13,8 +13,11 @@ type TemplateRepository interface {
 	FindByExternalTemplateId(ctx context.Context, hash string) (domain.Template, error)
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error)
+	UpdateTemplate(ctx context.Context, req domain.Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error)
 	Total(ctx context.Context) (int64, error)
+	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 }
 
 func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
@@ -25,6 +28,25 @@ func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
 
 type templateRepository struct {
 	dao dao.TemplateDAO
+}
+
+func (repo *templateRepository) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (
+	domain.Template, error) {
+	t, err := repo.dao.DetailTemplateByExternalTemplateId(ctx, externalId)
+	return repo.toDomain(t), err
+}
+
+func (repo *templateRepository) Pipeline(ctx context.Context) ([]domain.TemplateCombination, error) {
+	pipeline, err := repo.dao.Pipeline(ctx)
+	return slice.Map(pipeline, func(idx int, src dao.TemplatePipeline) domain.TemplateCombination {
+		return domain.TemplateCombination{
+			Id:    src.Id,
+			Total: src.Total,
+			Templates: slice.Map(src.Templates, func(idx int, src dao.Template) domain.Template {
+				return repo.toDomain(src)
+			}),
+		}
+	}), err
 }
 
 func (repo *templateRepository) CreateTemplate(ctx context.Context, req domain.Template) (int64, error) {
@@ -50,6 +72,10 @@ func (repo *templateRepository) DeleteTemplate(ctx context.Context, id int64) (i
 	return repo.dao.DeleteTemplate(ctx, id)
 }
 
+func (repo *templateRepository) UpdateTemplate(ctx context.Context, req domain.Template) (int64, error) {
+	return repo.dao.UpdateTemplate(ctx, repo.toEntity(req))
+}
+
 func (repo *templateRepository) ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error) {
 	ts, err := repo.dao.ListTemplate(ctx, offset, limit)
 	return slice.Map(ts, func(idx int, src dao.Template) domain.Template {
@@ -63,7 +89,11 @@ func (repo *templateRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 	return dao.Template{
+		Id:                 req.Id,
 		Name:               req.Name,
+		WorkflowId:         req.WorkflowId,
+		GroupId:            req.GroupId,
+		Icon:               req.Icon,
 		CreateType:         req.CreateType.ToUint8(),
 		UniqueHash:         req.UniqueHash,
 		WechatOAControls:   req.WechatOAControls,
@@ -78,6 +108,9 @@ func (repo *templateRepository) toDomain(req dao.Template) domain.Template {
 	return domain.Template{
 		Id:                 req.Id,
 		Name:               req.Name,
+		WorkflowId:         req.WorkflowId,
+		GroupId:            req.GroupId,
+		Icon:               req.Icon,
 		CreateType:         domain.CreateType(req.CreateType),
 		WechatOAControls:   req.WechatOAControls,
 		UniqueHash:         req.UniqueHash,

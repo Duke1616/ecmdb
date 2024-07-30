@@ -1,13 +1,13 @@
 package event
 
-const TaskRunnerEventName = "task_runner_events"
+const TaskRegisterRunnerEventName = "register_runner_event"
 
 type Action uint8
 
 type TaskRunnerEvent struct {
-	TaskIdentifier string
-	TaskSecret     string
-	WorkName       string
+	CodebookUid    string
+	CodebookSecret string
+	WorkerName     string
 	Name           string
 	Tags           []string
 	Desc           string

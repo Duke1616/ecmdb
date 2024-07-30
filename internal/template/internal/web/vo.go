@@ -1,10 +1,13 @@
 package web
 
 type CreateTemplateReq struct {
-	Name    string `json:"name"`
-	Rules   string `json:"rules"`
-	Options string `json:"options"`
-	Desc    string `json:"desc"`
+	Name       string `json:"name"`
+	WorkflowId int64  `json:"workflow_id"`
+	GroupId    int64  `json:"group_id"`
+	Icon       string `json:"icon"`
+	Rules      string `json:"rules"`
+	Options    string `json:"options"`
+	Desc       string `json:"desc"`
 }
 
 type DetailTemplateReq struct {
@@ -29,6 +32,9 @@ type CreateType uint8
 type Template struct {
 	Id         int64                    `json:"id"`
 	Name       string                   `json:"name"`
+	WorkflowId int64                    `json:"workflow_id"`
+	Icon       string                   `json:"icon"`
+	GroupId    int64                    `json:"group_id"`
 	CreateType CreateType               `json:"create_type"`
 	Rules      []map[string]interface{} `json:"rules"`
 	Options    map[string]interface{}   `json:"options"`
@@ -38,4 +44,43 @@ type Template struct {
 type RetrieveTemplates struct {
 	Total     int64      `json:"total"`
 	Templates []Template `json:"templates"`
+}
+
+type UpdateTemplateReq struct {
+	Id         int64  `json:"id"`
+	GroupId    int64  `json:"group_id"`
+	Icon       string `json:"icon"`
+	WorkflowId int64  `json:"workflow_id"`
+	Name       string `json:"name"`
+	Rules      string `json:"rules"`
+	Options    string `json:"options"`
+}
+
+type CreateTemplateGroupReq struct {
+	Name string `json:"name"`
+	Icon string `json:"icon"`
+}
+
+type TemplateGroup struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+	Icon string `json:"icon"`
+}
+
+type RetrieveTemplateGroup struct {
+	TemplateGroups []TemplateGroup `json:"template_groups"`
+	Total          int64           `json:"total"`
+}
+
+// TemplateCombination 一组数据
+type TemplateCombination struct {
+	Id        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Icon      string     `json:"icon"`
+	Total     int64      `json:"total"`
+	Templates []Template `json:"templates"`
+}
+
+type RetrieveTemplateCombination struct {
+	TemplateCombinations []TemplateCombination `json:"template_combinations"`
 }

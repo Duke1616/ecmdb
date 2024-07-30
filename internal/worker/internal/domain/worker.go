@@ -24,10 +24,11 @@ type Worker struct {
 	Status Status
 }
 
-type Message struct {
-	Topic    string
-	Name     string // 执行名称
-	UUID     string // 唯一标识
-	Language string // 语言
-	Code     string // 代码
+type Execute struct {
+	Topic     string
+	TaskId    int64
+	Language  string
+	Code      string
+	Args      map[string]interface{}
+	Variables string
 }

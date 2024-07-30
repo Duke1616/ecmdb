@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/xen0n/go-workwx"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -14,17 +13,16 @@ import (
 // ErrDataNotFound 通用的数据没找到
 var ErrDataNotFound = mongo.ErrNoDocuments
 
-const (
-	TemplateCollection = "c_template"
-)
-
 type TemplateDAO interface {
 	CreateTemplate(ctx context.Context, t Template) (int64, error)
 	FindByHash(ctx context.Context, hash string) (Template, error)
 	FindByExternalTemplateId(ctx context.Context, externalTemplateId string) (Template, error)
 	DetailTemplate(ctx context.Context, id int64) (Template, error)
+	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (Template, error)
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	UpdateTemplate(ctx context.Context, t Template) (int64, error)
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
+	Pipeline(ctx context.Context) ([]TemplatePipeline, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -36,6 +34,18 @@ func NewTemplateDAO(db *mongox.Mongo) TemplateDAO {
 
 type templateDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *templateDAO) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (Template, error) {
+	col := dao.db.Collection(TemplateCollection)
+	filter := bson.M{"external_template_id": externalId}
+
+	var t Template
+	if err := col.FindOne(ctx, filter).Decode(&t); err != nil {
+		return Template{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return t, nil
 }
 
 func (dao *templateDAO) CreateTemplate(ctx context.Context, t Template) (int64, error) {
@@ -100,6 +110,28 @@ func (dao *templateDAO) DeleteTemplate(ctx context.Context, id int64) (int64, er
 	return result.DeletedCount, nil
 }
 
+func (dao *templateDAO) UpdateTemplate(ctx context.Context, t Template) (int64, error) {
+	col := dao.db.Collection(TemplateCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":        t.Name,
+			"workflow_id": t.WorkflowId,
+			"group_id":    t.GroupId,
+			"icon":        t.Icon,
+			"rules":       t.Rules,
+			"options":     t.Options,
+			"utime":       time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": t.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
+}
+
 func (dao *templateDAO) ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error) {
 	col := dao.db.Collection(TemplateCollection)
 	filter := bson.M{}
@@ -137,16 +169,36 @@ func (dao *templateDAO) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-type Template struct {
-	Id                 int64                     `bson:"id"`
-	Name               string                    `bson:"name"`
-	CreateType         uint8                     `bson:"create_type"`
-	Rules              []map[string]interface{}  `bson:"rules"`
-	Options            map[string]interface{}    `bson:"options"`
-	ExternalTemplateId string                    `bson:"external_template_id"`
-	UniqueHash         string                    `bson:"unique_hash"`
-	WechatOAControls   workwx.OATemplateControls `bson:"wechat_oa_controls,omitempty"`
-	Desc               string                    `bson:"desc,omitempty"`
-	Ctime              int64                     `bson:"ctime"`
-	Utime              int64                     `bson:"utime"`
+func (dao *templateDAO) Pipeline(ctx context.Context) ([]TemplatePipeline, error) {
+	col := dao.db.Collection(TemplateCollection)
+	filters := bson.M{"create_type": 1}
+	pipeline := mongo.Pipeline{
+		{{"$match", filters}},
+		{{"$group", bson.D{
+			{"_id", "$group_id"},
+			{"total", bson.D{{"$sum", 1}}},
+			// 使用 $push 累加器将选择的字段添加到 templates 数组中
+			{"templates", bson.D{{"$push", bson.D{
+				{"icon", "$icon"},
+				{"name", "$name"},
+				{"id", "$id"},
+			}}}},
+		}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []TemplatePipeline
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+
+	return result, nil
 }

@@ -9,8 +9,12 @@ import (
 
 type RunnerRepository interface {
 	RegisterRunner(ctx context.Context, req domain.Runner) (int64, error)
+	Update(ctx context.Context, req domain.Runner) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, error)
 	Total(ctx context.Context) (int64, error)
+	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error)
+	ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error)
 }
 
 func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
@@ -21,6 +25,36 @@ func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
 
 type runnerRepository struct {
 	dao dao.RunnerDAO
+}
+
+func (repo *runnerRepository) Delete(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.Delete(ctx, id)
+}
+
+func (repo *runnerRepository) Update(ctx context.Context, req domain.Runner) (int64, error) {
+	return repo.dao.Update(ctx, repo.toEntity(req))
+}
+
+func (repo *runnerRepository) ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error) {
+	pipeline, err := repo.dao.ListTagsPipelineByCodebookUid(ctx)
+	return slice.Map(pipeline, func(idx int, src dao.RunnerPipeline) domain.RunnerTags {
+		var tags []string
+		for _, runner := range src.RunnerTags {
+			if runner.CodebookUid == src.CodebookUid {
+				tags = append(tags, runner.Tags...)
+			}
+		}
+
+		return domain.RunnerTags{
+			CodebookUid: src.CodebookUid,
+			Tags:        tags,
+		}
+	}), err
+}
+
+func (repo *runnerRepository) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error) {
+	runner, err := repo.dao.FindByCodebookUid(ctx, codebookUid, tag)
+	return repo.toDomain(runner), err
 }
 
 func (repo *runnerRepository) RegisterRunner(ctx context.Context, req domain.Runner) (int64, error) {
@@ -40,13 +74,20 @@ func (repo *runnerRepository) Total(ctx context.Context) (int64, error) {
 
 func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 	return dao.Runner{
-		TaskIdentifier: req.TaskIdentifier,
-		TaskSecret:     req.TaskSecret,
-		WorkName:       req.WorkName,
+		Id:             req.Id,
+		CodebookSecret: req.CodebookSecret,
+		CodebookUid:    req.CodebookUid,
+		WorkerName:     req.WorkerName,
 		Name:           req.Name,
 		Tags:           req.Tags,
-		Desc:           req.Desc,
-		Action:         req.Action.ToUint8(),
+		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
+			return dao.Variables{
+				Key:   src.Key,
+				Value: src.Value,
+			}
+		}),
+		Desc:   req.Desc,
+		Action: req.Action.ToUint8(),
 	}
 }
 
@@ -54,11 +95,17 @@ func (repo *runnerRepository) toDomain(req dao.Runner) domain.Runner {
 	return domain.Runner{
 		Id:             req.Id,
 		Name:           req.Name,
-		TaskIdentifier: req.TaskIdentifier,
-		TaskSecret:     req.TaskSecret,
-		WorkName:       req.WorkName,
+		CodebookSecret: req.CodebookSecret,
+		CodebookUid:    req.CodebookUid,
+		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Desc:           req.Desc,
-		Action:         domain.Action(req.Action),
+		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
+			return domain.Variables{
+				Key:   src.Key,
+				Value: src.Value,
+			}
+		}),
+		Desc:   req.Desc,
+		Action: domain.Action(req.Action),
 	}
 }

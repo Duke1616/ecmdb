@@ -20,6 +20,9 @@ const (
 type Template struct {
 	Id                 int64
 	Name               string
+	WorkflowId         int64
+	GroupId            int64
+	Icon               string
 	CreateType         CreateType
 	UniqueHash         string
 	ExternalTemplateId string
@@ -27,4 +30,13 @@ type Template struct {
 	Rules              []map[string]interface{}
 	Options            map[string]interface{}
 	Desc               string
+}
+
+type TemplateCombination struct {
+	Id         int64  `json:"id"`
+	Name       string `json:"name"`
+	Icon       string `json:"icon"`
+	Total      int    `json:"total"`
+	CreateType CreateType
+	Templates  []Template `json:"templates"`
 }

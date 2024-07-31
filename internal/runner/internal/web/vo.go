@@ -39,8 +39,9 @@ type DeleteRunnerReq struct {
 }
 
 type Variables struct {
-	Key   string `json:"key"`
-	Value any    `json:"value"`
+	Key    string `json:"key"`
+	Value  any    `json:"value"`
+	Secret bool   `json:"secret"`
 }
 
 type Page struct {

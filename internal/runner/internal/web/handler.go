@@ -138,8 +138,9 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 		Tags:           req.Tags,
 		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
 			return domain.Variables{
-				Key:   src.Key,
-				Value: src.Value,
+				Key:    src.Key,
+				Secret: src.Secret,
+				Value:  src.Value,
 			}
 		}),
 		Action: domain.Action(REGISTER),
@@ -156,8 +157,9 @@ func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
 		Tags:           req.Tags,
 		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
 			return domain.Variables{
-				Key:   src.Key,
-				Value: src.Value,
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
 			}
 		}),
 		Action: domain.Action(REGISTER),
@@ -172,9 +174,17 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 		Tags:        req.Tags,
 		Desc:        req.Desc,
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) Variables {
+			if src.Secret {
+				return Variables{
+					Key:    src.Key,
+					Secret: src.Secret,
+				}
+			}
+
 			return Variables{
-				Key:   src.Key,
-				Value: src.Value,
+				Key:    src.Key,
+				Secret: src.Secret,
+				Value:  src.Value,
 			}
 		}),
 		WorkerName: req.WorkerName,

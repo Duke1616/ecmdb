@@ -184,8 +184,9 @@ type Runner struct {
 }
 
 type Variables struct {
-	Key   string
-	Value any
+	Key    string `bson:"key"`
+	Value  any    `bson:"value"`
+	Secret bool   `bson:"secret"`
 }
 
 type RunnerPipeline struct {

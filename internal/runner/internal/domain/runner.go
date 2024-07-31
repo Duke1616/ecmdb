@@ -26,8 +26,9 @@ type Runner struct {
 }
 
 type Variables struct {
-	Key   string
-	Value any
+	Key    string
+	Value  any
+	Secret bool
 }
 
 type RunnerTags struct {

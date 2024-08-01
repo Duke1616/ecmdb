@@ -63,3 +63,9 @@ type RetrieveTasks struct {
 	Total int64  `json:"total"`
 	Tasks []Task `json:"tasks"`
 }
+
+type Variables struct {
+	Key    string `json:"key"`
+	Value  any    `json:"value"`
+	Secret bool   `json:"secret"`
+}

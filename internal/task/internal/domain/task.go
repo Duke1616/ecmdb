@@ -37,7 +37,7 @@ type Task struct {
 	Language        string
 	Result          string
 	Status          Status
-	Variables       string
+	Variables       []Variables
 	Args            map[string]interface{}
 }
 
@@ -46,4 +46,10 @@ type TaskResult struct {
 	TriggerPosition string `json:"trigger_position"`
 	Result          string `json:"result"`
 	Status          Status `json:"status"`
+}
+
+type Variables struct {
+	Key    string
+	Value  any
+	Secret bool
 }

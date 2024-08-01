@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
@@ -203,13 +204,14 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 }
 
 func (s *service) retry(ctx context.Context, task domain.Task) error {
+	vars, _ := json.Marshal(task.Variables)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     task.Topic,
 		Code:      task.Code,
 		Language:  task.Language,
 		Args:      task.Args,
-		Variables: task.Variables,
+		Variables: string(vars),
 	})
 }
 
@@ -303,7 +305,6 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	}
 
 	// TODO 创建一份任务到数据库中，后续执行失败，重试机制
-	vars, _ := json.Marshal(runnerResp.Variables)
 	_, err = s.repo.UpdateTask(ctx, domain.Task{
 		// 字段可有可无
 		Id:            task.Id,
@@ -313,19 +314,26 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		CodebookUid:   codebookResp.Identifier,
 
 		// 必传字段
-		OrderId:   orderResp.Id,
-		Code:      codebookResp.Code,
-		Topic:     workerResp.Topic,
-		Language:  codebookResp.Language,
-		Status:    domain.RUNNING,
-		Args:      orderResp.Data,
-		Variables: string(vars),
+		OrderId:  orderResp.Id,
+		Code:     codebookResp.Code,
+		Topic:    workerResp.Topic,
+		Language: codebookResp.Language,
+		Status:   domain.RUNNING,
+		Args:     orderResp.Data,
+		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
+			}
+		}),
 	})
 	if err != nil {
 		return err
 	}
 
 	// 发送任务执行
+	vars, _ := json.Marshal(runnerResp.Variables)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     workerResp.Topic,

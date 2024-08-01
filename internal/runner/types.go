@@ -11,3 +11,5 @@ type Service = service.Service
 type Handler = web.Handler
 
 type Runner = domain.Runner
+
+type Variables = domain.Variables

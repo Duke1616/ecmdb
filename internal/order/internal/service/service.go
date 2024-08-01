@@ -2,11 +2,17 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/xen0n/go-workwx"
 	"golang.org/x/sync/errgroup"
+	"reflect"
+	"strings"
 )
 
 type Service interface {
@@ -76,11 +82,7 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
 		return err
 	}
 
-	go func() {
-		err = s.sendGenerateFlowEvent(ctx, req, orderId)
-	}()
-
-	return err
+	return s.sendGenerateFlowEvent(ctx, req, orderId)
 }
 
 func (s *service) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error) {
@@ -120,16 +122,25 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, o
 		req.Data = make(map[string]interface{})
 	}
 
-	req.Data["starter"] = req.CreateBy
+	variables, err := s.variables(req)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(variables)
+	if err != nil {
+		return err
+	}
+
 	evt := event.OrderEvent{
 		Id:         orderId,
 		Provide:    event.Provide(req.Provide),
 		WorkflowId: req.WorkflowId,
 		Data:       req.Data,
+		Variables:  string(data),
 	}
 
-	err := s.producer.Produce(ctx, evt)
-
+	err = s.producer.Produce(ctx, evt)
 	if err != nil {
 		// 要做好监控和告警
 		s.l.Error("发送创建流程事件失败",
@@ -138,4 +149,90 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, o
 	}
 
 	return nil
+}
+
+func (s *service) variables(req domain.Order) ([]event.Variables, error) {
+	var data []event.Variables
+	data = append(data, event.Variables{
+		Key:   "starter",
+		Value: req.CreateBy,
+	})
+
+	switch req.Provide {
+	case domain.WECHAT:
+		oaData, err := wechatOaData(req.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		data = convert(data, oaData)
+	case domain.SYSTEM:
+		for key, value := range req.Data {
+			// 判断如果浮点数类型，转换成string
+			strValue := value
+			valueType := reflect.TypeOf(value)
+			if valueType.Kind() == reflect.Float64 {
+				strValue = fmt.Sprintf("%f", value)
+			}
+
+			data = append(data, event.Variables{
+				Key:   key,
+				Value: strValue,
+			})
+		}
+	}
+
+	return data, nil
+}
+
+func wechatOaData(data map[string]interface{}) (workwx.OAApprovalDetail, error) {
+	wechatOaJson, err := json.Marshal(data)
+	if err != nil {
+		return workwx.OAApprovalDetail{}, nil
+	}
+
+	var wechatOaDetail workwx.OAApprovalDetail
+	err = json.Unmarshal(wechatOaJson, &wechatOaDetail)
+	if err != nil {
+		return workwx.OAApprovalDetail{}, err
+	}
+
+	return wechatOaDetail, nil
+}
+
+func convert(data []event.Variables, oaData workwx.OAApprovalDetail) []event.Variables {
+	for _, contents := range oaData.ApplyData.Contents {
+		id := strings.Split(contents.ID, "-")
+		key := id[1]
+
+		switch contents.Control {
+		case "Selector":
+			switch contents.Value.Selector.Type {
+			case "single":
+				data = append(data, event.Variables{
+					Key:   key,
+					Value: contents.Value.Selector.Options[0].Value[0].Text,
+				})
+			case "multi":
+				value := slice.Map(contents.Value.Selector.Options, func(idx int, src workwx.OAContentSelectorOption) string {
+					return src.Value[0].Text
+				})
+
+				data = append(data, event.Variables{
+					Key:   key,
+					Value: value,
+				})
+			}
+
+		case "Textarea":
+			data = append(data, event.Variables{
+				Key:   key,
+				Value: contents.Value.Text,
+			})
+		case "default":
+			fmt.Println("不符合筛选规则")
+		}
+	}
+
+	return data
 }

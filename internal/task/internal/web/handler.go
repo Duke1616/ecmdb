@@ -89,6 +89,27 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		Status:      Status(req.Status),
 		Result:      req.Result,
 		Args:        string(args),
-		Variables:   req.Variables,
+		Variables:   desensitization(req.Variables),
 	}
+}
+
+func desensitization(req []domain.Variables) string {
+	variablesJson := slice.Map(req, func(idx int, src domain.Variables) Variables {
+		if src.Secret {
+			return Variables{
+				Key:    src.Key,
+				Value:  "********",
+				Secret: src.Secret,
+			}
+		}
+
+		return Variables{
+			Key:    src.Key,
+			Secret: src.Secret,
+			Value:  src.Value,
+		}
+	})
+
+	vars, _ := json.Marshal(variablesJson)
+	return string(vars)
 }

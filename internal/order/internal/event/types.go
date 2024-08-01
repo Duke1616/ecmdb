@@ -28,6 +28,8 @@ type OrderEvent struct {
 	WorkflowId int64                  `json:"workflow_id"`
 	Provide    Provide                `json:"provide"`
 	Data       map[string]interface{} `json:"data"`
+	// 流程引擎使用的变量, 根据这样可以定制express判断公式
+	Variables string `json:"variables"`
 }
 
 type Variables struct {

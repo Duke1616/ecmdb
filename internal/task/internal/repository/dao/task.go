@@ -281,11 +281,17 @@ type Task struct {
 	Topic           string                 `bson:"topic"`
 	Language        string                 `bson:"language"`
 	Args            map[string]interface{} `bson:"args"`
-	Variables       string                 `json:"variables"`
+	Variables       []Variables            `json:"variables"`
 	Status          uint8                  `bson:"status"`
 	Result          string                 `bson:"result"`
 	TriggerPosition string                 `bson:"trigger_position"`
 	CurrentNodeId   string                 `bson:"current_node_id"`
 	Ctime           int64                  `bson:"ctime"`
 	Utime           int64                  `bson:"utime"`
+}
+
+type Variables struct {
+	Key    string `bson:"key"`
+	Value  any    `bson:"value"`
+	Secret bool   `bson:"secret"`
 }

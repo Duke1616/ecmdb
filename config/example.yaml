@@ -1,3 +1,5 @@
+crypto_aes_key: "1234567890"
+
 ldap:
   url: "ldap://127.0.0.1:389"
   base_dn: "DC=example,DC=com"

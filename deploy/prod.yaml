@@ -1,3 +1,5 @@
+crypto_aes_key: "1234567890"
+
 ldap:
   url: "ldap://127.0.0.1:389"
   base_dn: "DC=example,DC=com"
@@ -23,3 +25,23 @@ mongodb:
   dsn: mongodb://127.0.0.1:27017/cmdb
   username: cmdb
   password: 123456
+
+mysql:
+  dsn: workflow:123456@tcp(127.0.0.1:3306)/workflow?charset=utf8mb4&parseTime=True&loc=Local
+
+kafka:
+  network: tcp
+  addresses:
+    - 127.0.0.1:9094
+
+etcd:
+  endpoints:
+    - 127.0.0.1:2379
+
+wechat:
+  corpId: ""
+  corpSecret: ""
+  agentId: 1000002
+
+cronjob:
+  enabled: true

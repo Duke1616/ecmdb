@@ -17,7 +17,7 @@ type TaskDAO interface {
 	FindById(ctx context.Context, id int64) (Task, error)
 	UpdateTask(ctx context.Context, t Task) (int64, error)
 	UpdateTaskStatus(ctx context.Context, req Task) (int64, error)
-	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables []Variables) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]Task, error)
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
 	Count(ctx context.Context, status uint8) (int64, error)
@@ -96,7 +96,7 @@ func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, 
 	return result, nil
 }
 
-func (dao *taskDAO) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+func (dao *taskDAO) UpdateVariables(ctx context.Context, id int64, variables []Variables) (int64, error) {
 	col := dao.db.Collection(TaskCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{

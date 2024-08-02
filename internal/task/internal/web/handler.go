@@ -2,7 +2,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -56,11 +55,16 @@ func (h *Handler) UpdateArgs(ctx *gin.Context, req UpdateArgsReq) (ginx.Result, 
 }
 
 func (h *Handler) UpdateVariableReq(ctx *gin.Context, req UpdateVariablesReq) (ginx.Result, error) {
-	fmt.Print(req.Variables)
-	count, err := h.svc.UpdateVariables(ctx, req.Id, req.Variables)
+	variables, err := h.toVariablesDomain(req.Variables)
 	if err != nil {
 		return systemErrorResult, err
 	}
+
+	count, err := h.svc.UpdateVariables(ctx, req.Id, variables)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
 	return ginx.Result{
 		Data: count,
 		Msg:  "修改Args成功",
@@ -105,11 +109,27 @@ func desensitization(req []domain.Variables) string {
 
 		return Variables{
 			Key:    src.Key,
-			Secret: src.Secret,
 			Value:  src.Value,
+			Secret: src.Secret,
 		}
 	})
 
 	vars, _ := json.Marshal(variablesJson)
 	return string(vars)
+}
+
+func (h *Handler) toVariablesDomain(variables string) ([]domain.Variables, error) {
+	var vars []Variables
+	err := json.Unmarshal([]byte(variables), &vars)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.Map(vars, func(idx int, src Variables) domain.Variables {
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	}), nil
 }

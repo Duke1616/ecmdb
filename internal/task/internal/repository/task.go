@@ -16,7 +16,7 @@ type TaskRepository interface {
 	FindById(ctx context.Context, id int64) (domain.Task, error)
 	UpdateTask(ctx context.Context, req domain.Task) (int64, error)
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
-	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error)
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 	Total(ctx context.Context, status uint8) (int64, error)
@@ -47,8 +47,14 @@ func (repo *taskRepository) ListTask(ctx context.Context, offset, limit int64) (
 	}), err
 }
 
-func (repo *taskRepository) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
-	return repo.dao.UpdateVariables(ctx, id, variables)
+func (repo *taskRepository) UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error) {
+	return repo.dao.UpdateVariables(ctx, id, slice.Map(variables, func(idx int, src domain.Variables) dao.Variables {
+		return dao.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	}))
 }
 
 func (repo *taskRepository) FindById(ctx context.Context, id int64) (domain.Task, error) {

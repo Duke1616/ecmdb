@@ -6,15 +6,18 @@ import (
 	"github.com/Duke1616/ecmdb/internal/runner/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
 	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 type Handler struct {
 	svc         service.Service
 	workerSvc   worker.Service
 	codebookSvc codebook.Service
+	aesKey      string
 }
 
 func NewHandler(svc service.Service, workerSvc worker.Service, codebookSvc codebook.Service) *Handler {
@@ -22,6 +25,7 @@ func NewHandler(svc service.Service, workerSvc worker.Service, codebookSvc codeb
 		svc:         svc,
 		workerSvc:   workerSvc,
 		codebookSvc: codebookSvc,
+		aesKey:      viper.Get("crypto_aes_key").(string),
 	}
 }
 
@@ -136,15 +140,10 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
-			return domain.Variables{
-				Key:    src.Key,
-				Secret: src.Secret,
-				Value:  src.Value,
-			}
-		}),
-		Action: domain.Action(REGISTER),
+		Variables:      h.toVariablesDomain(req.Variables),
+		Action:         domain.Action(REGISTER),
 	}
+
 }
 
 func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
@@ -155,15 +154,30 @@ func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
-			return domain.Variables{
-				Key:    src.Key,
-				Value:  src.Value,
-				Secret: src.Secret,
-			}
-		}),
-		Action: domain.Action(REGISTER),
+		Variables:      h.toVariablesDomain(req.Variables),
+		Action:         domain.Action(REGISTER),
 	}
+}
+
+func (h *Handler) toVariablesDomain(req []Variables) []domain.Variables {
+	return slice.Map(req, func(idx int, src Variables) domain.Variables {
+		val := src.Value
+		if src.Secret {
+			// 如果加密失败就存储原始存储
+			aesVal, err := cryptox.EncryptAES(h.aesKey, src.Value)
+			if err != nil {
+				return domain.Variables{}
+			}
+
+			val = aesVal
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Secret: src.Secret,
+			Value:  val,
+		}
+	})
 }
 
 func (h *Handler) toRunnerVo(req domain.Runner) Runner {
@@ -180,7 +194,6 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 					Secret: src.Secret,
 				}
 			}
-
 			return Variables{
 				Key:    src.Key,
 				Secret: src.Secret,

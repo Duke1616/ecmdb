@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -13,8 +14,10 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
@@ -27,7 +30,7 @@ type Service interface {
 	RetryTask(ctx context.Context, id int64) error
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error)
 	// ListTaskByStatus 列表任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
@@ -37,6 +40,7 @@ type Service interface {
 
 type service struct {
 	repo        repository.TaskRepository
+	aesKey      string
 	logger      *elog.Component
 	orderSvc    order.Service
 	engineSvc   engine.Service
@@ -107,6 +111,7 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service) Service {
 	return &service{
 		repo:        repo,
+		aesKey:      viper.Get("crypto_aes_key").(string),
 		logger:      elog.DefaultLogger,
 		orderSvc:    orderSvc,
 		workflowSvc: workflowSvc,
@@ -172,7 +177,43 @@ func (s *service) UpdateArgs(ctx context.Context, id int64, args map[string]inte
 	return s.repo.UpdateArgs(ctx, id, args)
 }
 
-func (s *service) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+func (s *service) UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error) {
+	task, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	mapKey := slice.ToMap(task.Variables, func(element domain.Variables) string {
+		return element.Key
+	})
+
+	variables = slice.Map(variables, func(idx int, src domain.Variables) domain.Variables {
+		val, ok := mapKey[src.Key]
+		if ok {
+			// 拒绝对于敏感信息的修改
+			if val.Secret {
+				return domain.Variables{
+					Key:    src.Key,
+					Value:  val.Value,
+					Secret: val.Secret,
+				}
+			} else {
+				return domain.Variables{
+					Key:    src.Key,
+					Value:  src.Value,
+					Secret: val.Secret,
+				}
+			}
+		}
+
+		// 如果修改了 key 的话，那我也没有什么办法了
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
+
 	return s.repo.UpdateVariables(ctx, id, variables)
 }
 
@@ -204,14 +245,42 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 }
 
 func (s *service) retry(ctx context.Context, task domain.Task) error {
-	vars, _ := json.Marshal(task.Variables)
+	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+		Id:              task.Id,
+		TriggerPosition: "获取流程信息失败",
+		Status:          domain.RUNNING,
+	})
+
+	// 变量数据梳理
+	vars := slice.Map(task.Variables, func(idx int, src domain.Variables) domain.Variables {
+		if src.Secret {
+			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
+			if er != nil {
+				return domain.Variables{}
+			}
+
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  val,
+				Secret: src.Secret,
+			}
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
+
+	variables, _ := json.Marshal(vars)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     task.Topic,
 		Code:      task.Code,
 		Language:  task.Language,
 		Args:      task.Args,
-		Variables: string(vars),
+		Variables: string(variables),
 	})
 }
 
@@ -332,8 +401,31 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return err
 	}
 
-	// 发送任务执行
-	vars, _ := json.Marshal(runnerResp.Variables)
+	// 变量数据梳理
+	variables := slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
+		if src.Secret {
+			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
+			if er != nil {
+				return domain.Variables{}
+			}
+
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  val,
+				Secret: src.Secret,
+			}
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
+
+	fmt.Print(variables)
+	vars, _ := json.Marshal(variables)
+	// 运行任务
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     workerResp.Topic,

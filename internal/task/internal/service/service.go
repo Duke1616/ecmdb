@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -247,8 +246,8 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 func (s *service) retry(ctx context.Context, task domain.Task) error {
 	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
 		Id:              task.Id,
-		TriggerPosition: "获取流程信息失败",
-		Status:          domain.RUNNING,
+		TriggerPosition: "重试任务",
+		Status:          domain.RETRY,
 	})
 
 	// 变量数据梳理
@@ -423,9 +422,8 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		}
 	})
 
-	fmt.Print(variables)
-	vars, _ := json.Marshal(variables)
 	// 运行任务
+	vars, _ := json.Marshal(variables)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     workerResp.Topic,

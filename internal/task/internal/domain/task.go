@@ -20,6 +20,8 @@ const (
 	PENDING Status = 5
 	// SCHEDULE 等待调度
 	SCHEDULE Status = 6
+	//RETRY 重试
+	RETRY Status = 7
 )
 
 type Task struct {

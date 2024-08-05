@@ -89,7 +89,12 @@ func (h *Handler) UpdateRunner(ctx *gin.Context, req UpdateRunnerReq) (ginx.Resu
 	}
 
 	// 注册
-	_, err = h.svc.Update(ctx, h.toUpdateDomain(req))
+	runner, err := h.toUpdateDomain(ctx, req)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	_, err = h.svc.Update(ctx, runner)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -146,7 +151,16 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 
 }
 
-func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
+func (h *Handler) toUpdateDomain(ctx context.Context, req UpdateRunnerReq) (domain.Runner, error) {
+	runner, err := h.svc.Detail(ctx, req.Id)
+	if err != nil {
+		return domain.Runner{}, err
+	}
+
+	oldVars := slice.ToMap(runner.Variables, func(element domain.Variables) string {
+		return element.Key
+	})
+
 	return domain.Runner{
 		Id:             req.Id,
 		Name:           req.Name,
@@ -154,9 +168,33 @@ func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Variables:      h.toVariablesDomain(req.Variables),
+		Variables:      h.toUpdateVariablesDomain(oldVars, req.Variables),
 		Action:         domain.Action(REGISTER),
-	}
+	}, nil
+}
+
+func (h *Handler) toUpdateVariablesDomain(oldVars map[string]domain.Variables, req []Variables) []domain.Variables {
+	return slice.Map(req, func(idx int, src Variables) domain.Variables {
+		value := src.Value
+		if src.Secret {
+			val, ok := oldVars[src.Key]
+			if ok && src.Value == nil {
+				value = val.Value
+			} else {
+				aesVal, err := cryptox.EncryptAES(h.aesKey, src.Value)
+				if err != nil {
+					return domain.Variables{}
+				}
+				value = aesVal
+			}
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Secret: src.Secret,
+			Value:  value,
+		}
+	})
 }
 
 func (h *Handler) toVariablesDomain(req []Variables) []domain.Variables {

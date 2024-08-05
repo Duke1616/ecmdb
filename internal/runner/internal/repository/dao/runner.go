@@ -21,6 +21,7 @@ type RunnerDAO interface {
 	CreateRunner(ctx context.Context, r Runner) (int64, error)
 	Update(ctx context.Context, req Runner) (int64, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	Detail(ctx context.Context, id int64) (Runner, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error)
 	Count(ctx context.Context) (int64, error)
 	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error)
@@ -35,6 +36,18 @@ func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
 
 type runnerDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *runnerDAO) Detail(ctx context.Context, id int64) (Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"id": id}
+
+	var result Runner
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Runner{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *runnerDAO) Delete(ctx context.Context, id int64) (int64, error) {

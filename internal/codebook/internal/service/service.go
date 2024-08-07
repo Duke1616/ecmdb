@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/domain"
-	"github.com/Duke1616/ecmdb/internal/codebook/internal/repostory"
+	"github.com/Duke1616/ecmdb/internal/codebook/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
 

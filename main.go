@@ -18,6 +18,13 @@ func main() {
 
 	initCronjob(app.Jobs)
 	engine.RegisterEvents(app.Event)
+
+	// 获取所有注册的路由
+	//routes := app.Web.Routes()
+	//for _, route := range routes {
+	//	fmt.Printf("Method: %s, Path: %s\n", route.Method, route.Path)
+	//}
+
 	err = app.Web.Run(":8000")
 	panic(err)
 }

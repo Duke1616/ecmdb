@@ -27,7 +27,6 @@ func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
-
 }
 
 func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {

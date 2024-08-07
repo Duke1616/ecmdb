@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/event"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/runner"
@@ -27,6 +28,7 @@ func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
 		BaseSet,
 		InitSession,
+		InitCasbin,
 		InitLdapConfig,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
@@ -58,6 +60,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*event.Module), "Event"),
 		task.InitModule,
 		wire.FieldsOf(new(*task.Module), "Hdl", "StartTaskJob", "PassProcessTaskJob"),
+		policy.InitModule,
+		wire.FieldsOf(new(*policy.Module), "Hdl"),
 		initCronJobs,
 		InitWebServer,
 		InitGinMiddlewares)

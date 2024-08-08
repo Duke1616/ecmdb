@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/event"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -35,9 +36,17 @@ import (
 func InitApp() (*App, error) {
 	cmdable := InitRedis()
 	provider := InitSession(cmdable)
+	db := InitMySQLDB()
+	syncedEnforcer := InitCasbin(db)
+	module, err := policy.InitModule(syncedEnforcer)
+	if err != nil {
+		return nil, err
+	}
+	service := module.Svc
+	checkPolicyMiddlewareBuilder := middleware.NewCheckPolicyMiddlewareBuilder(service)
 	v := InitGinMiddlewares()
 	mongo := InitMongoDB()
-	module, err := relation.InitModule(mongo)
+	relationModule, err := relation.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
@@ -45,19 +54,19 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	resourceModule, err := resource.InitModule(mongo, attributeModule, module)
+	resourceModule, err := resource.InitModule(mongo, attributeModule, relationModule)
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(mongo, module, attributeModule, resourceModule)
+	modelModule, err := model.InitModule(mongo, relationModule, attributeModule, resourceModule)
 	if err != nil {
 		return nil, err
 	}
 	handler := modelModule.Hdl
 	webHandler := attributeModule.Hdl
 	handler2 := resourceModule.Hdl
-	relationModelHandler := module.RMHdl
-	relationResourceHandler := module.RRHdl
+	relationModelHandler := relationModule.RMHdl
+	relationResourceHandler := relationModule.RRHdl
 	mq := InitMQ()
 	client := InitEtcdClient()
 	workerModule, err := worker.InitModule(mq, mongo, client)
@@ -65,7 +74,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler3 := workerModule.Hdl
-	relationTypeHandler := module.RTHdl
+	relationTypeHandler := relationModule.RTHdl
 	config := InitLdapConfig()
 	userModule, err := user.InitModule(mongo, config)
 	if err != nil {
@@ -93,7 +102,6 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	db := InitMySQLDB()
 	engineModule, err := engine.InitModule(db)
 	if err != nil {
 		return nil, err
@@ -115,13 +123,8 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler12 := taskModule.Hdl
-	syncedEnforcer := InitCasbin(db)
-	policyModule, err := policy.InitModule(syncedEnforcer)
-	if err != nil {
-		return nil, err
-	}
-	handler13 := policyModule.Hdl
-	ginEngine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13)
+	handler13 := module.Hdl
+	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule)
 	if err != nil {
 		return nil, err

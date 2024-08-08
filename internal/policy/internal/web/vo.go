@@ -25,8 +25,16 @@ type AddGroupingPolicyReq struct {
 	RoleName string `json:"role_name"`
 }
 
+type GetPermissionsForUserReq struct {
+	UserId string `json:"user_id"`
+}
+
 type AuthorizeReq struct {
 	UserId string `json:"user_id"`
 	Path   string `json:"path"`
 	Method string `json:"method"`
+}
+
+type RetrievePolicies struct {
+	Policies []Policy `json:"policies"`
 }

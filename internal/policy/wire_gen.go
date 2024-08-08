@@ -20,6 +20,7 @@ func InitModule(enforcer *casbin.SyncedEnforcer) (*Module, error) {
 	handler := web.NewHandler(serviceService)
 	module := &Module{
 		Hdl: handler,
+		Svc: serviceService,
 	}
 	return module, nil
 }

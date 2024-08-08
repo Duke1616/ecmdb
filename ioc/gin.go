@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -23,7 +24,8 @@ import (
 	"time"
 )
 
-func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
+func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,
+	mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
@@ -31,10 +33,9 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
-
 	server.Use(mdls...)
-	ldapHdl.PublicRegisterRoutes(server)
 
+	ldapHdl.PublicRegisterRoutes(server)
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
 	resourceHdl.RegisterRoutes(server)
@@ -47,10 +48,12 @@ func InitWebServer(sp session.Provider, mdls []gin.HandlerFunc, modelHdl *model.
 	runnerHdl.RegisterRoutes(server)
 	strategyHdl.RegisterRoutes(server)
 
+	policyHdl.PublicRoutes(server)
+
+	server.Use(checkPolicyMiddleware.Build())
 	workflowHdl.RegisterRoutes(server)
 	templateGroupHdl.RegisterRoutes(server)
 	engineHdl.RegisterRoutes(server)
-	policyHdl.PublicRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())

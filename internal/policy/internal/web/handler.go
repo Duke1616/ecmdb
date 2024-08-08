@@ -24,6 +24,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/update/p", ginx.WrapBody[PolicyReq](h.UpdatePolicies))
 	g.POST("/add/g", ginx.WrapBody[AddGroupingPolicyReq](h.AddGroupingPolicy))
 	g.POST("/authorize", ginx.WrapBody[AuthorizeReq](h.Authorize))
+	g.POST("/user/permissions", ginx.WrapBody[GetPermissionsForUserReq](h.GetPermissionsForUser))
 }
 
 func (h *Handler) AddPolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, error) {
@@ -34,6 +35,38 @@ func (h *Handler) AddPolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, err
 
 	return ginx.Result{
 		Data: ok,
+	}, nil
+}
+
+func (h *Handler) GetPermissionsForUser(ctx *gin.Context, req GetPermissionsForUserReq) (ginx.Result, error) {
+	resp, err := h.svc.GetPermissionsForUser(ctx, req.UserId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 返回后端结构
+	uniquePermissions := make(map[Policy]bool)
+	var policies []Policy
+	policies = slice.FilterMap(resp, func(idx int, src []string) (Policy, bool) {
+		policy := Policy{
+			Path:   src[1],
+			Method: src[2],
+			Effect: Effect(src[3]),
+		}
+
+		if !uniquePermissions[policy] {
+			uniquePermissions[policy] = true
+			return policy, true
+		}
+
+		return policy, false
+	})
+
+	return ginx.Result{
+		Msg: "获取用户权限成功",
+		Data: RetrievePolicies{
+			Policies: policies,
+		},
 	}, nil
 }
 
@@ -64,7 +97,7 @@ func (h *Handler) Authorize(ctx *gin.Context, req AuthorizeReq) (ginx.Result, er
 
 	return ginx.Result{
 		Code: 0,
-		Msg:  "",
+		Msg:  "权限通过",
 		Data: authorize,
 	}, nil
 }

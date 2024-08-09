@@ -22,7 +22,14 @@ func main() {
 	// 获取所有注册的路由
 	//routes := app.Web.Routes()
 	//for _, route := range routes {
-	//	fmt.Printf("Method: %s, Path: %s\n", route.Method, route.Path)
+	//	_, err = app.Svc.RegisterEndpoint(context.Background(), endpoint.Endpoint{
+	//		Method: route.Method,
+	//		Path:   route.Path,
+	//	})
+	//
+	//	if err != nil {
+	//		panic(err)
+	//	}
 	//}
 
 	err = app.Web.Run(":8000")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
-	"github.com/Bunny3th/easy-workflow/workflow/web_api/router"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -30,7 +29,7 @@ func NewHandler(svc service.Service, engineSvc engine.Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(server *gin.Engine) {
-	router.NewRouter(server, "/api/process", false, "")
+	//router.NewRouter(server, "/api/process", false, "")
 
 	g := server.Group("/api/order")
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))

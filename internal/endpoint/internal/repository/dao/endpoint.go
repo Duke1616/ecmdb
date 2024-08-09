@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -11,10 +13,55 @@ const EndpointCollection = "c_endpoint"
 
 type EndpointDAO interface {
 	CreateEndpoint(ctx context.Context, t Endpoint) (int64, error)
+	CreateMutilEndpoint(ctx context.Context, req []Endpoint) (int64, error)
+	ListEndpoint(ctx context.Context, offset, limit int64) ([]Endpoint, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 type endpointDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *endpointDAO) CreateMutilEndpoint(ctx context.Context, req []Endpoint) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *endpointDAO) ListEndpoint(ctx context.Context, offset, limit int64) ([]Endpoint, error) {
+	col := dao.db.Collection(EndpointCollection)
+	filter := bson.M{}
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Endpoint
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *endpointDAO) Count(ctx context.Context) (int64, error) {
+	col := dao.db.Collection(EndpointCollection)
+	filer := bson.M{}
+
+	count, err := col.CountDocuments(ctx, filer)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 func (dao *endpointDAO) CreateEndpoint(ctx context.Context, e Endpoint) (int64, error) {

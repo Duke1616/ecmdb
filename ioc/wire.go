@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -69,6 +70,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*menu.Module), "Hdl"),
 		endpoint.InitModule,
 		wire.FieldsOf(new(*endpoint.Module), "Hdl", "Svc"),
+		role.InitModule,
+		wire.FieldsOf(new(*role.Module), "Hdl"),
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,

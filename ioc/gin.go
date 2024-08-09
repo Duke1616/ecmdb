@@ -12,6 +12,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -32,7 +33,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
-	menuHdl *menu.Handler, endpointHdl *endpoint.Handler,
+	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
@@ -54,6 +55,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	policyHdl.PublicRoutes(server)
 	menuHdl.PublicRoutes(server)
 	endpointHdl.PublicRoutes(server)
+	roleHdl.PublicRoutes(server)
 
 	server.Use(checkPolicyMiddleware.Build())
 	workflowHdl.RegisterRoutes(server)

@@ -40,8 +40,7 @@ func (c *CheckPolicyMiddlewareBuilder) Build() gin.HandlerFunc {
 		path := ctx.Request.URL.Path
 		// 获取请求的HTTP方法
 		method := ctx.Request.Method
-
-		// 如果不在,实时查询permission模块,并将验证通过的 resource_id 放入 resources 中
+		// 获取用户ID
 		uid := sess.Claims().Uid
 		ok, err := c.svc.Authorize(ctx.Request.Context(), strconv.FormatInt(uid, 10), path, method)
 		if err != nil || !ok {

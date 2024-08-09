@@ -11,14 +11,14 @@ type Service interface {
 	AddGroupingPolicy(ctx context.Context, req domain.AddGroupingPolicy) (bool, error)
 	UpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error)
 	Authorize(ctx context.Context, userId, path, method string) (bool, error)
-	GetPermissionsForUser(ctx context.Context, userId string) ([][]string, error)
+	GetImplicitPermissionsForUser(ctx context.Context, userId string) ([][]string, error)
 }
 
 type service struct {
 	enforcer *casbin.SyncedEnforcer
 }
 
-func (s *service) GetPermissionsForUser(ctx context.Context, userId string) ([][]string, error) {
+func (s *service) GetImplicitPermissionsForUser(ctx context.Context, userId string) ([][]string, error) {
 	return s.enforcer.GetImplicitPermissionsForUser(userId)
 }
 

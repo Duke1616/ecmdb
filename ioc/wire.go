@@ -7,6 +7,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
+	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
@@ -63,6 +64,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*task.Module), "Hdl", "StartTaskJob", "PassProcessTaskJob"),
 		policy.InitModule,
 		wire.FieldsOf(new(*policy.Module), "Hdl", "Svc"),
+		menu.InitModule,
+		wire.FieldsOf(new(*menu.Module), "Hdl"),
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,

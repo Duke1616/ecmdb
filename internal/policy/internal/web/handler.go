@@ -24,7 +24,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/update/p", ginx.WrapBody[PolicyReq](h.UpdatePolicies))
 	g.POST("/add/g", ginx.WrapBody[AddGroupingPolicyReq](h.AddGroupingPolicy))
 	g.POST("/authorize", ginx.WrapBody[AuthorizeReq](h.Authorize))
-	g.POST("/user/permissions", ginx.WrapBody[GetPermissionsForUserReq](h.GetPermissionsForUser))
+	g.POST("/user/permissions", ginx.WrapBody[GetPermissionsForUserReq](h.GetImplicitPermissionsForUser))
 }
 
 func (h *Handler) AddPolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, error) {
@@ -38,8 +38,8 @@ func (h *Handler) AddPolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, err
 	}, nil
 }
 
-func (h *Handler) GetPermissionsForUser(ctx *gin.Context, req GetPermissionsForUserReq) (ginx.Result, error) {
-	resp, err := h.svc.GetPermissionsForUser(ctx, req.UserId)
+func (h *Handler) GetImplicitPermissionsForUser(ctx *gin.Context, req GetPermissionsForUserReq) (ginx.Result, error) {
+	resp, err := h.svc.GetImplicitPermissionsForUser(ctx, req.UserId)
 	if err != nil {
 		return systemErrorResult, err
 	}

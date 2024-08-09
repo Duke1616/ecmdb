@@ -7,22 +7,47 @@ func (s Type) ToUint8() uint8 {
 }
 
 const (
+	// DIR 目录
+	DIR Type = 1
 	// MENU 菜单
-	MENU Type = 1
+	MENU Type = 2
 	// BUTTON 按钮
-	BUTTON Type = 2
+	BUTTON Type = 3
+)
+
+type Status uint8
+
+func (s Status) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// ENABLED 启用
+	ENABLED Status = 1
+	// DISABLED 禁用
+	DISABLED Status = 2
 )
 
 type Menu struct {
-	Id          int64
-	Pid         int64
-	Name        string
-	Path        string
-	Sort        int64
-	IsRoot      bool
-	Type        Type
-	Meta        Meta
-	EndpointIds []int64
+	Id            int64
+	Pid           int64
+	Path          string
+	Name          string
+	Sort          int64
+	Component     string
+	Redirect      string
+	ComponentPath string
+	Status        Status
+	Type          Type
+	Meta          Meta
+	Endpoints     []Endpoint
+}
+
+type Endpoint struct {
+	Id     int64
+	Path   string
+	Method string
+	Desc   string
 }
 
 type Meta struct {

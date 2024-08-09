@@ -1,27 +1,39 @@
 package web
 
-type Type uint8
-
-func (s Type) ToUint8() uint8 {
-	return uint8(s)
+type CreateMenuReq struct {
+	Pid           int64      `json:"pid"`
+	Path          string     `json:"path"`
+	Name          string     `json:"name"`
+	Component     string     `json:"component"`
+	ComponentPath string     `json:"component_path"`
+	Redirect      string     `json:"redirect"`
+	Sort          int64      `json:"sort"`
+	Type          uint8      `json:"type"`
+	Status        uint8      `json:"status"`
+	Meta          Meta       `json:"meta"`
+	Endpoints     []Endpoint `json:"endpoints"`
 }
 
-const (
-	// MENU 菜单
-	MENU Type = 1
-	// BUTTON 按钮
-	BUTTON Type = 2
-)
+type UpdateMenuReq struct {
+	Id            int64      `json:"id"`
+	Pid           int64      `json:"pid"`
+	Name          string     `json:"name"`
+	Path          string     `json:"path"`
+	Component     string     `json:"component"`
+	ComponentPath string     `json:"component_path"`
+	Redirect      string     `json:"redirect"`
+	Sort          int64      `json:"sort"`
+	Type          uint8      `json:"type"`
+	Status        uint8      `json:"status"`
+	Meta          Meta       `json:"meta"`
+	Endpoints     []Endpoint `json:"endpoints"`
+}
 
-type CreateMenuReq struct {
-	Pid         int64   `json:"pid"`
-	Name        string  `json:"name"`
-	Path        string  `json:"path"`
-	Sort        int64   `json:"sort"`
-	IsRoot      bool    `json:"is_root"`
-	Type        Type    `json:"type"`
-	Meta        Meta    `json:"meta"`
-	EndpointIds []int64 `json:"endpoint_ids"`
+type Endpoint struct {
+	Id     int64  `json:"id"`
+	Path   string `json:"path"`
+	Method string `json:"method"`
+	Desc   string `json:"desc"`
 }
 
 type Meta struct {
@@ -30,4 +42,20 @@ type Meta struct {
 	IsAffix     bool   `json:"is_affix"`     // 是否固定
 	IsKeepAlive bool   `json:"is_keepalive"` // 是否缓存
 	Icon        string `json:"icon"`         // Icon图标
+}
+
+type Menu struct {
+	Id            int64      `json:"id"`
+	Pid           int64      `json:"pid"`
+	Name          string     `json:"name"`
+	Path          string     `json:"path"`
+	Redirect      string     `json:"redirect"`
+	Sort          int64      `json:"sort"`
+	Component     string     `json:"component"`
+	ComponentPath string     `json:"component_path"`
+	Status        uint8      `json:"status"`
+	Type          uint8      `json:"type"`
+	Meta          Meta       `json:"meta"`
+	Endpoints     []Endpoint `json:"endpoints"`
+	Children      []*Menu    `json:"children"`
 }

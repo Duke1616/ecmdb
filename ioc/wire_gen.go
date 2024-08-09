@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
+	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
@@ -124,7 +125,12 @@ func InitApp() (*App, error) {
 	}
 	handler12 := taskModule.Hdl
 	handler13 := module.Hdl
-	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13)
+	menuModule, err := menu.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	handler14 := menuModule.Hdl
+	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule)
 	if err != nil {
 		return nil, err

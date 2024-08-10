@@ -63,7 +63,7 @@ func (h *Handler) AddPermissionForRole(ctx *gin.Context, req AddPermissionForRol
 			}
 		})
 
-		policies = append(policies, p)
+		policies = append(policies, p...)
 	}
 
 	// 添加权限

@@ -18,4 +18,5 @@ type User struct {
 	Title      string
 	SourceType int64
 	CreateType int64
+	RoleCodes  []string
 }

@@ -94,7 +94,7 @@ func (h *Handler) GetPermissionsForRole(ctx *gin.Context, req GetPermissionsForR
 }
 
 func (h *Handler) UpdatePolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, error) {
-	ok, err := h.svc.UpdateFilteredPolicies(ctx, h.toDomain(req))
+	ok, err := h.svc.CreateOrUpdateFilteredPolicies(ctx, h.toDomain(req))
 	if err != nil {
 		return systemErrorResult, err
 	}

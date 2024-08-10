@@ -15,12 +15,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/role/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
+	"sync"
 )
 
 // Injectors from wire.go:
 
 func InitModule(db *mongox.Mongo, menuModule *menu.Module, policyModule *policy.Module) (*Module, error) {
-	roleDAO := dao.NewRoleDAO(db)
+	roleDAO := InitRoleDAO(db)
 	roleRepository := repository.NewRoleRepository(roleDAO)
 	serviceService := service.NewService(roleRepository)
 	service2 := menuModule.Svc
@@ -34,4 +35,20 @@ func InitModule(db *mongox.Mongo, menuModule *menu.Module, policyModule *policy.
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewRoleRepository, dao.NewRoleDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewRoleRepository)
+
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongox.Mongo) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitRoleDAO(db *mongox.Mongo) dao.RoleDAO {
+	InitCollectionOnce(db)
+	return dao.NewRoleDAO(db)
+}

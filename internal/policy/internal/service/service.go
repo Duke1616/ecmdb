@@ -10,7 +10,7 @@ import (
 type Service interface {
 	AddPolicies(ctx context.Context, req domain.Policies) (bool, error)
 	AddGroupingPolicy(ctx context.Context, req domain.AddGroupingPolicy) (bool, error)
-	UpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error)
+	CreateOrUpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error)
 	Authorize(ctx context.Context, userId, path, method string) (bool, error)
 	GetImplicitPermissionsForUser(ctx context.Context, userId string) ([]domain.Policy, error)
 	GetPermissionsForRole(ctx context.Context, roleCode string) ([]domain.Policy, error)
@@ -63,7 +63,7 @@ func (s *service) AddPolicies(ctx context.Context, req domain.Policies) (bool, e
 	return ok, nil
 }
 
-func (s *service) UpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error) {
+func (s *service) CreateOrUpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error) {
 	var policies [][]string
 	for _, policy := range req.Policies {
 		policies = append(policies, []string{req.RoleCode, policy.Path, policy.Method, policy.Effect.ToString()})

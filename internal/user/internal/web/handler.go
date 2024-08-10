@@ -26,6 +26,7 @@ func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
+	g.POST("/role/bind")
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 }
 

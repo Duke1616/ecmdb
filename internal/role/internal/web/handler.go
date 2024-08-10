@@ -67,7 +67,7 @@ func (h *Handler) AddPermissionForRole(ctx *gin.Context, req AddPermissionForRol
 	}
 
 	// 添加权限
-	ok, err := h.policySvc.UpdateFilteredPolicies(ctx, policy.Policies{
+	ok, err := h.policySvc.CreateOrUpdateFilteredPolicies(ctx, policy.Policies{
 		RoleCode: req.RoleCode,
 		Policies: policies,
 	})

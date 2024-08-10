@@ -312,9 +312,9 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 	})
 
 	os, err := h.svc.ListOrderByProcessInstanceIds(ctx, procInstIds)
-	slice.ToMap(os, func(element domain.Order) int64 {
-		return element.Id
-	})
+	//slice.ToMap(os, func(element domain.Order) int64 {
+	//	return element.Id
+	//})
 
 	m := slice.ToMap(os, func(element domain.Order) int {
 		return element.Process.InstanceId

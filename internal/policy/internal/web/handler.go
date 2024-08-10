@@ -25,6 +25,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/add/g", ginx.WrapBody[AddGroupingPolicyReq](h.AddGroupingPolicy))
 	g.POST("/authorize", ginx.WrapBody[AuthorizeReq](h.Authorize))
 	g.POST("/user/permissions", ginx.WrapBody[GetPermissionsForUserReq](h.GetImplicitPermissionsForUser))
+	g.POST("/role/permissions", ginx.WrapBody[GetPermissionsForRoleReq](h.GetPermissionsForRole))
 }
 
 func (h *Handler) AddPolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, error) {
@@ -47,11 +48,11 @@ func (h *Handler) GetImplicitPermissionsForUser(ctx *gin.Context, req GetPermiss
 	// 返回后端结构
 	uniquePermissions := make(map[Policy]bool)
 	var policies []Policy
-	policies = slice.FilterMap(resp, func(idx int, src []string) (Policy, bool) {
+	policies = slice.FilterMap(resp, func(idx int, src domain.Policy) (Policy, bool) {
 		policy := Policy{
-			Path:   src[1],
-			Method: src[2],
-			Effect: Effect(src[3]),
+			Path:   src.Path,
+			Method: src.Method,
+			Effect: Effect(src.Effect),
 		}
 
 		if !uniquePermissions[policy] {
@@ -64,6 +65,28 @@ func (h *Handler) GetImplicitPermissionsForUser(ctx *gin.Context, req GetPermiss
 
 	return ginx.Result{
 		Msg: "获取用户权限成功",
+		Data: RetrievePolicies{
+			Policies: policies,
+		},
+	}, nil
+}
+
+func (h *Handler) GetPermissionsForRole(ctx *gin.Context, req GetPermissionsForRoleReq) (ginx.Result, error) {
+	pers, err := h.svc.GetPermissionsForRole(ctx, req.RoleCode)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	policies := slice.Map(pers, func(idx int, src domain.Policy) Policy {
+		return Policy{
+			Path:   src.Path,
+			Method: src.Method,
+			Effect: Effect(src.Effect),
+		}
+	})
+
+	return ginx.Result{
+		Msg: "获取角色权限成功",
 		Data: RetrievePolicies{
 			Policies: policies,
 		},
@@ -115,7 +138,7 @@ func (h *Handler) AddGroupingPolicy(ctx *gin.Context, req AddGroupingPolicyReq) 
 
 func (h *Handler) toDomain(req PolicyReq) domain.Policies {
 	return domain.Policies{
-		RoleName: req.RoleName,
+		RoleCode: req.RoleCode,
 		Policies: slice.Map(req.Policies, func(idx int, src Policy) domain.Policy {
 			return domain.Policy{
 				Path:   src.Path,
@@ -129,6 +152,6 @@ func (h *Handler) toDomain(req PolicyReq) domain.Policies {
 func (h *Handler) toDomainGroup(req AddGroupingPolicyReq) domain.AddGroupingPolicy {
 	return domain.AddGroupingPolicy{
 		UserId:   req.UserId,
-		RoleName: req.RoleName,
+		RoleCode: req.RoleCode,
 	}
 }

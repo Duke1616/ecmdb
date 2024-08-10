@@ -10,7 +10,7 @@ const (
 )
 
 type PolicyReq struct {
-	RoleName string   `json:"role_name"`
+	RoleCode string   `json:"role_code"`
 	Policies []Policy `json:"policies"`
 }
 
@@ -22,11 +22,15 @@ type Policy struct {
 
 type AddGroupingPolicyReq struct {
 	UserId   string `json:"user_id"`
-	RoleName string `json:"role_name"`
+	RoleCode string `json:"role_code"`
 }
 
 type GetPermissionsForUserReq struct {
 	UserId string `json:"user_id"`
+}
+
+type GetPermissionsForRoleReq struct {
+	RoleCode string `json:"role_code"`
 }
 
 type AuthorizeReq struct {

@@ -14,7 +14,7 @@ const (
 )
 
 type Policies struct {
-	RoleName string
+	RoleCode string
 	Policies []Policy
 }
 
@@ -26,5 +26,5 @@ type Policy struct {
 
 type AddGroupingPolicy struct {
 	UserId   string
-	RoleName string
+	RoleCode string
 }

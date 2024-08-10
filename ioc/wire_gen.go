@@ -137,7 +137,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler15 := endpointModule.Hdl
-	roleModule, err := role.InitModule(mongo)
+	roleModule, err := role.InitModule(mongo, menuModule, module)
 	if err != nil {
 		return nil, err
 	}

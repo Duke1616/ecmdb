@@ -11,3 +11,5 @@ type Handler = web.Handler
 type Service = service.Service
 
 type Menu = domain.Menu
+
+type Endpoint = domain.Endpoint

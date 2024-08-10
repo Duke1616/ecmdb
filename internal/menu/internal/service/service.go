@@ -11,10 +11,15 @@ type Service interface {
 	UpdateMenu(ctx context.Context, req domain.Menu) (int64, error)
 	ListMenu(ctx context.Context) ([]domain.Menu, error)
 	GetAllMenu(ctx context.Context, userId string) ([]domain.Menu, error)
+	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
 }
 
 type service struct {
 	repo repository.MenuRepository
+}
+
+func (s *service) FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error) {
+	return s.repo.FindByIds(ctx, ids)
 }
 
 func (s *service) UpdateMenu(ctx context.Context, req domain.Menu) (int64, error) {

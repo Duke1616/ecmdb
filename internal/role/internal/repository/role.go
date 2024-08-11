@@ -12,10 +12,31 @@ type RoleRepository interface {
 	ListRole(ctx context.Context, offset, limit int64) ([]domain.Role, error)
 	Total(ctx context.Context) (int64, error)
 	UpdateRole(ctx context.Context, req domain.Role) (int64, error)
+	FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error)
+	FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, error)
+	CountByExcludeCodes(ctx context.Context, codes []string) (int64, error)
 }
 
 type roleRepository struct {
 	dao dao.RoleDAO
+}
+
+func (repo *roleRepository) FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error) {
+	rs, err := repo.dao.FindByIncludeCodes(ctx, codes)
+	return slice.Map(rs, func(idx int, src dao.Role) domain.Role {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *roleRepository) FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, error) {
+	rs, err := repo.dao.FindByExcludeCodes(ctx, offset, limit, codes)
+	return slice.Map(rs, func(idx int, src dao.Role) domain.Role {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *roleRepository) CountByExcludeCodes(ctx context.Context, codes []string) (int64, error) {
+	return repo.dao.CountByExcludeCodes(ctx, codes)
 }
 
 func (repo *roleRepository) UpdateRole(ctx context.Context, req domain.Role) (int64, error) {

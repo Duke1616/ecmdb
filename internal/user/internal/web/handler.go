@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
@@ -26,8 +27,10 @@ func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
-	g.POST("/role/bind")
+	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
+	g.POST("/list", ginx.WrapBody[Page](h.ListUser))
+
 }
 
 func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
@@ -65,6 +68,34 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}, nil
 }
 
+func (h *Handler) ListUser(ctx *gin.Context, req Page) (ginx.Result, error) {
+	rts, total, err := h.svc.ListUser(ctx, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询用户列表成功",
+		Data: RetrieveUsers{
+			Total: total,
+			Users: slice.Map(rts, func(idx int, src domain.User) User {
+				return h.ToUserVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) UserRoleBind(ctx *gin.Context, req UserBindRoleReq) (ginx.Result, error) {
+	bind, err := h.svc.AddRoleBind(ctx, req.Id, req.RoleCodes)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: bind,
+	}, nil
+}
+
 func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
 	err := session.RenewAccessToken(&gctx.Context{Context: ctx})
 	if err != nil {
@@ -97,6 +128,7 @@ func (h *Handler) ToUserVo(src domain.User) User {
 		Email:      src.Email,
 		Title:      src.Title,
 		SourceType: src.SourceType,
+		RoleCodes:  src.RoleCodes,
 		CreateType: src.CreateType,
 	}
 }

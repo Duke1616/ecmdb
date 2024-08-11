@@ -16,10 +16,74 @@ type RoleDAO interface {
 	ListRole(ctx context.Context, offset, limit int64) ([]Role, error)
 	UpdateRole(ctx context.Context, r Role) (int64, error)
 	Count(ctx context.Context) (int64, error)
+	FindByIncludeCodes(ctx context.Context, codes []string) ([]Role, error)
+	FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]Role, error)
+	CountByExcludeCodes(ctx context.Context, codes []string) (int64, error)
 }
 
 type roleDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *roleDAO) FindByIncludeCodes(ctx context.Context, codes []string) ([]Role, error) {
+	col := dao.db.Collection(RoleCollection)
+	filter := bson.M{}
+	filter["code"] = bson.M{"$in": codes}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Role
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *roleDAO) FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]Role, error) {
+	col := dao.db.Collection(RoleCollection)
+	filter := bson.M{}
+	filter["code"] = bson.M{"$nin": codes}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Role
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *roleDAO) CountByExcludeCodes(ctx context.Context, codes []string) (int64, error) {
+	col := dao.db.Collection(RoleCollection)
+	filter := bson.M{}
+	filter["code"] = bson.M{"$nin": codes}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
 }
 
 func (dao *roleDAO) UpdateRole(ctx context.Context, r Role) (int64, error) {
@@ -69,9 +133,9 @@ func (dao *roleDAO) ListRole(ctx context.Context, offset, limit int64) ([]Role, 
 
 func (dao *roleDAO) Count(ctx context.Context) (int64, error) {
 	col := dao.db.Collection(RoleCollection)
-	filer := bson.M{}
+	filter := bson.M{}
 
-	count, err := col.CountDocuments(ctx, filer)
+	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}

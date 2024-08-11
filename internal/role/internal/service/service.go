@@ -11,10 +11,39 @@ type Service interface {
 	CreateRole(ctx context.Context, req domain.Role) (int64, error)
 	ListRole(ctx context.Context, offset, limit int64) ([]domain.Role, int64, error)
 	UpdateRole(ctx context.Context, req domain.Role) (int64, error)
+	FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, int64, error)
+	FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error)
 }
 
 type service struct {
 	repo repository.RoleRepository
+}
+
+func (s *service) FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, int64, error) {
+	var (
+		eg    errgroup.Group
+		rs    []domain.Role
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		rs, err = s.repo.FindByExcludeCodes(ctx, offset, limit, codes)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.CountByExcludeCodes(ctx, codes)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return rs, total, err
+	}
+	return rs, total, nil
+}
+
+func (s *service) FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error) {
+	return s.repo.FindByIncludeCodes(ctx, codes)
 }
 
 func (s *service) UpdateRole(ctx context.Context, req domain.Role) (int64, error) {
@@ -24,12 +53,12 @@ func (s *service) UpdateRole(ctx context.Context, req domain.Role) (int64, error
 func (s *service) ListRole(ctx context.Context, offset, limit int64) ([]domain.Role, int64, error) {
 	var (
 		eg    errgroup.Group
-		es    []domain.Role
+		rs    []domain.Role
 		total int64
 	)
 	eg.Go(func() error {
 		var err error
-		es, err = s.repo.ListRole(ctx, offset, limit)
+		rs, err = s.repo.ListRole(ctx, offset, limit)
 		return err
 	})
 
@@ -39,9 +68,9 @@ func (s *service) ListRole(ctx context.Context, offset, limit int64) ([]domain.R
 		return err
 	})
 	if err := eg.Wait(); err != nil {
-		return es, total, err
+		return rs, total, err
 	}
-	return es, total, nil
+	return rs, total, nil
 }
 
 func (s *service) CreateRole(ctx context.Context, req domain.Role) (int64, error) {

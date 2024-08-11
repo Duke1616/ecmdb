@@ -32,6 +32,8 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/list", ginx.WrapBody[Page](h.ListRole))
 	g.POST("/permission", ginx.WrapBody[RolePermissionReq](h.ListRolePermission))
 	g.POST("/permission/add", ginx.WrapBody[AddPermissionForRoleReq](h.AddPermissionForRole))
+	g.POST("/user/have", ginx.WrapBody[UserRole](h.FindUserHaveRoles))
+	g.POST("/user/does_not_have", ginx.WrapBody[UserRole](h.FindUserDoesNotHaveRoles))
 }
 
 func (h *Handler) CreateRole(ctx *gin.Context, req CreateRoleReq) (ginx.Result, error) {
@@ -42,6 +44,39 @@ func (h *Handler) CreateRole(ctx *gin.Context, req CreateRoleReq) (ginx.Result, 
 
 	return ginx.Result{
 		Data: rId,
+	}, nil
+}
+
+func (h *Handler) FindUserHaveRoles(ctx *gin.Context, req UserRole) (ginx.Result, error) {
+	roles, err := h.svc.FindByIncludeCodes(ctx, req.Codes)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "获取用户拥有的角色成功",
+		Data: RetrieveUserHaveRoles{
+			Roles: slice.Map(roles, func(idx int, src domain.Role) Role {
+				return h.toVoRole(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) FindUserDoesNotHaveRoles(ctx *gin.Context, req UserRole) (ginx.Result, error) {
+	roles, total, err := h.svc.FindByExcludeCodes(ctx, req.Offset, req.Limit, req.Codes)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "获取用户未拥有的角色成功",
+		Data: RetrieveUserDoesNotHaveRoles{
+			Total: total,
+			Roles: slice.Map(roles, func(idx int, src domain.Role) Role {
+				return h.toVoRole(src)
+			}),
+		},
 	}, nil
 }
 

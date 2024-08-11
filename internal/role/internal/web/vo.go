@@ -77,3 +77,17 @@ type AddPermissionForRoleReq struct {
 	RoleCode string  `json:"role_code"`
 	MenuIds  []int64 `json:"menu_ids"`
 }
+
+type UserRole struct {
+	Page
+	Codes []string `json:"codes"`
+}
+
+type RetrieveUserDoesNotHaveRoles struct {
+	Total int64  `json:"total"`
+	Roles []Role `json:"roles"`
+}
+
+type RetrieveUserHaveRoles struct {
+	Roles []Role `json:"roles"`
+}

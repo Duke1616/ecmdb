@@ -12,11 +12,21 @@ import (
 type Service interface {
 	FindOrCreateByUsername(ctx context.Context, user domain.User) (domain.User, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, int64, error)
+	Login(ctx context.Context, username, password string) (domain.User, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
+	FindById(ctx context.Context, id int64) (domain.User, error)
 }
 
 type service struct {
 	repo repository.UserRepository
+}
+
+func (s *service) FindById(ctx context.Context, id int64) (domain.User, error) {
+	return s.repo.FindById(ctx, id)
+}
+
+func (s *service) Login(ctx context.Context, username, password string) (domain.User, error) {
+	return domain.User{}, nil
 }
 
 func (s *service) AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error) {

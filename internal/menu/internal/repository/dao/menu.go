@@ -16,10 +16,26 @@ type MenuDAO interface {
 	UpdateMenu(ctx context.Context, t Menu) (int64, error)
 	ListMenu(ctx context.Context) ([]Menu, error)
 	FindByIds(ctx context.Context, ids []int64) ([]Menu, error)
+	GetAllMenu(ctx context.Context) ([]Menu, error)
 }
 
 type menuDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *menuDAO) GetAllMenu(ctx context.Context) ([]Menu, error) {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []Menu
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *menuDAO) FindByIds(ctx context.Context, ids []int64) ([]Menu, error) {

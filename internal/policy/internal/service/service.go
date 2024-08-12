@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/policy/internal/domain"
 	"github.com/casbin/casbin/v2"
 	"github.com/ecodeclub/ekit/slice"
+	"strconv"
 )
 
 type Service interface {
@@ -14,6 +15,7 @@ type Service interface {
 	Authorize(ctx context.Context, userId, path, method string) (bool, error)
 	GetImplicitPermissionsForUser(ctx context.Context, userId string) ([]domain.Policy, error)
 	GetPermissionsForRole(ctx context.Context, roleCode string) ([]domain.Policy, error)
+	UpdateFilteredPolicies(ctx context.Context, userId int64, roleCodes []string) (bool, error)
 }
 
 type service struct {
@@ -35,13 +37,20 @@ func (s *service) GetPermissionsForRole(ctx context.Context, roleCode string) ([
 
 func (s *service) GetImplicitPermissionsForUser(ctx context.Context, userId string) ([]domain.Policy, error) {
 	pers, err := s.enforcer.GetImplicitPermissionsForUser(userId)
-
-	return slice.Map(pers, func(idx int, src []string) domain.Policy {
-		return domain.Policy{
+	uniquePermissions := make(map[domain.Policy]bool)
+	return slice.FilterMap(pers, func(idx int, src []string) (domain.Policy, bool) {
+		policy := domain.Policy{
 			Path:   src[1],
 			Method: src[2],
 			Effect: domain.Effect(src[3]),
 		}
+
+		if !uniquePermissions[policy] {
+			uniquePermissions[policy] = true
+			return policy, true
+		}
+
+		return policy, false
 	}), err
 }
 
@@ -79,6 +88,19 @@ func (s *service) CreateOrUpdateFilteredPolicies(ctx context.Context, req domain
 
 func (s *service) AddGroupingPolicy(ctx context.Context, req domain.AddGroupingPolicy) (bool, error) {
 	ok, err := s.enforcer.AddGroupingPolicy(req.UserId, req.RoleCode)
+	if err != nil {
+		return ok, err
+	}
+	return ok, nil
+}
+
+func (s *service) UpdateFilteredPolicies(ctx context.Context, userId int64, roleCodes []string) (bool, error) {
+	var rcs [][]string
+	for _, policy := range roleCodes {
+		rcs = append(rcs, []string{strconv.FormatInt(userId, 10), policy})
+	}
+
+	ok, err := s.enforcer.UpdateFilteredPolicies(rcs, 0, strconv.FormatInt(userId, 10))
 	if err != nil {
 		return ok, err
 	}

@@ -73,6 +73,10 @@ type RetrieveRolePermission struct {
 	Menu     []*Menu `json:"menus"`
 }
 
+type RetrieveUserPermission struct {
+	Menu []*Menu `json:"menus"`
+}
+
 type AddPermissionForRoleReq struct {
 	RoleCode string  `json:"role_code"`
 	MenuIds  []int64 `json:"menu_ids"`
@@ -90,4 +94,8 @@ type RetrieveUserDoesNotHaveRoles struct {
 
 type RetrieveUserHaveRoles struct {
 	Roles []Role `json:"roles"`
+}
+
+type FindUserPermissionMenus struct {
+	UserId string `json:"user_id"`
 }

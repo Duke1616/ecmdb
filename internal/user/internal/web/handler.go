@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -12,25 +13,40 @@ import (
 )
 
 type Handler struct {
-	svc     service.Service
-	ldapSvc service.LdapService
+	svc       service.Service
+	ldapSvc   service.LdapService
+	policySvc policy.Service
 }
 
-func NewHandler(svc service.Service, ldapSvc service.LdapService) *Handler {
+func NewHandler(svc service.Service, ldapSvc service.LdapService, policySvc policy.Service) *Handler {
 	return &Handler{
-		svc:     svc,
-		ldapSvc: ldapSvc,
+		svc:       svc,
+		ldapSvc:   ldapSvc,
+		policySvc: policySvc,
 	}
 }
 
 func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
+	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
 	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/list", ginx.WrapBody[Page](h.ListUser))
 
+}
+
+func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
+	u, err := h.svc.Login(ctx, req.Username, req.Password)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Data: u,
+		Msg:  "登录用户成功",
+	}, nil
 }
 
 func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
@@ -86,13 +102,19 @@ func (h *Handler) ListUser(ctx *gin.Context, req Page) (ginx.Result, error) {
 }
 
 func (h *Handler) UserRoleBind(ctx *gin.Context, req UserBindRoleReq) (ginx.Result, error) {
-	bind, err := h.svc.AddRoleBind(ctx, req.Id, req.RoleCodes)
+	_, err := h.svc.AddRoleBind(ctx, req.Id, req.RoleCodes)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
+	ok, err := h.policySvc.UpdateFilteredPolicies(ctx, req.Id, req.RoleCodes)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
 	return ginx.Result{
-		Data: bind,
+		Data: ok,
+		Msg:  "用户角色绑定成功",
 	}, nil
 }
 

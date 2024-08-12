@@ -12,10 +12,18 @@ type MenuRepository interface {
 	ListMenu(ctx context.Context) ([]domain.Menu, error)
 	UpdateMenu(ctx context.Context, req domain.Menu) (int64, error)
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
+	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
 }
 
 type menuRepository struct {
 	dao dao.MenuDAO
+}
+
+func (repo *menuRepository) GetAllMenu(ctx context.Context) ([]domain.Menu, error) {
+	menu, err := repo.dao.GetAllMenu(ctx)
+	return slice.Map(menu, func(idx int, src dao.Menu) domain.Menu {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *menuRepository) FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error) {

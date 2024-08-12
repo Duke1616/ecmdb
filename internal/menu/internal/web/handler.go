@@ -22,7 +22,6 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/menu")
 	g.POST("/create", ginx.WrapBody[CreateMenuReq](h.CreateMenu))
 	g.POST("/update", ginx.WrapBody[UpdateMenuReq](h.UpdateMenu))
-	g.POST("/get_permission_menu", ginx.WrapBody(h.CreateMenu))
 	g.POST("/list/tree", ginx.Wrap(h.ListMenuTree))
 }
 

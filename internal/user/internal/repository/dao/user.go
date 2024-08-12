@@ -14,6 +14,7 @@ const UserCollection = "c_user"
 type UserDAO interface {
 	CreatUser(ctx context.Context, user User) (int64, error)
 	FindByUsername(ctx context.Context, username string) (User, error)
+	FindById(ctx context.Context, id int64) (User, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]User, error)
 	AddOrUpdateRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	Count(ctx context.Context) (int64, error)
@@ -21,6 +22,18 @@ type UserDAO interface {
 
 type userDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *userDao) FindById(ctx context.Context, id int64) (User, error) {
+	col := dao.db.Collection(UserCollection)
+	var u User
+	filter := bson.M{"id": id}
+
+	if err := col.FindOne(ctx, filter).Decode(&u); err != nil {
+		return User{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return u, nil
 }
 
 func (dao *userDao) AddOrUpdateRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error) {
@@ -109,18 +122,6 @@ func (dao *userDao) FindByUsername(ctx context.Context, username string) (User, 
 	return u, nil
 }
 
-// 账号来源
-const (
-	Ldap   = iota + 1 // LDAP 创建
-	System            // 系统 创建
-)
-
-// 创建用户方式
-const (
-	LdapSync = iota + 1
-	UserRegistry
-)
-
 type User struct {
 	ID         int64    `bson:"id"`
 	Username   string   `bson:"username"`
@@ -129,6 +130,7 @@ type User struct {
 	Title      string   `bson:"title"`
 	SourceType int64    `bson:"source_type"`
 	CreateType int64    `bson:"create_type"`
+	Status     uint8    `bson:"status"`
 	Ctime      int64    `bson:"ctime"`
 	Utime      int64    `bson:"utime"`
 	RoleCodes  []string `bson:"role_codes"`

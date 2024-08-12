@@ -7,6 +7,7 @@
 package user
 
 import (
+	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
@@ -18,12 +19,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config) (*Module, error) {
+func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config, policyModule *policy.Module) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
 	userRepository := repository.NewResourceRepository(userDAO)
 	serviceService := service.NewService(userRepository)
 	ldapService := service.NewLdapService(ldapConfig)
-	handler := web.NewHandler(serviceService, ldapService)
+	service2 := policyModule.Svc
+	handler := web.NewHandler(serviceService, ldapService, service2)
 	module := &Module{
 		Hdl: handler,
 	}

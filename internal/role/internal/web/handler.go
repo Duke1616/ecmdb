@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 )
 
 type Handler struct {
@@ -34,6 +35,40 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/permission/add", ginx.WrapBody[AddPermissionForRoleReq](h.AddPermissionForRole))
 	g.POST("/user/have", ginx.WrapBody[UserRole](h.FindUserHaveRoles))
 	g.POST("/user/does_not_have", ginx.WrapBody[UserRole](h.FindUserDoesNotHaveRoles))
+	g.POST("/user/get_permission_menu", ginx.WrapBody[FindUserPermissionMenus](h.FindUserPermissionMenus))
+}
+
+func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermissionMenus) (ginx.Result, error) {
+	var (
+		eg errgroup.Group
+		ms []menu.Menu
+		ps []policy.Policy
+	)
+	eg.Go(func() error {
+		var err error
+		ps, err = h.policySvc.GetImplicitPermissionsForUser(ctx, req.UserId)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		ms, err = h.menuSvc.GetAllMenu(ctx)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return systemErrorResult, err
+	}
+
+	tree, err := GetPermissionMenusTree(ms, ps)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: RetrieveUserPermission{
+			Menu: tree,
+		},
+	}, nil
 }
 
 func (h *Handler) CreateRole(ctx *gin.Context, req CreateRoleReq) (ginx.Result, error) {

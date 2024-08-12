@@ -28,7 +28,11 @@ type roleDAO struct {
 func (dao *roleDAO) FindByIncludeCodes(ctx context.Context, codes []string) ([]Role, error) {
 	col := dao.db.Collection(RoleCollection)
 	filter := bson.M{}
-	filter["code"] = bson.M{"$in": codes}
+
+	if codes != nil {
+		filter["code"] = bson.M{"$in": codes}
+	}
+
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
@@ -52,7 +56,10 @@ func (dao *roleDAO) FindByIncludeCodes(ctx context.Context, codes []string) ([]R
 func (dao *roleDAO) FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]Role, error) {
 	col := dao.db.Collection(RoleCollection)
 	filter := bson.M{}
-	filter["code"] = bson.M{"$nin": codes}
+	if codes != nil {
+		filter["code"] = bson.M{"$nin": codes}
+	}
+
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
@@ -76,7 +83,9 @@ func (dao *roleDAO) FindByExcludeCodes(ctx context.Context, offset, limit int64,
 func (dao *roleDAO) CountByExcludeCodes(ctx context.Context, codes []string) (int64, error) {
 	col := dao.db.Collection(RoleCollection)
 	filter := bson.M{}
-	filter["code"] = bson.M{"$nin": codes}
+	if codes != nil {
+		filter["code"] = bson.M{"$nin": codes}
+	}
 
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {

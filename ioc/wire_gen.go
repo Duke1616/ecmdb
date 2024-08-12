@@ -79,7 +79,7 @@ func InitApp() (*App, error) {
 	handler3 := workerModule.Hdl
 	relationTypeHandler := relationModule.RTHdl
 	config := InitLdapConfig()
-	userModule, err := user.InitModule(mongo, config)
+	userModule, err := user.InitModule(mongo, config, module)
 	if err != nil {
 		return nil, err
 	}

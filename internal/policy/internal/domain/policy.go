@@ -28,3 +28,8 @@ type AddGroupingPolicy struct {
 	UserId   string
 	RoleCode string
 }
+
+type GroupingPolicyReq struct {
+	UserId   string
+	RoleCode string
+}

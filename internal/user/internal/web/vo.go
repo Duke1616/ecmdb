@@ -5,6 +5,11 @@ type LoginLdapReq struct {
 	Password string `json:"password"`
 }
 
+type LoginSystemReq struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type User struct {
 	ID         int64    `json:"id"`
 	Username   string   `json:"username"`

@@ -50,6 +50,51 @@ func getAuthzIds(menus []menu.Menu, pMap map[string]policy.Policy) []int64 {
 	})
 }
 
+func GetPermissionMenusTree(ms []menu.Menu, ps []policy.Policy) (list []*Menu, err error) {
+	// 把所有接口权限生成 map 接口
+	pMap := slice.ToMap(ps, func(element policy.Policy) string {
+		return fmt.Sprintf("%s:%s", element.Path, element.Method)
+	})
+
+	// 转换成指针
+	menus := slice.Map(ms, func(idx int, src menu.Menu) *Menu {
+		return toVoMenu(src)
+	})
+
+	allMap := map[int64]*Menu{}
+	list = []*Menu{}
+
+	for _, cat := range menus {
+		cat.Children = []*Menu{}
+		allMap[cat.Id] = cat
+
+		var validEndpoints []Endpoint
+		for _, endpoint := range cat.Endpoints {
+			key := fmt.Sprintf("%s:%s", endpoint.Path, endpoint.Method)
+			if _, exists := pMap[key]; exists {
+				validEndpoints = append(validEndpoints, endpoint)
+			}
+		}
+
+		if len(validEndpoints) > 0 || cat.Pid == 0 {
+			cat.Endpoints = validEndpoints
+			if cat.Pid == 0 {
+				list = append(list, cat)
+			}
+		} else {
+			delete(allMap, cat.Id)
+		}
+	}
+
+	for _, cat := range menus {
+		if parent, ok := allMap[cat.Pid]; ok {
+			parent.Children = append(parent.Children, cat)
+		}
+	}
+
+	return
+}
+
 func GetMenusTree(ms []menu.Menu) (list []*Menu, err error) {
 	menus := slice.Map(ms, func(idx int, src menu.Menu) *Menu {
 		return toVoMenu(src)

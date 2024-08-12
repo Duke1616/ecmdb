@@ -10,6 +10,7 @@ import (
 type UserRepository interface {
 	CreatUser(ctx context.Context, user domain.User) (int64, error)
 	FindByUsername(ctx context.Context, username string) (domain.User, error)
+	FindById(ctx context.Context, id int64) (domain.User, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, error)
 	Total(ctx context.Context) (int64, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
@@ -17,6 +18,11 @@ type UserRepository interface {
 
 type userRepository struct {
 	dao dao.UserDAO
+}
+
+func (repo *userRepository) FindById(ctx context.Context, id int64) (domain.User, error) {
+	user, err := repo.dao.FindById(ctx, id)
+	return repo.toDomain(user), err
 }
 
 func (repo *userRepository) AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error) {

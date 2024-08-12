@@ -56,43 +56,61 @@ func GetPermissionMenusTree(ms []menu.Menu, ps []policy.Policy) (list []*Menu, e
 		return fmt.Sprintf("%s:%s", element.Path, element.Method)
 	})
 
-	// 转换成指针
-	menus := slice.Map(ms, func(idx int, src menu.Menu) *Menu {
-		return toVoMenu(src)
+	// 过滤拥有权限的路由
+	menus := slice.FilterMap(ms, func(idx int, src menu.Menu) (*Menu, bool) {
+		if src.Pid == 0 {
+			return toVoMenu(src), true
+		}
+
+		ok := filterEndpoints(src.Endpoints, pMap)
+		if ok {
+			return toVoMenu(src), true
+		}
+
+		return nil, false
 	})
 
 	allMap := map[int64]*Menu{}
 	list = []*Menu{}
-
-	for _, cat := range menus {
-		cat.Children = []*Menu{}
-		allMap[cat.Id] = cat
-
-		var validEndpoints []Endpoint
-		for _, endpoint := range cat.Endpoints {
-			key := fmt.Sprintf("%s:%s", endpoint.Path, endpoint.Method)
-			if _, exists := pMap[key]; exists {
-				validEndpoints = append(validEndpoints, endpoint)
-			}
-		}
-
-		if len(validEndpoints) > 0 || cat.Pid == 0 {
-			cat.Endpoints = validEndpoints
-			if cat.Pid == 0 {
-				list = append(list, cat)
-			}
-		} else {
-			delete(allMap, cat.Id)
+	for k, cat := range menus {
+		menus[k].Children = []*Menu{}
+		allMap[cat.Id] = menus[k]
+		if cat.Pid == 0 {
+			list = append(list, menus[k])
 		}
 	}
 
-	for _, cat := range menus {
-		if parent, ok := allMap[cat.Pid]; ok {
-			parent.Children = append(parent.Children, cat)
+	for k, cat := range menus {
+		_, ok := allMap[cat.Pid]
+		if ok {
+			//如果父级别数据存在，添加到Children
+			//利用指针逻辑，map中数据和列表中原始对象为统一指针。指向同一内存地址，如此对map中数据操作，也相当于对原始数据操作。
+			allMap[cat.Pid].Children = append(allMap[cat.Pid].Children, menus[k])
 		}
 	}
 
 	return
+}
+
+func filterEndpoints(endpoints []menu.Endpoint, pMap map[string]policy.Policy) bool {
+	// TODO 如果节点为空, 应该如何处理，目前是当作没有权限
+	if endpoints == nil || len(endpoints) == 0 {
+		return false
+	}
+
+	var filtered []menu.Endpoint
+	for _, ep := range endpoints {
+		key := fmt.Sprintf("%s:%s", ep.Path, ep.Method)
+		if _, exists := pMap[key]; exists {
+			filtered = append(filtered, ep)
+		}
+	}
+
+	if len(filtered) == len(endpoints) {
+		return true
+	}
+
+	return false
 }
 
 func GetMenusTree(ms []menu.Menu) (list []*Menu, err error) {
@@ -107,19 +125,15 @@ func GetMenusTree(ms []menu.Menu) (list []*Menu, err error) {
 	for k, cat := range menus {
 		menus[k].Children = []*Menu{}
 		allMap[cat.Id] = menus[k]
-		//记录顶级分类数据
 		if cat.Pid == 0 {
 			list = append(list, menus[k])
 		}
 	}
 
-	//形成tree
 	for k, cat := range menus {
 		_, ok := allMap[cat.Pid]
 		if ok {
-			//如果父级别数据存在，添加到Children
 			allMap[cat.Pid].Children = append(allMap[cat.Pid].Children, menus[k])
-			//利用指针逻辑，map中数据和列表中原始对象为统一指针。指向同一内存地址，如此对map中数据操作，也相当于对原始数据操作。
 		}
 	}
 

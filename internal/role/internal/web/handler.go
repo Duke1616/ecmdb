@@ -10,6 +10,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
+	"strconv"
 )
 
 type Handler struct {
@@ -46,7 +47,7 @@ func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermissi
 	)
 	eg.Go(func() error {
 		var err error
-		ps, err = h.policySvc.GetImplicitPermissionsForUser(ctx, req.UserId)
+		ps, err = h.policySvc.GetImplicitPermissionsForUser(ctx, strconv.FormatInt(req.UserId, 10))
 		return err
 	})
 

@@ -97,5 +97,5 @@ type RetrieveUserHaveRoles struct {
 }
 
 type FindUserPermissionMenus struct {
-	UserId string `json:"user_id"`
+	UserId int64 `json:"user_id"`
 }

@@ -107,7 +107,7 @@ func (h *Handler) UserRoleBind(ctx *gin.Context, req UserBindRoleReq) (ginx.Resu
 		return systemErrorResult, err
 	}
 
-	ok, err := h.policySvc.UpdateFilteredPolicies(ctx, req.Id, req.RoleCodes)
+	ok, err := h.policySvc.UpdateFilteredGrouping(ctx, req.Id, req.RoleCodes)
 	if err != nil {
 		return ginx.Result{}, err
 	}

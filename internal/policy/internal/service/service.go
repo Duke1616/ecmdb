@@ -15,7 +15,7 @@ type Service interface {
 	Authorize(ctx context.Context, userId, path, method string) (bool, error)
 	GetImplicitPermissionsForUser(ctx context.Context, userId string) ([]domain.Policy, error)
 	GetPermissionsForRole(ctx context.Context, roleCode string) ([]domain.Policy, error)
-	UpdateFilteredPolicies(ctx context.Context, userId int64, roleCodes []string) (bool, error)
+	UpdateFilteredGrouping(ctx context.Context, userId int64, roleCodes []string) (bool, error)
 }
 
 type service struct {
@@ -94,17 +94,22 @@ func (s *service) AddGroupingPolicy(ctx context.Context, req domain.AddGroupingP
 	return ok, nil
 }
 
-func (s *service) UpdateFilteredPolicies(ctx context.Context, userId int64, roleCodes []string) (bool, error) {
+func (s *service) UpdateFilteredGrouping(ctx context.Context, userId int64, roleCodes []string) (bool, error) {
 	var rcs [][]string
 	for _, policy := range roleCodes {
 		rcs = append(rcs, []string{strconv.FormatInt(userId, 10), policy})
 	}
 
-	ok, err := s.enforcer.UpdateFilteredPolicies(rcs, 0, strconv.FormatInt(userId, 10))
+	ok, err := s.enforcer.RemoveFilteredGroupingPolicy(0, strconv.FormatInt(userId, 10))
 	if err != nil {
 		return ok, err
 	}
-	return ok, nil
+
+	if rcs == nil {
+		return true, nil
+	}
+
+	return s.enforcer.AddGroupingPolicies(rcs)
 }
 
 func NewService(enforcer *casbin.SyncedEnforcer) Service {

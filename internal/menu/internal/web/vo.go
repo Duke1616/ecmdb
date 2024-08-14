@@ -30,7 +30,6 @@ type UpdateMenuReq struct {
 }
 
 type Endpoint struct {
-	Id     int64  `json:"id"`
 	Path   string `json:"path"`
 	Method string `json:"method"`
 	Desc   string `json:"desc"`
@@ -45,17 +44,16 @@ type Meta struct {
 }
 
 type Menu struct {
-	Id            int64      `json:"id"`
-	Pid           int64      `json:"pid"`
-	Name          string     `json:"name"`
-	Path          string     `json:"path"`
-	Redirect      string     `json:"redirect"`
-	Sort          int64      `json:"sort"`
-	Component     string     `json:"component"`
-	ComponentPath string     `json:"component_path"`
-	Status        uint8      `json:"status"`
-	Type          uint8      `json:"type"`
-	Meta          Meta       `json:"meta"`
-	Endpoints     []Endpoint `json:"endpoints"`
-	Children      []*Menu    `json:"children"`
+	Id        int64      `json:"id"`
+	Pid       int64      `json:"pid"`
+	Name      string     `json:"name"`
+	Path      string     `json:"path"`
+	Redirect  string     `json:"redirect"`
+	Sort      int64      `json:"sort"`
+	Component string     `json:"component"`
+	Status    uint8      `json:"status"`
+	Type      uint8      `json:"type"`
+	Meta      Meta       `json:"meta"`
+	Endpoints []Endpoint `json:"endpoints"`
+	Children  []*Menu    `json:"children"`
 }

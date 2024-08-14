@@ -29,22 +29,20 @@ const (
 )
 
 type Menu struct {
-	Id            int64
-	Pid           int64
-	Path          string
-	Name          string
-	Sort          int64
-	Component     string
-	Redirect      string
-	ComponentPath string
-	Status        Status
-	Type          Type
-	Meta          Meta
-	Endpoints     []Endpoint
+	Id        int64
+	Pid       int64
+	Path      string
+	Name      string
+	Sort      int64
+	Component string
+	Redirect  string
+	Status    Status
+	Type      Type
+	Meta      Meta
+	Endpoints []Endpoint
 }
 
 type Endpoint struct {
-	Id     int64
 	Path   string
 	Method string
 	Desc   string

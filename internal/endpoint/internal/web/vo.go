@@ -30,6 +30,11 @@ type Page struct {
 	Limit  int64 `json:"limit,omitempty"`
 }
 
+type FilterPathReq struct {
+	Page
+	Path string `json:"path"`
+}
+
 type RetrieveEndpoints struct {
 	Endpoints []Endpoint `json:"endpoints"`
 	Total     int64      `json:"total"`

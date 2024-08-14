@@ -44,25 +44,7 @@ func (h *Handler) GetImplicitPermissionsForUser(ctx *gin.Context, req GetPermiss
 	if err != nil {
 		return systemErrorResult, err
 	}
-
-	// 返回后端结构
-	//uniquePermissions := make(map[Policy]bool)
-	//var policies []Policy
-	//policies = slice.FilterMap(resp, func(idx int, src domain.Policy) (Policy, bool) {
-	//	policy := Policy{
-	//		Path:   src.Path,
-	//		Method: src.Method,
-	//		Effect: Effect(src.Effect),
-	//	}
-	//
-	//	if !uniquePermissions[policy] {
-	//		uniquePermissions[policy] = true
-	//		return policy, true
-	//	}
-	//
-	//	return policy, false
-	//})
-
+	
 	policies := slice.Map(resp, func(idx int, src domain.Policy) Policy {
 		return Policy{
 			Path:   src.Path,

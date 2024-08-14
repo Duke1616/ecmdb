@@ -7,8 +7,6 @@
 package role
 
 import (
-	"github.com/Duke1616/ecmdb/internal/menu"
-	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/role/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/role/internal/service"
@@ -20,15 +18,14 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, menuModule *menu.Module, policyModule *policy.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo) (*Module, error) {
 	roleDAO := InitRoleDAO(db)
 	roleRepository := repository.NewRoleRepository(roleDAO)
 	serviceService := service.NewService(roleRepository)
-	service2 := menuModule.Svc
-	service3 := policyModule.Svc
-	handler := web.NewHandler(serviceService, service2, service3)
+	handler := web.NewHandler(serviceService)
 	module := &Module{
 		Hdl: handler,
+		Svc: serviceService,
 	}
 	return module, nil
 }

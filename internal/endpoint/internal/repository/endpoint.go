@@ -10,8 +10,8 @@ import (
 type EndpointRepository interface {
 	CreateEndpoint(ctx context.Context, req domain.Endpoint) (int64, error)
 	CreateMutilEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
-	ListEndpoint(ctx context.Context, offset, limit int64) ([]domain.Endpoint, error)
-	Total(ctx context.Context) (int64, error)
+	ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, error)
+	Total(ctx context.Context, path string) (int64, error)
 }
 
 type endpointRepository struct {
@@ -29,15 +29,15 @@ func (repo *endpointRepository) CreateMutilEndpoint(ctx context.Context, req []d
 	panic("implement me")
 }
 
-func (repo *endpointRepository) ListEndpoint(ctx context.Context, offset, limit int64) ([]domain.Endpoint, error) {
-	ts, err := repo.dao.ListEndpoint(ctx, offset, limit)
+func (repo *endpointRepository) ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, error) {
+	ts, err := repo.dao.ListEndpoint(ctx, offset, limit, path)
 	return slice.Map(ts, func(idx int, src dao.Endpoint) domain.Endpoint {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *endpointRepository) Total(ctx context.Context) (int64, error) {
-	return repo.dao.Count(ctx)
+func (repo *endpointRepository) Total(ctx context.Context, path string) (int64, error) {
+	return repo.dao.Count(ctx, path)
 }
 
 func (repo *endpointRepository) CreateEndpoint(ctx context.Context, req domain.Endpoint) (int64, error) {

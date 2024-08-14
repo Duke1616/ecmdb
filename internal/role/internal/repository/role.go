@@ -15,10 +15,29 @@ type RoleRepository interface {
 	FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error)
 	FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, error)
 	CountByExcludeCodes(ctx context.Context, codes []string) (int64, error)
+	CreateOrUpdateRoleMenuIds(ctx context.Context, code string, menuIds []int64) (int64, error)
+	FindByMenuId(ctx context.Context, menuId int64) ([]domain.Role, error)
+	FindByRoleCode(ctx context.Context, code string) (domain.Role, error)
 }
 
 type roleRepository struct {
 	dao dao.RoleDAO
+}
+
+func (repo *roleRepository) FindByRoleCode(ctx context.Context, code string) (domain.Role, error) {
+	r, err := repo.dao.FindByRoleCode(ctx, code)
+	return repo.toDomain(r), err
+}
+
+func (repo *roleRepository) FindByMenuId(ctx context.Context, menuId int64) ([]domain.Role, error) {
+	rs, err := repo.dao.FindByMenuId(ctx, menuId)
+	return slice.Map(rs, func(idx int, src dao.Role) domain.Role {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *roleRepository) CreateOrUpdateRoleMenuIds(ctx context.Context, code string, menuIds []int64) (int64, error) {
+	return repo.dao.CreateOrUpdateRoleMenuIds(ctx, code, menuIds)
 }
 
 func (repo *roleRepository) FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error) {
@@ -76,10 +95,11 @@ func (repo *roleRepository) toEntity(req domain.Role) dao.Role {
 
 func (repo *roleRepository) toDomain(req dao.Role) domain.Role {
 	return domain.Role{
-		Id:     req.Id,
-		Name:   req.Name,
-		Code:   req.Code,
-		Desc:   req.Desc,
-		Status: req.Status,
+		Id:      req.Id,
+		Name:    req.Name,
+		Code:    req.Code,
+		Desc:    req.Desc,
+		Status:  req.Status,
+		MenuIds: req.MenuIds,
 	}
 }

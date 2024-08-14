@@ -7,20 +7,26 @@
 package menu
 
 import (
+	"github.com/Duke1616/ecmdb/internal/menu/internal/event"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/service"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo) (*Module, error) {
 	menuDAO := dao.NewMenuDAO(db)
 	menuRepository := repository.NewMenuRepository(menuDAO)
-	serviceService := service.NewService(menuRepository)
+	menuChangeEventProducer, err := event.NewMenuChangeEventProducer(q)
+	if err != nil {
+		return nil, err
+	}
+	serviceService := service.NewService(menuRepository, menuChangeEventProducer)
 	handler := web.NewHandler(serviceService)
 	module := &Module{
 		Hdl: handler,

@@ -26,7 +26,7 @@ type AddGroupingPolicyReq struct {
 }
 
 type GetPermissionsForUserReq struct {
-	UserId string `json:"user_id"`
+	UserId int64 `json:"user_id"`
 }
 
 type GetPermissionsForRoleReq struct {

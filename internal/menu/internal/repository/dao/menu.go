@@ -17,10 +17,23 @@ type MenuDAO interface {
 	ListMenu(ctx context.Context) ([]Menu, error)
 	FindByIds(ctx context.Context, ids []int64) ([]Menu, error)
 	GetAllMenu(ctx context.Context) ([]Menu, error)
+	FindById(ctx context.Context, id int64) (Menu, error)
 }
 
 type menuDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *menuDAO) FindById(ctx context.Context, id int64) (Menu, error) {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{"id": id}
+
+	var result Menu
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Menu{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *menuDAO) GetAllMenu(ctx context.Context) ([]Menu, error) {
@@ -75,18 +88,17 @@ func (dao *menuDAO) UpdateMenu(ctx context.Context, t Menu) (int64, error) {
 	col := dao.db.Collection(MenuCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
-			"name":           t.Name,
-			"pid":            t.Pid,
-			"path":           t.Path,
-			"sort":           t.Sort,
-			"redirect":       t.Redirect,
-			"component":      t.Component,
-			"component_path": t.ComponentPath,
-			"type":           t.Type,
-			"status":         t.Status,
-			"meta":           t.Meta,
-			"endpoints":      t.Endpoints,
-			"utime":          time.Now().UnixMilli(),
+			"name":      t.Name,
+			"pid":       t.Pid,
+			"path":      t.Path,
+			"sort":      t.Sort,
+			"redirect":  t.Redirect,
+			"component": t.Component,
+			"type":      t.Type,
+			"status":    t.Status,
+			"meta":      t.Meta,
+			"endpoints": t.Endpoints,
+			"utime":     time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": t.Id}
@@ -119,24 +131,22 @@ func NewMenuDAO(db *mongox.Mongo) MenuDAO {
 }
 
 type Menu struct {
-	Id            int64      `bson:"id"`
-	Pid           int64      `bson:"pid"`
-	Path          string     `bson:"path"`
-	Sort          int64      `bson:"sort"`
-	Name          string     `bson:"name"`
-	Redirect      string     `bson:"redirect"`
-	Component     string     `bson:"component"`
-	ComponentPath string     `bson:"component_path"`
-	Type          uint8      `bson:"type"`
-	Status        uint8      `bson:"status"`
-	Meta          Meta       `bson:"meta"`
-	Endpoints     []Endpoint `bson:"endpoints"`
-	Ctime         int64      `bson:"ctime"`
-	Utime         int64      `bson:"utime"`
+	Id        int64      `bson:"id"`
+	Pid       int64      `bson:"pid"`
+	Path      string     `bson:"path"`
+	Sort      int64      `bson:"sort"`
+	Name      string     `bson:"name"`
+	Redirect  string     `bson:"redirect"`
+	Component string     `bson:"component"`
+	Type      uint8      `bson:"type"`
+	Status    uint8      `bson:"status"`
+	Meta      Meta       `bson:"meta"`
+	Endpoints []Endpoint `bson:"endpoints"`
+	Ctime     int64      `bson:"ctime"`
+	Utime     int64      `bson:"utime"`
 }
 
 type Endpoint struct {
-	Id     int64  `bson:"id"`
 	Path   string `bson:"path"`
 	Method string `bson:"method"`
 	Desc   string `bson:"desc"`

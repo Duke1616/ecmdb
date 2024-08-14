@@ -8,15 +8,38 @@ import (
 )
 
 type Service interface {
+	// CreateRole 创建角色
 	CreateRole(ctx context.Context, req domain.Role) (int64, error)
+	// ListRole 获取角色列表
 	ListRole(ctx context.Context, offset, limit int64) ([]domain.Role, int64, error)
+	// UpdateRole 变更角色信息
 	UpdateRole(ctx context.Context, req domain.Role) (int64, error)
+	// CreateOrUpdateRoleMenuIds 新增角色的菜单权限
+	CreateOrUpdateRoleMenuIds(ctx context.Context, code string, menuIds []int64) (int64, error)
+	// FindByExcludeCodes 查找排除当前角色编码的数据
 	FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, int64, error)
+	// FindByIncludeCodes 查找包含当前角色编码的数据
 	FindByIncludeCodes(ctx context.Context, codes []string) ([]domain.Role, error)
+	// FindByMenuId 查找包含菜单 ID 的角色
+	FindByMenuId(ctx context.Context, menuId int64) ([]domain.Role, error)
+	// FindByRoleCode 查找角色编码数据
+	FindByRoleCode(ctx context.Context, code string) (domain.Role, error)
 }
 
 type service struct {
 	repo repository.RoleRepository
+}
+
+func (s *service) FindByRoleCode(ctx context.Context, code string) (domain.Role, error) {
+	return s.repo.FindByRoleCode(ctx, code)
+}
+
+func (s *service) FindByMenuId(ctx context.Context, menuId int64) ([]domain.Role, error) {
+	return s.repo.FindByMenuId(ctx, menuId)
+}
+
+func (s *service) CreateOrUpdateRoleMenuIds(ctx context.Context, code string, menuIds []int64) (int64, error) {
+	return s.repo.CreateOrUpdateRoleMenuIds(ctx, code, menuIds)
 }
 
 func (s *service) FindByExcludeCodes(ctx context.Context, offset, limit int64, codes []string) ([]domain.Role, int64, error) {

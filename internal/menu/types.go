@@ -2,6 +2,7 @@ package menu
 
 import (
 	"github.com/Duke1616/ecmdb/internal/menu/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/menu/internal/event"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/service"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/web"
 )
@@ -13,3 +14,9 @@ type Service = service.Service
 type Menu = domain.Menu
 
 type Endpoint = domain.Endpoint
+
+type EventMenuQueue = event.MenuEvent
+
+type EventMenu = event.Menu
+
+type EventEndpoint = event.Endpoint

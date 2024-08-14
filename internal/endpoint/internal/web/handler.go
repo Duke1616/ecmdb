@@ -22,7 +22,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/endpoint")
 	g.POST("/register", ginx.WrapBody[RegisterEndpointReq](h.RegisterEndpoint))
 	g.POST("/register/mutil", ginx.WrapBody[RegisterEndpointsReq](h.RegisterMutilEndpoint))
-	g.POST("/list", ginx.WrapBody[Page](h.ListEndpoint))
+	g.POST("/list", ginx.WrapBody[FilterPathReq](h.ListEndpoint))
 }
 
 func (h *Handler) RegisterEndpoint(ctx *gin.Context, req RegisterEndpointReq) (ginx.Result, error) {
@@ -41,8 +41,8 @@ func (h *Handler) RegisterMutilEndpoint(ctx *gin.Context, req RegisterEndpointsR
 	panic("implement me")
 }
 
-func (h *Handler) ListEndpoint(ctx *gin.Context, req Page) (ginx.Result, error) {
-	rts, total, err := h.svc.ListResource(ctx, req.Offset, req.Limit)
+func (h *Handler) ListEndpoint(ctx *gin.Context, req FilterPathReq) (ginx.Result, error) {
+	rts, total, err := h.svc.ListResource(ctx, req.Offset, req.Limit, req.Path)
 	if err != nil {
 		return systemErrorResult, err
 	}

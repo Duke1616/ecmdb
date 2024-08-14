@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/permission"
 	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
@@ -127,7 +128,7 @@ func InitApp() (*App, error) {
 	}
 	handler12 := taskModule.Hdl
 	handler13 := module.Hdl
-	menuModule, err := menu.InitModule(mongo)
+	menuModule, err := menu.InitModule(mq, mongo)
 	if err != nil {
 		return nil, err
 	}
@@ -137,12 +138,17 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler15 := endpointModule.Hdl
-	roleModule, err := role.InitModule(mongo, menuModule, module)
+	roleModule, err := role.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
 	handler16 := roleModule.Hdl
-	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16)
+	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, module)
+	if err != nil {
+		return nil, err
+	}
+	handler17 := permissionModule.Hdl
+	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule)
 	if err != nil {
 		return nil, err

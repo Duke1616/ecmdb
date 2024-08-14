@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/ecodeclub/ekit/slice"
 	"golang.org/x/sync/errgroup"
+	"sort"
 )
 
 func getPermission(menus []menu.Menu, pMap map[string]policy.Policy) ([]*Menu, []int64, error) {
@@ -89,6 +90,7 @@ func GetPermissionMenusTree(ms []menu.Menu, ps []policy.Policy) (list []*Menu, e
 		}
 	}
 
+	sortMenu(list)
 	return
 }
 
@@ -137,21 +139,32 @@ func GetMenusTree(ms []menu.Menu) (list []*Menu, err error) {
 		}
 	}
 
+	sortMenu(list)
 	return
+}
+
+func sortMenu(menus []*Menu) {
+	sort.Slice(menus, func(i, j int) bool {
+		return menus[i].Sort < menus[j].Sort
+	})
+	for _, m := range menus {
+		if len(m.Children) > 0 {
+			sortMenu(m.Children)
+		}
+	}
 }
 
 func toVoMenu(req menu.Menu) *Menu {
 	return &Menu{
-		Id:            req.Id,
-		Pid:           req.Pid,
-		Path:          req.Path,
-		Sort:          req.Sort,
-		Name:          req.Name,
-		Redirect:      req.Redirect,
-		Type:          req.Type.ToUint8(),
-		Component:     req.Component,
-		ComponentPath: req.ComponentPath,
-		Status:        req.Status.ToUint8(),
+		Id:        req.Id,
+		Pid:       req.Pid,
+		Path:      req.Path,
+		Sort:      req.Sort,
+		Name:      req.Name,
+		Redirect:  req.Redirect,
+		Type:      req.Type.ToUint8(),
+		Component: req.Component,
+		Status:    req.Status.ToUint8(),
 		Meta: Meta{
 			Title:       req.Meta.Title,
 			IsHidden:    req.Meta.IsHidden,
@@ -161,7 +174,6 @@ func toVoMenu(req menu.Menu) *Menu {
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src menu.Endpoint) Endpoint {
 			return Endpoint{
-				Id:     src.Id,
 				Path:   src.Path,
 				Method: src.Method,
 				Desc:   src.Desc,

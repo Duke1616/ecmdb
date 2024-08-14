@@ -1,7 +1,7 @@
 package web
 
 import (
-	"encoding/json"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
@@ -26,11 +26,15 @@ func NewHandler(svc service.Service, ldapSvc service.LdapService, policySvc poli
 	}
 }
 
-func (h *Handler) PublicRegisterRoutes(server *gin.Engine) {
+func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
+}
+
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
+	g := server.Group("/api/user")
 	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
-	g.POST("/info", ginx.WrapBody[LoginLdapReq](h.Info))
+	g.POST("/info", ginx.Wrap(h.GetUserInfo))
 	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/list", ginx.WrapBody[Page](h.ListUser))
@@ -126,20 +130,38 @@ func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.Result{Msg: "OK"}, nil
 }
 
-func (h *Handler) Info(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
-	type AuthInfo struct {
-		Username string   `json:"username"`
-		Roles    []string `json:"roles"`
+//func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
+//	type AuthInfo struct {
+//		Id       int64    `json:"id"`
+//		Username string   `json:"username"`
+//		Roles    []string `json:"roles"`
+//	}
+//
+//	jsonData := `{"username":"admin","roles":["admin"]}`
+//	// 创建一个AuthInfo类型的变量来存储解析后的数据
+//	var authInfo AuthInfo
+//
+//	// 使用json.Unmarshal函数解析JSON数据到结构体中
+//	json.Unmarshal([]byte(jsonData), &authInfo)
+//	return ginx.Result{
+//		Data: ginx.Result{Data: authInfo},
+//	}, nil
+//}
+
+func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
+	// 获取登录用户 sess 获取ID
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 	}
 
-	jsonData := `{"username":"admin","roles":["admin"]}`
-	// 创建一个AuthInfo类型的变量来存储解析后的数据
-	var authInfo AuthInfo
+	user, err := h.svc.FindById(ctx, sess.Claims().Uid)
+	if err != nil {
+		return ginx.Result{}, err
+	}
 
-	// 使用json.Unmarshal函数解析JSON数据到结构体中
-	json.Unmarshal([]byte(jsonData), &authInfo)
 	return ginx.Result{
-		Data: ginx.Result{Data: authInfo},
+		Data: h.ToUserVo(user),
 	}, nil
 }
 

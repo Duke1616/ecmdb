@@ -1,29 +1,20 @@
 package web
 
 import (
-	"fmt"
-	"github.com/Duke1616/ecmdb/internal/menu"
-	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/role/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/sync/errgroup"
-	"strconv"
 )
 
 type Handler struct {
-	svc       service.Service
-	menuSvc   menu.Service
-	policySvc policy.Service
+	svc service.Service
 }
 
-func NewHandler(svc service.Service, menuSvc menu.Service, policySvc policy.Service) *Handler {
+func NewHandler(svc service.Service) *Handler {
 	return &Handler{
-		svc:       svc,
-		menuSvc:   menuSvc,
-		policySvc: policySvc,
+		svc: svc,
 	}
 }
 
@@ -32,44 +23,8 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/update", ginx.WrapBody[UpdateRoleReq](h.UpdateRole))
 	g.POST("/create", ginx.WrapBody[CreateRoleReq](h.CreateRole))
 	g.POST("/list", ginx.WrapBody[Page](h.ListRole))
-	g.POST("/permission", ginx.WrapBody[RolePermissionReq](h.ListRolePermission))
-	g.POST("/permission/add", ginx.WrapBody[AddPermissionForRoleReq](h.AddPermissionForRole))
 	g.POST("/user/have", ginx.WrapBody[UserRole](h.FindUserHaveRoles))
 	g.POST("/user/does_not_have", ginx.WrapBody[UserRole](h.FindUserDoesNotHaveRoles))
-	g.POST("/user/get_permission_menu", ginx.WrapBody[FindUserPermissionMenus](h.FindUserPermissionMenus))
-}
-
-func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermissionMenus) (ginx.Result, error) {
-	var (
-		eg errgroup.Group
-		ms []menu.Menu
-		ps []policy.Policy
-	)
-	eg.Go(func() error {
-		var err error
-		ps, err = h.policySvc.GetImplicitPermissionsForUser(ctx, strconv.FormatInt(req.UserId, 10))
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		ms, err = h.menuSvc.GetAllMenu(ctx)
-		return err
-	})
-	if err := eg.Wait(); err != nil {
-		return systemErrorResult, err
-	}
-
-	tree, err := GetPermissionMenusTree(ms, ps)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: RetrieveUserPermission{
-			Menu: tree,
-		},
-	}, nil
 }
 
 func (h *Handler) CreateRole(ctx *gin.Context, req CreateRoleReq) (ginx.Result, error) {
@@ -112,73 +67,6 @@ func (h *Handler) FindUserDoesNotHaveRoles(ctx *gin.Context, req UserRole) (ginx
 			Roles: slice.Map(roles, func(idx int, src domain.Role) Role {
 				return h.toVoRole(src)
 			}),
-		},
-	}, nil
-}
-
-func (h *Handler) AddPermissionForRole(ctx *gin.Context, req AddPermissionForRoleReq) (ginx.Result, error) {
-	// 查询需要添加权限的菜单信息
-	menus, err := h.menuSvc.FindByIds(ctx, req.MenuIds)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 根据菜单信息，查询API接口权限
-	var policies []policy.Policy
-	for _, m := range menus {
-		p := slice.Map(m.Endpoints, func(idx int, src menu.Endpoint) policy.Policy {
-			return policy.Policy{
-				Path:   src.Path,
-				Method: src.Method,
-				Effect: "allow",
-			}
-		})
-
-		policies = append(policies, p...)
-	}
-
-	// 添加权限
-	ok, err := h.policySvc.CreateOrUpdateFilteredPolicies(ctx, policy.Policies{
-		RoleCode: req.RoleCode,
-		Policies: policies,
-	})
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: ok,
-	}, nil
-}
-
-func (h *Handler) ListRolePermission(ctx *gin.Context, req RolePermissionReq) (ginx.Result, error) {
-	// 获取角色拥有的权限
-	ps, err := h.policySvc.GetPermissionsForRole(ctx, req.RoleCode)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 生成唯一标识 map 结构
-	pMap := slice.ToMap(ps, func(element policy.Policy) string {
-		return fmt.Sprintf("%s:%s", element.Path, element.Method)
-	})
-
-	// 获取所有的菜单
-	menus, err := h.menuSvc.ListMenu(ctx)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 获取数据结构
-	menuTree, authzIds, err := getPermission(menus, pMap)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: RetrieveRolePermission{
-			AuthzIds: authzIds,
-			Menu:     menuTree,
 		},
 	}, nil
 }

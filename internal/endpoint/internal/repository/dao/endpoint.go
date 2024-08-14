@@ -14,8 +14,8 @@ const EndpointCollection = "c_endpoint"
 type EndpointDAO interface {
 	CreateEndpoint(ctx context.Context, t Endpoint) (int64, error)
 	CreateMutilEndpoint(ctx context.Context, req []Endpoint) (int64, error)
-	ListEndpoint(ctx context.Context, offset, limit int64) ([]Endpoint, error)
-	Count(ctx context.Context) (int64, error)
+	ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]Endpoint, error)
+	Count(ctx context.Context, path string) (int64, error)
 }
 
 type endpointDAO struct {
@@ -27,9 +27,12 @@ func (dao *endpointDAO) CreateMutilEndpoint(ctx context.Context, req []Endpoint)
 	panic("implement me")
 }
 
-func (dao *endpointDAO) ListEndpoint(ctx context.Context, offset, limit int64) ([]Endpoint, error) {
+func (dao *endpointDAO) ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]Endpoint, error) {
 	col := dao.db.Collection(EndpointCollection)
 	filter := bson.M{}
+	if path != "" {
+		filter = bson.M{"$text": bson.M{"$search": path}}
+	}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -52,11 +55,13 @@ func (dao *endpointDAO) ListEndpoint(ctx context.Context, offset, limit int64) (
 	return result, nil
 }
 
-func (dao *endpointDAO) Count(ctx context.Context) (int64, error) {
+func (dao *endpointDAO) Count(ctx context.Context, path string) (int64, error) {
 	col := dao.db.Collection(EndpointCollection)
-	filer := bson.M{}
-
-	count, err := col.CountDocuments(ctx, filer)
+	filter := bson.M{}
+	if path != "" {
+		filter = bson.M{"$text": bson.M{"$search": path}}
+	}
+	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/permission"
 	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
@@ -30,16 +31,22 @@ import (
 func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,
 	mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
 	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
-	rtHdl *relation.RTHandler, ldapHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
+	rtHdl *relation.RTHandler, userHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
-	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler,
+	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	server := gin.Default()
 	server.Use(mdls...)
 
-	ldapHdl.PublicRegisterRoutes(server)
+	// 不需要认证鉴权的路由
+	userHdl.PublicRoutes(server)
+
+	// 验证是否登录
+	server.Use(session.CheckLoginMiddleware())
+	permissionHdl.PublicRoutes(server)
+	userHdl.PrivateRoutes(server)
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
 	resourceHdl.RegisterRoutes(server)
@@ -51,19 +58,17 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	workerHdl.RegisterRoutes(server)
 	runnerHdl.RegisterRoutes(server)
 	strategyHdl.RegisterRoutes(server)
-
 	policyHdl.PublicRoutes(server)
 	menuHdl.PublicRoutes(server)
 	endpointHdl.PublicRoutes(server)
 	roleHdl.PublicRoutes(server)
+	permissionHdl.PrivateRoutes(server)
 
+	// 检查权限策略
 	server.Use(checkPolicyMiddleware.Build())
 	workflowHdl.RegisterRoutes(server)
 	templateGroupHdl.RegisterRoutes(server)
 	engineHdl.RegisterRoutes(server)
-
-	// 验证是否登录
-	server.Use(session.CheckLoginMiddleware())
 	orderHdl.RegisterRoutes(server)
 	taskHdl.RegisterRoutes(server)
 	return server

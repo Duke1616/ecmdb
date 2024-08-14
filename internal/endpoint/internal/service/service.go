@@ -10,7 +10,7 @@ import (
 type Service interface {
 	RegisterEndpoint(ctx context.Context, req domain.Endpoint) (int64, error)
 	RegisterMutilEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
-	ListResource(ctx context.Context, offset, limit int64) ([]domain.Endpoint, int64, error)
+	ListResource(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error)
 }
 
 type service struct {
@@ -28,7 +28,7 @@ func (s *service) RegisterMutilEndpoint(ctx context.Context, req []domain.Endpoi
 	panic("implement me")
 }
 
-func (s *service) ListResource(ctx context.Context, offset, limit int64) ([]domain.Endpoint, int64, error) {
+func (s *service) ListResource(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error) {
 	var (
 		eg    errgroup.Group
 		es    []domain.Endpoint
@@ -36,13 +36,13 @@ func (s *service) ListResource(ctx context.Context, offset, limit int64) ([]doma
 	)
 	eg.Go(func() error {
 		var err error
-		es, err = s.repo.ListEndpoint(ctx, offset, limit)
+		es, err = s.repo.ListEndpoint(ctx, offset, limit, path)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.Total(ctx)
+		total, err = s.repo.Total(ctx, path)
 		return err
 	})
 	if err := eg.Wait(); err != nil {

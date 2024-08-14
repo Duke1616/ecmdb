@@ -126,6 +126,11 @@ func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermissi
 }
 
 func (h *Handler) getMenuTree(ctx context.Context, menuIds []int64) ([]*Menu, error) {
+	// 如果没有任何权限，直接返回
+	if len(menuIds) == 0 {
+		return nil, nil
+	}
+
 	// 获取对应的相信菜单信息
 	menus, err := h.menuSvc.FindByIds(ctx, menuIds)
 	if err != nil {
@@ -142,7 +147,7 @@ func (h *Handler) getMenuTree(ctx context.Context, menuIds []int64) ([]*Menu, er
 }
 func (h *Handler) getMenuIds(roles []role.Role) []int64 {
 	// 获取拥有的菜单ID， 进行去重
-	var menuIds []int64
+	menuIds := make([]int64, 0)
 	uniquePermissions := make(map[int64]bool)
 	for _, r := range roles {
 		ms := slice.FilterMap(r.MenuIds, func(idx int, src int64) (int64, bool) {

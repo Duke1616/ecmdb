@@ -18,10 +18,23 @@ type MenuDAO interface {
 	FindByIds(ctx context.Context, ids []int64) ([]Menu, error)
 	GetAllMenu(ctx context.Context) ([]Menu, error)
 	FindById(ctx context.Context, id int64) (Menu, error)
+	DeleteMenu(ctx context.Context, id int64) (int64, error)
 }
 
 type menuDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *menuDAO) DeleteMenu(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 func (dao *menuDAO) FindById(ctx context.Context, id int64) (Menu, error) {

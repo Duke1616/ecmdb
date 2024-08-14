@@ -40,12 +40,13 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	server := gin.Default()
 	server.Use(mdls...)
 
-	// 不需要认证鉴权的路由
+	// 不需要登录认证鉴权的路由
 	userHdl.PublicRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
 	permissionHdl.PublicRoutes(server)
+
 	userHdl.PrivateRoutes(server)
 	modelHdl.RegisterRoutes(server)
 	attributeHdl.RegisterRoutes(server)
@@ -62,10 +63,10 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	menuHdl.PublicRoutes(server)
 	endpointHdl.PublicRoutes(server)
 	roleHdl.PublicRoutes(server)
-	permissionHdl.PrivateRoutes(server)
 
 	// 检查权限策略
 	server.Use(checkPolicyMiddleware.Build())
+	permissionHdl.PrivateRoutes(server)
 	workflowHdl.RegisterRoutes(server)
 	templateGroupHdl.RegisterRoutes(server)
 	engineHdl.RegisterRoutes(server)

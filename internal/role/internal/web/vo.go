@@ -7,6 +7,10 @@ type CreateRoleReq struct {
 	Status bool   `json:"status"`
 }
 
+type DeleteRoleReq struct {
+	Id int64 `json:"id"`
+}
+
 type UpdateRoleReq struct {
 	Id     int64  `json:"id"`
 	Name   string `json:"name"`

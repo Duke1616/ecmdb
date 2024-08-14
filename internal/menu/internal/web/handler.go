@@ -23,6 +23,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/menu")
 	g.POST("/create", ginx.WrapBody[CreateMenuReq](h.CreateMenu))
 	g.POST("/update", ginx.WrapBody[UpdateMenuReq](h.UpdateMenu))
+	g.POST("/delete", ginx.WrapBody[DeleteMenuReq](h.DeleteMenu))
 	g.POST("/list/tree", ginx.Wrap(h.ListMenuTree))
 }
 
@@ -34,6 +35,16 @@ func (h *Handler) CreateMenu(ctx *gin.Context, req CreateMenuReq) (ginx.Result, 
 
 	return ginx.Result{
 		Data: eId,
+	}, nil
+}
+
+func (h *Handler) DeleteMenu(ctx *gin.Context, req DeleteMenuReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteMenu(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 

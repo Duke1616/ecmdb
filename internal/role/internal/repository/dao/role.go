@@ -14,6 +14,7 @@ const RoleCollection = "c_role"
 type RoleDAO interface {
 	CreateRole(ctx context.Context, r Role) (int64, error)
 	ListRole(ctx context.Context, offset, limit int64) ([]Role, error)
+	DeleteRole(ctx context.Context, id int64) (int64, error)
 	UpdateRole(ctx context.Context, r Role) (int64, error)
 	Count(ctx context.Context) (int64, error)
 	FindByIncludeCodes(ctx context.Context, codes []string) ([]Role, error)
@@ -26,6 +27,11 @@ type RoleDAO interface {
 
 type roleDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *roleDAO) DeleteRole(ctx context.Context, id int64) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (dao *roleDAO) FindByRoleCode(ctx context.Context, code string) (Role, error) {

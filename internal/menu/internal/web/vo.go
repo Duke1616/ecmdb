@@ -14,6 +14,10 @@ type CreateMenuReq struct {
 	Endpoints     []Endpoint `json:"endpoints"`
 }
 
+type DeleteMenuReq struct {
+	Id int64 `json:"id"`
+}
+
 type UpdateMenuReq struct {
 	Id            int64      `json:"id"`
 	Pid           int64      `json:"pid"`

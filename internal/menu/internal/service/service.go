@@ -18,12 +18,17 @@ type Service interface {
 	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
+	DeleteMenu(ctx context.Context, id int64) (int64, error)
 }
 
 type service struct {
 	producer event.MenuChangeEventProducer
 	repo     repository.MenuRepository
 	logger   *elog.Component
+}
+
+func (s *service) DeleteMenu(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteMenu(ctx, id)
 }
 
 func (s *service) FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error) {

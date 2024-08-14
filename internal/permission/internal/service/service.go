@@ -67,7 +67,12 @@ func (s *service) MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uin
 
 	switch action {
 	case domain.CREATE.ToUint8():
-		// TODO 处理超级管理员 Admin 角色情况, 任何菜单新增都添加对应菜单、API权限
+		// TODO 任何菜单新增都添加对应菜单、API权限
+		// 新增菜单，自动授权给 admin 超级管理员
+		err = s.create(ctx, req)
+		if err != nil {
+			return err
+		}
 	case domain.WRITE.ToUint8():
 		err = s.write(ctx, roles, req.Endpoints)
 		if err != nil {
@@ -79,6 +84,30 @@ func (s *service) MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uin
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *service) create(ctx context.Context, req domain.Menu) error {
+	err := s.write(ctx, []role.Role{{Code: "admin"}}, req.Endpoints)
+	if err != nil {
+		return err
+	}
+
+	// 获取角色
+	r, err := s.roleSvc.FindByRoleCode(ctx, "admin")
+	if err != nil {
+		return err
+	}
+
+	// 组合菜单ID, 进行更新
+	menus := make([]int64, 0)
+	menus = append(menus, r.MenuIds...)
+	menus = append(menus, req.Id)
+	_, err = s.roleSvc.CreateOrUpdateRoleMenuIds(ctx, "admin", menus)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

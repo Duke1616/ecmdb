@@ -24,10 +24,16 @@ type Service interface {
 	FindByMenuId(ctx context.Context, menuId int64) ([]domain.Role, error)
 	// FindByRoleCode 查找角色编码数据
 	FindByRoleCode(ctx context.Context, code string) (domain.Role, error)
+	// DeleteRole 删除角色
+	DeleteRole(ctx context.Context, id int64) (int64, error)
 }
 
 type service struct {
 	repo repository.RoleRepository
+}
+
+func (s *service) DeleteRole(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteRole(ctx, id)
 }
 
 func (s *service) FindByRoleCode(ctx context.Context, code string) (domain.Role, error) {

@@ -9,6 +9,7 @@ import (
 
 type RoleRepository interface {
 	CreateRole(ctx context.Context, req domain.Role) (int64, error)
+	DeleteRole(ctx context.Context, id int64) (int64, error)
 	ListRole(ctx context.Context, offset, limit int64) ([]domain.Role, error)
 	Total(ctx context.Context) (int64, error)
 	UpdateRole(ctx context.Context, req domain.Role) (int64, error)
@@ -22,6 +23,10 @@ type RoleRepository interface {
 
 type roleRepository struct {
 	dao dao.RoleDAO
+}
+
+func (repo *roleRepository) DeleteRole(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.DeleteRole(ctx, id)
 }
 
 func (repo *roleRepository) FindByRoleCode(ctx context.Context, code string) (domain.Role, error) {

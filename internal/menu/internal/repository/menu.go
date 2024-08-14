@@ -14,10 +14,15 @@ type MenuRepository interface {
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
 	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
+	DeleteMenu(ctx context.Context, id int64) (int64, error)
 }
 
 type menuRepository struct {
 	dao dao.MenuDAO
+}
+
+func (repo *menuRepository) DeleteMenu(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.DeleteMenu(ctx, id)
 }
 
 func (repo *menuRepository) FindById(ctx context.Context, id int64) (domain.Menu, error) {

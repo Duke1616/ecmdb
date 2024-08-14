@@ -22,6 +22,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/role")
 	g.POST("/update", ginx.WrapBody[UpdateRoleReq](h.UpdateRole))
 	g.POST("/create", ginx.WrapBody[CreateRoleReq](h.CreateRole))
+	g.POST("/delete", ginx.WrapBody[DeleteRoleReq](h.DeleteMenu))
 	g.POST("/list", ginx.WrapBody[Page](h.ListRole))
 	g.POST("/user/have", ginx.WrapBody[UserRole](h.FindUserHaveRoles))
 	g.POST("/user/does_not_have", ginx.WrapBody[UserRole](h.FindUserDoesNotHaveRoles))
@@ -81,6 +82,16 @@ func (h *Handler) UpdateRole(ctx *gin.Context, req UpdateRoleReq) (ginx.Result, 
 
 	return ginx.Result{
 		Data: t,
+	}, nil
+}
+
+func (h *Handler) DeleteMenu(ctx *gin.Context, req DeleteRoleReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteRole(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 

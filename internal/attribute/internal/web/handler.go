@@ -19,7 +19,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/attribute")
 	// 字段分组
 	g.POST("/group/create", ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup))

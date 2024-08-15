@@ -18,7 +18,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/policy")
 	g.POST("/add/p", ginx.WrapBody[PolicyReq](h.AddPolicies))
 	g.POST("/update/p", ginx.WrapBody[PolicyReq](h.UpdatePolicies))
@@ -44,7 +44,7 @@ func (h *Handler) GetImplicitPermissionsForUser(ctx *gin.Context, req GetPermiss
 	if err != nil {
 		return systemErrorResult, err
 	}
-	
+
 	policies := slice.Map(resp, func(idx int, src domain.Policy) Policy {
 		return Policy{
 			Path:   src.Path,

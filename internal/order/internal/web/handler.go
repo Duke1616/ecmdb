@@ -28,7 +28,7 @@ func NewHandler(svc service.Service, engineSvc engine.Service) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	//router.NewRouter(server, "/api/process", false, "")
 
 	g := server.Group("/api/order")

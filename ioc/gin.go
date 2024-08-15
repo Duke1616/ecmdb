@@ -42,36 +42,45 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 
 	// 不需要登录认证鉴权的路由
 	userHdl.PublicRoutes(server)
+	strategyHdl.PublicRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
-	permissionHdl.PublicRoutes(server)
 
-	userHdl.PrivateRoutes(server)
-	modelHdl.RegisterRoutes(server)
-	attributeHdl.RegisterRoutes(server)
-	resourceHdl.RegisterRoutes(server)
-	rmHdl.RegisterRoute(server)
-	rrHdl.RegisterRoute(server)
-	rtHdl.RegisterRoute(server)
-	templateHdl.RegisterRoutes(server)
-	codebookHdl.RegisterRoutes(server)
-	workerHdl.RegisterRoutes(server)
-	runnerHdl.RegisterRoutes(server)
-	strategyHdl.RegisterRoutes(server)
-	policyHdl.PublicRoutes(server)
-	menuHdl.PublicRoutes(server)
-	endpointHdl.PublicRoutes(server)
-	roleHdl.PublicRoutes(server)
+	// 查看用户拥有权限
+	permissionHdl.PublicRoutes(server)
+	userHdl.UserInfoRoutes(server)
 
 	// 检查权限策略
 	server.Use(checkPolicyMiddleware.Build())
+
+	// CMDB 相关接口
+	modelHdl.PrivateRoutes(server)
+	attributeHdl.PrivateRoutes(server)
+	resourceHdl.PrivateRoutes(server)
+	rmHdl.PrivateRoute(server)
+	rrHdl.PrivateRoute(server)
+	rtHdl.PrivateRoute(server)
+
+	// 工单流程相关接口
+	workflowHdl.PrivateRoutes(server)
+	templateGroupHdl.PrivateRoutes(server)
+	engineHdl.PrivateRoutes(server)
+	orderHdl.PrivateRoutes(server)
+	taskHdl.PrivateRoutes(server)
+	templateHdl.PrivateRoutes(server)
+	codebookHdl.PrivateRoutes(server)
+	workerHdl.PrivateRoutes(server)
+	runnerHdl.PrivateRoutes(server)
+
+	// 用户权限相关接口
+	userHdl.PrivateRoutes(server)
 	permissionHdl.PrivateRoutes(server)
-	workflowHdl.RegisterRoutes(server)
-	templateGroupHdl.RegisterRoutes(server)
-	engineHdl.RegisterRoutes(server)
-	orderHdl.RegisterRoutes(server)
-	taskHdl.RegisterRoutes(server)
+	policyHdl.PrivateRoutes(server)
+	menuHdl.PrivateRoutes(server)
+	endpointHdl.PrivateRoutes(server)
+	roleHdl.PrivateRoutes(server)
+
 	return server
 }
 

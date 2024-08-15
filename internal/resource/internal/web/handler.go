@@ -27,7 +27,7 @@ func NewHandler(service service.Service, attributeSvc attribute.Service, RRSvc r
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/resource")
 	// 资源操作
 	g.POST("/create", ginx.WrapBody[CreateResourceReq](h.CreateResource))

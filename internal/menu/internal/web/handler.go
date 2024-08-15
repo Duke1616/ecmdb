@@ -18,7 +18,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/menu")
 	g.POST("/create", ginx.WrapBody[CreateMenuReq](h.CreateMenu))
 	g.POST("/update", ginx.WrapBody[UpdateMenuReq](h.UpdateMenu))

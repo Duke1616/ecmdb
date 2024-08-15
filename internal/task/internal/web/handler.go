@@ -19,7 +19,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/task")
 	g.POST("/list", ginx.WrapBody[ListTaskReq](h.ListTask))
 	g.POST("/update/args", ginx.WrapBody[UpdateArgsReq](h.UpdateArgs))

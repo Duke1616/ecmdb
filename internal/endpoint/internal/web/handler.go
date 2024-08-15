@@ -18,7 +18,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/endpoint")
 	g.POST("/register", ginx.WrapBody[RegisterEndpointReq](h.RegisterEndpoint))
 	g.POST("/register/mutil", ginx.WrapBody[RegisterEndpointsReq](h.RegisterMutilEndpoint))

@@ -29,7 +29,7 @@ func NewHandler(svc service.Service, workerSvc worker.Service, codebookSvc codeb
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/runner")
 	g.POST("/register", ginx.WrapBody[RegisterRunnerReq](h.Register))
 	g.POST("/list", ginx.WrapBody[ListRunnerReq](h.ListRunner))

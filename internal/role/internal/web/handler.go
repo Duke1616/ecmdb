@@ -18,7 +18,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) PublicRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/role")
 	g.POST("/update", ginx.WrapBody[UpdateRoleReq](h.UpdateRole))
 	g.POST("/create", ginx.WrapBody[CreateRoleReq](h.CreateRole))

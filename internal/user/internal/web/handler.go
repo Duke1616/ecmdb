@@ -31,10 +31,14 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
 }
 
+func (h *Handler) UserInfoRoutes(server *gin.Engine) {
+	g := server.Group("/api/user")
+	g.POST("/info", ginx.Wrap(h.GetUserInfo))
+}
+
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
-	g.POST("/info", ginx.Wrap(h.GetUserInfo))
 	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/list", ginx.WrapBody[Page](h.ListUser))

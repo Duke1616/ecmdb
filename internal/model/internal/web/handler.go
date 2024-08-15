@@ -32,7 +32,7 @@ func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/model")
 	// 模型分组
 	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateGroup))

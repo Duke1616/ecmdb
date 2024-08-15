@@ -6,7 +6,6 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
-	"sort"
 )
 
 type Handler struct {
@@ -53,18 +52,11 @@ func (h *Handler) ListMenuTree(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.Result{}, err
 	}
-	menus := slice.Map(ms, func(idx int, src domain.Menu) *Menu {
-		return h.toVoMenu(src)
-	})
 
-	tree, err := GetMenusTree(menus)
-	if err != nil {
-		return ginx.Result{}, err
-	}
 	return ginx.Result{
 		Code: 0,
 		Msg:  "",
-		Data: tree,
+		Data: GetMenusTree(ms),
 	}, nil
 }
 
@@ -81,46 +73,6 @@ func (h *Handler) UpdateMenu(ctx *gin.Context, req UpdateMenuReq) (ginx.Result, 
 	return ginx.Result{
 		Data: t,
 	}, nil
-}
-
-func GetMenusTree(menus []*Menu) (list []*Menu, err error) {
-	//生成map， 方便查找获取对象
-	allMap := map[int64]*Menu{}
-	list = []*Menu{}
-
-	for k, cat := range menus {
-		menus[k].Children = []*Menu{}
-		allMap[cat.Id] = menus[k]
-		//记录顶级分类数据
-		if cat.Pid == 0 {
-			list = append(list, menus[k])
-		}
-	}
-
-	//形成tree
-	for k, cat := range menus {
-		_, ok := allMap[cat.Pid]
-		if ok {
-			//如果父级别数据存在，添加到Children
-			allMap[cat.Pid].Children = append(allMap[cat.Pid].Children, menus[k])
-			//利用指针逻辑，map中数据和列表中原始对象为统一指针。指向同一内存地址，如此对map中数据操作，也相当于对原始数据操作。
-		}
-	}
-
-	// 排序
-	sortMenu(list)
-	return
-}
-
-func sortMenu(menus []*Menu) {
-	sort.Slice(menus, func(i, j int) bool {
-		return menus[i].Sort < menus[j].Sort
-	})
-	for _, menu := range menus {
-		if len(menu.Children) > 0 {
-			sortMenu(menu.Children)
-		}
-	}
 }
 
 func (h *Handler) toDomain(req CreateMenuReq) domain.Menu {
@@ -175,34 +127,5 @@ func (h *Handler) toDomainUpdate(req UpdateMenuReq) domain.Menu {
 				Desc:   src.Desc,
 			}
 		}),
-	}
-}
-
-func (h *Handler) toVoMenu(req domain.Menu) *Menu {
-	return &Menu{
-		Id:        req.Id,
-		Pid:       req.Pid,
-		Path:      req.Path,
-		Sort:      req.Sort,
-		Name:      req.Name,
-		Redirect:  req.Redirect,
-		Type:      req.Type.ToUint8(),
-		Component: req.Component,
-		Status:    req.Status.ToUint8(),
-		Meta: Meta{
-			Title:       req.Meta.Title,
-			IsHidden:    req.Meta.IsHidden,
-			IsAffix:     req.Meta.IsAffix,
-			IsKeepAlive: req.Meta.IsKeepAlive,
-			Icon:        req.Meta.Icon,
-		},
-		Endpoints: slice.Map(req.Endpoints, func(idx int, src domain.Endpoint) Endpoint {
-			return Endpoint{
-				Path:   src.Path,
-				Method: src.Method,
-				Desc:   src.Desc,
-			}
-		}),
-		Children: []*Menu{},
 	}
 }

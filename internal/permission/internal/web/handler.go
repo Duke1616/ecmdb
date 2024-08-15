@@ -30,7 +30,7 @@ func NewHandler(roleSvc role.Service, menuSvc menu.Service, policySvc policy.Ser
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/permission")
-	g.POST("/get_user_menu", ginx.WrapBody[FindUserPermissionMenus](h.FindUserPermissionMenus))
+	g.POST("/get_user_menu", ginx.WrapBody[FindUserPermission](h.FindUserPermissionMenus))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -62,15 +62,11 @@ func (h *Handler) ListRolePermission(ctx *gin.Context, req RolePermissionReq) (g
 
 	// 返回所有的菜单ids，并去除重复
 	menuIds := h.getMenuIds([]role.Role{r})
-	tree, err := GetMenusTree(ms)
-	if err != nil {
-		return systemErrorResult, err
-	}
 
 	return ginx.Result{
 		Data: RetrieveRolePermission{
 			AuthzIds: menuIds,
-			Menu:     tree,
+			Menu:     GetMenusTree(ms),
 		},
 		Msg: "获取角色权限成功",
 	}, nil
@@ -95,7 +91,7 @@ func (h *Handler) ChangePermissionForRoleReq(ctx *gin.Context, req ChangePermiss
 	}, nil
 }
 
-func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermissionMenus) (ginx.Result, error) {
+func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermission) (ginx.Result, error) {
 	// 获取用户所有的角色编码
 	roleCodes, err := h.policySvc.GetRolesForUser(ctx, req.UserId)
 	if err != nil {
@@ -112,20 +108,21 @@ func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermissi
 	menuIds := h.getMenuIds(roles)
 
 	// 生成树形结构
-	tree, err := h.getMenuTree(ctx, menuIds)
+	tree, err := h.getUserMenuTree(ctx, menuIds)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
 		Data: RetrieveUserPermission{
-			Menu: tree,
+			Menus:     tree,
+			RoleCodes: roleCodes,
 		},
 		Msg: "获取用户权限成功",
 	}, nil
 }
 
-func (h *Handler) getMenuTree(ctx context.Context, menuIds []int64) ([]*Menu, error) {
+func (h *Handler) getUserMenuTree(ctx context.Context, menuIds []int64) ([]*Menu, error) {
 	// 如果没有任何权限，直接返回
 	if len(menuIds) == 0 {
 		return nil, nil
@@ -137,14 +134,13 @@ func (h *Handler) getMenuTree(ctx context.Context, menuIds []int64) ([]*Menu, er
 		return nil, err
 	}
 
-	// 生成树形结构
-	tree, err := GetMenusTree(menus)
-	if err != nil {
-		return nil, err
-	}
+	// 需要处理 button 按钮
+	tree := GetMenusTreeByButton(menus)
 
+	// 生成树形结构
 	return tree, nil
 }
+
 func (h *Handler) getMenuIds(roles []role.Role) []int64 {
 	// 获取拥有的菜单ID， 进行去重
 	menuIds := make([]int64, 0)

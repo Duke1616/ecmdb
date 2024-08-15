@@ -1,5 +1,16 @@
 package web
 
+type Type uint8
+
+const (
+	// DIR 目录
+	DIR Type = 1
+	// MENU 菜单
+	MENU Type = 2
+	// BUTTON 按钮
+	BUTTON Type = 3
+)
+
 type RolePermissionReq struct {
 	RoleCode string `json:"role_code"`
 }
@@ -28,11 +39,12 @@ type Endpoint struct {
 }
 
 type Meta struct {
-	Title       string `json:"title"`        // 展示名称
-	IsHidden    bool   `json:"is_hidden"`    // 是否展示
-	IsAffix     bool   `json:"is_affix"`     // 是否固定
-	IsKeepAlive bool   `json:"is_keepalive"` // 是否缓存
-	Icon        string `json:"icon"`         // Icon图标
+	Title       string   `json:"title"`        // 展示名称
+	IsHidden    bool     `json:"is_hidden"`    // 是否展示
+	IsAffix     bool     `json:"is_affix"`     // 是否固定
+	IsKeepAlive bool     `json:"is_keepalive"` // 是否缓存
+	Icon        string   `json:"icon"`         // Icon图标
+	Buttons     []string `json:"buttons"`      // 按钮权限
 }
 
 type ChangePermissionForRoleReq struct {
@@ -40,7 +52,7 @@ type ChangePermissionForRoleReq struct {
 	MenuIds  []int64 `json:"menu_ids"`
 }
 
-type FindUserPermissionMenus struct {
+type FindUserPermission struct {
 	UserId int64 `json:"user_id"`
 }
 
@@ -50,5 +62,6 @@ type RetrieveRolePermission struct {
 }
 
 type RetrieveUserPermission struct {
-	Menu []*Menu `json:"menus"`
+	Menus     []*Menu  `json:"menus"`
+	RoleCodes []string `json:"role_codes"`
 }

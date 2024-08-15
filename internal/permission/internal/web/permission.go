@@ -21,9 +21,8 @@ func getPermission(menus []menu.Menu, pMap map[string]policy.Policy) ([]*Menu, [
 	})
 
 	eg.Go(func() error {
-		var err error
-		ms, err = GetMenusTree(menus)
-		return err
+		ms = GetMenusTree(menus)
+		return nil
 	})
 	if err := eg.Wait(); err != nil {
 		return ms, authzIds, err
@@ -115,40 +114,66 @@ func filterEndpoints(endpoints []menu.Endpoint, pMap map[string]policy.Policy) b
 	return false
 }
 
-func GetMenusTree(ms []menu.Menu) (list []*Menu, err error) {
-	menus := slice.Map(ms, func(idx int, src menu.Menu) *Menu {
-		return toVoMenu(src)
-	})
+// GetMenusTreeByButton 带按钮权限的菜单树构建函数
+func GetMenusTreeByButton(ms []menu.Menu) []*Menu {
+	return buildMenuTree(ms, handleButtonPermission)
+}
 
-	//生成map， 方便查找获取对象
-	allMap := map[int64]*Menu{}
-	list = []*Menu{}
+// GetMenusTree 不带按钮权限的菜单树构建函数
+func GetMenusTree(ms []menu.Menu) []*Menu {
+	return buildMenuTree(ms, handleNoButtonPermission)
+}
 
-	for k, cat := range menus {
-		menus[k].Children = []*Menu{}
-		allMap[cat.Id] = menus[k]
-		if cat.Pid == 0 {
-			list = append(list, menus[k])
+func buildMenuTree(ms []menu.Menu, handler func(m *menu.Menu, parent *Menu, allMap map[int64]*Menu)) []*Menu {
+	allMap := make(map[int64]*Menu, len(ms))
+	var list []*Menu
+
+	// 第一次遍历，初始化所有菜单项并存入 map
+	for _, m := range ms {
+		voMenu := toVoMenu(m)
+		voMenu.Children = []*Menu{}
+		allMap[m.Id] = voMenu
+		if m.Pid == 0 {
+			list = append(list, voMenu)
 		}
 	}
 
-	for k, cat := range menus {
-		_, ok := allMap[cat.Pid]
-		if ok {
-			allMap[cat.Pid].Children = append(allMap[cat.Pid].Children, menus[k])
+	// 第二次遍历，根据处理逻辑构建树结构
+	for _, m := range ms {
+		if parent, exists := allMap[m.Pid]; exists {
+			handler(&m, parent, allMap)
 		}
 	}
 
+	// 对菜单树进行排序
 	sortMenu(list)
-	return
+	return list
+}
+
+// 处理按钮权限的处理器
+func handleButtonPermission(m *menu.Menu, parent *Menu, allMap map[int64]*Menu) {
+	if m.Type == 3 {
+		parent.Meta.Buttons = append(parent.Meta.Buttons, m.Name)
+	} else {
+		parent.Children = append(parent.Children, allMap[m.Id])
+	}
+}
+
+// 不处理按钮权限的处理器
+func handleNoButtonPermission(m *menu.Menu, parent *Menu, allMap map[int64]*Menu) {
+	parent.Children = append(parent.Children, allMap[m.Id])
 }
 
 func sortMenu(menus []*Menu) {
 	sort.Slice(menus, func(i, j int) bool {
 		return menus[i].Sort < menus[j].Sort
 	})
+
 	for _, m := range menus {
 		if len(m.Children) > 0 {
+			sort.Slice(m.Children, func(i, j int) bool {
+				return m.Children[i].Sort < m.Children[j].Sort
+			})
 			sortMenu(m.Children)
 		}
 	}
@@ -171,6 +196,7 @@ func toVoMenu(req menu.Menu) *Menu {
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
 			Icon:        req.Meta.Icon,
+			Buttons:     []string{},
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src menu.Endpoint) Endpoint {
 			return Endpoint{

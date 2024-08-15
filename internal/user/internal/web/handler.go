@@ -29,20 +29,15 @@ func NewHandler(svc service.Service, ldapSvc service.LdapService, policySvc poli
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
-}
-
-func (h *Handler) UserInfoRoutes(server *gin.Engine) {
-	g := server.Group("/api/user")
-	g.POST("/info", ginx.Wrap(h.GetUserInfo))
+	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
-	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/list", ginx.WrapBody[Page](h.ListUser))
-
+	g.POST("/info", ginx.Wrap(h.GetUserInfo))
 }
 
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {

@@ -2,12 +2,15 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/permission/internal/service"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ginx/gctx"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
@@ -30,7 +33,7 @@ func NewHandler(roleSvc role.Service, menuSvc menu.Service, policySvc policy.Ser
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/permission")
-	g.POST("/get_user_menu", ginx.WrapBody[FindUserPermission](h.FindUserPermissionMenus))
+	g.POST("/get_user_menu", ginx.Wrap(h.FindUserPermissionMenus))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -91,9 +94,15 @@ func (h *Handler) ChangePermissionForRoleReq(ctx *gin.Context, req ChangePermiss
 	}, nil
 }
 
-func (h *Handler) FindUserPermissionMenus(ctx *gin.Context, req FindUserPermission) (ginx.Result, error) {
+func (h *Handler) FindUserPermissionMenus(ctx *gin.Context) (ginx.Result, error) {
+	// 获取用户信息
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+	}
+
 	// 获取用户所有的角色编码
-	roleCodes, err := h.policySvc.GetRolesForUser(ctx, req.UserId)
+	roleCodes, err := h.policySvc.GetRolesForUser(ctx, sess.Claims().Uid)
 	if err != nil {
 		return systemErrorResult, err
 	}

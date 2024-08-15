@@ -49,7 +49,6 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 
 	// 查看用户拥有权限
 	permissionHdl.PublicRoutes(server)
-	userHdl.UserInfoRoutes(server)
 
 	// 检查权限策略
 	server.Use(checkPolicyMiddleware.Build())

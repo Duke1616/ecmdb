@@ -27,10 +27,6 @@ type service struct {
 	logger   *elog.Component
 }
 
-func (s *service) DeleteMenu(ctx context.Context, id int64) (int64, error) {
-	return s.repo.DeleteMenu(ctx, id)
-}
-
 func (s *service) FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error) {
 	return s.repo.FindByIds(ctx, ids)
 }
@@ -53,11 +49,25 @@ func (s *service) CreateMenu(ctx context.Context, req domain.Menu) (int64, error
 	}
 
 	// 判断 id 不为空，以及有新增接口权限
-	if id != 0 && len(req.Endpoints) >= 1 {
+	if id != 0 {
 		go s.sendMenuEvent(event.CREATE, id, req)
 	}
 
 	return id, nil
+}
+
+func (s *service) DeleteMenu(ctx context.Context, id int64) (int64, error) {
+	count, err := s.repo.DeleteMenu(ctx, id)
+	if err != nil {
+		return id, err
+	}
+
+	// TODO 菜单删除，是验证有角色绑定了菜单不允许删除，还是考虑清除与菜单相关的角色、casbin数据
+	//if id != 0 {
+	//	go s.sendMenuEvent(event.DELETE, id, domain.Menu{})
+	//}
+
+	return count, nil
 }
 
 func (s *service) UpdateMenu(ctx context.Context, req domain.Menu) (int64, error) {

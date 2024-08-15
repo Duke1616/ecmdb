@@ -88,9 +88,11 @@ func (s *service) MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uin
 }
 
 func (s *service) create(ctx context.Context, req domain.Menu) error {
-	err := s.write(ctx, []role.Role{{Code: "admin"}}, req.Endpoints)
-	if err != nil {
-		return err
+	if len(req.Endpoints) != 0 {
+		err := s.write(ctx, []role.Role{{Code: "admin"}}, req.Endpoints)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 获取角色

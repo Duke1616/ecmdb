@@ -6,7 +6,7 @@ services:
     image: duke1616/ecmdb:latest
     command: ./ecmdb
     ports:
-      - 8666:8000
+      - "8666:8000"
     environment:
       - TZ=Asia/Shanghai
     volumes:

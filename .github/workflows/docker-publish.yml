@@ -7,6 +7,9 @@ on:
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ "main" ]
+env:
+  REGISTRY: registry.cn-qingdao.aliyuncs.com
+  TAGS: duke1616/ecmdb
 
 jobs:
   build:
@@ -24,17 +27,28 @@ jobs:
         with:
           driver: docker
 
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.TAGS }}
+
       - name: Login into registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
 
       - name: Build base image
+        id: build-and-push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./deploy/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: duke1616/ecmdb:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

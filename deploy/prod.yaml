@@ -17,26 +17,32 @@ session:
   session_encrypted_key: "1234567890"
 
 redis:
-  addr: "127.0.0.1:6379"
+  addr: "ecmdb-redis:6379"
   password: "1234567890"
   db: 0
 
+casbin:
+  redis:
+    addr: "ecmdb-redis:6379"
+    db: 1
+    password: "1234567890"
+
 mongodb:
-  dsn: mongodb://127.0.0.1:27017/cmdb
+  dsn: mongodb://ecmdb-mongo:27017/cmdb
   username: cmdb
   password: 123456
 
 mysql:
-  dsn: workflow:123456@tcp(127.0.0.1:3306)/workflow?charset=utf8mb4&parseTime=True&loc=Local
+  dsn: cmdb:123456@tcp(ecmdb-mysql:3306)/cmdb?charset=utf8mb4&parseTime=True&loc=Local
 
 kafka:
   network: tcp
   addresses:
-    - 127.0.0.1:9094
+    - ecmdb-kafka:9092
 
 etcd:
   endpoints:
-    - 127.0.0.1:2379
+    - ecmdb-etcd:2379
 
 wechat:
   corpId: ""

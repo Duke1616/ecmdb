@@ -18,10 +18,29 @@ type UserDAO interface {
 	ListUser(ctx context.Context, offset, limit int64) ([]User, error)
 	AddOrUpdateRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	Count(ctx context.Context) (int64, error)
+	UpdatePassword(ctx context.Context, id int64, password string) error
 }
 
 type userDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *userDao) UpdatePassword(ctx context.Context, id int64, password string) error {
+	col := dao.db.Collection(UserCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"password": password,
+			"utime":    time.Now().UnixMilli(),
+		},
+	}
+
+	filter := bson.M{"id": id}
+	_, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return nil
 }
 
 func (dao *userDao) FindById(ctx context.Context, id int64) (User, error) {
@@ -99,7 +118,7 @@ func NewUserDao(db *mongox.Mongo) UserDAO {
 func (dao *userDao) CreatUser(ctx context.Context, user User) (int64, error) {
 	now := time.Now()
 	user.Ctime, user.Utime = now.UnixMilli(), now.UnixMilli()
-	user.ID = dao.db.GetIdGenerator(UserCollection)
+	user.Id = dao.db.GetIdGenerator(UserCollection)
 	col := dao.db.Collection(UserCollection)
 
 	_, err := col.InsertOne(ctx, user)
@@ -107,7 +126,7 @@ func (dao *userDao) CreatUser(ctx context.Context, user User) (int64, error) {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
 
-	return user.ID, nil
+	return user.Id, nil
 }
 
 func (dao *userDao) FindByUsername(ctx context.Context, username string) (User, error) {
@@ -123,15 +142,15 @@ func (dao *userDao) FindByUsername(ctx context.Context, username string) (User, 
 }
 
 type User struct {
-	ID         int64    `bson:"id"`
-	Username   string   `bson:"username"`
-	Password   string   `bson:"password"`
-	Email      string   `bson:"email"`
-	Title      string   `bson:"title"`
-	SourceType int64    `bson:"source_type"`
-	CreateType int64    `bson:"create_type"`
-	Status     uint8    `bson:"status"`
-	Ctime      int64    `bson:"ctime"`
-	Utime      int64    `bson:"utime"`
-	RoleCodes  []string `bson:"role_codes"`
+	Id          int64    `bson:"id"`
+	Username    string   `bson:"username"`
+	Password    string   `bson:"password"`
+	Email       string   `bson:"email"`
+	Title       string   `bson:"title"`
+	DisplayName string   `bson:"display_name"`
+	CreateType  uint8    `bson:"create_type"`
+	Status      uint8    `bson:"status"`
+	Ctime       int64    `bson:"ctime"`
+	Utime       int64    `bson:"utime"`
+	RoleCodes   []string `bson:"role_codes"`
 }

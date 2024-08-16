@@ -10,15 +10,22 @@ type LoginSystemReq struct {
 	Password string `json:"password"`
 }
 
+type RegisterUserReq struct {
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	RePassword  string `json:"re_password"`
+	DisplayName string `json:"display_name"`
+}
+
 type User struct {
-	ID         int64    `json:"id"`
-	Username   string   `json:"username"`
-	Password   string   `json:"password"`
-	Email      string   `json:"email"`
-	Title      string   `json:"title"`
-	SourceType int64    `json:"source_type"`
-	CreateType int64    `json:"create_type"`
-	RoleCodes  []string `json:"role_codes"`
+	Id          int64    `json:"id"`
+	Username    string   `json:"username"`
+	Password    string   `json:"password"`
+	Email       string   `json:"email"`
+	Title       string   `json:"title"`
+	DisplayName string   `json:"display_name"`
+	CreateType  uint8    `json:"create_type"`
+	RoleCodes   []string `json:"role_codes"`
 }
 
 type UserBindRoleReq struct {

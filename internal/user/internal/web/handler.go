@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
+	"github.com/Duke1616/ecmdb/internal/user/ldapx"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
@@ -29,60 +30,78 @@ func NewHandler(svc service.Service, ldapSvc service.LdapService, policySvc poli
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/ldap/login", ginx.WrapBody[LoginLdapReq](h.LoginLdap))
+	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
+	g.POST("/register", ginx.WrapBody[RegisterUserReq](h.RegisterUser))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
-	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
 	g.POST("/list", ginx.WrapBody[Page](h.ListUser))
 	g.POST("/info", ginx.Wrap(h.GetUserInfo))
 }
 
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
-	u, err := h.svc.Login(ctx, req.Username, req.Password)
+	user, err := h.svc.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
+	}
+
+	jwtData := make(map[string]string, 0)
+	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.Id).SetJwtData(jwtData).Build()
+	if err != nil {
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: u,
+		Data: h.ToUserVo(user),
 		Msg:  "登录用户成功",
 	}, nil
 }
 
-func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
-	profile, err := h.ldapSvc.Login(ctx, domain.User{
-		Username: req.Username,
-		Password: req.Password,
-	})
-
-	if err != nil {
-		return systemErrorResult, err
+func (h *Handler) RegisterUser(ctx *gin.Context, req RegisterUserReq) (ginx.Result, error) {
+	// 两次密码输入不一致
+	if req.Password != req.RePassword {
+		return systemErrorResult, nil
 	}
 
-	user, err := h.svc.FindOrCreateByUsername(ctx, domain.User{
-		Username:   profile.Username,
-		Email:      profile.Email,
-		Title:      profile.Title,
-		SourceType: domain.Ldap,
-		CreateType: domain.UserRegistry,
-	})
-
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	u := h.ToUserVo(user)
-	jwtData := make(map[string]string, 0)
-	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.ID).SetJwtData(jwtData).Build()
+	// 查询用户并创建
+	u, err := h.svc.FindOrCreateBySystem(ctx, req.Username, req.Password, req.DisplayName)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: u,
+		Data: h.ToUserVo(u),
+	}, nil
+}
+
+func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, error) {
+	// LDAP 登录成功
+	profile, err := h.ldapSvc.Login(ctx, domain.User{
+		Username: req.Username,
+		Password: req.Password,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 查找或插入用户
+	user, err := h.svc.FindOrCreateByLdap(ctx, h.toDomain(profile))
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 生成session
+	jwtData := make(map[string]string, 0)
+	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.Id).SetJwtData(jwtData).Build()
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: h.ToUserVo(user),
 		Msg:  "登录用户成功",
 	}, nil
 }
@@ -129,24 +148,6 @@ func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.Result{Msg: "OK"}, nil
 }
 
-//func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
-//	type AuthInfo struct {
-//		Id       int64    `json:"id"`
-//		Username string   `json:"username"`
-//		Roles    []string `json:"roles"`
-//	}
-//
-//	jsonData := `{"username":"admin","roles":["admin"]}`
-//	// 创建一个AuthInfo类型的变量来存储解析后的数据
-//	var authInfo AuthInfo
-//
-//	// 使用json.Unmarshal函数解析JSON数据到结构体中
-//	json.Unmarshal([]byte(jsonData), &authInfo)
-//	return ginx.Result{
-//		Data: ginx.Result{Data: authInfo},
-//	}, nil
-//}
-
 func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
 	// 获取登录用户 sess 获取ID
 	sess, err := session.Get(&gctx.Context{Context: ctx})
@@ -164,14 +165,25 @@ func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
+func (h *Handler) toDomain(profile *ldapx.Profile) domain.User {
+	return domain.User{
+		Username:    profile.Username,
+		Email:       profile.Email,
+		Title:       profile.Title,
+		DisplayName: profile.DisplayName,
+		Status:      domain.ENABLED,
+		CreateType:  domain.LDAP,
+	}
+}
+
 func (h *Handler) ToUserVo(src domain.User) User {
 	return User{
-		ID:         src.ID,
-		Username:   src.Username,
-		Email:      src.Email,
-		Title:      src.Title,
-		SourceType: src.SourceType,
-		RoleCodes:  src.RoleCodes,
-		CreateType: src.CreateType,
+		Id:          src.Id,
+		Username:    src.Username,
+		Email:       src.Email,
+		Title:       src.Title,
+		RoleCodes:   src.RoleCodes,
+		DisplayName: src.DisplayName,
+		CreateType:  src.CreateType.ToUint8(),
 	}
 }

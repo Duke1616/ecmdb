@@ -79,5 +79,5 @@ func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {
 }
 
 func updateCallback(rev string) {
-	fmt.Printf(rev, "Casbin Watcher")
+	//fmt.Printf(rev, "Casbin Watcher")
 }

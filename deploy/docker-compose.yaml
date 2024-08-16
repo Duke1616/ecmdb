@@ -1,4 +1,3 @@
-version: '3'
 services:
   ecmdb:
     restart: always
@@ -13,5 +12,5 @@ services:
       - ./prod.yaml:/app/config/prod.yaml
 networks:
   default:
-    external:
-      name: sre
+    name: cmdb
+    external: true

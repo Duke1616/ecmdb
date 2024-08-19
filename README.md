@@ -10,6 +10,7 @@
 wx: lkz-1008
 
 ## 项目部署
+系统默认账户：admin  系统默认密码：123456
 ### docker
 ```shell
 # 创建一个新的虚拟网络
@@ -18,9 +19,10 @@ docker create network ecmdb
 # 启动服务
 docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
 
-# 初始化数据库
+# 执行数据初始化脚本
+bash deploy/init.sh
 
-# 销毁环境
+# 环境销毁
 docker compose -p ecmdb -f deploy/docker-compose.yaml down
 ```
 

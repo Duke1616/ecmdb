@@ -105,8 +105,12 @@ func (s *service) FindOrCreateByLdap(ctx context.Context, req domain.User) (doma
 }
 
 func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, displayName string) (domain.User, error) {
+	// 设置用户ID
+	var id int64
+
 	// 查询数据
 	u, err := s.repo.FindByUsername(ctx, username)
+	id = u.Id
 	// 函数完成，注入密码
 	defer func() {
 		if u.Password == "" {
@@ -115,7 +119,7 @@ func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, 
 				return
 			}
 
-			er = s.repo.UpdatePassword(ctx, u.Id, pwd)
+			er = s.repo.UpdatePassword(ctx, id, pwd)
 			if er != nil {
 				s.logger.Error("修改密码错误", elog.Any("err: ", er))
 			}
@@ -135,7 +139,7 @@ func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, 
 	}
 
 	// 创建用户
-	id, err := s.repo.CreatUser(ctx, user)
+	id, err = s.repo.CreatUser(ctx, user)
 	if err != nil {
 		return domain.User{}, err
 	}

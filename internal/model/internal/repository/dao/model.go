@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log/slog"
 	"time"
 )
 
@@ -35,12 +36,14 @@ func (dao *modelDAO) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]
 	filter := bson.M{}
 
 	if len(mgids) <= 0 {
-		return nil, fmt.Errorf("不匹配查询条件")
+		slog.Warn("没有匹配的数据, 组为空")
+		return nil, nil
 	}
 
 	filter["model_group_id"] = bson.M{
 		"$in": mgids,
 	}
+
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: 1}},
 	}

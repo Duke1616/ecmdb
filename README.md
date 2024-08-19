@@ -19,8 +19,32 @@ docker create network ecmdb
 # 启动服务
 docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
 
-# 执行数据初始化脚本
-bash deploy/init.sh
+# 创建用户
+curl --location --request POST '127.0.0.1:8666/api/user/register' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "username": "admin",
+    "password": "123456",
+    "re_password": "123456",
+    "display_name": "系统管理员"
+}'
+
+# 同步权限数据
+mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_menu --archive=/init/menu.tar.gz
+mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_role --archive=/init/role.tar.gz
+
+# 修正 ID 自增值
+db.c_id_generator.insertOne( { name: "c_role", next_id:  NumberLong("4") } )
+db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("132") } )
+
+# 导入 Casbin 权限数据
+source /init/casbin_rule.sql
+
+# 用户添加权限
+db.c_user.updateOne( { username: 'admin' }, { $set: { role_codes: ['admin'] } } );
+
+# 重启后端服务，加载策略
+docker restart ecmdb
 
 # 环境销毁
 docker compose -p ecmdb -f deploy/docker-compose.yaml down

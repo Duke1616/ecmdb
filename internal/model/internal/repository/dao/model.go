@@ -36,7 +36,7 @@ func (dao *modelDAO) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]
 	filter := bson.M{}
 
 	if len(mgids) <= 0 {
-		slog.Warn("没有匹配的数据, 组为空")
+		slog.Warn("没有匹配的数据, 模型组为空")
 		return nil, nil
 	}
 

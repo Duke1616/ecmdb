@@ -20,7 +20,7 @@ docker network create ecmdb
 docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
 
 # 创建用户
-curl -L 'http://192.168.10.119:8666/api/user/register' \
+curl -L 'http://127.0.0.1:8666/api/user/register' \
 -H 'Content-Type: application/json' \
 -d '{
     "username": "admin",

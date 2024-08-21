@@ -14,15 +14,15 @@ wx: lkz-1008
 ### docker
 ```shell
 # 创建一个新的虚拟网络
-docker create network ecmdb
+docker network create ecmdb
 
 # 启动服务
 docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
 
 # 创建用户
-curl --location --request POST '127.0.0.1:8666/api/user/register' \
---header 'Content-Type: application/json' \
---data-raw '{
+curl -L 'http://192.168.10.119:8666/api/user/register' \
+-H 'Content-Type: application/json' \
+-d '{
     "username": "admin",
     "password": "123456",
     "re_password": "123456",
@@ -30,15 +30,17 @@ curl --location --request POST '127.0.0.1:8666/api/user/register' \
 }'
 
 # 同步权限数据
-mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_menu --archive=/init/menu.tar.gz
-mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_role --archive=/init/role.tar.gz
+docker cp ./init/menu.tar.gz ecmdb-mongo:/mnt
+docker cp ./init/role.tar.gz ecmdb-mongo:/mnt
+docker exec ecmdb-mongo mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_menu --archive=/mnt/menu.tar.gz
+docker exec ecmdb-mongo mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_role --archive=/mnt/role.tar.gz
 
 # 修正 ID 自增值
-db.c_id_generator.insertOne( { name: "c_role", next_id:  NumberLong("4") } )
-db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("132") } )
+docker exec ecmdb-mongo mongosh "mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("4") })
+docker exec ecmdb-mongo mongosh "mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --eval 'db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("132") } )'
 
 # 导入 Casbin 权限数据
-source /init/casbin_rule.sql
+docker exec -i ecmdb-mysql mysql -u cmdb -p123456 cmdb < ./init/casbin_rule.sql
 
 # 用户添加权限
 db.c_user.updateOne( { username: 'admin' }, { $set: { role_codes: ['admin'] } } );
@@ -48,6 +50,7 @@ docker restart ecmdb
 
 # 环境销毁
 docker compose -p ecmdb -f deploy/docker-compose.yaml down
+
 ```
 
 ## 关联项目

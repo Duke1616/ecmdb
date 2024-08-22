@@ -28,6 +28,7 @@ func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config, policyModule *policy.
 	handler := web.NewHandler(serviceService, ldapService, service2)
 	module := &Module{
 		Hdl: handler,
+		Svc: serviceService,
 	}
 	return module, nil
 }

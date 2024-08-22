@@ -87,7 +87,7 @@ services:
     restart: always
     container_name: ecmdb
     image: registry.cn-qingdao.aliyuncs.com/duke1616/ecmdb:main
-    command: ./ecmdb
+    command: ./ecmdb start
     ports:
       - 8666:8000
     environment:

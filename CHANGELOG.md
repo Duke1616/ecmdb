@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.4.1](https://github.com/Duke1616/ecmdb/releases/tag/v1.4.1) - 2024-08-23
+
+- [`4b1d2fb`](https://github.com/Duke1616/ecmdb/commit/4b1d2fbaa7e046f1edd764cb9ea6ace6e4bf8543) fix: 删除bumps
+- [`15c63e7`](https://github.com/Duke1616/ecmdb/commit/15c63e7147ab6ca31cb87c0742937fa07b84b57a) fix: upleft release
+- [`5496a52`](https://github.com/Duke1616/ecmdb/commit/5496a529cdacf37064f5710efad9401bb3f9e4cd) action
+- [`7b37e54`](https://github.com/Duke1616/ecmdb/commit/7b37e545c57a36c2db2d4cc6318e7c60452efc9b) action
+- [`0f256f5`](https://github.com/Duke1616/ecmdb/commit/0f256f51a97cedd4babbe383c060c0a892ce8048) chorm: 修改 uplift.yaml
+
 ## [v1.4.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.4.0) - 2024-08-23
 
 - [`7031e93`](https://github.com/Duke1616/ecmdb/commit/7031e93d3de57c1132604dca38cf34f47cb293c5) 简单完善一下文档

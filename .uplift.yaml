@@ -45,5 +45,28 @@ changelog:
 # Default commit message is: ci(uplift): uplifted for version v0.1.0
 #commitMessage: "ci(release): release commit"
 
+bumps:
+  # The path of the file relative to where Uplift is executed. Glob
+  # patterns can be used to match multiple files at the same time
+  - file: package.json
+
+    # A JSON path matcher should be used when bumping the file. Multiple
+    # path matches are supported. Each will be carried out in the order
+    # they are defined here. All matches must succeed for the file to
+    # be bumped. JSON path syntax is based on
+    # https://github.com/tidwall/sjson
+    #
+    # Defaults to no matchers
+    json:
+      # A JSON path that will be used for matching the version that
+      # will be replaced within the file
+      - path: "version"
+
+        # If the matched version in the file should be replaced with a
+        # semantic version. This will strip any 'v' prefix if needed
+        #
+        # Defaults to false
+        semver: true
+
 git:
   ignoreDetached: true

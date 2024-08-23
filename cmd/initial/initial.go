@@ -1,7 +1,8 @@
 package initial
 
 import (
-	"fmt"
+	"github.com/Duke1616/ecmdb/cmd/initial/full"
+	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/spf13/cobra"
 )
@@ -19,8 +20,42 @@ var Cmd = &cobra.Command{
 		app, err := ioc.InitApp()
 		cobra.CheckErr(err)
 
-		fmt.Print(app)
+		// 获取系统版本信息
+
+		// 记录当前版本
+
+		// 全量数据
+		//complete(app)
+
+		// 增量数据
+		increment(app)
 	},
+}
+
+func complete(app *ioc.App) {
+	// 初始化Init
+	init := full.NewInitial(app)
+
+	// 初始化菜单
+	err := init.InitMenu()
+	cobra.CheckErr(err)
+
+	// 初始化用户
+	err = init.InitUser()
+	cobra.CheckErr(err)
+
+	// 初始化角色
+	err = init.InitRole()
+	cobra.CheckErr(err)
+}
+
+func increment(app *ioc.App) {
+	// 注册所有增量版本信息
+	incr.RegisterIncr(app)
+
+	// 执行增量数据
+	err := incr.RunIncrementalOperations("v1.1.3")
+	cobra.CheckErr(err)
 }
 
 func init() {

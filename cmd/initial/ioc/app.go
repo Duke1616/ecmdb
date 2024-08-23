@@ -1,4 +1,4 @@
-package app
+package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/internal/role"

@@ -7,7 +7,6 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/cmd/initial/app"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -20,7 +19,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitApp() (*app.App, error) {
+func InitApp() (*App, error) {
 	mongo := InitMongoDB()
 	config := InitLdapConfig()
 	db := InitMySQLDB()
@@ -39,11 +38,11 @@ func InitApp() (*app.App, error) {
 		return nil, err
 	}
 	serviceService := roleModule.Svc
-	appApp := &app.App{
+	app := &App{
 		UserSvc: service,
 		RoleSvc: serviceService,
 	}
-	return appApp, nil
+	return app, nil
 }
 
 // wire.go:

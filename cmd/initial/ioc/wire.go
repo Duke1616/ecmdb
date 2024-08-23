@@ -3,7 +3,6 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/cmd/initial/app"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -12,8 +11,8 @@ import (
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitLdapConfig)
 
-func InitApp() (*app.App, error) {
-	wire.Build(wire.Struct(new(app.App), "*"),
+func InitApp() (*App, error) {
+	wire.Build(wire.Struct(new(App), "*"),
 		BaseSet,
 		InitCasbin,
 		user.InitModule,
@@ -22,5 +21,5 @@ func InitApp() (*app.App, error) {
 		wire.FieldsOf(new(*role.Module), "Svc"),
 		policy.InitModule,
 	)
-	return new(app.App), nil
+	return new(App), nil
 }

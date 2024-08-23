@@ -54,7 +54,7 @@ func increment(app *ioc.App) {
 	incr.RegisterIncr(app)
 
 	// 执行增量数据
-	err := incr.RunIncrementalOperations("v1.1.3")
+	err := incr.RunIncrementalOperations("v1.5.0")
 	cobra.CheckErr(err)
 }
 

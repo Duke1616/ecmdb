@@ -12,6 +12,7 @@ const (
 // 角色相关
 const (
 	RoleCode = "admin"
+	Desc     = ""
 )
 
 type InitialFull interface {

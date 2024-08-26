@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	"github.com/Duke1616/ecmdb/cmd/initial/version"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -38,9 +39,12 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	serviceService := roleModule.Svc
+	dao := version.NewDao(mongo)
+	versionService := version.NewService(dao)
 	app := &App{
 		UserSvc: service,
 		RoleSvc: serviceService,
+		VerSvc:  versionService,
 	}
 	return app, nil
 }

@@ -1,16 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"github.com/Duke1616/ecmdb/cmd"
 	git "github.com/purpleclay/gitz"
 )
 
+var version string
+
 func main() {
-	cmd.Execute()
+	ver := version
+	if version == "" {
+		ver = latestTag()
+	}
+
+	cmd.Execute(ver)
+}
+
+func latestTag() string {
 	gc, err := git.NewClient()
 	if err != nil {
-		return
+		return ""
 	}
 
 	tags, _ := gc.Tags(
@@ -19,7 +28,5 @@ func main() {
 		git.WithCount(1),
 	)
 
-	if len(tags) == 1 {
-		fmt.Print(tags[0])
-	}
+	return tags[0]
 }

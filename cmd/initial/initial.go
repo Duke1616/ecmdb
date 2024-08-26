@@ -1,6 +1,7 @@
 package initial
 
 import (
+	"context"
 	"github.com/Duke1616/ecmdb/cmd/initial/full"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
@@ -8,7 +9,8 @@ import (
 )
 
 var (
-	debug bool
+	debug      bool
+	TagVersion string
 )
 
 var Cmd = &cobra.Command{
@@ -21,14 +23,19 @@ var Cmd = &cobra.Command{
 		cobra.CheckErr(err)
 
 		// 获取系统版本信息
+		currentVersion, err := app.VerSvc.GetVersion(context.Background())
+		cobra.CheckErr(err)
+
+		// 判断是执行全量 OR 增量数据
+		if currentVersion == "" {
+			complete(app)
+		} else {
+			increment(app, currentVersion)
+		}
 
 		// 记录当前版本
-
-		// 全量数据
-		//complete(app)
-
-		// 增量数据
-		increment(app)
+		err = app.VerSvc.CreateOrUpdateVersion(context.Background(), TagVersion)
+		cobra.CheckErr(err)
 	},
 }
 
@@ -49,12 +56,12 @@ func complete(app *ioc.App) {
 	cobra.CheckErr(err)
 }
 
-func increment(app *ioc.App) {
+func increment(app *ioc.App, currentVersion string) {
 	// 注册所有增量版本信息
 	incr.RegisterIncr(app)
 
 	// 执行增量数据
-	err := incr.RunIncrementalOperations("v1.5.0")
+	err := incr.RunIncrementalOperations(currentVersion)
 	cobra.CheckErr(err)
 }
 

@@ -40,7 +40,10 @@ func initViper() {
 	}
 }
 
-func Execute() {
+func Execute(version string) {
+	// 版本初始化
+	initial.TagVersion = version
+
 	// 初始化设置
 	cobra.OnInitialize(initAll)
 	rootCmd.AddCommand(start.Cmd)

@@ -24,13 +24,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Release
-        if: github.ref == 'refs/heads/main'
-        uses: gembaadvantage/uplift-action@v2
+      - name: Find Latest Tags
+        id: octokit
+        uses: oprypin/find-latest-tag@v1
         with:
-          args: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.UPLIFT_TOKEN }}
+          repository: Duke1616/ecmdb
+          releases-only: false
 
       - name: Set up Docker build
         uses: docker/setup-buildx-action@v3
@@ -61,4 +60,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=v0.0.1
+            VERSION=${{ steps.octokit.outputs.tag }}

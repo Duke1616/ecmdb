@@ -1,6 +1,10 @@
 package version
 
-import "context"
+import (
+	"context"
+	"errors"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Service interface {
 	CreateOrUpdateVersion(ctx context.Context, version string) error
@@ -12,7 +16,16 @@ type service struct {
 }
 
 func (s service) GetVersion(ctx context.Context) (string, error) {
-	return s.dao.GetVersion(ctx)
+	ver, err := s.dao.GetVersion(ctx)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return ver, nil
 }
 
 func (s service) CreateOrUpdateVersion(ctx context.Context, version string) error {

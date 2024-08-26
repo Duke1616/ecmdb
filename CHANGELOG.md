@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.5.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.5.0) - 2024-08-26
+
+- [`148048b`](https://github.com/Duke1616/ecmdb/commit/148048bb6d39c3f22307030b8583257b9d53bfe6) fix: 修复第一次查询版本为空的情况
+- [`3c7f2bf`](https://github.com/Duke1616/ecmdb/commit/3c7f2bf8d97f9576d78a877ae49e3acc181464dc) feat: 新增 initial 全量增量模式初始化数据方式
+- [`95d2919`](https://github.com/Duke1616/ecmdb/commit/95d291978db52b142c013a368085c27a2dc04d34) fix: 添加github action
+
 ## [v1.4.1](https://github.com/Duke1616/ecmdb/releases/tag/v1.4.1) - 2024-08-23
 
 - [`4b1d2fb`](https://github.com/Duke1616/ecmdb/commit/4b1d2fbaa7e046f1edd764cb9ea6ace6e4bf8543) fix: 删除bumps

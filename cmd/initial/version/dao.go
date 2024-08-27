@@ -24,10 +24,10 @@ func (d *dao) GetVersion(ctx context.Context) (string, error) {
 	filter := bson.M{}
 
 	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
-		return result.CurrentVersion, fmt.Errorf("解码错误，%w", err)
+		return "", fmt.Errorf("解码错误，%w", err)
 	}
 
-	return "", nil
+	return result.CurrentVersion, nil
 }
 
 func NewDao(db *mongox.Mongo) Dao {

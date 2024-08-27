@@ -1,6 +1,9 @@
 package incr
 
-import "github.com/Duke1616/ecmdb/cmd/initial/ioc"
+import (
+	"context"
+	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
+)
 
 type incrV150 struct {
 	App *ioc.App
@@ -24,10 +27,10 @@ func (i *incrV150) Rollback() error {
 	return nil
 }
 
-func (i *incrV150) Before() error {
+func (i *incrV150) After() error {
 	return nil
 }
 
-func (i *incrV150) After() error {
-	return nil
+func (i *incrV150) Before() error {
+	return i.App.VerSvc.CreateOrUpdateVersion(context.Background(), i.Version())
 }

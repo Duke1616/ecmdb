@@ -1,6 +1,7 @@
 package incr
 
 import (
+	"context"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 )
 
@@ -26,10 +27,10 @@ func (i *incrV123) Rollback() error {
 	return nil
 }
 
-func (i *incrV123) Before() error {
+func (i *incrV123) After() error {
 	return nil
 }
 
-func (i *incrV123) After() error {
-	return nil
+func (i *incrV123) Before() error {
+	return i.App.VerSvc.CreateOrUpdateVersion(context.Background(), i.Version())
 }

@@ -33,10 +33,6 @@ var Cmd = &cobra.Command{
 		} else {
 			increment(app, currentVersion)
 		}
-
-		// 记录当前版本
-		err = app.VerSvc.CreateOrUpdateVersion(context.Background(), TagVersion)
-		cobra.CheckErr(err)
 	},
 }
 

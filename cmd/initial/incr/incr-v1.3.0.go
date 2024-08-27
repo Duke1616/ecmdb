@@ -23,6 +23,13 @@ func (i *incrV130) Commit() error {
 }
 
 func (i *incrV130) Rollback() error {
-	//TODO implement me
-	panic("implement me")
+	return nil
+}
+
+func (i *incrV130) Before() error {
+	return nil
+}
+
+func (i *incrV130) After() error {
+	return nil
 }

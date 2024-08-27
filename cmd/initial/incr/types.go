@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // ErrDuplicateVersion 表示版本重复的错误
@@ -15,6 +16,8 @@ type InitialIncr interface {
 	Version() string
 	Rollback() error
 	Commit() error
+	Before() error
+	After() error
 }
 
 var incrRegistry = make(map[string]InitialIncr)
@@ -30,6 +33,7 @@ func registerIncr(incr InitialIncr) {
 func RegisterIncr(app *ioc.App) {
 	registerIncr(NewIncrV123(app))
 	registerIncr(NewIncrV130(app))
+	registerIncr(NewIncrV150(app))
 }
 
 // RunIncrementalOperations 执行所有低于当前版本的增量操作
@@ -43,12 +47,19 @@ func RunIncrementalOperations(currentVersion string) error {
 		versionSlice := parseVersion(version)
 
 		// 如果当前版本高于注册表中的版本，则执行该增量操作
-		if less(versionSlice, currentVerSlice) {
+		if compare(versionSlice, currentVerSlice) {
 			fmt.Printf("Executing incremental operation for version %s...\n", version)
-			err := incr.Commit()
-			if err != nil {
-				return err
-			}
+			// 程序运行前
+			err := incr.Before()
+			cobra.CheckErr(err)
+
+			// 执行提交操作
+			err = incr.Commit()
+			cobra.CheckErr(err)
+
+			// 程序运行后
+			err = incr.Before()
+			cobra.CheckErr(err)
 		}
 	}
 
@@ -57,6 +68,9 @@ func RunIncrementalOperations(currentVersion string) error {
 
 // parseVersion 将版本号字符串转换为整数切片，以便进行比较
 func parseVersion(version string) []int {
+	// 去除版本号前的"v"字
+	version = strings.TrimPrefix(version, "v")
+
 	parts := splitVersion(version)
 	versionSlice := make([]int, len(parts))
 	for i, part := range parts {
@@ -71,7 +85,7 @@ func splitVersion(version string) []string {
 }
 
 // less 比较两个版本号的大小
-func less(v1, v2 []int) bool {
+func compare(v1, v2 []int) bool {
 	for i := range v1 {
 		if v1[i] > v2[i] {
 			return true

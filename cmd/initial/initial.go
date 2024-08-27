@@ -29,6 +29,7 @@ var Cmd = &cobra.Command{
 		// 判断是执行全量 OR 增量数据
 		if currentVersion == "" {
 			complete(app)
+			increment(app, "v1.0.0")
 		} else {
 			increment(app, currentVersion)
 		}

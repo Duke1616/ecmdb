@@ -30,6 +30,7 @@ func registerIncr(incr InitialIncr) {
 	incrRegistry[incr.Version()] = incr
 }
 
+// RegisterIncr 依照版本顺序进行注册
 func RegisterIncr(app *ioc.App) {
 	registerIncr(NewIncrV123(app))
 	registerIncr(NewIncrV130(app))

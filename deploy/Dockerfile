@@ -5,7 +5,8 @@ COPY . .
 # ENV GOPROXY="https://goproxy.cn,direct"
 # ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 RUN go mod tidy
-RUN go build -a -o dist/ecmdb -ldflags="-w -s" main.go
+ARG VERSION=unknown
+RUN go build -ldflags="-X main.version=${VERSION} -w -s" -a -o dist/ecmdb main.go
 FROM alpine:latest as deploy
 ENV EGO_DEBUG=true
 WORKDIR /app

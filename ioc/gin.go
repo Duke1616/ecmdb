@@ -37,6 +37,8 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
+	gin.SetMode(gin.ReleaseMode)
+
 	server := gin.Default()
 	server.Use(mdls...)
 

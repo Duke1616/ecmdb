@@ -10,6 +10,7 @@ require (
 	github.com/ecodeclub/ekit v0.0.9
 	github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
+	github.com/fatih/color v1.14.1
 	github.com/gin-contrib/cors v1.7.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-ldap/ldap/v3 v3.4.7
@@ -81,6 +82,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/microsoft/go-mssqldb v1.6.0 // indirect

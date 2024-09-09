@@ -12,6 +12,7 @@ import (
 	"github.com/xen0n/go-workwx"
 	"golang.org/x/sync/errgroup"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -126,6 +127,12 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, o
 	if err != nil {
 		return err
 	}
+
+	// 把工单ID传递过去，通过Event事件绑定流程ID
+	variables = append(variables, event.Variables{
+		Key:   "order_id",
+		Value: strconv.FormatInt(orderId, 10),
+	})
 
 	data, err := json.Marshal(variables)
 	if err != nil {

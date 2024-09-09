@@ -29,10 +29,22 @@ type Service interface {
 	ListPendingStepsOfMyTask(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	// GetAutomationTask 获取自动化完成任务
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
+	// GetTasksByInstUsers 获取指定流程 + 用户的任务
+	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
+	// GetOrderIdByVariable 获取工单ID，进行流程绑定
+	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
+	return s.repo.GetOrderIdByVariable(ctx, processInstId)
+}
+
+func (s *service) GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error) {
+	return s.repo.GetTasksByInstUsers(ctx, processInstId, userIds)
 }
 
 func (s *service) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error) {

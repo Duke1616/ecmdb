@@ -111,7 +111,7 @@ func (l *logicFlow) Start(node Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 0, UserIDs: []string{"$starter"},
-		NodeEndEvents: []string{"EventEnd"},
+		NodeEndEvents: []string{"EventStart"},
 	}
 
 	l.NodeList = append(l.NodeList, n)
@@ -243,6 +243,7 @@ func (l *logicFlow) User(node Node) {
 		NodeType: 1, UserIDs: property.Approved,
 		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
 		TaskFinishEvents: taskFinishEvents,
+		NodeStartEvents:  []string{"EventNotify"},
 		IsCosigned:       IsCosigned,
 	}
 

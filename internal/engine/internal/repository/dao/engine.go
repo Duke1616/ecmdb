@@ -25,10 +25,32 @@ type ProcessEngineDAO interface {
 	ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) ([]model.Task, error)
 
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
+	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
+	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 }
 
 type processEngineDAO struct {
 	db *gorm.DB
+}
+
+func (g *processEngineDAO) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
+	var res database.ProcInstVariable
+	err := g.db.WithContext(ctx).Model(&database.ProcInstVariable{}).Table("proc_inst_variable").
+		Where("proc_inst_id = ? AND `key` = ?", processInstId, `order_id`).
+		First(&res).Error
+
+	return res.Value, err
+}
+
+func (g *processEngineDAO) GetTasksByInstUsers(ctx context.Context, processInstId int,
+	userIds []string) ([]model.Task, error) {
+	var res []model.Task
+	err := g.db.WithContext(ctx).Model(&model.Task{}).Table("proc_task").
+		Where("proc_inst_id = ? AND status = ? AND is_finished = ? AND user_id IN ?",
+			processInstId, 0, 0, userIds).
+		Find(&res).Error
+
+	return res, err
 }
 
 func (g *processEngineDAO) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (

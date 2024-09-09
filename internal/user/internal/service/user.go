@@ -111,6 +111,7 @@ func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, 
 	// 查询数据
 	u, err := s.repo.FindByUsername(ctx, username)
 	id = u.Id
+
 	// 函数完成，注入密码
 	defer func() {
 		if u.Password == "" {

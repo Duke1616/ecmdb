@@ -149,7 +149,8 @@ func InitApp() (*App, error) {
 	}
 	handler17 := permissionModule.Hdl
 	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17)
-	eventModule, err := event.InitModule(mq, db, engineModule, taskModule)
+	larkClient := InitFeishu()
+	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, larkClient)
 	if err != nil {
 		return nil, err
 	}
@@ -169,4 +170,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx, InitFeishu)

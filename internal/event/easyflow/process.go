@@ -2,12 +2,15 @@ package easyflow
 
 import (
 	"context"
+	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/gotomicro/ego/core/elog"
+	"strconv"
 	"time"
 
 	"log"
@@ -25,31 +28,44 @@ func init() {
 }
 
 type ProcessEvent struct {
+	notify    NotificationService
 	producer  producer.OrderStatusModifyEventProducer
 	taskSvc   task.Service
+	orderSvc  order.Service
 	engineSvc engineSvc.Service
 	logger    *elog.Component
 }
 
 func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc engineSvc.Service,
-	taskSvc task.Service) *ProcessEvent {
+	taskSvc task.Service, notify NotificationService, orderSvc order.Service) (*ProcessEvent, error) {
+
 	return &ProcessEvent{
 		logger:    elog.DefaultLogger,
 		engineSvc: engineSvc,
 		taskSvc:   taskSvc,
 		producer:  producer,
-	}
+		notify:    notify,
+		orderSvc:  orderSvc,
+	}, nil
 }
 
 // EventStart 节点结束事件
 func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	//可以做一些处理，比如通知流程开始人，节点到了哪个步骤
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, ProcessInstanceID)
 	if err != nil {
 		return err
 	}
-	log.Printf("--------流程[%s]节点[%s]结束-------", processName, CurrentNode.NodeName)
-	return nil
+
+	id, err := strconv.ParseInt(orderId, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	return e.orderSvc.RegisterProcessInstanceId(ctx, id, ProcessInstanceID)
 }
 
 // EventAutomation 自动化任务处理（创建任务）
@@ -119,6 +135,20 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventNotify 通知
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ok, err := e.notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return fmt.Errorf("消息发送失败: 流程ID：%d, 发送用户组: %s", ProcessInstanceID, CurrentNode.UserIDs)
+	}
+
+	return nil
+}
+
+// EventNotifyV1 通知
+func (e *ProcessEvent) EventNotifyV1(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
 	if err != nil {
 		return err
@@ -161,13 +191,13 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 
-	task, err := engine.GetTaskInfo(TaskID)
+	t, err := engine.GetTaskInfo(TaskID)
 	if err != nil {
 		return err
 	}
 
 	// 如果不是会签节点，直接修改所有
-	if task.IsCosigned != 1 {
+	if t.IsCosigned != 1 {
 		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
 	}
 

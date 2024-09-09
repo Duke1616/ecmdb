@@ -23,10 +23,20 @@ type ProcessEngineRepository interface {
 	CountReject(ctx context.Context, taskId int) (int64, error)
 	ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
+	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
+	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 }
 
 type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
+}
+
+func (repo *processEngineRepository) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
+	return repo.engineDao.GetOrderIdByVariable(ctx, processInstId)
+}
+
+func (repo *processEngineRepository) GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error) {
+	return repo.engineDao.GetTasksByInstUsers(ctx, processInstId, userIds)
 }
 
 func (repo *processEngineRepository) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error) {

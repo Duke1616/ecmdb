@@ -75,7 +75,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		}
 	}
 
-	return c.withdraw(ctx, evt.Comment)
+	return c.withdraw(ctx, evt.MessageId)
 }
 
 func (c *FeishuCallbackEventConsumer) withdraw(ctx context.Context, messageId string) error {

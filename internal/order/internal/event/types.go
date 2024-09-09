@@ -65,6 +65,7 @@ const (
 
 type FeishuCallback struct {
 	Action       string `json:"action"`
+	MessageId    string `json:"message_id"`
 	FeishuUserId string `json:"feishu_user_id"`
 	TaskId       string `json:"task_id"`
 	Comment      string `json:"comment"`

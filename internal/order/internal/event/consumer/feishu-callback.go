@@ -8,16 +8,19 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/larksuite/oapi-sdk-go/v3"
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"strconv"
 )
 
 type FeishuCallbackEventConsumer struct {
 	engineSvc engineSvc.Service
 	consumer  mq.Consumer
+	lark      *lark.Client
 	logger    *elog.Component
 }
 
-func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service) (*FeishuCallbackEventConsumer, error) {
+func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, lark *lark.Client) (*FeishuCallbackEventConsumer, error) {
 	groupID := "feishu_callback"
 	consumer, err := q.Consumer(event.FeishuCallbackEventName, groupID)
 	if err != nil {
@@ -27,6 +30,7 @@ func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service) (*Feis
 	return &FeishuCallbackEventConsumer{
 		consumer:  consumer,
 		engineSvc: engineSvc,
+		lark:      lark,
 		logger:    elog.DefaultLogger,
 	}, nil
 }
@@ -69,6 +73,25 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return c.withdraw(ctx, evt.Comment)
+}
+
+func (c *FeishuCallbackEventConsumer) withdraw(ctx context.Context, messageId string) error {
+	req := larkim.NewDeleteMessageReqBuilder().
+		MessageId(messageId).
+		Build()
+
+	resp, err := c.lark.Im.Message.Delete(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		return fmt.Errorf("撤回消息服务端错误，code: %d, msg: %s, requestId: %s",
+			resp.Code, resp.Msg, resp.RequestId())
 	}
 
 	return nil

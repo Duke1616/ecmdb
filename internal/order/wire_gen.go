@@ -20,11 +20,12 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	"github.com/larksuite/oapi-sdk-go/v3"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module, lark2 *lark.Client) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
@@ -39,7 +40,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	service4 := workflowModule.Svc
 	processEventConsumer := InitProcessConsumer(q, service4, serviceService)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
-	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2)
+	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2)
 	module := &Module{
 		Hdl: handler,
 		Svc: serviceService,
@@ -85,8 +86,8 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 	return c
 }
 
-func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service) *consumer.FeishuCallbackEventConsumer {
-	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc)
+func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service, lark2 *lark.Client) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc, lark2)
 	if err != nil {
 		return nil
 	}

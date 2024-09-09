@@ -16,6 +16,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 )
 
 var ProviderSet = wire.NewSet(
@@ -26,7 +27,7 @@ var ProviderSet = wire.NewSet(
 )
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module,
-	templateModule *template.Module) (*Module, error) {
+	templateModule *template.Module, lark *lark.Client) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		event.NewCreateProcessEventProducer,
@@ -72,8 +73,8 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 	return c
 }
 
-func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service) *consumer.FeishuCallbackEventConsumer {
-	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc)
+func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service, lark *lark.Client) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc, lark)
 	if err != nil {
 		return nil
 	}

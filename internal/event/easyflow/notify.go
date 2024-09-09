@@ -26,15 +26,16 @@ type NotificationService interface {
 }
 
 type Notify struct {
-	engineSvc       engineSvc.Service
-	templateSvc     templateSvc.Service
-	orderSvc        order.Service
-	tmpl            *template.Template
+	engineSvc   engineSvc.Service
+	templateSvc templateSvc.Service
+	orderSvc    order.Service
+	tmpl        *template.Template
+	nc          notify.Notifier[*larkim.CreateMessageReq]
+	logger      *elog.Component
+
 	initialInterval time.Duration
 	maxInterval     time.Duration
-	logger          *elog.Component
 	maxRetries      int32
-	nc              notify.Notifier[*larkim.CreateMessageReq]
 }
 
 func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
@@ -88,7 +89,6 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 			}
 
 			tasks, err = n.engineSvc.GetTasksByInstUsers(ctx, instanceId, userIDs)
-			fmt.Println("获取 Tasks 数据", tasks, instanceId, userIDs)
 			if err != nil || len(tasks) == 0 {
 				time.Sleep(d)
 				continue
@@ -107,8 +107,8 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 				},
 			}
 			message := feishu.NewFeishuMessage(
-				// bcegag66
-				"user_id", "a579e467",
+				// a579e467
+				"user_id", "bcegag66",
 				feishu.NewFeishuCustomCard(n.tmpl, "feishu-card-callback",
 					card.NewApprovalCardBuilder().
 						SetToTitle(title).
@@ -201,6 +201,7 @@ func (n *Notify) getFields(ctx context.Context, InstanceId int) ([]card.Field, s
 		return element.Field
 	})
 
+	// 拼接消息体
 	var fields []card.Field
 	num := 1
 	for field, value := range o.Data {

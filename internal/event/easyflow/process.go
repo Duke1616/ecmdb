@@ -135,6 +135,11 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventNotify 通知
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	// TODO 如果是结束阶段，暂不处理
+	if CurrentNode.NodeType == model.EndNode {
+		return nil
+	}
+
 	ok, err := e.notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
 	if err != nil {
 		return err

@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.6
+	github.com/Duke1616/enotify v0.1.7
 	github.com/casbin/casbin/v2 v2.98.0
 	github.com/casbin/gorm-adapter/v3 v3.26.0
 	github.com/casbin/redis-watcher/v2 v2.5.0

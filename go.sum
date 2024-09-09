@@ -57,8 +57,8 @@ github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbi
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/Duke1616/easy-workflow v1.0.3 h1:K2wzeC8RUZqAYHHLFuu0fdcyKD1xITtCJo2nLlYD2kM=
 github.com/Duke1616/easy-workflow v1.0.3/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
-github.com/Duke1616/enotify v0.1.6 h1:LwWN2CjmvLVws9yKNCxKckU88z70xGl01MKL0HaasMs=
-github.com/Duke1616/enotify v0.1.6/go.mod h1:2+OiQ6PGDy2dcE6vwXLBV+kM9cPP9XYOusPIo9UY4xY=
+github.com/Duke1616/enotify v0.1.7 h1:Df5Q65DBRCn/x1Yg7T4XVngut3hTAUmT8Wyr9+5fbwE=
+github.com/Duke1616/enotify v0.1.7/go.mod h1:2+OiQ6PGDy2dcE6vwXLBV+kM9cPP9XYOusPIo9UY4xY=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=

@@ -11,4 +11,5 @@ type Module struct {
 	cw  *consumer.WechatOrderConsumer
 	cs  *consumer.ProcessEventConsumer
 	cms *consumer.OrderStatusModifyEventConsumer
+	cf  *consumer.FeishuCallbackEventConsumer
 }

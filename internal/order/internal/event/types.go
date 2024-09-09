@@ -21,6 +21,8 @@ const (
 	CreateProcessEventName = "create_process_events"
 	// OrderStatusModifyEventName 修改状态事件
 	OrderStatusModifyEventName = "order_status_modify_events"
+	// FeishuCallbackEventName 飞书回调事件
+	FeishuCallbackEventName = "feishu_callback_events"
 )
 
 type OrderEvent struct {
@@ -60,3 +62,10 @@ const (
 	// WECHAT 企业微信
 	WECHAT Provide = 2
 )
+
+type FeishuCallback struct {
+	Action       string `json:"action"`
+	FeishuUserId string `json:"feishu_user_id"`
+	TaskId       string `json:"task_id"`
+	Comment      string `json:"comment"`
+}

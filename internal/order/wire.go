@@ -33,6 +33,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 		initWechatConsumer,
 		InitProcessConsumer,
 		InitModifyStatusConsumer,
+		InitFeishuCallbackConsumer,
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.FieldsOf(new(*template.Module), "Svc"),
@@ -63,6 +64,16 @@ func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Serv
 
 func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatusModifyEventConsumer {
 	c, err := consumer.NewOrderStatusModifyEventConsumer(q, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc)
 	if err != nil {
 		return nil
 	}

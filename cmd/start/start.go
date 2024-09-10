@@ -22,6 +22,8 @@ var Cmd = &cobra.Command{
 			panic(err)
 		}
 
+		//initEndpoint(app.Web, app.Svc)
+
 		initCronjob(app.Jobs)
 		engine.RegisterEvents(app.Event)
 

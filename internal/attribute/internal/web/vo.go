@@ -36,6 +36,15 @@ type DeleteAttributeReq struct {
 	Id int64 `json:"id"`
 }
 
+type UpdateAttributeReq struct {
+	Id        int64       `json:"id"`
+	FieldName string      `json:"field_name"`
+	FieldType string      `json:"field_type"`
+	Secure    bool        `json:"secure"`
+	Required  bool        `json:"required"`
+	Option    interface{} `json:"option"`
+}
+
 type Attribute struct {
 	ID        int64       `json:"id"`
 	ModelUid  string      `json:"model_uid"`

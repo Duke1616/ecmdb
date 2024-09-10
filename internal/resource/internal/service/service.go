@@ -23,6 +23,7 @@ type Service interface {
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
+	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 }
 
 type service struct {
@@ -33,6 +34,10 @@ func NewService(repo repository.ResourceRepository) Service {
 	return &service{
 		repo: repo,
 	}
+}
+
+func (s *service) UpdateResource(ctx context.Context, resource domain.Resource) (int64, error) {
+	return s.repo.UpdateResource(ctx, resource)
 }
 
 func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {

@@ -32,6 +32,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list/field", ginx.WrapBody[ListAttributeReq](h.ListAttributeField))
 	g.POST("/custom/field", ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns))
 	g.POST("/delete", ginx.WrapBody[DeleteAttributeReq](h.DeleteAttribute))
+	g.POST("/update", ginx.WrapBody[UpdateAttributeReq](h.UpdateAttribute))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -44,6 +45,19 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	return ginx.Result{
 		Data: id,
 		Msg:  "添加模型属性成功",
+	}, nil
+}
+
+func (h *Handler) UpdateAttribute(ctx *gin.Context, req UpdateAttributeReq) (ginx.Result, error) {
+	attr := h.toDomainUpdate(req)
+	t, err := h.svc.UpdateAttribute(ctx, attr)
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: t,
 	}, nil
 }
 
@@ -168,6 +182,17 @@ func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
 		GroupName: src.Name,
 		GroupId:   src.ID,
 		Index:     src.Index,
+	}
+}
+
+func (h *Handler) toDomainUpdate(req UpdateAttributeReq) domain.Attribute {
+	return domain.Attribute{
+		ID:        req.Id,
+		FieldName: req.FieldName,
+		FieldType: req.FieldType,
+		Required:  req.Required,
+		Secure:    req.Secure,
+		Option:    req.Option,
 	}
 }
 

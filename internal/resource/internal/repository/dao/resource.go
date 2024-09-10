@@ -29,10 +29,36 @@ type ResourceDAO interface {
 	Search(ctx context.Context, text string) ([]SearchResource, error)
 
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
+	UpdateAttribute(ctx context.Context, resource Resource) (int64, error)
 }
 
 type resourceDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *resourceDAO) UpdateAttribute(ctx context.Context, resource Resource) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+
+	updateDoc := bson.M{
+		"utime": time.Now().UnixMilli(),
+	}
+
+	for key, value := range resource.Data {
+		updateDoc[key] = value
+	}
+
+	// 构建最终的更新文档
+	updateCommand := bson.M{
+		"$set": updateDoc,
+	}
+
+	filter := bson.M{"id": resource.ID}
+	count, err := col.UpdateOne(ctx, filter, updateCommand)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func NewResourceDAO(db *mongox.Mongo) ResourceDAO {

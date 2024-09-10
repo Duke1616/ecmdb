@@ -51,6 +51,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 查询加密字段信息
 	g.POST("/secure", ginx.WrapBody[FindSecureReq](h.FindSecureData))
+
+	g.POST("/update", ginx.WrapBody[UpdateResourceReq](h.UpdateResource))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -109,6 +111,19 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 			Total:     total,
 		},
 		Msg: "查看资源列表成功",
+	}, nil
+}
+
+func (h *Handler) UpdateResource(ctx *gin.Context, req UpdateResourceReq) (ginx.Result, error) {
+	resource := h.toDomainUpdate(req)
+	t, err := h.svc.UpdateResource(ctx, resource)
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: t,
 	}, nil
 }
 
@@ -514,6 +529,14 @@ func (h *Handler) toResourceRelationVo(src relation.ResourceRelation) ResourceRe
 		TargetResourceID: src.TargetResourceID,
 		RelationTypeUID:  src.RelationTypeUID,
 		RelationName:     src.RelationName,
+	}
+}
+
+func (h *Handler) toDomainUpdate(src UpdateResourceReq) domain.Resource {
+	return domain.Resource{
+		ID:   src.Id,
+		Name: src.Name,
+		Data: src.Data,
 	}
 }
 

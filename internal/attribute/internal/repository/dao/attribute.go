@@ -26,10 +26,32 @@ type AttributeDAO interface {
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error)
+	UpdateAttribute(ctx context.Context, attribute Attribute) (int64, error)
 }
 
 type attributeDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"field_name": attr.FieldName,
+			"field_type": attr.FieldType,
+			"required":   attr.Required,
+			"secure":     attr.Secure,
+			"option":     attr.Option,
+			"utime":      time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": attr.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {

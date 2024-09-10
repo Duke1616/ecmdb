@@ -8,6 +8,12 @@ type CreateResourceReq struct {
 	Data     mongox.MapStr `json:"data"`
 }
 
+type UpdateResourceReq struct {
+	Id   int64         `json:"id"`
+	Name string        `json:"name"`
+	Data mongox.MapStr `json:"data"`
+}
+
 type DetailResourceReq struct {
 	ModelUid string `json:"model_uid"`
 	ID       int64  `json:"id"`

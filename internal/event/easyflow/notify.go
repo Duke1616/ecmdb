@@ -63,6 +63,20 @@ func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, ord
 	}, nil
 }
 
+func (n *Notify) builder(title string, fields []card.Field, cardVal []card.Value) notify.NotifierWrap {
+	return notify.WrapNotifierDynamic(n.nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
+		return feishu.NewFeishuMessage(
+			"user_id", "bcegag66",
+			feishu.NewFeishuCustomCard(n.tmpl, "feishu-card-callback",
+				card.NewApprovalCardBuilder().
+					SetToTitle(title).
+					SetToFields(fields).
+					SetToCallbackValue(cardVal).Build(),
+			),
+		), nil
+	})
+}
+
 func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bool, error) {
 	// 返回用户提交信息
 	fields, title, err := n.getFields(ctx, instanceId)
@@ -98,7 +112,7 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 		}
 
 		// 继续组合消息
-		var messages []*feishu.Feishu
+		var messages []notify.NotifierWrap
 		for _, ts := range tasks {
 			cardVal := []card.Value{
 				{
@@ -106,17 +120,8 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 					Value: ts.TaskID,
 				},
 			}
-			message := feishu.NewFeishuMessage(
-				// a579e467
-				"user_id", "bcegag66",
-				feishu.NewFeishuCustomCard(n.tmpl, "feishu-card-callback",
-					card.NewApprovalCardBuilder().
-						SetToTitle(title).
-						SetToFields(fields).
-						SetToCallbackValue(cardVal).Build(),
-				),
-			)
-			messages = append(messages, message)
+
+			messages = append(messages, n.builder(title, fields, cardVal))
 		}
 
 		// 异步发送消息
@@ -131,19 +136,20 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 	return true, nil
 }
 
-func (n *Notify) send(ctx context.Context, messages []*feishu.Feishu) (bool, error) {
+func (n *Notify) send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bool, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var firstError error
 	success := true
 
 	// 使用 goroutines 发送消息
-	for _, msg := range messages {
+	for _, msg := range notifyWrap {
 		wg.Add(1)
-		go func(m *feishu.Feishu) {
+		nw := msg
+		go func(m notify.NotifierWrap) {
 			defer wg.Done()
 
-			ok, err := n.nc.Send(ctx, m)
+			ok, err := nw.Send(ctx)
 			if err != nil {
 				mu.Lock() // 锁定访问共享资源
 				if firstError == nil {
@@ -186,17 +192,10 @@ func (n *Notify) getFields(ctx context.Context, InstanceId int) ([]card.Field, s
 		return nil, "", err
 	}
 
-	var rules Rules
-	rulesJson, err := json.Marshal(t.Rules)
+	rules, err := parseRules(t.Rules)
 	if err != nil {
 		return nil, "", err
 	}
-
-	err = json.Unmarshal(rulesJson, &rules)
-	if err != nil {
-		return nil, "", err
-	}
-
 	ruleMap := slice.ToMap(rules, func(element Rule) string {
 		return element.Field
 	})
@@ -229,4 +228,14 @@ func (n *Notify) getFields(ctx context.Context, InstanceId int) ([]card.Field, s
 	}
 
 	return fields, o.TemplateName, nil
+}
+
+func parseRules(ruleData interface{}) ([]Rule, error) {
+	var rules []Rule
+	rulesJson, err := json.Marshal(ruleData)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(rulesJson, &rules)
+	return rules, err
 }

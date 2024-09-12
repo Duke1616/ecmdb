@@ -36,4 +36,5 @@ type User struct {
 	Status      Status
 	CreateType  CreateType
 	RoleCodes   []string
+	FeishuInfo  FeishuInfo
 }

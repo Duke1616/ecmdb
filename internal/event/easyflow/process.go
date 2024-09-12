@@ -2,7 +2,6 @@ package easyflow
 
 import (
 	"context"
-	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -141,12 +140,9 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	}
 
 	ok, err := e.notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return fmt.Errorf("消息发送失败: 流程ID：%d, 发送用户组: %s", ProcessInstanceID, CurrentNode.UserIDs)
+	if err != nil || !ok {
+		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		return nil
 	}
 
 	return nil

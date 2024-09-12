@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -19,7 +20,7 @@ import (
 )
 
 func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module,
-	templateModule *template.Module, lark *lark.Client) (*Module, error) {
+	templateModule *template.Module, userModule *user.Module, lark *lark.Client) (*Module, error) {
 	wire.Build(
 		producer.NewOrderStatusModifyEventProducer,
 		InitWorkflowEngineOnce,
@@ -27,6 +28,7 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 		wire.FieldsOf(new(*task.Module), "Svc"),
 		wire.FieldsOf(new(*template.Module), "Svc"),
 		wire.FieldsOf(new(*order.Module), "Svc"),
+		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
@@ -35,8 +37,9 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 var engineOnce = sync.Once{}
 
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
-	taskSvc task.Service, templateSvc template.Service, orderSvc order.Service, lark *lark.Client) *easyflow.ProcessEvent {
-	notify, err := easyflow.NewNotify(engineSvc, templateSvc, orderSvc, lark)
+	taskSvc task.Service, templateSvc template.Service, orderSvc order.Service, userSvc user.Service,
+	lark *lark.Client) *easyflow.ProcessEvent {
+	notify, err := easyflow.NewNotify(engineSvc, templateSvc, orderSvc, userSvc, lark)
 	if err != nil {
 		panic(err)
 	}

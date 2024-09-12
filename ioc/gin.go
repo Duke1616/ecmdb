@@ -3,6 +3,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/menu"
@@ -35,6 +36,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
+	departmentHdl *department.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	gin.SetMode(gin.ReleaseMode)
@@ -80,6 +82,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	policyHdl.PrivateRoutes(server)
 	menuHdl.PrivateRoutes(server)
 	endpointHdl.PrivateRoutes(server)
+	departmentHdl.PrivateRoutes(server)
 	roleHdl.PrivateRoutes(server)
 
 	return server

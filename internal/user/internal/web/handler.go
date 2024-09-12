@@ -45,7 +45,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
 	user, err := h.svc.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		return systemErrorResult, err
+		return userOrPassErrorResult, err
 	}
 
 	jwtData := make(map[string]string, 0)
@@ -84,7 +84,7 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 		Password: req.Password,
 	})
 	if err != nil {
-		return systemErrorResult, err
+		return userOrPassErrorResult, err
 	}
 
 	// 查找或插入用户

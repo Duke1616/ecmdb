@@ -8,6 +8,7 @@ import (
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/Duke1616/enotify/notify/feishu/card"
@@ -27,11 +28,13 @@ type NotificationService interface {
 
 type Notify struct {
 	engineSvc   engineSvc.Service
+	userSvc     user.Service
 	templateSvc templateSvc.Service
 	orderSvc    order.Service
 	tmpl        *template.Template
 	nc          notify.Notifier[*larkim.CreateMessageReq]
 	logger      *elog.Component
+	tmplName    string
 
 	initialInterval time.Duration
 	maxInterval     time.Duration
@@ -39,7 +42,7 @@ type Notify struct {
 }
 
 func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	lark *lark.Client) (*Notify, error) {
+	userSvc user.Service, lark *lark.Client) (*Notify, error) {
 	tmpl, err := template.FromGlobs([]string{})
 	if err != nil {
 		return nil, err
@@ -54,20 +57,22 @@ func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, ord
 		engineSvc:       engineSvc,
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
+		userSvc:         userSvc,
 		logger:          elog.DefaultLogger,
 		tmpl:            tmpl,
+		tmplName:        "feishu-card-callback",
 		nc:              nc,
-		initialInterval: 10 * time.Second,
+		initialInterval: 5 * time.Second,
 		maxRetries:      int32(3),
-		maxInterval:     30 * time.Second,
+		maxInterval:     15 * time.Second,
 	}, nil
 }
 
-func (n *Notify) builder(title string, fields []card.Field, cardVal []card.Value) notify.NotifierWrap {
+func (n *Notify) builder(userId string, title string, fields []card.Field, cardVal []card.Value) notify.NotifierWrap {
 	return notify.WrapNotifierDynamic(n.nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return feishu.NewFeishuMessage(
-			"user_id", "bcegag66",
-			feishu.NewFeishuCustomCard(n.tmpl, "feishu-card-callback",
+			"user_id", userId,
+			feishu.NewFeishuCustomCard(n.tmpl, n.tmplName,
 				card.NewApprovalCardBuilder().
 					SetToTitle(title).
 					SetToFields(fields).
@@ -79,9 +84,9 @@ func (n *Notify) builder(title string, fields []card.Field, cardVal []card.Value
 
 func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bool, error) {
 	// 返回用户提交信息
-	fields, title, err := n.getFields(ctx, instanceId)
-	if err != nil {
-		return false, err
+	fields, title, er := n.getFields(ctx, instanceId)
+	if er != nil {
+		return false, er
 	}
 
 	// 只有当 Event 结束才能正确获取到 TaskId 信息，放到 Go Routine 异步运行, 通过重试机制获取到数据
@@ -111,18 +116,19 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 			break
 		}
 
-		// 继续组合消息
-		var messages []notify.NotifierWrap
-		for _, ts := range tasks {
+		userMap := n.analyzeUsers(ctx, tasks)
+		messages := slice.Map(tasks, func(idx int, src model.Task) notify.NotifierWrap {
+			uid, _ := userMap[src.UserID]
 			cardVal := []card.Value{
 				{
 					Key:   "task_id",
-					Value: ts.TaskID,
+					Value: src.TaskID,
 				},
 			}
 
-			messages = append(messages, n.builder(title, fields, cardVal))
-		}
+			return n.builder(uid, title, fields, cardVal)
+
+		})
 
 		// 异步发送消息
 		if ok, err := n.send(ctx, messages); err != nil || !ok {
@@ -134,6 +140,24 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 	}()
 
 	return true, nil
+}
+
+// analyzeUsers 解析用户，把 ID 转换为飞书 ID
+func (n *Notify) analyzeUsers(ctx context.Context, tasks []model.Task) map[string]string {
+	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
+		return src.UserID
+	})
+
+	users, err := n.userSvc.FindByUsernames(ctx, userIds)
+	if err != nil {
+		n.logger.Error("用户查询失败",
+			elog.FieldErr(err),
+		)
+	}
+
+	return slice.ToMapV(users, func(element user.User) (string, string) {
+		return element.Username, element.FeishuInfo.UserId
+	})
 }
 
 func (n *Notify) send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bool, error) {

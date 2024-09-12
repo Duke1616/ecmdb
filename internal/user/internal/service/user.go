@@ -20,11 +20,17 @@ type Service interface {
 	Login(ctx context.Context, username, password string) (domain.User, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 }
 
 type service struct {
 	repo   repository.UserRepository
 	logger *elog.Component
+}
+
+func (s *service) FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *service) FindById(ctx context.Context, id int64) (domain.User, error) {

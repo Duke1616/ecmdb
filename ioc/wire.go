@@ -5,6 +5,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
@@ -71,6 +72,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*menu.Module), "Hdl"),
 		endpoint.InitModule,
 		wire.FieldsOf(new(*endpoint.Module), "Hdl", "Svc"),
+		department.InitModule,
+		wire.FieldsOf(new(*department.Module), "Hdl"),
 		role.InitModule,
 		wire.FieldsOf(new(*role.Module), "Hdl"),
 		permission.InitModule,

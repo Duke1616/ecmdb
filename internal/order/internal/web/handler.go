@@ -34,14 +34,13 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/order")
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
 	g.POST("/detail/process_inst_id", ginx.WrapBody[DetailProcessInstIdReq](h.Detail))
-	g.POST("/todo", ginx.WrapBody[Todo](h.Todo))
-	g.POST("/todo/user", ginx.WrapBody[Todo](h.TodoByUser))
 	g.POST("/task/record", ginx.WrapBody[RecordTaskReq](h.TaskRecord))
+	g.POST("/todo", ginx.WrapBody[Todo](h.TodoAll))
+	g.POST("/todo/user", ginx.WrapBody[Todo](h.TodoByUser))
 	g.POST("/history", ginx.WrapBody[HistoryReq](h.History))
 	g.POST("/start/user", ginx.WrapBody[StartUserReq](h.StartUser))
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
-	g.POST("/list", ginx.WrapBody[Todo](h.Todo))
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
@@ -65,7 +64,8 @@ func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result
 	}, nil
 }
 
-func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
+// TodoAll 全部待办
+func (h *Handler) TodoAll(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	// 校验传递参数
 	validate := validator.New()
 	err := validate.Struct(req)
@@ -83,7 +83,7 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	// 数据处理
 	orders, err := h.toVoEngineOrder(ctx, instances)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
@@ -95,6 +95,7 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}, err
 }
 
+// TodoByUser 我的待办
 func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	// 校验传递参数
 	validate := validator.New()
@@ -107,9 +108,10 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 	}
+	uid := strconv.FormatInt(sess.Claims().Uid, 10)
 
 	// 查询待处理工单
-	instances, total, err := h.engineSvc.ListTodoTasks(ctx, strconv.FormatInt(sess.Claims().Uid, 10), req.ProcessName, req.SortByAsc,
+	instances, total, err := h.engineSvc.ListTodoTasks(ctx, uid, req.ProcessName, req.SortByAsc,
 		req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
@@ -130,6 +132,7 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}, err
 }
 
+// History 历史工单
 func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error) {
 	os, _, err := h.svc.ListHistoryOrder(ctx, req.UserId, req.Offset, req.Limit)
 	if err != nil {
@@ -146,6 +149,10 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 }
 
 func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) {
+	// TODO 超级管理员 任意通过 （ 可选 ）
+
+	// TODO 校验是否为自己的任务
+
 	err := h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
 	if err != nil {
 		return systemErrorResult, err
@@ -169,6 +176,7 @@ func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, err
 	}, nil
 }
 
+// StartUser 与我相关的工单
 func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, error) {
 	// 获取登录用户 sess 获取ID
 	sess, err := session.Get(&gctx.Context{Context: ctx})
@@ -180,7 +188,7 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, er
 	// 查找本地存储，关于我的工单（未完成）
 	orders, total, err := h.svc.ListOrdersByUser(ctx, starter, req.Offset, req.Limit)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	// 查找出所有的流程ID
@@ -191,13 +199,13 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, er
 	// 查询所有流程等待运行的信息 ( 当前步骤、审批人 ）
 	processTasks, err := h.engineSvc.ListPendingStepsOfMyTask(ctx, procInstIds, starter)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	// 数据处理
 	tasks, err := h.toVoEngineOrder(ctx, processTasks)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
@@ -220,6 +228,7 @@ func (h *Handler) Detail(ctx *gin.Context, req DetailProcessInstIdReq) (ginx.Res
 	}, nil
 }
 
+// TaskRecord 任务记录
 func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, error) {
 	ts, total, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstId, req.Offset, req.Limit)
 	if err != nil {
@@ -307,15 +316,17 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 }
 
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
-	procInstIds := slice.Map(instances, func(idx int, src engine.Instance) int {
-		return src.ProcInstID
+	uniqueProcInstIds := make(map[int]bool)
+	procInstIds := slice.FilterMap(instances, func(idx int, src engine.Instance) (int, bool) {
+		if !uniqueProcInstIds[src.ProcInstID] {
+			uniqueProcInstIds[src.ProcInstID] = true
+			return src.ProcInstID, true
+		}
+
+		return src.ProcInstID, false
 	})
 
 	os, err := h.svc.ListOrderByProcessInstanceIds(ctx, procInstIds)
-	//slice.ToMap(os, func(element domain.Order) int64 {
-	//	return element.Id
-	//})
-
 	m := slice.ToMap(os, func(element domain.Order) int {
 		return element.Process.InstanceId
 	})

@@ -9,6 +9,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
@@ -149,8 +150,13 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler17 := permissionModule.Hdl
-	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17)
-	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, larkClient)
+	departmentModule, err := department.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	handler18 := departmentModule.Hdl
+	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18)
+	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, larkClient)
 	if err != nil {
 		return nil, err
 	}

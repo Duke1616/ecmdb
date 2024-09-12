@@ -15,8 +15,8 @@
 package errs
 
 var (
-	SystemError  = ErrorCode{Code: 503001, Msg: "系统错误"}
-	UrlPathError = ErrorCode{Code: 503001, Msg: "URL PATH 传递错误"}
+	SystemError   = ErrorCode{Code: 503001, Msg: "系统错误"}
+	UserPassError = ErrorCode{Code: 504002, Msg: "账号或密码输入不正确"}
 )
 
 type ErrorCode struct {

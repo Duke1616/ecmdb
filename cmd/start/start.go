@@ -1,12 +1,9 @@
 package start
 
 import (
-	"context"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/ioc"
-	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/task/ecron"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,8 +18,6 @@ var Cmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-
-		//initEndpoint(app.Web, app.Svc)
 
 		initCronjob(app.Jobs)
 		engine.RegisterEvents(app.Event)
@@ -49,20 +44,5 @@ func initCronjob(jobs []*ecron.Component) {
 
 	for _, job := range jobs {
 		go job.Start()
-	}
-}
-
-// 生成端点路由信息、方便菜单权限绑定路由
-func initEndpoint(web *gin.Engine, svc endpoint.Service) {
-	routes := web.Routes()
-	for _, route := range routes {
-		_, err := svc.RegisterEndpoint(context.Background(), endpoint.Endpoint{
-			Method: route.Method,
-			Path:   route.Path,
-		})
-
-		if err != nil {
-			panic(err)
-		}
 	}
 }

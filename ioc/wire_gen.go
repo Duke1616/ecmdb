@@ -81,7 +81,11 @@ func InitApp() (*App, error) {
 	handler3 := workerModule.Hdl
 	relationTypeHandler := relationModule.RTHdl
 	config := InitLdapConfig()
-	userModule, err := user.InitModule(mongo, config, module)
+	departmentModule, err := department.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	userModule, err := user.InitModule(mongo, config, module, departmentModule)
 	if err != nil {
 		return nil, err
 	}
@@ -150,10 +154,6 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler17 := permissionModule.Hdl
-	departmentModule, err := department.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
 	handler18 := departmentModule.Hdl
 	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, larkClient)

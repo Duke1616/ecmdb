@@ -214,6 +214,7 @@ func (dao *resourceDAO) PipelineByModelUid(ctx context.Context) ([]Pipeline, err
 
 	cursor, err := col.Aggregate(ctx, pipeline)
 	defer cursor.Close(ctx)
+
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}

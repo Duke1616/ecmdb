@@ -8,6 +8,7 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/cmd/initial/version"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -29,7 +30,11 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, config, module)
+	departmentModule, err := department.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	userModule, err := user.InitModule(mongo, config, module, departmentModule)
 	if err != nil {
 		return nil, err
 	}

@@ -10,8 +10,9 @@ import (
 type DepartmentRepository interface {
 	CreateDepartment(ctx context.Context, req domain.Department) (int64, error)
 	UpdateDepartment(ctx context.Context, req domain.Department) (int64, error)
+	DeleteDepartment(ctx context.Context, id int64) (int64, error)
 	ListDepartment(ctx context.Context) ([]domain.Department, error)
-	Total(ctx context.Context) (int64, error)
+	ListDepartmentByIds(ctx context.Context, ids []int64) ([]domain.Department, error)
 }
 
 func NewDepartmentRepository(dao dao.DepartmentDAO) DepartmentRepository {
@@ -24,6 +25,17 @@ type departmentRepository struct {
 	dao dao.DepartmentDAO
 }
 
+func (repo *departmentRepository) ListDepartmentByIds(ctx context.Context, ids []int64) ([]domain.Department, error) {
+	departments, err := repo.dao.ListDepartmentByIds(ctx, ids)
+	return slice.Map(departments, func(idx int, src dao.Department) domain.Department {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *departmentRepository) DeleteDepartment(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.DeleteDepartment(ctx, id)
+}
+
 func (repo *departmentRepository) UpdateDepartment(ctx context.Context, req domain.Department) (int64, error) {
 	return repo.dao.UpdateDepartment(ctx, repo.toEntity(req))
 }
@@ -33,11 +45,6 @@ func (repo *departmentRepository) ListDepartment(ctx context.Context) ([]domain.
 	return slice.Map(departments, func(idx int, src dao.Department) domain.Department {
 		return repo.toDomain(src)
 	}), err
-}
-
-func (repo *departmentRepository) Total(ctx context.Context) (int64, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (repo *departmentRepository) CreateDepartment(ctx context.Context, req domain.Department) (int64, error) {

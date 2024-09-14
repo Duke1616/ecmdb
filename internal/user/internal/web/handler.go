@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
@@ -14,16 +15,19 @@ import (
 )
 
 type Handler struct {
-	svc       service.Service
-	ldapSvc   service.LdapService
-	policySvc policy.Service
+	svc           service.Service
+	ldapSvc       service.LdapService
+	policySvc     policy.Service
+	departmentSvc department.Service
 }
 
-func NewHandler(svc service.Service, ldapSvc service.LdapService, policySvc policy.Service) *Handler {
+func NewHandler(svc service.Service, ldapSvc service.LdapService,
+	policySvc policy.Service, departmentSvc department.Service) *Handler {
 	return &Handler{
-		svc:       svc,
-		ldapSvc:   ldapSvc,
-		policySvc: policySvc,
+		svc:           svc,
+		ldapSvc:       ldapSvc,
+		policySvc:     policySvc,
+		departmentSvc: departmentSvc,
 	}
 }
 
@@ -39,7 +43,12 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/user")
 	g.POST("/role/bind", ginx.WrapBody[UserBindRoleReq](h.UserRoleBind))
 	g.POST("/list", ginx.WrapBody[Page](h.ListUser))
+	g.POST("/update", ginx.WrapBody[UpdateUserReq](h.UpdateUser))
 	g.POST("/info", ginx.Wrap(h.GetUserInfo))
+	g.POST("/find/usernames", ginx.WrapBody[FindByUserNamesReq](h.FindByUsernames))
+	g.POST("/pipeline/department_id", ginx.Wrap(h.PipelineDepartmentId))
+	g.POST("/find/regex/username", ginx.WrapBody[FindByUsernameRegexReq](h.FindByUsernameRegex))
+	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
 }
 
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
@@ -57,6 +66,94 @@ func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result
 	return ginx.Result{
 		Data: h.ToUserVo(user),
 		Msg:  "登录用户成功",
+	}, nil
+}
+
+func (h *Handler) FindByUsernames(ctx *gin.Context, req FindByUserNamesReq) (ginx.Result, error) {
+	if len(req.Usernames) < 0 {
+		return systemErrorResult, fmt.Errorf("输入为空，不符合要求")
+	}
+
+	users, err := h.svc.FindByUsernames(ctx, req.Usernames)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询指定多个用户的详情信息",
+		Data: RetrieveUsers{
+			Total: int64(len(users)),
+			Users: slice.Map(users, func(idx int, src domain.User) User {
+				return h.ToUserVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) PipelineDepartmentId(ctx *gin.Context) (ginx.Result, error) {
+	// 根据 组ID 聚合查询所有数据
+	pipeline, err := h.svc.PipelineDepartmentId(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	deps, err := h.departmentSvc.ListDepartment(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	data, err := GenerateDepartmentUserTree(pipeline, deps)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: data,
+	}, nil
+}
+
+func (h *Handler) UpdateUser(ctx *gin.Context, req UpdateUserReq) (ginx.Result, error) {
+	id, err := h.svc.UpdateUser(ctx, h.toUpdateDomain(req))
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: id,
+	}, nil
+}
+
+func (h *Handler) FindByDepartmentId(ctx *gin.Context, req FindUsersByDepartmentIdReq) (ginx.Result, error) {
+	users, total, err := h.svc.FindByDepartmentId(ctx, req.Offset, req.Limit, req.DepartmentId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询部门组内用户列表成功",
+		Data: RetrieveUsers{
+			Total: total,
+			Users: slice.Map(users, func(idx int, src domain.User) User {
+				return h.ToUserVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) FindByUsernameRegex(ctx *gin.Context, req FindByUsernameRegexReq) (ginx.Result, error) {
+	users, total, err := h.svc.FindByUsernameRegex(ctx, req.Offset, req.Limit, req.Username)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询指定用户列表成功",
+		Data: RetrieveUsers{
+			Total: total,
+			Users: slice.Map(users, func(idx int, src domain.User) User {
+				return h.ToUserVo(src)
+			}),
+		},
 	}, nil
 }
 
@@ -176,14 +273,25 @@ func (h *Handler) toDomain(profile *ldapx.Profile) domain.User {
 	}
 }
 
+func (h *Handler) toUpdateDomain(req UpdateUserReq) domain.User {
+	return domain.User{
+		Id:           req.Id,
+		Email:        req.Email,
+		Title:        req.Title,
+		DisplayName:  req.DisplayName,
+		DepartmentId: req.DepartmentId,
+	}
+}
+
 func (h *Handler) ToUserVo(src domain.User) User {
 	return User{
-		Id:          src.Id,
-		Username:    src.Username,
-		Email:       src.Email,
-		Title:       src.Title,
-		RoleCodes:   src.RoleCodes,
-		DisplayName: src.DisplayName,
-		CreateType:  src.CreateType.ToUint8(),
+		Id:           src.Id,
+		DepartmentId: src.DepartmentId,
+		Username:     src.Username,
+		Email:        src.Email,
+		Title:        src.Title,
+		RoleCodes:    src.RoleCodes,
+		DisplayName:  src.DisplayName,
+		CreateType:   src.CreateType.ToUint8(),
 	}
 }

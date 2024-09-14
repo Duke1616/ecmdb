@@ -18,14 +18,38 @@ type RegisterUserReq struct {
 }
 
 type User struct {
-	Id          int64    `json:"id"`
-	Username    string   `json:"username"`
-	Password    string   `json:"password"`
-	Email       string   `json:"email"`
-	Title       string   `json:"title"`
-	DisplayName string   `json:"display_name"`
-	CreateType  uint8    `json:"create_type"`
-	RoleCodes   []string `json:"role_codes"`
+	Id           int64    `json:"id"`
+	DepartmentId int64    `json:"department_id"`
+	Username     string   `json:"username"`
+	Password     string   `json:"password"`
+	Email        string   `json:"email"`
+	Title        string   `json:"title"`
+	DisplayName  string   `json:"display_name"`
+	CreateType   uint8    `json:"create_type"`
+	RoleCodes    []string `json:"role_codes"`
+}
+
+type UpdateUserReq struct {
+	Id           int64  `json:"id"`
+	DepartmentId int64  `json:"department_id"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	Title        string `json:"title"`
+	DisplayName  string `json:"display_name"`
+}
+
+type FindByUsernameRegexReq struct {
+	Page
+	Username string `json:"username"`
+}
+
+type FindByUserNamesReq struct {
+	Usernames []string `json:"usernames"`
+}
+
+type FindUsersByDepartmentIdReq struct {
+	Page
+	DepartmentId int64 `json:"department_id"`
 }
 
 type UserBindRoleReq struct {
@@ -41,4 +65,15 @@ type Page struct {
 type RetrieveUsers struct {
 	Total int64  `json:"total"`
 	Users []User `json:"users"`
+}
+
+// UserDepartmentCombination 一组数据
+type UserDepartmentCombination struct {
+	Id          int64                        `json:"id"`
+	Type        string                       `json:"type"`
+	DisplayName string                       `json:"display_name"`
+	Name        string                       `json:"name"`
+	Disabled    bool                         `json:"disabled"`
+	Sort        int64                        `json:"sort"`
+	Children    []*UserDepartmentCombination `json:"children"`
 }

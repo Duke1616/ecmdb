@@ -3,6 +3,7 @@
 package user
 
 import (
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
@@ -18,12 +19,15 @@ var ProviderSet = wire.NewSet(
 	service.NewService,
 	repository.NewResourceRepository,
 	dao.NewUserDao,
-	web.NewHandler)
+	web.NewHandler,
+)
 
-func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config, policyModule *policy.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, ldapConfig ldapx.Config, policyModule *policy.Module,
+	departmentModule *department.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		wire.Struct(new(Module), "*"),
+		wire.FieldsOf(new(*department.Module), "Svc"),
 		wire.FieldsOf(new(*policy.Module), "Svc"),
 	)
 	return new(Module), nil

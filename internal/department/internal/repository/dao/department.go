@@ -16,8 +16,9 @@ const (
 type DepartmentDAO interface {
 	CreateDepartment(ctx context.Context, req Department) (int64, error)
 	UpdateDepartment(ctx context.Context, req Department) (int64, error)
+	DeleteDepartment(ctx context.Context, id int64) (int64, error)
 	ListDepartment(ctx context.Context) ([]Department, error)
-	Count(ctx context.Context) (int64, error)
+	ListDepartmentByIds(ctx context.Context, ids []int64) ([]Department, error)
 }
 
 func NewDepartmentDAO(db *mongox.Mongo) DepartmentDAO {
@@ -28,6 +29,33 @@ func NewDepartmentDAO(db *mongox.Mongo) DepartmentDAO {
 
 type departmentDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *departmentDAO) ListDepartmentByIds(ctx context.Context, ids []int64) ([]Department, error) {
+	col := dao.db.Collection(DepartmentCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []Department
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *departmentDAO) DeleteDepartment(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(DepartmentCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
 }
 
 func (dao *departmentDAO) UpdateDepartment(ctx context.Context, req Department) (int64, error) {
@@ -68,11 +96,6 @@ func (dao *departmentDAO) ListDepartment(ctx context.Context) ([]Department, err
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
-}
-
-func (dao *departmentDAO) Count(ctx context.Context) (int64, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (dao *departmentDAO) CreateDepartment(ctx context.Context, req Department) (int64, error) {

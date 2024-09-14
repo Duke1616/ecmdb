@@ -22,6 +22,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	g.POST("/create", ginx.WrapBody[CreateDepartmentReq](h.CreateDepartment))
 	g.POST("/update", ginx.WrapBody[UpdateDepartmentReq](h.UpdateDepartment))
+	g.POST("/delete", ginx.WrapBody[DeleteDepartmentReq](h.DeleteDepartment))
 	g.POST("/list/tree", ginx.Wrap(h.ListTreeDepartment))
 }
 
@@ -33,6 +34,16 @@ func (h *Handler) CreateDepartment(ctx *gin.Context, req CreateDepartmentReq) (g
 
 	return ginx.Result{
 		Data: id,
+	}, nil
+}
+
+func (h *Handler) DeleteDepartment(ctx *gin.Context, req DeleteDepartmentReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteDepartment(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 

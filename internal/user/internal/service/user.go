@@ -17,10 +17,14 @@ type Service interface {
 	FindOrCreateByLdap(ctx context.Context, req domain.User) (domain.User, error)
 	FindOrCreateBySystem(ctx context.Context, username, password, displayName string) (domain.User, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, int64, error)
+	UpdateUser(ctx context.Context, req domain.User) (int64, error)
 	Login(ctx context.Context, username, password string) (domain.User, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, int64, error)
+	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
+	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
 }
 
 type service struct {
@@ -28,9 +32,62 @@ type service struct {
 	logger *elog.Component
 }
 
+func (s *service) PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error) {
+	return s.repo.PipelineDepartmentId(ctx)
+}
+
+func (s *service) UpdateUser(ctx context.Context, req domain.User) (int64, error) {
+	return s.repo.UpdateUser(ctx, req)
+}
+
+func (s *service) FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error) {
+	var (
+		eg    errgroup.Group
+		us    []domain.User
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		us, err = s.repo.FindByDepartmentId(ctx, offset, limit, departmentId)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalByDepartmentId(ctx, departmentId)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return us, total, err
+	}
+	return us, total, nil
+}
+
 func (s *service) FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error) {
-	//TODO implement me
-	panic("implement me")
+	return s.repo.FindByUsernames(ctx, uns)
+}
+
+func (s *service) FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, int64, error) {
+	var (
+		eg    errgroup.Group
+		us    []domain.User
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		us, err = s.repo.FindByUsernameRegex(ctx, offset, limit, username)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalByUsernameRegex(ctx, username)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return us, total, err
+	}
+	return us, total, nil
 }
 
 func (s *service) FindById(ctx context.Context, id int64) (domain.User, error) {

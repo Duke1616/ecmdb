@@ -9,11 +9,21 @@ import (
 type Service interface {
 	CreateDepartment(ctx context.Context, req domain.Department) (int64, error)
 	UpdateDepartment(ctx context.Context, req domain.Department) (int64, error)
+	DeleteDepartment(ctx context.Context, id int64) (int64, error)
 	ListDepartment(ctx context.Context) ([]domain.Department, error)
+	ListDepartmentByIds(ctx context.Context, ids []int64) ([]domain.Department, error)
 }
 
 type service struct {
 	repo repository.DepartmentRepository
+}
+
+func (s *service) ListDepartmentByIds(ctx context.Context, ids []int64) ([]domain.Department, error) {
+	return s.repo.ListDepartmentByIds(ctx, ids)
+}
+
+func (s *service) DeleteDepartment(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteDepartment(ctx, id)
 }
 
 func (s *service) UpdateDepartment(ctx context.Context, req domain.Department) (int64, error) {

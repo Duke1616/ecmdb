@@ -27,14 +27,21 @@ const (
 )
 
 type User struct {
-	Id          int64
-	Username    string
-	Password    string
-	Email       string
-	Title       string
-	DisplayName string
-	Status      Status
-	CreateType  CreateType
-	RoleCodes   []string
-	FeishuInfo  FeishuInfo
+	Id           int64
+	DepartmentId int64
+	Username     string
+	Password     string
+	Email        string
+	Title        string
+	DisplayName  string
+	Status       Status
+	CreateType   CreateType
+	RoleCodes    []string
+	FeishuInfo   FeishuInfo
+}
+
+type UserCombination struct {
+	DepartMentId int64
+	Total        int
+	Users        []User
 }

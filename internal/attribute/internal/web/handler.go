@@ -191,6 +191,7 @@ func (h *Handler) toDomainUpdate(req UpdateAttributeReq) domain.Attribute {
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
 		Required:  req.Required,
+		Link:      req.Link,
 		Secure:    req.Secure,
 		Option:    req.Option,
 	}

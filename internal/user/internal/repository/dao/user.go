@@ -149,8 +149,12 @@ func (dao *userDao) FindByUsernameRegex(ctx context.Context, offset, limit int64
 
 func (dao *userDao) CountByUsernameRegex(ctx context.Context, username string) (int64, error) {
 	col := dao.db.Collection(UserCollection)
-	filter := bson.M{"username": bson.M{"$regex": primitive.Regex{Pattern: username, Options: "i"}}}
-
+	filter := bson.M{
+		"$or": []bson.M{
+			{"username": bson.M{"$regex": primitive.Regex{Pattern: username, Options: "i"}}},
+			{"display_name": bson.M{"$regex": primitive.Regex{Pattern: username, Options: "i"}}},
+		},
+	}
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)

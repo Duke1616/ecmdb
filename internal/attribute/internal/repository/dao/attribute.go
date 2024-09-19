@@ -41,6 +41,7 @@ func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (i
 			"field_type": attr.FieldType,
 			"required":   attr.Required,
 			"secure":     attr.Secure,
+			"link":       attr.Link,
 			"option":     attr.Option,
 			"utime":      time.Now().UnixMilli(),
 		},
@@ -253,6 +254,7 @@ type Attribute struct {
 	Display   bool        `bson:"display"`    // 是否前端展示
 	Index     int64       `bson:"index"`      // 字段前端展示顺序
 	Secure    bool        `bson:"secure"`     // 是否字段安全、脱敏、加密
+	Link      bool        `bson:"link"`       // 是否外链
 	Option    interface{} `bson:"option"`     // TODO: 为了后续扩展，不同类型的 option 可能不同
 	Ctime     int64       `bson:"ctime"`
 	Utime     int64       `bson:"utime"`

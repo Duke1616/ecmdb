@@ -203,6 +203,14 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}, nil
 }
 
+func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
+	err := session.RenewAccessToken(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "OK"}, nil
+}
+
 func (h *Handler) ListUser(ctx *gin.Context, req Page) (ginx.Result, error) {
 	rts, total, err := h.svc.ListUser(ctx, req.Offset, req.Limit)
 	if err != nil {
@@ -235,14 +243,6 @@ func (h *Handler) UserRoleBind(ctx *gin.Context, req UserBindRoleReq) (ginx.Resu
 		Data: ok,
 		Msg:  "用户角色绑定成功",
 	}, nil
-}
-
-func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
-	err := session.RenewAccessToken(&gctx.Context{Context: ctx})
-	if err != nil {
-		return systemErrorResult, err
-	}
-	return ginx.Result{Msg: "OK"}, nil
 }
 
 func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {

@@ -33,7 +33,7 @@ mongodb:
   password: 123456
 
 mysql:
-  dsn: cmdb:123456@tcp(ecmdb-mysql:3306)/cmdb?charset=utf8mb4&parseTime=True&loc=Local
+  dsn: cmdb:123456@tcp(ecmdb-mysql:3306)/cmdb?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
 
 kafka:
   network: tcp

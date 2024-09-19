@@ -12,6 +12,7 @@ type CreateAttributeReq struct {
 	FieldType string      `json:"field_type"`
 	Secure    bool        `json:"secure"`
 	Required  bool        `json:"required"`
+	Link      bool        `json:"link"`
 	Option    interface{} `json:"option"`
 }
 
@@ -42,6 +43,7 @@ type UpdateAttributeReq struct {
 	FieldType string      `json:"field_type"`
 	Secure    bool        `json:"secure"`
 	Required  bool        `json:"required"`
+	Link      bool        `json:"link"`
 	Option    interface{} `json:"option"`
 }
 
@@ -53,6 +55,7 @@ type Attribute struct {
 	FieldType string      `json:"field_type"`
 	Required  bool        `json:"required"`
 	Secure    bool        `json:"secure"`
+	Link      bool        `json:"link"`
 	Display   bool        `json:"display"`
 	Option    interface{} `json:"option"`
 	Index     int64       `json:"index"`
@@ -105,6 +108,7 @@ func toDomain(req CreateAttributeReq) domain.Attribute {
 		ModelUid:  req.ModelUid,
 		FieldName: req.FieldName,
 		FieldType: req.FieldType,
+		Link:      req.Link,
 		Required:  req.Required,
 		Secure:    req.Secure,
 		Option:    req.Option,
@@ -119,6 +123,7 @@ func toAttributeVo(attr domain.Attribute) Attribute {
 		FieldName: attr.FieldName,
 		FieldType: attr.FieldType,
 		Required:  attr.Required,
+		Link:      attr.Link,
 		Display:   attr.Display,
 		Option:    attr.Option,
 		Secure:    attr.Secure,

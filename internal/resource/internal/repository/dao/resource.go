@@ -84,7 +84,7 @@ func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid s
 
 	fieldValue, ok := result[fieldUid]
 	if !ok {
-		return "", fmt.Errorf("未找到字段: %s", fieldUid)
+		return "无", nil
 	}
 
 	return fieldValue, nil

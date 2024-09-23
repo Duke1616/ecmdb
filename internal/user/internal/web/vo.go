@@ -47,6 +47,10 @@ type FindByUserNamesReq struct {
 	Usernames []string `json:"usernames"`
 }
 
+type FindByUserNameReq struct {
+	Username string `json:"username"`
+}
+
 type FindUsersByDepartmentIdReq struct {
 	Page
 	DepartmentId int64 `json:"department_id"`

@@ -112,11 +112,13 @@ func (dao *workflowDAO) Update(ctx context.Context, c Workflow) (int64, error) {
 	col := dao.db.Collection(WorkFlowCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
-			"name":      c.Name,
-			"desc":      c.Desc,
-			"owner":     c.Owner,
-			"flow_data": c.FlowData,
-			"utime":     time.Now().UnixMilli(),
+			"name":          c.Name,
+			"desc":          c.Desc,
+			"owner":         c.Owner,
+			"is_notify":     c.IsNotify,
+			"notify_method": c.NotifyMethod,
+			"flow_data":     c.FlowData,
+			"utime":         time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": c.Id}
@@ -146,16 +148,18 @@ func (dao *workflowDAO) UpdateProcessId(ctx context.Context, id int64, processId
 }
 
 type Workflow struct {
-	Id         int64     `bson:"id"`
-	TemplateId int64     `bson:"template_id"`
-	Name       string    `bson:"name"`
-	Icon       string    `bson:"icon"`
-	Owner      string    `bson:"owner"`
-	Desc       string    `bson:"desc"`
-	ProcessId  int       `bson:"process_id"`
-	FlowData   LogicFlow `bson:"flow_data"`
-	Ctime      int64     `bson:"ctime"`
-	Utime      int64     `bson:"utime"`
+	Id           int64     `bson:"id"`
+	TemplateId   int64     `bson:"template_id"`
+	Name         string    `bson:"name"`
+	Icon         string    `bson:"icon"`
+	Owner        string    `bson:"owner"`
+	Desc         string    `bson:"desc"`
+	ProcessId    int       `bson:"process_id"`
+	FlowData     LogicFlow `bson:"flow_data"`
+	IsNotify     bool      `bson:"is_notify"`
+	NotifyMethod uint8     `bson:"notify_method"`
+	Ctime        int64     `bson:"ctime"`
+	Utime        int64     `bson:"utime"`
 }
 
 type LogicFlow struct {

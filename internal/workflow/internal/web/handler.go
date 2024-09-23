@@ -130,19 +130,23 @@ func (h *Handler) toDomain(req CreateReq) domain.Workflow {
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,
 		},
-		Name:       req.Name,
-		Desc:       req.Desc,
-		Icon:       req.Icon,
-		Owner:      req.Owner,
-		TemplateId: req.TemplateId,
+		Name:         req.Name,
+		Desc:         req.Desc,
+		Icon:         req.Icon,
+		Owner:        req.Owner,
+		IsNotify:     req.IsNotify,
+		NotifyMethod: domain.NotifyMethod(req.NotifyMethod),
+		TemplateId:   req.TemplateId,
 	}
 }
 
 func (h *Handler) toUpdateDomain(req UpdateReq) domain.Workflow {
 	return domain.Workflow{
-		Id:    req.Id,
-		Name:  req.Name,
-		Owner: req.Owner,
+		Id:           req.Id,
+		Name:         req.Name,
+		Owner:        req.Owner,
+		IsNotify:     req.IsNotify,
+		NotifyMethod: domain.NotifyMethod(req.NotifyMethod),
 		FlowData: domain.LogicFlow{
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,
@@ -152,12 +156,14 @@ func (h *Handler) toUpdateDomain(req UpdateReq) domain.Workflow {
 
 func (h *Handler) toWorkflowVo(req domain.Workflow) Workflow {
 	return Workflow{
-		Id:         req.Id,
-		Name:       req.Name,
-		Desc:       req.Desc,
-		Icon:       req.Icon,
-		Owner:      req.Owner,
-		TemplateId: req.TemplateId,
+		Id:           req.Id,
+		Name:         req.Name,
+		Desc:         req.Desc,
+		Icon:         req.Icon,
+		Owner:        req.Owner,
+		IsNotify:     req.IsNotify,
+		NotifyMethod: req.NotifyMethod.ToUint8(),
+		TemplateId:   req.TemplateId,
 		FlowData: LogicFlow{
 			Nodes: req.FlowData.Nodes,
 			Edges: req.FlowData.Edges,

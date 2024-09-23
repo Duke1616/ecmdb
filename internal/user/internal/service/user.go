@@ -21,6 +21,7 @@ type Service interface {
 	Login(ctx context.Context, username, password string) (domain.User, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	FindByUsername(ctx context.Context, username string) (domain.User, error)
 	FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, int64, error)
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
@@ -30,6 +31,10 @@ type Service interface {
 type service struct {
 	repo   repository.UserRepository
 	logger *elog.Component
+}
+
+func (s *service) FindByUsername(ctx context.Context, username string) (domain.User, error) {
+	return s.repo.FindByUsername(ctx, username)
 }
 
 func (s *service) PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error) {

@@ -60,12 +60,14 @@ func (repo *workflowRepository) UpdateProcessId(ctx context.Context, id int64, p
 
 func (repo *workflowRepository) toEntity(req domain.Workflow) dao.Workflow {
 	return dao.Workflow{
-		Id:         req.Id,
-		TemplateId: req.TemplateId,
-		Name:       req.Name,
-		Icon:       req.Icon,
-		Owner:      req.Owner,
-		Desc:       req.Desc,
+		Id:           req.Id,
+		TemplateId:   req.TemplateId,
+		Name:         req.Name,
+		Icon:         req.Icon,
+		Owner:        req.Owner,
+		Desc:         req.Desc,
+		NotifyMethod: req.NotifyMethod.ToUint8(),
+		IsNotify:     req.IsNotify,
 		FlowData: dao.LogicFlow{
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,
@@ -75,13 +77,15 @@ func (repo *workflowRepository) toEntity(req domain.Workflow) dao.Workflow {
 
 func (repo *workflowRepository) toDomain(req dao.Workflow) domain.Workflow {
 	return domain.Workflow{
-		Id:         req.Id,
-		TemplateId: req.TemplateId,
-		Name:       req.Name,
-		Icon:       req.Icon,
-		Owner:      req.Owner,
-		Desc:       req.Desc,
-		ProcessId:  req.ProcessId,
+		Id:           req.Id,
+		TemplateId:   req.TemplateId,
+		Name:         req.Name,
+		Icon:         req.Icon,
+		Owner:        req.Owner,
+		Desc:         req.Desc,
+		ProcessId:    req.ProcessId,
+		NotifyMethod: domain.NotifyMethod(req.NotifyMethod),
+		IsNotify:     req.IsNotify,
 		FlowData: domain.LogicFlow{
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,

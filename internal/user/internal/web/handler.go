@@ -313,6 +313,9 @@ func (h *Handler) toUpdateDomain(req UpdateUserReq) domain.User {
 		Title:        req.Title,
 		DisplayName:  req.DisplayName,
 		DepartmentId: req.DepartmentId,
+		FeishuInfo: domain.FeishuInfo{
+			UserId: req.FeishuInfo.UserId,
+		},
 	}
 }
 
@@ -326,5 +329,8 @@ func (h *Handler) ToUserVo(src domain.User) User {
 		RoleCodes:    src.RoleCodes,
 		DisplayName:  src.DisplayName,
 		CreateType:   src.CreateType.ToUint8(),
+		FeishuInfo: FeishuInfo{
+			UserId: src.FeishuInfo.UserId,
+		},
 	}
 }

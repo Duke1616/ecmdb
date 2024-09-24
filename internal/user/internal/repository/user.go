@@ -123,8 +123,11 @@ func (repo *userRepo) toDomain(user dao.User) domain.User {
 		DisplayName:  user.DisplayName,
 		Email:        user.Email,
 		Title:        user.Title,
-		Status:       domain.Status(user.Status),
-		CreateType:   domain.CreateType(user.CreateType),
+		FeishuInfo: domain.FeishuInfo{
+			UserId: user.FeishuInfo.UserId,
+		},
+		Status:     domain.Status(user.Status),
+		CreateType: domain.CreateType(user.CreateType),
 	}
 }
 
@@ -136,7 +139,10 @@ func (repo *userRepo) toEntity(user domain.User) dao.User {
 		Email:        user.Email,
 		Title:        user.Title,
 		DisplayName:  user.DisplayName,
-		Status:       user.Status.ToUint8(),
-		CreateType:   user.CreateType.ToUint8(),
+		FeishuInfo: dao.FeishuInfo{
+			UserId: user.FeishuInfo.UserId,
+		},
+		Status:     user.Status.ToUint8(),
+		CreateType: user.CreateType.ToUint8(),
 	}
 }

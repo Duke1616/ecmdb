@@ -9,15 +9,11 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/enotify/notify"
-	"github.com/Duke1616/enotify/notify/feishu"
-	"github.com/Duke1616/enotify/notify/feishu/card"
-	"github.com/Duke1616/enotify/template"
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
-	lark "github.com/larksuite/oapi-sdk-go/v3"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"sync"
 	"time"
 )
@@ -27,64 +23,48 @@ type NotificationService interface {
 }
 
 type Notify struct {
-	engineSvc   engineSvc.Service
-	userSvc     user.Service
-	templateSvc templateSvc.Service
-	orderSvc    order.Service
-	tmpl        *template.Template
-	nc          notify.Notifier[*larkim.CreateMessageReq]
-	logger      *elog.Component
-	tmplName    string
+	integrations []NotifyIntegration
+	engineSvc    engineSvc.Service
+	userSvc      user.Service
+	templateSvc  templateSvc.Service
+	orderSvc     order.Service
+	workflowSvc  workflow.Service
 
 	initialInterval time.Duration
 	maxInterval     time.Duration
 	maxRetries      int32
+	logger          *elog.Component
 }
 
 func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, lark *lark.Client) (*Notify, error) {
-	tmpl, err := template.FromGlobs([]string{})
-	if err != nil {
-		return nil, err
-	}
-
-	nc, err := feishu.NewFeishuNotifyByClient(lark)
-	if err != nil {
-		return nil, err
-	}
+	userSvc user.Service, workflowSvc workflow.Service, integrations []NotifyIntegration) (*Notify, error) {
 
 	return &Notify{
 		engineSvc:       engineSvc,
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
 		userSvc:         userSvc,
+		workflowSvc:     workflowSvc,
 		logger:          elog.DefaultLogger,
-		tmpl:            tmpl,
-		tmplName:        "feishu-card-callback",
-		nc:              nc,
+		integrations:    integrations,
 		initialInterval: 5 * time.Second,
 		maxRetries:      int32(3),
 		maxInterval:     15 * time.Second,
 	}, nil
 }
 
-func (n *Notify) builder(userId string, title string, fields []card.Field, cardVal []card.Value) notify.NotifierWrap {
-	return notify.WrapNotifierDynamic(n.nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
-		return feishu.NewFeishuMessage(
-			"user_id", userId,
-			feishu.NewFeishuCustomCard(n.tmpl, n.tmplName,
-				card.NewApprovalCardBuilder().
-					SetToTitle(title).
-					SetToFields(fields).
-					SetToCallbackValue(cardVal).Build(),
-			),
-		), nil
-	})
-}
-
 func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bool, error) {
-	// 返回用户提交信息
-	fields, title, er := n.getFields(ctx, instanceId)
+	// 查看是否需要发送消息， method 消息通知渠道
+	o, method, er := n.isNotify(ctx, instanceId)
+	if er != nil {
+		n.logger.Error("跳过消息通知",
+			elog.Any("error", er),
+			elog.Any("instId", instanceId),
+		)
+		return false, nil
+	}
+
+	rules, er := n.getRules(ctx, o)
 	if er != nil {
 		return false, er
 	}
@@ -107,6 +87,7 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 				break
 			}
 
+			// 获取当前任务流转到的用户
 			tasks, err = n.engineSvc.GetTasksByInstUsers(ctx, instanceId, userIDs)
 			if err != nil || len(tasks) == 0 {
 				time.Sleep(d)
@@ -116,19 +97,22 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 			break
 		}
 
-		userMap := n.analyzeUsers(ctx, tasks)
-		messages := slice.Map(tasks, func(idx int, src model.Task) notify.NotifierWrap {
-			uid, _ := userMap[src.UserID]
-			cardVal := []card.Value{
-				{
-					Key:   "task_id",
-					Value: src.TaskID,
-				},
+		// 获取用户的详情信息
+		users, err := n.getUsers(ctx, tasks)
+		if err != nil {
+			n.logger.Error("用户查询失败",
+				elog.FieldErr(err),
+			)
+		}
+
+		// 生成消息数据
+		var messages []notify.NotifierWrap
+		for _, integration := range n.integrations {
+			if integration.name == workflow.NotifyMethodToString(method) {
+				messages = integration.notifier.builder(rules, o, users, tasks)
+				break
 			}
-
-			return n.builder(uid, title, fields, cardVal)
-
-		})
+		}
 
 		// 异步发送消息
 		if ok, err := n.send(ctx, messages); err != nil || !ok {
@@ -142,24 +126,21 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 	return true, nil
 }
 
-// analyzeUsers 解析用户，把 ID 转换为飞书 ID
-func (n *Notify) analyzeUsers(ctx context.Context, tasks []model.Task) map[string]string {
+// getUsers 获取需要通知的用户信息
+func (n *Notify) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
 	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
 		return src.UserID
 	})
 
 	users, err := n.userSvc.FindByUsernames(ctx, userIds)
 	if err != nil {
-		n.logger.Error("用户查询失败",
-			elog.FieldErr(err),
-		)
+		return nil, err
 	}
 
-	return slice.ToMapV(users, func(element user.User) (string, string) {
-		return element.Username, element.FeishuInfo.UserId
-	})
+	return users, err
 }
 
+// send 发送消息通知
 func (n *Notify) send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bool, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -203,57 +184,44 @@ func (n *Notify) send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bo
 	return success, nil
 }
 
-func (n *Notify) getFields(ctx context.Context, InstanceId int) ([]card.Field, string, error) {
+// isNotify 判断是否开启消息通知
+func (n *Notify) isNotify(ctx context.Context, InstanceId int) (order.Order, workflow.NotifyMethod, error) {
 	// 获取工单详情信息
 	o, err := n.orderSvc.DetailByProcessInstId(ctx, InstanceId)
 	if err != nil {
-		return nil, "", err
+		return o, 0, err
 	}
 
-	// 获取模版详情信息
-	t, err := n.templateSvc.DetailTemplate(ctx, o.TemplateId)
+	// 判断是否需要消息提示
+	wf, err := n.workflowSvc.Find(ctx, o.WorkflowId)
 	if err != nil {
-		return nil, "", err
+		return o, 0, err
+	}
+
+	if !wf.IsNotify {
+		return order.Order{}, 0, fmt.Errorf("流程控制未开启消息通知能力")
+	}
+
+	return o, wf.NotifyMethod, nil
+}
+
+// isNotify 获取模版的字段信息
+func (n *Notify) getRules(ctx context.Context, order order.Order) ([]Rule, error) {
+	// 获取模版详情信息
+	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
+	if err != nil {
+		return nil, err
 	}
 
 	rules, err := parseRules(t.Rules)
 	if err != nil {
-		return nil, "", err
-	}
-	ruleMap := slice.ToMap(rules, func(element Rule) string {
-		return element.Field
-	})
-
-	// 拼接消息体
-	var fields []card.Field
-	num := 1
-	for field, value := range o.Data {
-		title := field
-		val, ok := ruleMap[field]
-		if ok {
-			title = val.Title
-		}
-
-		fields = append(fields, card.Field{
-			IsShort: true,
-			Tag:     "lark_md",
-			Content: fmt.Sprintf(`**%s:**\n%v`, title, value),
-		})
-
-		if num%2 == 0 {
-			fields = append(fields, card.Field{
-				IsShort: false,
-				Tag:     "lark_md",
-				Content: "",
-			})
-		}
-
-		num++
+		return nil, err
 	}
 
-	return fields, o.TemplateName, nil
+	return rules, nil
 }
 
+// parseRules 解析模版字段
 func parseRules(ruleData interface{}) ([]Rule, error) {
 	var rules []Rule
 	rulesJson, err := json.Marshal(ruleData)

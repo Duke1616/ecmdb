@@ -13,3 +13,5 @@ type Handler = web.Handler
 const (
 	StatusProcess = domain.PROCESS
 )
+
+type Order = domain.Order

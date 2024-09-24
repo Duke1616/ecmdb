@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/larksuite/oapi-sdk-go/v3"
 	"gorm.io/gorm"
@@ -24,7 +25,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, lark2 *lark.Client) (*Module, error) {
+func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, lark2 *lark.Client) (*Module, error) {
 	service := engineModule.Svc
 	orderStatusModifyEventProducer, err := producer.NewOrderStatusModifyEventProducer(q)
 	if err != nil {
@@ -34,7 +35,9 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 	service2 := templateModule.Svc
 	service3 := orderModule.Svc
 	service4 := userModule.Svc
-	processEvent := InitWorkflowEngineOnce(db, service, orderStatusModifyEventProducer, serviceService, service2, service3, service4, lark2)
+	service5 := workflowModule.Svc
+	v := InitNotifyIntegration(lark2)
+	processEvent := InitWorkflowEngineOnce(db, service, orderStatusModifyEventProducer, serviceService, service2, service3, service4, service5, v)
 	module := &Module{
 		Event: processEvent,
 	}
@@ -45,9 +48,21 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 
 var engineOnce = sync.Once{}
 
+func InitNotifyIntegration(larkC *lark.Client) []easyflow.NotifyIntegration {
+	integrations, err := easyflow.BuildReceiverIntegrations(larkC)
+	if err != nil {
+
+		return nil
+	}
+
+	return integrations
+}
+
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 producer.OrderStatusModifyEventProducer,
-	taskSvc task.Service, templateSvc template.Service, orderSvc order.Service, userSvc user.Service, lark2 *lark.Client) *easyflow.ProcessEvent {
-	notify, err := easyflow.NewNotify(engineSvc, templateSvc, orderSvc, userSvc, lark2)
+	taskSvc task.Service, templateSvc template.Service, orderSvc order.Service, userSvc user.Service,
+	workflowSvc workflow.Service, integration []easyflow.NotifyIntegration) *easyflow.ProcessEvent {
+
+	notify, err := easyflow.NewNotify(engineSvc, templateSvc, orderSvc, userSvc, workflowSvc, integration)
 	if err != nil {
 		panic(err)
 	}

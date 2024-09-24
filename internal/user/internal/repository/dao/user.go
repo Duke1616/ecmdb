@@ -89,7 +89,10 @@ func (dao *userDao) UpdateUser(ctx context.Context, req User) (int64, error) {
 			"display_name":  req.DisplayName,
 			"email":         req.Email,
 			"title":         req.Title,
-			"utime":         time.Now().UnixMilli(),
+			"feishu_info": bson.M{
+				"user_id": req.FeishuInfo.UserId,
+			},
+			"utime": time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": req.Id}
@@ -280,18 +283,23 @@ func (dao *userDao) FindByUsername(ctx context.Context, username string) (User, 
 }
 
 type User struct {
-	Id           int64    `bson:"id"`
-	DepartmentId int64    `bson:"department_id"`
-	Username     string   `bson:"username"`
-	Password     string   `bson:"password"`
-	Email        string   `bson:"email"`
-	Title        string   `bson:"title"`
-	DisplayName  string   `bson:"display_name"`
-	CreateType   uint8    `bson:"create_type"`
-	Status       uint8    `bson:"status"`
-	Ctime        int64    `bson:"ctime"`
-	Utime        int64    `bson:"utime"`
-	RoleCodes    []string `bson:"role_codes"`
+	Id           int64      `bson:"id"`
+	DepartmentId int64      `bson:"department_id"`
+	Username     string     `bson:"username"`
+	Password     string     `bson:"password"`
+	Email        string     `bson:"email"`
+	Title        string     `bson:"title"`
+	DisplayName  string     `bson:"display_name"`
+	CreateType   uint8      `bson:"create_type"`
+	Status       uint8      `bson:"status"`
+	Ctime        int64      `bson:"ctime"`
+	Utime        int64      `bson:"utime"`
+	RoleCodes    []string   `bson:"role_codes"`
+	FeishuInfo   FeishuInfo `bson:"feishu_info"`
+}
+
+type FeishuInfo struct {
+	UserId string `bson:"user_id"`
 }
 
 type UserPipeline struct {

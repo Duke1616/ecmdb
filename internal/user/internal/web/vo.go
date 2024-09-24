@@ -18,24 +18,30 @@ type RegisterUserReq struct {
 }
 
 type User struct {
-	Id           int64    `json:"id"`
-	DepartmentId int64    `json:"department_id"`
-	Username     string   `json:"username"`
-	Password     string   `json:"password"`
-	Email        string   `json:"email"`
-	Title        string   `json:"title"`
-	DisplayName  string   `json:"display_name"`
-	CreateType   uint8    `json:"create_type"`
-	RoleCodes    []string `json:"role_codes"`
+	Id           int64      `json:"id"`
+	DepartmentId int64      `json:"department_id"`
+	Username     string     `json:"username"`
+	Password     string     `json:"password"`
+	Email        string     `json:"email"`
+	Title        string     `json:"title"`
+	DisplayName  string     `json:"display_name"`
+	CreateType   uint8      `json:"create_type"`
+	RoleCodes    []string   `json:"role_codes"`
+	FeishuInfo   FeishuInfo `json:"feishu_info"`
 }
 
 type UpdateUserReq struct {
-	Id           int64  `json:"id"`
-	DepartmentId int64  `json:"department_id"`
-	Username     string `json:"username"`
-	Email        string `json:"email"`
-	Title        string `json:"title"`
-	DisplayName  string `json:"display_name"`
+	Id           int64      `json:"id"`
+	DepartmentId int64      `json:"department_id"`
+	Username     string     `json:"username"`
+	Email        string     `json:"email"`
+	Title        string     `json:"title"`
+	DisplayName  string     `json:"display_name"`
+	FeishuInfo   FeishuInfo `json:"feishu_info"`
+}
+
+type FeishuInfo struct {
+	UserId string `json:"user_id"`
 }
 
 type FindByUsernameRegexReq struct {

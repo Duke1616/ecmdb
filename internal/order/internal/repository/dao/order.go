@@ -39,6 +39,7 @@ func (dao *orderDAO) UpdateStatusByInstanceId(ctx context.Context, instanceId in
 		"$set": bson.M{
 			"status": status,
 			"utime":  time.Now().UnixMilli(),
+			"wtime":  time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"process_instance_id": instanceId}
@@ -166,5 +167,6 @@ type Order struct {
 	Data              map[string]interface{} `bson:"data"`
 	Status            uint8                  `bson:"status"`
 	Ctime             int64                  `bson:"ctime"`
+	Wtime             int64                  `json:"wtime"`
 	Utime             int64                  `bson:"utime"`
 }

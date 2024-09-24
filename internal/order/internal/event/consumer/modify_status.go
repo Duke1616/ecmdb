@@ -16,6 +16,7 @@ type OrderStatusModifyEventConsumer struct {
 	logger   *elog.Component
 }
 
+// NewOrderStatusModifyEventConsumer Deprecated 废弃 不再通过 Kafka 修改状态，使用 EventNotify 直接调用接口进行修改
 func NewOrderStatusModifyEventConsumer(q mq.MQ, svc service.Service) (*OrderStatusModifyEventConsumer, error) {
 	groupID := "order_status_modify"
 	consumer, err := q.Consumer(event.OrderStatusModifyEventName, groupID)

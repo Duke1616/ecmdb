@@ -1,6 +1,8 @@
 package web
 
-import "github.com/Bunny3th/easy-workflow/workflow/database"
+import (
+	"github.com/Bunny3th/easy-workflow/workflow/database"
+)
 
 type CreateOrderReq struct {
 	CreateBy     string                 `json:"create_by"`
@@ -73,7 +75,8 @@ type Order struct {
 	CurrentStep        string                 `json:"current_step"`
 	ApprovedBy         string                 `json:"approved_by"`           // 处理人
 	ProcInstCreateTime *database.LocalTime    `json:"proc_inst_create_time"` // 流程开始时间
-	Ctime              int64                  `json:"ctime"`                 // 创建工单时间
+	Ctime              string                 `json:"ctime"`                 // 创建工单时间
+	Wtime              string                 `json:"wtime"`                 // 工单完成时间
 	TemplateId         int64                  `json:"template_id"`
 	WorkflowId         int64                  `json:"workflow_id"`
 	Data               map[string]interface{} `json:"data"`

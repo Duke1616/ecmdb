@@ -116,6 +116,7 @@ func (e *ProcessEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node, 
 }
 
 // EventClose 流程结束，修改 Order 状态为已完成
+// Deprecated 废弃 不再通过 Kafka 修改状态，使用 EventNotify 直接调用接口进行修改
 func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	evt := producer.OrderStatusModifyEvent{
 		ProcessInstanceId: ProcessInstanceID,
@@ -134,9 +135,12 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventNotify 通知
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	// TODO 如果是结束阶段，暂不处理
 	if CurrentNode.NodeType == model.EndNode {
-		return nil
+		// 关闭工单
+		err := e.orderSvc.UpdateStatusByInstanceId(context.Background(), ProcessInstanceID, order.EndProcess.ToUint8())
+		if err != nil {
+			e.logger.Error("EventNotify 关闭工单失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		}
 	}
 
 	ok, err := e.notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)

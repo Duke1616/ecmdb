@@ -14,6 +14,7 @@ import (
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"time"
 )
 
 type Handler struct {
@@ -147,17 +148,46 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 
 // History 历史工单
 func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error) {
-	os, _, err := h.svc.ListHistoryOrder(ctx, req.UserId, req.Offset, req.Limit)
+	os, total, err := h.svc.ListHistoryOrder(ctx, req.UserId, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	uniqueMap := make(map[string]bool)
+	uns := slice.FilterMap(os, func(idx int, src domain.Order) (string, bool) {
+		if !uniqueMap[src.CreateBy] {
+			uniqueMap[src.CreateBy] = true
+			return src.CreateBy, true
+		}
+
+		return src.CreateBy, false
+	})
+
+	usernames, err := h.userSvc.FindByUsernames(ctx, uns)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	instIds := slice.Map(os, func(idx int, src domain.Order) int {
-		return src.Process.InstanceId
+	uMap := slice.ToMapV(usernames, func(element user.User) (string, string) {
+		return element.Username, element.DisplayName
 	})
 
 	return ginx.Result{
-		Data: instIds,
+		Data: RetrieveOrders{
+			Total: total,
+			Tasks: slice.Map(os, func(idx int, src domain.Order) Order {
+				starter, _ := uMap[src.CreateBy]
+				return Order{
+					TemplateId:        src.TemplateId,
+					TemplateName:      src.TemplateName,
+					Starter:           starter,
+					ProcessInstanceId: src.Process.InstanceId,
+					WorkflowId:        src.WorkflowId,
+					Ctime:             time.Unix(src.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
+					Wtime:             time.Unix(src.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
+					Data:              src.Data,
+				}
+			}),
+		},
 	}, nil
 }
 
@@ -279,7 +309,14 @@ func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 
 func (h *Handler) toVoOrder(req domain.Order) Order {
 	return Order{
-		Data: req.Data,
+		TemplateId:        req.TemplateId,
+		TemplateName:      req.TemplateName,
+		Starter:           req.CreateBy,
+		ProcessInstanceId: req.Process.InstanceId,
+		WorkflowId:        req.WorkflowId,
+		Ctime:             time.Unix(req.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
+		Wtime:             time.Unix(req.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
+		Data:              req.Data,
 	}
 }
 
@@ -334,6 +371,11 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 }
 
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
+	if len(instances) == 0 {
+		// 没有工单信息
+		return nil, nil
+	}
+
 	uniqueProcInstIds := make(map[int]bool)
 	procInstIds := slice.FilterMap(instances, func(idx int, src engine.Instance) (int, bool) {
 		if !uniqueProcInstIds[src.ProcInstID] {
@@ -370,7 +412,7 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 			TemplateId:         val.TemplateId,
 			TemplateName:       val.TemplateName,
 			WorkflowId:         val.WorkflowId,
-			Ctime:              val.Ctime,
+			Ctime:              time.Unix(val.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
 		}
 	}), err
 }

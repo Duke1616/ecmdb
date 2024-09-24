@@ -43,6 +43,7 @@ type Order struct {
 	CreateBy     string
 	Process      Process
 	Ctime        int64
+	Wtime        int64
 }
 
 type Process struct {

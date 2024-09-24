@@ -16,6 +16,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
@@ -25,7 +26,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module, lark2 *lark.Client) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module, userModule *user.Module, lark2 *lark.Client) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
@@ -34,11 +35,12 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	}
 	serviceService := service.NewService(orderRepository, createProcessEventProducer)
 	service2 := engineModule.Svc
-	handler := web.NewHandler(serviceService, service2)
-	service3 := templateModule.Svc
-	wechatOrderConsumer := initWechatConsumer(serviceService, service3, q)
-	service4 := workflowModule.Svc
-	processEventConsumer := InitProcessConsumer(q, service4, serviceService)
+	service3 := userModule.Svc
+	handler := web.NewHandler(serviceService, service2, service3)
+	service4 := templateModule.Svc
+	wechatOrderConsumer := initWechatConsumer(serviceService, service4, q)
+	service5 := workflowModule.Svc
+	processEventConsumer := InitProcessConsumer(q, service5, serviceService)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
 	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2)
 	module := &Module{

@@ -7,23 +7,25 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"strconv"
 )
 
 type Handler struct {
 	svc       service.Service
+	userSvc   user.Service
 	engineSvc engine.Service
 }
 
-func NewHandler(svc service.Service, engineSvc engine.Service) *Handler {
+func NewHandler(svc service.Service, engineSvc engine.Service, userSvc user.Service) *Handler {
 	return &Handler{
 		svc:       svc,
+		userSvc:   userSvc,
 		engineSvc: engineSvc,
 	}
 }
@@ -45,12 +47,18 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
 	if req.CreateBy == "" {
+		// 获取用户 sess
 		sess, err := session.Get(&gctx.Context{Context: ctx})
 		if err != nil {
 			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 		}
 
-		req.CreateBy = strconv.FormatInt(sess.Claims().Uid, 10)
+		// 查询用户信息 - 为了统一存储为 username
+		u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+		if err != nil {
+			return systemErrorResult, err
+		}
+		req.CreateBy = u.Username
 	}
 
 	err := h.svc.CreateOrder(ctx, h.toDomain(req))
@@ -108,10 +116,15 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 	}
-	uid := strconv.FormatInt(sess.Claims().Uid, 10)
+
+	// 查询用户信息 - 为了统一存储为 username
+	u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
 
 	// 查询待处理工单
-	instances, total, err := h.engineSvc.ListTodoTasks(ctx, uid, req.ProcessName, req.SortByAsc,
+	instances, total, err := h.engineSvc.ListTodoTasks(ctx, u.Username, req.ProcessName, req.SortByAsc,
 		req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
@@ -183,10 +196,15 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, er
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 	}
-	starter := strconv.FormatInt(sess.Claims().Uid, 10)
+
+	// 查询用户信息 - 为了统一存储为 username
+	u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
 
 	// 查找本地存储，关于我的工单（未完成）
-	orders, total, err := h.svc.ListOrdersByUser(ctx, starter, req.Offset, req.Limit)
+	orders, total, err := h.svc.ListOrdersByUser(ctx, u.Username, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -197,7 +215,7 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, er
 	})
 
 	// 查询所有流程等待运行的信息 ( 当前步骤、审批人 ）
-	processTasks, err := h.engineSvc.ListPendingStepsOfMyTask(ctx, procInstIds, starter)
+	processTasks, err := h.engineSvc.ListPendingStepsOfMyTask(ctx, procInstIds, u.Username)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -326,6 +344,11 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 		return src.ProcInstID, false
 	})
 
+	us, err := h.getUsers(ctx, instances)
+	if err != nil {
+		return nil, err
+	}
+
 	os, err := h.svc.ListOrderByProcessInstanceIds(ctx, procInstIds)
 	m := slice.ToMap(os, func(element domain.Order) int {
 		return element.Process.InstanceId
@@ -334,13 +357,15 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 	// 数据转换为前端可用
 	return slice.Map(instances, func(idx int, src engine.Instance) Order {
 		val, _ := m[src.ProcInstID]
+		starter, _ := us[src.Starter]
+		approved, _ := us[src.ApprovedBy]
 		return Order{
 			Id:                 val.Id,
 			TaskId:             src.TaskID,
 			ProcessInstanceId:  src.ProcInstID,
-			Starter:            src.Starter,
+			Starter:            starter,
 			CurrentStep:        src.CurrentNodeName,
-			ApprovedBy:         src.ApprovedBy,
+			ApprovedBy:         approved,
 			ProcInstCreateTime: src.CreateTime,
 			TemplateId:         val.TemplateId,
 			TemplateName:       val.TemplateName,
@@ -348,4 +373,38 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 			Ctime:              val.Ctime,
 		}
 	}), err
+}
+
+func (h *Handler) getUsers(ctx context.Context, instances []engine.Instance) (map[string]string, error) {
+	var uns []string
+	uniqueMap := make(map[string]bool)
+	approved := slice.FilterMap(instances, func(idx int, src engine.Instance) (string, bool) {
+		if !uniqueMap[src.ApprovedBy] {
+			uniqueMap[src.ApprovedBy] = true
+			return src.ApprovedBy, true
+		}
+
+		return src.ApprovedBy, false
+	})
+
+	starter := slice.FilterMap(instances, func(idx int, src engine.Instance) (string, bool) {
+		if !uniqueMap[src.Starter] {
+			uniqueMap[src.Starter] = true
+			return src.Starter, true
+		}
+
+		return src.Starter, false
+	})
+
+	uns = append(uns, approved...)
+	uns = append(uns, starter...)
+
+	us, err := h.userSvc.FindByUsernames(ctx, uns)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.ToMapV(us, func(element user.User) (string, string) {
+		return element.Username, element.DisplayName
+	}), nil
 }

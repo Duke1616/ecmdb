@@ -120,7 +120,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	larkClient := InitFeishu()
-	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, larkClient)
+	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient)
 	if err != nil {
 		return nil, err
 	}

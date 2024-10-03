@@ -62,6 +62,11 @@ type StartUserReq struct {
 	Limit         int64  `json:"limit,omitempty"`
 }
 
+type RevokeOrderReq struct {
+	InstanceId int  `json:"instance_id"`
+	Force      bool `json:"force"`
+}
+
 type MyOrderReq struct {
 	CreateBy string `json:"create_by"`
 }

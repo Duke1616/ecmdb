@@ -86,5 +86,6 @@ func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 		CreateBy:     req.CreateBy,
 		Data:         req.Data,
 		Ctime:        req.Ctime,
+		Wtime:        req.Wtime,
 	}
 }

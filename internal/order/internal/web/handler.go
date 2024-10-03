@@ -44,6 +44,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/start/user", ginx.WrapBody[StartUserReq](h.StartUser))
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
+	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
@@ -144,6 +145,38 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 		},
 		Msg: "查看待办工单列表成功",
 	}, err
+}
+
+func (h *Handler) Revoke(ctx *gin.Context, req RevokeOrderReq) (ginx.Result, error) {
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+	}
+
+	// 查询用户信息 - 为了统一存储为 username
+	u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 转移节点
+
+	// 撤销流程工单
+	err = h.engineSvc.Revoke(ctx, req.InstanceId, u.Username, req.Force)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 修改状态
+	err = h.svc.UpdateStatusByInstanceId(ctx, req.InstanceId, domain.WITHDRAW.ToUint8())
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "撤销工单成功",
+		Data: true,
+	}, nil
 }
 
 // History 历史工单

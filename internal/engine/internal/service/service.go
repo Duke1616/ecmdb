@@ -33,10 +33,16 @@ type Service interface {
 	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
 	// GetOrderIdByVariable 获取工单ID，进行流程绑定
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
+	// Revoke 撤销工单
+	Revoke(ctx context.Context, instanceId int, userId string, force bool) error
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) Revoke(ctx context.Context, instanceId int, userId string, force bool) error {
+	return engine.InstanceRevoke(instanceId, force, userId)
 }
 
 func (s *service) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {

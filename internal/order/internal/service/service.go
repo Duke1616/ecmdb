@@ -46,13 +46,13 @@ func (s *service) ListOrdersByUser(ctx context.Context, userId string, offset, l
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListOrder(ctx, userId, domain.PROCESS.ToUint8(), offset, limit)
+		ts, err = s.repo.ListOrder(ctx, userId, []int{domain.PROCESS.ToInt()}, offset, limit)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.CountOrder(ctx, userId, domain.PROCESS.ToUint8())
+		total, err = s.repo.CountOrder(ctx, userId, []int{domain.PROCESS.ToInt()})
 		return err
 	})
 	if err := eg.Wait(); err != nil {
@@ -103,13 +103,13 @@ func (s *service) ListHistoryOrder(ctx context.Context, userId string, offset, l
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListOrder(ctx, userId, domain.END.ToUint8(), offset, limit)
+		ts, err = s.repo.ListOrder(ctx, userId, []int{domain.END.ToInt(), domain.WITHDRAW.ToInt()}, offset, limit)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.CountOrder(ctx, userId, domain.END.ToUint8())
+		total, err = s.repo.CountOrder(ctx, userId, []int{domain.END.ToInt(), domain.WITHDRAW.ToInt()})
 		return err
 	})
 	if err := eg.Wait(); err != nil {

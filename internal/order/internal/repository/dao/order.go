@@ -19,8 +19,8 @@ type OrderDAO interface {
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]Order, error)
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
-	ListOrder(ctx context.Context, userId string, status uint8, offset, limit int64) ([]Order, error)
-	CountOrder(ctx context.Context, userId string, status uint8) (int64, error)
+	ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]Order, error)
+	CountOrder(ctx context.Context, userId string, status []int) (int64, error)
 }
 
 func NewOrderDAO(db *mongox.Mongo) OrderDAO {
@@ -110,15 +110,15 @@ func (dao *orderDAO) ListOrderByProcessInstanceIds(ctx context.Context, instance
 	return result, nil
 }
 
-func (dao *orderDAO) ListOrder(ctx context.Context, userId string, status uint8, offset, limit int64) ([]Order, error) {
+func (dao *orderDAO) ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]Order, error) {
 	col := dao.db.Collection(OrderCollection)
 	filter := bson.M{}
 	if userId != "" {
 		filter = bson.M{"create_by": userId}
 	}
 
-	if status != 0 {
-		filter = bson.M{"status": status}
+	if status != nil && len(status) > 0 {
+		filter = bson.M{"status": bson.M{"$in": status}}
 	}
 
 	opts := &options.FindOptions{
@@ -137,15 +137,15 @@ func (dao *orderDAO) ListOrder(ctx context.Context, userId string, status uint8,
 	return result, nil
 }
 
-func (dao *orderDAO) CountOrder(ctx context.Context, userId string, status uint8) (int64, error) {
+func (dao *orderDAO) CountOrder(ctx context.Context, userId string, status []int) (int64, error) {
 	col := dao.db.Collection(OrderCollection)
 	filter := bson.M{}
 	if userId != "" {
 		filter = bson.M{"create_by": userId}
 	}
 
-	if status != 0 {
-		filter = bson.M{"status": status}
+	if status != nil && len(status) > 0 {
+		filter = bson.M{"status": bson.M{"$in": status}}
 	}
 
 	count, err := col.CountDocuments(ctx, filter)

@@ -19,7 +19,7 @@ type ProcessEngineRepository interface {
 		[]domain.Instance, error)
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
-	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 	ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
@@ -55,8 +55,8 @@ func (repo *processEngineRepository) CountReject(ctx context.Context, taskId int
 	return repo.engineDao.CountReject(ctx, taskId)
 }
 
-func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
-	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId)
+func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
 }
 
 func (repo *processEngineRepository) ListTodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {

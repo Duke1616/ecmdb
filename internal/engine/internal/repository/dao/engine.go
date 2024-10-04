@@ -19,7 +19,7 @@ type ProcessEngineDAO interface {
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
 	SearchStartByProcessInstIds(ctx context.Context, processInstIds []int) ([]Instance, error)
-	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 
 	ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) ([]model.Task, error)
@@ -81,8 +81,8 @@ func (g *processEngineDAO) CountReject(ctx context.Context, taskId int) (int64, 
 	return res, err
 }
 
-func (g *processEngineDAO) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
-	proTask := database.ProcTask{IsFinished: 1, Comment: "其余节点进行驳回，系统判定无法继续审批",
+func (g *processEngineDAO) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	proTask := database.ProcTask{Status: status, IsFinished: 1, Comment: comment,
 		FinishedTime: database.LTime.Now()}
 
 	return g.db.WithContext(ctx).

@@ -15,16 +15,12 @@ import (
 	"log"
 )
 
-// RoleUser 这里创建了一个角色-用户的人员库，用来模拟数据库中存储的角色-用户对应关系
-var RoleUser = make(map[string][]string)
-
-func init() {
-	//初始化人事数据
-	RoleUser["主管"] = []string{"张经理"}
-	RoleUser["人事经理"] = []string{"人事老刘"}
-	RoleUser["老板"] = []string{"李老板", "老板娘"}
-	RoleUser["副总"] = []string{"赵总", "钱总", "孙总"}
-}
+const (
+	SystemPass          = 3
+	SystemReject        = 4
+	SystemPassComment   = "其余节点审批通过，系统判定无法继续审批"
+	SystemRejectComment = "其余节点进行驳回，系统判定无法继续审批"
+)
 
 type ProcessEvent struct {
 	notify    NotificationService
@@ -144,8 +140,13 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	}
 
 	ok, err := e.notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
-	if err != nil || !ok {
+	if err != nil {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		return nil
+	}
+
+	if !ok {
+		e.logger.Info("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil
 	}
 
@@ -178,11 +179,11 @@ func (e *ProcessEvent) EventNotifyV1(ProcessInstanceID int, CurrentNode *model.N
 // EventTaskInclusionNodePass 用户任务并行包容处理事件
 // 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
 func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	taskNum, passNum, rejectNum, err := engine.TaskNodeStatus(TaskID)
-	e.logger.Info("处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
+	e.logger.Info("包含网关-处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
 		elog.Any("Node节点", PrevNode.NodeID),
 		elog.Any("任务数量", taskNum),
 		elog.Any("通过数量", passNum),
@@ -192,10 +193,12 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 		return err
 	}
 
+	// 但凡是有驳回，一率进行处理
 	if rejectNum > 0 {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
 	}
 
+	// 查看任务详情信息
 	t, err := engine.GetTaskInfo(TaskID)
 	if err != nil {
 		return err
@@ -203,12 +206,12 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 
 	// 如果不是会签节点，直接修改所有
 	if t.IsCosigned != 1 {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemPass, SystemPassComment)
 	}
 
 	// 会签节点 pass + task 数量相同才修改
 	if passNum == taskNum {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemPass, SystemPassComment)
 	}
 
 	return nil
@@ -217,7 +220,7 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 // EventTaskParallelNodePass 用户任务并行处理事件
 // 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
 func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	// 查看错误数量
@@ -229,8 +232,9 @@ func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.
 	e.logger.Info("处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
 		elog.Any("Node节点", PrevNode.NodeID),
 		elog.Any("是否驳回", IsReject))
+
 	if IsReject {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
 	}
 
 	return nil

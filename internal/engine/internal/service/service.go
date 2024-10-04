@@ -20,7 +20,7 @@ type Service interface {
 	TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error)
 	IsReject(ctx context.Context, taskId int) (bool, error)
 	// UpdateIsFinishedByPreNodeId 系统修改 finished 状态
-	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	// Pass 通过
 	Pass(ctx context.Context, taskId int, comment string) error
 	// Reject 驳回
@@ -72,8 +72,8 @@ func (s *service) IsReject(ctx context.Context, taskId int) (bool, error) {
 	return false, err
 }
 
-func (s *service) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
-	return s.repo.UpdateIsFinishedByPreNodeId(ctx, nodeId)
+func (s *service) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	return s.repo.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
 }
 
 func (s *service) Reject(ctx context.Context, taskId int, comment string) error {

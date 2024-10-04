@@ -49,14 +49,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
 	if req.CreateBy == "" {
-		// 获取用户 sess
-		sess, err := session.Get(&gctx.Context{Context: ctx})
-		if err != nil {
-			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
-		}
-
-		// 查询用户信息 - 为了统一存储为 username
-		u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+		u, err := h.getSessUser(ctx)
 		if err != nil {
 			return systemErrorResult, err
 		}
@@ -114,13 +107,8 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 		return validateErrorResult, fmt.Errorf("参数传递错误：%w", err)
 	}
 
-	sess, err := session.Get(&gctx.Context{Context: ctx})
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
-	}
-
 	// 查询用户信息 - 为了统一存储为 username
-	u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+	u, err := h.getSessUser(ctx)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -148,13 +136,7 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 }
 
 func (h *Handler) Revoke(ctx *gin.Context, req RevokeOrderReq) (ginx.Result, error) {
-	sess, err := session.Get(&gctx.Context{Context: ctx})
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
-	}
-
-	// 查询用户信息 - 为了统一存储为 username
-	u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+	u, err := h.getSessUser(ctx)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -195,14 +177,10 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 		return src.CreateBy, false
 	})
 
-	usernames, err := h.userSvc.FindByUsernames(ctx, uns)
+	uMap, err := h.getUserMap(ctx, uns)
 	if err != nil {
 		return systemErrorResult, err
 	}
-
-	uMap := slice.ToMapV(usernames, func(element user.User) (string, string) {
-		return element.Username, element.DisplayName
-	})
 
 	return ginx.Result{
 		Data: RetrieveOrders{
@@ -254,14 +232,7 @@ func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, err
 
 // StartUser 与我相关的工单
 func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, error) {
-	// 获取登录用户 sess 获取ID
-	sess, err := session.Get(&gctx.Context{Context: ctx})
-	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
-	}
-
-	// 查询用户信息 - 为了统一存储为 username
-	u, err := h.userSvc.FindById(ctx, sess.Claims().Uid)
+	u, err := h.getSessUser(ctx)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -316,14 +287,36 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 		return systemErrorResult, err
 	}
 
-	records := slice.Map(ts, func(idx int, src model.Task) TaskRecord {
-		return h.toVoTaskRecords(src)
+	uniqueMap := make(map[string]bool)
+	uns := slice.FilterMap(ts, func(idx int, src model.Task) (string, bool) {
+		if !uniqueMap[src.UserID] {
+			uniqueMap[src.UserID] = true
+			return src.UserID, true
+		}
+
+		return src.UserID, false
 	})
+
+	uMap, err := h.getUserMap(ctx, uns)
+	if err != nil {
+		return systemErrorResult, err
+	}
 
 	return ginx.Result{
 		Data: RetrieveTaskRecords{
-			TaskRecords: records,
-			Total:       total,
+			TaskRecords: slice.Map(ts, func(idx int, src model.Task) TaskRecord {
+				starter, _ := uMap[src.UserID]
+				return TaskRecord{
+					Nodename:     src.NodeName,
+					ApprovedBy:   starter,
+					IsCosigned:   src.IsCosigned,
+					Status:       src.Status,
+					Comment:      src.Comment,
+					IsFinished:   src.IsFinished,
+					FinishedTime: src.FinishedTime,
+				}
+			}),
+			Total: total,
 		},
 	}, nil
 }
@@ -350,18 +343,6 @@ func (h *Handler) toVoOrder(req domain.Order) Order {
 		Ctime:             time.Unix(req.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
 		Wtime:             time.Unix(req.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
 		Data:              req.Data,
-	}
-}
-
-func (h *Handler) toVoTaskRecords(req model.Task) TaskRecord {
-	return TaskRecord{
-		Nodename:     req.NodeName,
-		ApprovedBy:   req.UserID,
-		IsCosigned:   req.IsCosigned,
-		Status:       req.Status,
-		Comment:      req.Comment,
-		IsFinished:   req.IsFinished,
-		FinishedTime: req.FinishedTime,
 	}
 }
 
@@ -474,6 +455,23 @@ func (h *Handler) getUsers(ctx context.Context, instances []engine.Instance) (ma
 	uns = append(uns, approved...)
 	uns = append(uns, starter...)
 
+	return h.getUserMap(ctx, uns)
+}
+
+// 根据 Sess 获取用户
+func (h *Handler) getSessUser(ctx *gin.Context) (user.User, error) {
+	// 获取登录用户 sess 获取ID
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return user.User{}, fmt.Errorf("获取 Session 失败, %w", err)
+	}
+
+	// 查询用户信息 - 为了统一存储为 username
+	return h.userSvc.FindById(ctx, sess.Claims().Uid)
+}
+
+// 获取用户Map映射
+func (h *Handler) getUserMap(ctx context.Context, uns []string) (map[string]string, error) {
 	us, err := h.userSvc.FindByUsernames(ctx, uns)
 	if err != nil {
 		return nil, err

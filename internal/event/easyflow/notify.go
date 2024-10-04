@@ -55,11 +55,20 @@ func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, ord
 
 func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bool, error) {
 	// 查看是否需要发送消息， method 消息通知渠道
-	o, method, er := n.isNotify(ctx, instanceId)
+	o, method, isNotify, er := n.isNotify(ctx, instanceId)
 	if er != nil {
-		n.logger.Error("跳过消息通知",
+		n.logger.Error("有错误跳过消息通知",
 			elog.Any("error", er),
 			elog.Any("instId", instanceId),
+			elog.Any("userIds", userIDs),
+		)
+		return false, nil
+	}
+
+	if !isNotify {
+		n.logger.Info("流程控制未开启消息通知能力",
+			elog.Any("instId", instanceId),
+			elog.Any("userIds", userIDs),
 		)
 		return false, nil
 	}
@@ -185,24 +194,24 @@ func (n *Notify) send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bo
 }
 
 // isNotify 判断是否开启消息通知
-func (n *Notify) isNotify(ctx context.Context, InstanceId int) (order.Order, workflow.NotifyMethod, error) {
+func (n *Notify) isNotify(ctx context.Context, InstanceId int) (order.Order, workflow.NotifyMethod, bool, error) {
 	// 获取工单详情信息
 	o, err := n.orderSvc.DetailByProcessInstId(ctx, InstanceId)
 	if err != nil {
-		return o, 0, err
+		return o, 0, false, err
 	}
 
 	// 判断是否需要消息提示
 	wf, err := n.workflowSvc.Find(ctx, o.WorkflowId)
 	if err != nil {
-		return o, 0, err
+		return o, 0, false, err
 	}
 
 	if !wf.IsNotify {
-		return order.Order{}, 0, fmt.Errorf("流程控制未开启消息通知能力")
+		return order.Order{}, 0, false, nil
 	}
 
-	return o, wf.NotifyMethod, nil
+	return o, wf.NotifyMethod, true, nil
 }
 
 // isNotify 获取模版的字段信息

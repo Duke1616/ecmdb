@@ -26,11 +26,16 @@ type Service interface {
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
+	FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error)
 }
 
 type service struct {
 	repo   repository.UserRepository
 	logger *elog.Component
+}
+
+func (s *service) FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error) {
+	return s.repo.FindByWechatUser(ctx, wechatUserId)
 }
 
 func (s *service) FindByUsername(ctx context.Context, username string) (domain.User, error) {

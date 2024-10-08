@@ -186,11 +186,17 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 		Data: RetrieveOrders{
 			Total: total,
 			Tasks: slice.Map(os, func(idx int, src domain.Order) Order {
-				starter, _ := uMap[src.CreateBy]
+				starter, ok := uMap[src.CreateBy]
+				if !ok {
+					starter = src.CreateBy
+				}
+
 				return Order{
+					Id:                src.Id,
 					TemplateId:        src.TemplateId,
 					TemplateName:      src.TemplateName,
 					Starter:           starter,
+					Provide:           src.Provide.ToUint8(),
 					ProcessInstanceId: src.Process.InstanceId,
 					WorkflowId:        src.WorkflowId,
 					Ctime:             time.Unix(src.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
@@ -305,7 +311,10 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 	return ginx.Result{
 		Data: RetrieveTaskRecords{
 			TaskRecords: slice.Map(ts, func(idx int, src model.Task) TaskRecord {
-				starter, _ := uMap[src.UserID]
+				starter, ok := uMap[src.UserID]
+				if !ok {
+					starter = src.UserID
+				}
 				return TaskRecord{
 					Nodename:     src.NodeName,
 					ApprovedBy:   starter,
@@ -339,6 +348,7 @@ func (h *Handler) toVoOrder(req domain.Order) Order {
 		TemplateName:      req.TemplateName,
 		Starter:           req.CreateBy,
 		ProcessInstanceId: req.Process.InstanceId,
+		Provide:           req.Provide.ToUint8(),
 		WorkflowId:        req.WorkflowId,
 		Ctime:             time.Unix(req.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
 		Wtime:             time.Unix(req.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
@@ -413,8 +423,14 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 	// 数据转换为前端可用
 	return slice.Map(instances, func(idx int, src engine.Instance) Order {
 		val, _ := m[src.ProcInstID]
-		starter, _ := us[src.Starter]
-		approved, _ := us[src.ApprovedBy]
+		starter, ok := us[src.Starter]
+		if !ok {
+			starter = src.Starter
+		}
+		approved, ok := us[src.ApprovedBy]
+		if !ok {
+			approved = src.ApprovedBy
+		}
 		return Order{
 			Id:                 val.Id,
 			TaskId:             src.TaskID,
@@ -423,6 +439,7 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 			CurrentStep:        src.CurrentNodeName,
 			ApprovedBy:         approved,
 			ProcInstCreateTime: src.CreateTime,
+			Provide:            val.Provide.ToUint8(),
 			TemplateId:         val.TemplateId,
 			TemplateName:       val.TemplateName,
 			WorkflowId:         val.WorkflowId,

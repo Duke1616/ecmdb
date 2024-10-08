@@ -38,7 +38,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	service3 := userModule.Svc
 	handler := web.NewHandler(serviceService, service2, service3)
 	service4 := templateModule.Svc
-	wechatOrderConsumer := initWechatConsumer(serviceService, service4, q)
+	wechatOrderConsumer := initWechatConsumer(serviceService, service4, service3, q)
 	service5 := workflowModule.Svc
 	processEventConsumer := InitProcessConsumer(q, service5, serviceService)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
@@ -58,8 +58,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
 
-func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
-	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)
 	if err != nil {
 		panic(err)
 	}

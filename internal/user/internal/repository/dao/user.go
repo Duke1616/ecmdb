@@ -28,10 +28,25 @@ type UserDAO interface {
 	CountByDepartmentId(ctx context.Context, departmentId int64) (int64, error)
 	PipelineDepartmentId(ctx context.Context) ([]UserPipeline, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]User, error)
+	FindByWechatUser(ctx context.Context, wechatUserId string) (User, error)
 }
 
 type userDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *userDao) FindByWechatUser(ctx context.Context, wechatUserId string) (User, error) {
+	col := dao.db.Collection(UserCollection)
+	filter := bson.M{"wechat_info": bson.M{
+		"user_id": wechatUserId,
+	}}
+
+	u := User{}
+	if err := col.FindOne(ctx, filter).Decode(&u); err != nil {
+		return User{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return u, nil
 }
 
 func (dao *userDao) FindByUsernames(ctx context.Context, uns []string) ([]User, error) {
@@ -91,6 +106,9 @@ func (dao *userDao) UpdateUser(ctx context.Context, req User) (int64, error) {
 			"title":         req.Title,
 			"feishu_info": bson.M{
 				"user_id": req.FeishuInfo.UserId,
+			},
+			"wechat_info": bson.M{
+				"user_id": req.WechatInfo.UserId,
 			},
 			"utime": time.Now().UnixMilli(),
 		},
@@ -296,9 +314,14 @@ type User struct {
 	Utime        int64      `bson:"utime"`
 	RoleCodes    []string   `bson:"role_codes"`
 	FeishuInfo   FeishuInfo `bson:"feishu_info"`
+	WechatInfo   WechatInfo `bson:"wechat_info"`
 }
 
 type FeishuInfo struct {
+	UserId string `bson:"user_id"`
+}
+
+type WechatInfo struct {
 	UserId string `bson:"user_id"`
 }
 

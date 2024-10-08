@@ -9,7 +9,7 @@ import (
 )
 
 type NotifierIntegration interface {
-	builder(rules []Rule, order order.Order, users []user.User, tasks []model.Task) []notify.NotifierWrap
+	builder(rules []Rule, order order.Order, startUser string, users []user.User, tasks []model.Task) []notify.NotifierWrap
 }
 
 type NotifyIntegration struct {

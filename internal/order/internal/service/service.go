@@ -209,6 +209,7 @@ func wechatOaData(data map[string]interface{}) (workwx.OAApprovalDetail, error) 
 
 func convert(data []event.Variables, oaData workwx.OAApprovalDetail) []event.Variables {
 	for _, contents := range oaData.ApplyData.Contents {
+		// 使用 ID 当作 key 进行存储
 		id := strings.Split(contents.ID, "-")
 		key := id[1]
 
@@ -230,7 +231,6 @@ func convert(data []event.Variables, oaData workwx.OAApprovalDetail) []event.Var
 					Value: value,
 				})
 			}
-
 		case "Textarea":
 			data = append(data, event.Variables{
 				Key:   key,

@@ -28,6 +28,7 @@ type User struct {
 	CreateType   uint8      `json:"create_type"`
 	RoleCodes    []string   `json:"role_codes"`
 	FeishuInfo   FeishuInfo `json:"feishu_info"`
+	WechatInfo   WechatInfo `json:"wechat_info"`
 }
 
 type UpdateUserReq struct {
@@ -38,9 +39,14 @@ type UpdateUserReq struct {
 	Title        string     `json:"title"`
 	DisplayName  string     `json:"display_name"`
 	FeishuInfo   FeishuInfo `json:"feishu_info"`
+	WechatInfo   WechatInfo `json:"wechat_info"`
 }
 
 type FeishuInfo struct {
+	UserId string `json:"user_id"`
+}
+
+type WechatInfo struct {
 	UserId string `json:"user_id"`
 }
 

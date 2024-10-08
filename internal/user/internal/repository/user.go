@@ -22,10 +22,16 @@ type UserRepository interface {
 	TotalByDepartmentId(ctx context.Context, departmentId int64) (int64, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
+	FindByWechatUser(ctx context.Context, userId string) (domain.User, error)
 }
 
 type userRepo struct {
 	dao dao.UserDAO
+}
+
+func (repo *userRepo) FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error) {
+	user, err := repo.dao.FindByWechatUser(ctx, wechatUserId)
+	return repo.toDomain(user), err
 }
 
 func (repo *userRepo) FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error) {
@@ -126,6 +132,9 @@ func (repo *userRepo) toDomain(user dao.User) domain.User {
 		FeishuInfo: domain.FeishuInfo{
 			UserId: user.FeishuInfo.UserId,
 		},
+		WechatInfo: domain.WechatInfo{
+			UserId: user.WechatInfo.UserId,
+		},
 		Status:     domain.Status(user.Status),
 		CreateType: domain.CreateType(user.CreateType),
 	}
@@ -141,6 +150,9 @@ func (repo *userRepo) toEntity(user domain.User) dao.User {
 		DisplayName:  user.DisplayName,
 		FeishuInfo: dao.FeishuInfo{
 			UserId: user.FeishuInfo.UserId,
+		},
+		WechatInfo: dao.WechatInfo{
+			UserId: user.WechatInfo.UserId,
 		},
 		Status:     user.Status.ToUint8(),
 		CreateType: user.CreateType.ToUint8(),

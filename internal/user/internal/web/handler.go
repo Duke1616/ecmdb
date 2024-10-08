@@ -316,6 +316,9 @@ func (h *Handler) toUpdateDomain(req UpdateUserReq) domain.User {
 		FeishuInfo: domain.FeishuInfo{
 			UserId: req.FeishuInfo.UserId,
 		},
+		WechatInfo: domain.WechatInfo{
+			UserId: req.WechatInfo.UserId,
+		},
 	}
 }
 
@@ -331,6 +334,9 @@ func (h *Handler) ToUserVo(src domain.User) User {
 		CreateType:   src.CreateType.ToUint8(),
 		FeishuInfo: FeishuInfo{
 			UserId: src.FeishuInfo.UserId,
+		},
+		WechatInfo: WechatInfo{
+			UserId: src.WechatInfo.UserId,
 		},
 	}
 }

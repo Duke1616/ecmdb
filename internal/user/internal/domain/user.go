@@ -38,6 +38,7 @@ type User struct {
 	CreateType   CreateType
 	RoleCodes    []string
 	FeishuInfo   FeishuInfo
+	WechatInfo   WechatInfo
 }
 
 type UserCombination struct {

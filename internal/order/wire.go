@@ -45,8 +45,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	return new(Module), nil
 }
 
-func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
-	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)
 	if err != nil {
 		panic(err)
 	}

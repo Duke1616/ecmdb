@@ -77,6 +77,7 @@ type Order struct {
 	ProcessInstanceId  int                    `json:"process_instance_id"` // 流程实例ID
 	Starter            string                 `json:"starter"`             // 提单人
 	TemplateName       string                 `json:"template_name"`       // 模版名称
+	Provide            uint8                  `json:"provide"`
 	CurrentStep        string                 `json:"current_step"`
 	ApprovedBy         string                 `json:"approved_by"`           // 处理人
 	ProcInstCreateTime *database.LocalTime    `json:"proc_inst_create_time"` // 流程开始时间

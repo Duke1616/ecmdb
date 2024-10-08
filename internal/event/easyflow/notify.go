@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -78,6 +79,16 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 		return false, er
 	}
 
+	variables, er := engine.ResolveVariables(instanceId, []string{"$starter"})
+	if er != nil {
+		return false, er
+	}
+
+	startUser, er := n.userSvc.FindByUsername(ctx, variables["$starter"])
+	if er != nil {
+		return false, er
+	}
+
 	// 只有当 Event 结束才能正确获取到 TaskId 信息，放到 Go Routine 异步运行, 通过重试机制获取到数据
 	go func() {
 		strategy, err := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
@@ -118,7 +129,7 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 		var messages []notify.NotifierWrap
 		for _, integration := range n.integrations {
 			if integration.name == workflow.NotifyMethodToString(method) {
-				messages = integration.notifier.builder(rules, o, users, tasks)
+				messages = integration.notifier.builder(rules, o, startUser.DisplayName, users, tasks)
 				break
 			}
 		}

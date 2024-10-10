@@ -11,14 +11,15 @@ import (
 )
 
 type ModelDAO interface {
-	CreateModel(ctx context.Context, m Model) (int64, error)
-	GetModelById(ctx context.Context, id int64) (Model, error)
-	ListModels(ctx context.Context, offset, limit int64) ([]Model, error)
+	Create(ctx context.Context, m Model) (int64, error)
+	GetById(ctx context.Context, id int64) (Model, error)
+	List(ctx context.Context, offset, limit int64) ([]Model, error)
 	Count(ctx context.Context) (int64, error)
+	ListAll(ctx context.Context) ([]Model, error)
 
-	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]Model, error)
-	DeleteModelById(ctx context.Context, id int64) (int64, error)
-	DeleteModelByUid(ctx context.Context, modelUid string) (int64, error)
+	ListByGroupIds(ctx context.Context, mgids []int64) ([]Model, error)
+	DeleteById(ctx context.Context, id int64) (int64, error)
+	DeleteByUid(ctx context.Context, modelUid string) (int64, error)
 }
 
 func NewModelDAO(db *mongox.Mongo) ModelDAO {
@@ -31,7 +32,7 @@ type modelDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *modelDAO) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]Model, error) {
+func (dao *modelDAO) ListByGroupIds(ctx context.Context, mgids []int64) ([]Model, error) {
 	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{}
 
@@ -64,7 +65,7 @@ func (dao *modelDAO) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]
 	return result, nil
 }
 
-func (dao *modelDAO) CreateModel(ctx context.Context, m Model) (int64, error) {
+func (dao *modelDAO) Create(ctx context.Context, m Model) (int64, error) {
 	now := time.Now()
 	m.Ctime, m.Utime = now.UnixMilli(), now.UnixMilli()
 	m.Id = dao.db.GetIdGenerator(ModelCollection)
@@ -78,7 +79,7 @@ func (dao *modelDAO) CreateModel(ctx context.Context, m Model) (int64, error) {
 	return m.Id, nil
 }
 
-func (dao *modelDAO) GetModelById(ctx context.Context, id int64) (Model, error) {
+func (dao *modelDAO) GetById(ctx context.Context, id int64) (Model, error) {
 	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"id": id}
 
@@ -90,15 +91,37 @@ func (dao *modelDAO) GetModelById(ctx context.Context, id int64) (Model, error) 
 	return m, nil
 }
 
-func (dao *modelDAO) ListModels(ctx context.Context, offset, limit int64) ([]Model, error) {
+func (dao *modelDAO) ListAll(ctx context.Context) ([]Model, error) {
 	col := dao.db.Collection(ModelCollection)
-	filer := bson.M{}
+	filter := bson.M{}
+	opt := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+	cursor, err := col.Find(ctx, filter, opt)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Model
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *modelDAO) List(ctx context.Context, offset, limit int64) ([]Model, error) {
+	col := dao.db.Collection(ModelCollection)
+	filter := bson.M{}
 	opt := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
-	cursor, err := col.Find(ctx, filer, opt)
+	cursor, err := col.Find(ctx, filter, opt)
 	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
@@ -126,7 +149,7 @@ func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (dao *modelDAO) DeleteModelById(ctx context.Context, id int64) (int64, error) {
+func (dao *modelDAO) DeleteById(ctx context.Context, id int64) (int64, error) {
 	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"id": id}
 
@@ -138,7 +161,7 @@ func (dao *modelDAO) DeleteModelById(ctx context.Context, id int64) (int64, erro
 	return result.DeletedCount, nil
 }
 
-func (dao *modelDAO) DeleteModelByUid(ctx context.Context, modelUid string) (int64, error) {
+func (dao *modelDAO) DeleteByUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"uid": modelUid}
 

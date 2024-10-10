@@ -11,16 +11,12 @@ import (
 
 type RelationModelDAO interface {
 	CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error)
-
-	// ListRelationByModelUid 查询模型关联关系
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error)
-
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// FindModelDiagramBySrcUids 查询模型拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]ModelRelation, error)
-
-	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {

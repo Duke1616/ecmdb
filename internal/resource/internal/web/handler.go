@@ -45,13 +45,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 根据模型 UID 查询资源列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
-
 	// 全文检索
 	g.POST("/search", ginx.WrapBody[SearchReq](h.Search))
-
 	// 查询加密字段信息
 	g.POST("/secure", ginx.WrapBody[FindSecureReq](h.FindSecureData))
-
 	g.POST("/update", ginx.WrapBody[UpdateResourceReq](h.UpdateResource))
 }
 

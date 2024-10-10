@@ -18,7 +18,7 @@ type ResourceDAO interface {
 	CreateResource(ctx context.Context, resource Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
-	Count(ctx context.Context, modelUid string) (int64, error)
+	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
@@ -30,7 +30,7 @@ type ResourceDAO interface {
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 	UpdateAttribute(ctx context.Context, resource Resource) (int64, error)
 
-	CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error)
+	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
 }
 
 type resourceDAO struct {
@@ -154,7 +154,7 @@ func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, model
 	return result, nil
 }
 
-func (dao *resourceDAO) Count(ctx context.Context, modelUid string) (int64, error) {
+func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
 
@@ -204,7 +204,7 @@ func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, er
 	return result.DeletedCount, nil
 }
 
-func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error) {
+func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error) {
 	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{}
 	if len(modelUids) > 0 {

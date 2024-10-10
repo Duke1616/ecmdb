@@ -10,16 +10,20 @@ import (
 //go:generate mockgen -source=./relation_model.go -destination=../../mocks/relation_model.mock.go -package=relationmocks -typed RelationModelService
 type RelationModelService interface {
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error)
+	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// FindModelDiagramBySrcUids 查询模型关联关系，绘制拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
-
-	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 type modelService struct {
 	repo repository.RelationModelRepository
+}
+
+func (s *modelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	return s.repo.TotalByModelUid(ctx, modelUid)
 }
 
 func NewRelationModelService(repo repository.RelationModelRepository) RelationModelService {

@@ -46,8 +46,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/delete", ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid))
 	g.POST("/by_group", ginx.WrapBody[Page](h.ListModelsByGroup))
 
-	// 模型 - 关联关系
-	g.POST("/relation/graph", ginx.WrapBody[Page](h.FindRelationModelGraph))
+	// 模型 - 关联拓扑图
+	g.POST("/relation/graph", ginx.WrapBody[Page](h.FindModelsGraph))
 }
 
 func (h *Handler) CreateModelGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
@@ -116,23 +116,40 @@ func (h *Handler) ListModelGroups(ctx *gin.Context, req Page) (ginx.Result, erro
 }
 
 func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (ginx.Result, error) {
-	// TODO errorGroup改造
-	_, mTotal, err := h.RMSvc.ListModelUidRelation(ctx, 0, 1, req.ModelUid)
-	if err != nil {
+	var (
+		eg errgroup.Group
+	)
+
+	eg.Go(func() error {
+		var err error
+		mTotal, err := h.RMSvc.CountByModelUid(ctx, req.ModelUid)
+		if err != nil {
+			return err
+		}
+
+		if mTotal != 0 {
+			return fmt.Errorf("模型关联不为空")
+		}
+
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		rTotal, err := h.resourceSvc.CountByModelUid(ctx, req.ModelUid)
+		if err != nil {
+			return err
+		}
+
+		if rTotal != 0 {
+			return fmt.Errorf("模型关联资产数据不为空")
+		}
+
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
 		return systemErrorResult, err
-	}
-
-	if mTotal != 0 {
-		return modelRelationIsNotFountResult, fmt.Errorf("模型关联不为空")
-	}
-
-	_, rTotal, err := h.resourceSvc.ListResource(ctx, nil, req.ModelUid, 0, 1)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	if rTotal != 0 {
-		return modelRelationIsNotFountResult, fmt.Errorf("模型关联资产数据不为空")
 	}
 
 	// TODO 删除模型，同步删除模型属性 +  模型属性分组
@@ -178,7 +195,7 @@ func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, er
 	// 查看所有模型拥有资产的数量
 	eg.Go(func() error {
 		var err error
-		resourceCount, err = h.resourceSvc.CountByModelUid(ctx, []string{})
+		resourceCount, err = h.resourceSvc.CountByModelUids(ctx, []string{})
 		if err != nil {
 			return err
 		}
@@ -224,10 +241,11 @@ func (h *Handler) DeleteModelGroup(ctx *gin.Context, req DeleteModelGroup) (ginx
 	}, nil
 }
 
-func (h *Handler) FindRelationModelGraph(ctx *gin.Context, req Page) (ginx.Result, error) {
+// FindModelsGraph 查询模型拓扑图
+func (h *Handler) FindModelsGraph(ctx *gin.Context, req Page) (ginx.Result, error) {
 	// TODO 为了后续加入 label 概念进行过滤先查询所有的模型
 	// 查询所有模型
-	models, _, err := h.svc.List(ctx, req.Offset, req.Limit)
+	models, err := h.svc.ListAll(ctx)
 	if err != nil {
 		return systemErrorResult, err
 	}

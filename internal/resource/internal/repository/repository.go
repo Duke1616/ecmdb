@@ -11,7 +11,7 @@ type ResourceRepository interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
-	Total(ctx context.Context, modelUid string) (int64, error)
+	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
@@ -22,7 +22,7 @@ type ResourceRepository interface {
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 
-	CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error)
+	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
 }
 
 type resourceRepository struct {
@@ -39,8 +39,8 @@ func (repo *resourceRepository) UpdateResource(ctx context.Context, resource dom
 	return repo.dao.UpdateAttribute(ctx, repo.toEntity(resource))
 }
 
-func (repo *resourceRepository) CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error) {
-	return repo.dao.CountByModelUid(ctx, modelUids)
+func (repo *resourceRepository) CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error) {
+	return repo.dao.CountByModelUids(ctx, modelUids)
 }
 
 func (repo *resourceRepository) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
@@ -68,8 +68,8 @@ func (repo *resourceRepository) ListResource(ctx context.Context, fields []strin
 	}), err
 }
 
-func (repo *resourceRepository) Total(ctx context.Context, modelUid string) (int64, error) {
-	return repo.dao.Count(ctx, modelUid)
+func (repo *resourceRepository) TotalByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	return repo.dao.CountByModelUid(ctx, modelUid)
 }
 
 func (repo *resourceRepository) DeleteResource(ctx context.Context, id int64) (int64, error) {

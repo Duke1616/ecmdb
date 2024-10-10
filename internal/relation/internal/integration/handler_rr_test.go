@@ -40,7 +40,7 @@ func (s *HandlerRRTestSuite) SetupSuite() {
 	handler, err := startup.InitRRHandler()
 	require.NoError(s.T(), err)
 	server := gin.Default()
-	handler.RegisterRoute(server)
+	handler.PrivateRoute(server)
 
 	s.db = startup.InitMongoDB()
 	s.dao = dao.NewRelationResourceDAO(s.db)

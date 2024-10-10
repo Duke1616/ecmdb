@@ -141,8 +141,6 @@ func (h *Handler) Revoke(ctx *gin.Context, req RevokeOrderReq) (ginx.Result, err
 		return systemErrorResult, err
 	}
 
-	// 转移节点
-
 	// 撤销流程工单
 	err = h.engineSvc.Revoke(ctx, req.InstanceId, u.Username, req.Force)
 	if err != nil {
@@ -196,6 +194,7 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 					TemplateId:        src.TemplateId,
 					TemplateName:      src.TemplateName,
 					Starter:           starter,
+					Status:            src.Status.ToUint8(),
 					Provide:           src.Provide.ToUint8(),
 					ProcessInstanceId: src.Process.InstanceId,
 					WorkflowId:        src.WorkflowId,
@@ -349,6 +348,7 @@ func (h *Handler) toVoOrder(req domain.Order) Order {
 		Starter:           req.CreateBy,
 		ProcessInstanceId: req.Process.InstanceId,
 		Provide:           req.Provide.ToUint8(),
+		Status:            req.Status.ToUint8(),
 		WorkflowId:        req.WorkflowId,
 		Ctime:             time.Unix(req.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
 		Wtime:             time.Unix(req.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
@@ -440,6 +440,7 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 			ApprovedBy:         approved,
 			ProcInstCreateTime: src.CreateTime,
 			Provide:            val.Provide.ToUint8(),
+			Status:             val.Status.ToUint8(),
 			TemplateId:         val.TemplateId,
 			TemplateName:       val.TemplateName,
 			WorkflowId:         val.WorkflowId,

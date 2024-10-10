@@ -18,6 +18,7 @@ import (
 const (
 	SystemPass          = 3
 	SystemReject        = 4
+	UserRevoke          = 5
 	SystemPassComment   = "其余节点审批通过，系统判定无法继续审批"
 	SystemRejectComment = "其余节点进行驳回，系统判定无法继续审批"
 )
@@ -246,6 +247,11 @@ func (e *ProcessEvent) EventRevoke(ProcessInstanceID int, RevokeUserID string) e
 	if err != nil {
 		return err
 	}
+
+	if err != nil {
+		return err
+	}
+
 	log.Printf("--------流程[%s],由[%s]发起撤销--------", processName, RevokeUserID)
 
 	return nil

@@ -17,11 +17,12 @@ type ResourceRepository interface {
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
 		ids []int64, filter domain.Condition) ([]domain.Resource, error)
 	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64, filter domain.Condition) (int64, error)
-	PipelineByModelUid(ctx context.Context) (map[string]int, error)
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
+
+	CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error)
 }
 
 type resourceRepository struct {
@@ -38,18 +39,8 @@ func (repo *resourceRepository) UpdateResource(ctx context.Context, resource dom
 	return repo.dao.UpdateAttribute(ctx, repo.toEntity(resource))
 }
 
-func (repo *resourceRepository) PipelineByModelUid(ctx context.Context) (map[string]int, error) {
-	pipeline, err := repo.dao.PipelineByModelUid(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	p := make(map[string]int, len(pipeline))
-	for _, val := range pipeline {
-		p[val.ModelUid] = val.Total
-	}
-
-	return p, nil
+func (repo *resourceRepository) CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error) {
+	return repo.dao.CountByModelUid(ctx, modelUids)
 }
 
 func (repo *resourceRepository) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {

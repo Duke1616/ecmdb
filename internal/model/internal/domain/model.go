@@ -16,9 +16,3 @@ type ModelGroup struct {
 	ID   int64
 	Name string
 }
-
-type ModelsByGroupId struct {
-	ID     int64
-	Name   string
-	Models []Model
-}

@@ -25,11 +25,12 @@ type ResourceDAO interface {
 		ids []int64, filter domain.Condition) ([]Resource, error)
 	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64,
 		filter domain.Condition) (int64, error)
-	PipelineByModelUid(ctx context.Context) ([]Pipeline, error)
 	Search(ctx context.Context, text string) ([]SearchResource, error)
 
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 	UpdateAttribute(ctx context.Context, resource Resource) (int64, error)
+
+	CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error)
 }
 
 type resourceDAO struct {
@@ -203,31 +204,50 @@ func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, er
 	return result.DeletedCount, nil
 }
 
-func (dao *resourceDAO) PipelineByModelUid(ctx context.Context) ([]Pipeline, error) {
+func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUids []string) (map[string]int, error) {
 	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{}
+	if len(modelUids) > 0 {
+		filter["model_uid"] = bson.D{{"$in", modelUids}}
+	}
+
 	pipeline := mongo.Pipeline{
+		{{"$match", filter}},
 		{{"$group", bson.D{
 			{"_id", "$model_uid"},
 			{"total", bson.D{{"$sum", 1}}},
 		}}},
 	}
 
+	// 执行聚合查询
 	cursor, err := col.Aggregate(ctx, pipeline)
-	defer cursor.Close(ctx)
-
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
+	defer cursor.Close(ctx)
 
-	var result []Pipeline
-	if err = cursor.All(ctx, &result); err != nil {
+	// 定义结果结构体
+	var results []struct {
+		ModelUID string `bson:"_id"`
+		Total    int    `bson:"total"`
+	}
+
+	// 将游标中的数据解码到 results 变量
+	if err = cursor.All(ctx, &results); err != nil {
 		return nil, fmt.Errorf("解码错误: %w", err)
 	}
 	if err = cursor.Err(); err != nil {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
-	return result, nil
+	// 将结果转换为 map[model_uid]total_count
+	modelCountMap := make(map[string]int)
+	for _, result := range results {
+		modelCountMap[result.ModelUID] = result.Total
+	}
+
+	return modelCountMap, nil
+
 }
 
 func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResource, error) {

@@ -21,40 +21,37 @@ type Handler struct {
 	AttrSvc     attribute.Service
 }
 
-func NewHandler(svc service.Service, groupSvc service.MGService, RMSvc relation.RMSvc, attrSvc attribute.Service,
+func NewHandler(svc service.Service, mgSvc service.MGService, rmSvc relation.RMSvc, attrSvc attribute.Service,
 	resourceSvc resource.Service) *Handler {
 	return &Handler{
 		svc:         svc,
-		mgSvc:       groupSvc,
+		mgSvc:       mgSvc,
 		AttrSvc:     attrSvc,
-		RMSvc:       RMSvc,
+		RMSvc:       rmSvc,
 		resourceSvc: resourceSvc,
 	}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/model")
-	// 模型分组
-	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateGroup))
+	// 模型 - 分组管理
+	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateModelGroup))
 	g.POST("/group/list", ginx.WrapBody[Page](h.ListModelGroups))
 	g.POST("/group/delete", ginx.WrapBody[DeleteModelGroup](h.DeleteModelGroup))
 
-	// 模型操作
+	// 模型 - 基础操作
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
 	g.POST("/detail", ginx.WrapBody[DetailModelReq](h.DetailModel))
 	g.POST("/list", ginx.WrapBody[Page](h.ListModels))
-
-	// 获取模型并分组
-	g.POST("/list/pipeline", ginx.WrapBody[Page](h.ListModelsByGroupId))
-
 	g.POST("/delete", ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid))
-	// 模型关联关系
-	g.POST("/relation/diagram", ginx.WrapBody[Page](h.FindRelationModelDiagram))
+	g.POST("/by_group", ginx.WrapBody[Page](h.ListModelsByGroup))
+
+	// 模型 - 关联关系
 	g.POST("/relation/graph", ginx.WrapBody[Page](h.FindRelationModelGraph))
 }
 
-func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
-	id, err := h.mgSvc.CreateModelGroup(ctx.Request.Context(), domain.ModelGroup{
+func (h *Handler) CreateModelGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {
+	id, err := h.mgSvc.Create(ctx.Request.Context(), domain.ModelGroup{
 		Name: req.Name,
 	})
 
@@ -68,7 +65,7 @@ func (h *Handler) CreateGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.R
 }
 
 func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result, error) {
-	id, err := h.svc.CreateModel(ctx, domain.Model{
+	id, err := h.svc.Create(ctx, domain.Model{
 		Name:    req.Name,
 		GroupId: req.GroupId,
 		UID:     req.UID,
@@ -103,7 +100,7 @@ func (h *Handler) DetailModel(ctx *gin.Context, req DetailModelReq) (ginx.Result
 }
 
 func (h *Handler) ListModelGroups(ctx *gin.Context, req Page) (ginx.Result, error) {
-	mgs, total, err := h.mgSvc.ListModelGroups(ctx, req.Offset, req.Limit)
+	mgs, total, err := h.mgSvc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -139,7 +136,7 @@ func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (g
 	}
 
 	// TODO 删除模型，同步删除模型属性 +  模型属性分组
-	count, err := h.svc.DeleteModelByUid(ctx, req.ModelUid)
+	count, err := h.svc.DeleteByModelUid(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -149,7 +146,7 @@ func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (g
 	}, nil
 }
 
-func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, error) {
+func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, error) {
 	var (
 		eg            errgroup.Group
 		mgs           []domain.ModelGroup
@@ -158,9 +155,10 @@ func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, 
 		resourceCount map[string]int
 	)
 
+	// 获取执行分组下的所有模型数据
 	eg.Go(func() error {
 		var err error
-		mgs, total, err = h.mgSvc.ListModelGroups(ctx, req.Offset, req.Limit)
+		mgs, total, err = h.mgSvc.List(ctx, req.Offset, req.Limit)
 		if err != nil {
 			return err
 		}
@@ -177,9 +175,10 @@ func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, 
 		return err
 	})
 
+	// 查看所有模型拥有资产的数量
 	eg.Go(func() error {
 		var err error
-		resourceCount, err = h.resourceSvc.PipelineByModelUid(ctx)
+		resourceCount, err = h.resourceSvc.CountByModelUid(ctx, []string{})
 		if err != nil {
 			return err
 		}
@@ -191,47 +190,16 @@ func (h *Handler) ListModelsByGroupId(ctx *gin.Context, req Page) (ginx.Result, 
 		return systemErrorResult, err
 	}
 
-	var mds map[int64][]Model
-	mds = slice.ToMapV(models, func(m domain.Model) (int64, []Model) {
-		return m.GroupId, slice.FilterMap(models, func(idx int, src domain.Model) (Model, bool) {
-			if m.GroupId == src.GroupId {
-				count := 0
-				if val, ok := resourceCount[src.UID]; ok {
-					count = val
-				}
-
-				return Model{
-					Id:    src.ID,
-					Name:  src.Name,
-					Total: count,
-					UID:   src.UID,
-					Icon:  src.Icon,
-				}, true
-
-			}
-			return Model{}, false
-		})
-	})
-
+	// 前端展示
 	return ginx.Result{
 		Data: RetrieveModelListByGroupId{
-			Mgs: slice.Map(mgs, func(idx int, src domain.ModelGroup) ModelListByGroupId {
-				mb := ModelListByGroupId{}
-				val, ok := mds[src.ID]
-				if ok {
-					mb.Models = val
-				}
-
-				mb.GroupName = src.Name
-				mb.GroupId = src.ID
-				return mb
-			}),
+			Mgs: retrieveModelListByGroupId(models, mgs, resourceCount),
 		},
 	}, nil
 }
 
 func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
-	models, total, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
+	models, total, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -247,7 +215,7 @@ func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
 }
 
 func (h *Handler) DeleteModelGroup(ctx *gin.Context, req DeleteModelGroup) (ginx.Result, error) {
-	count, err := h.mgSvc.DeleteModelGroup(ctx, req.ID)
+	count, err := h.mgSvc.Delete(ctx, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -256,55 +224,10 @@ func (h *Handler) DeleteModelGroup(ctx *gin.Context, req DeleteModelGroup) (ginx
 	}, nil
 }
 
-func (h *Handler) FindRelationModelDiagram(ctx *gin.Context, req Page) (ginx.Result, error) {
-	// TODO 为了后续加入 label 概念进行过滤先查询所有的模型
-	// 查询所有模型
-	models, _, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 取出所有的 uids
-	modelUids := slice.Map(models, func(idx int, src domain.Model) string {
-		return src.UID
-	})
-
-	// 查询包含的数据
-	ds, err := h.RMSvc.FindModelDiagramBySrcUids(ctx, modelUids)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// 生成关联节点的map
-	var mds map[string][]relation.ModelDiagram
-	mds = slice.ToMapV(ds, func(m relation.ModelDiagram) (string, []relation.ModelDiagram) {
-		return m.SourceModelUid, slice.FilterMap(ds, func(idx int, src relation.ModelDiagram) (relation.ModelDiagram, bool) {
-			if m.SourceModelUid == src.SourceModelUid {
-				return relation.ModelDiagram{
-					ID:              src.ID,
-					RelationTypeUid: src.RelationTypeUid,
-					TargetModelUid:  src.TargetModelUid,
-					SourceModelUid:  src.SourceModelUid,
-				}, true
-			}
-			return relation.ModelDiagram{}, false
-		})
-	})
-
-	// 返回 vo，前端展示
-	diagrams := toModelDiagramVo(models, mds)
-
-	return ginx.Result{
-		Data: RetrieveRelationModelDiagram{
-			Diagrams: diagrams,
-		},
-	}, nil
-}
-
 func (h *Handler) FindRelationModelGraph(ctx *gin.Context, req Page) (ginx.Result, error) {
 	// TODO 为了后续加入 label 概念进行过滤先查询所有的模型
 	// 查询所有模型
-	models, _, err := h.svc.ListModels(ctx, req.Offset, req.Limit)
+	models, _, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}

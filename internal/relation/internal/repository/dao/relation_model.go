@@ -14,6 +14,7 @@ type RelationModelDAO interface {
 
 	// ListRelationByModelUid 查询模型关联关系
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error)
+
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// FindModelDiagramBySrcUids 查询模型拓扑图

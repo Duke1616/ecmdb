@@ -365,19 +365,6 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return err
 	}
 
-	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
-	switch workerResp.Status {
-	case worker.STOPPING:
-	case worker.OFFLINE:
-		_, err = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "调度任务节点失败, 工作节点离线",
-			Status:          domain.FAILED,
-			Result:          err.Error(),
-		})
-		return err
-	}
-
 	// TODO 创建一份任务到数据库中，后续执行失败，重试机制
 	_, err = s.repo.UpdateTask(ctx, domain.Task{
 		// 字段可有可无
@@ -403,6 +390,19 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		}),
 	})
 	if err != nil {
+		return err
+	}
+
+	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
+	switch workerResp.Status {
+	case worker.STOPPING:
+	case worker.OFFLINE:
+		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+			Id:              task.Id,
+			TriggerPosition: "调度任务节点失败, 工作节点离线",
+			Status:          domain.FAILED,
+			Result:          "调度任务节点失败, 工作节点离线",
+		})
 		return err
 	}
 

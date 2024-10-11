@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.6.1](https://github.com/Duke1616/ecmdb/releases/tag/v1.6.1) - 2024-10-11
+
+- [`8b4591a`](https://github.com/Duke1616/ecmdb/commit/8b4591a3dd0e5c283a3a0d9c7883c1c86176b273) fix: 调整任务运行顺序，修复 err.Error nil 的情况
+
 ## [v1.6.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.6.0) - 2024-10-11
 
 - [`81426bb`](https://github.com/Duke1616/ecmdb/commit/81426bb0245b053a55da510ba868602ca736ec91) chore: 任务状态新增调度失败情况

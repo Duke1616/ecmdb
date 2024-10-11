@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.6.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.6.0) - 2024-10-11
+
+- [`81426bb`](https://github.com/Duke1616/ecmdb/commit/81426bb0245b053a55da510ba868602ca736ec91) chore: 任务状态新增调度失败情况
+- [`9b6fd8b`](https://github.com/Duke1616/ecmdb/commit/9b6fd8b16a70dad0ffc70cee0caeb7f8402bf5a1) chore: 优化部分接口性能
+- [`7c2a13a`](https://github.com/Duke1616/ecmdb/commit/7c2a13a7452d285baa71beee5858556248bccd24) chore: 删除部分弃用代码，优化函数名称
+- [`3558f50`](https://github.com/Duke1616/ecmdb/commit/3558f50018e1b4fa31fbfb713aeea58d078122cd) chore: 模型关联 查询bug、etcd连接异常panic
+- [`2e4d81e`](https://github.com/Duke1616/ecmdb/commit/2e4d81e20ae9aa0acff3363a71aec219f82e30d1) chore: 优化企业微信来源审批，消息通知
+- [`fba3b6d`](https://github.com/Duke1616/ecmdb/commit/fba3b6d32ea0237574edead28b122210a81429bd) chore: 完善审批通过、驳回状态变更
+- [`26a2c3b`](https://github.com/Duke1616/ecmdb/commit/26a2c3b8b123e4f27afbb0ce2ec5387285e3fb72) chore: 工单撤销
+- [`488349a`](https://github.com/Duke1616/ecmdb/commit/488349a398e5a9fafc4836e0430d63ef2bb7ea49) chore: 修改查询工单状态数组
+- [`995611b`](https://github.com/Duke1616/ecmdb/commit/995611b88aaecf9455fc00bef0636a20124f8369) chore: 工单历史
+- [`ce2bdbd`](https://github.com/Duke1616/ecmdb/commit/ce2bdbddf9fa3c5a2218db6d6786e04172184140) chore: 优化工单列表提单人、处理人前端展示名称
+- [`f33f3ce`](https://github.com/Duke1616/ecmdb/commit/f33f3ce1103523a67b69ee061eb26cc835bfa7e8) refactor: 重构工单消息通知，新增验证流程控制是否开启消息通知，封装 NotifierIntegration 接口支持多消息接收源
+- [`d8c7414`](https://github.com/Duke1616/ecmdb/commit/d8c74147906a6471317f0c4b689382eae55650c4) chore: 前端提供接口支持
+- [`c74b6e9`](https://github.com/Duke1616/ecmdb/commit/c74b6e9e5f37f317d61b868659d8bd5d08abceef) feat: 新增属性 link 字段, 支持跳转情况
+- [`83303d8`](https://github.com/Duke1616/ecmdb/commit/83303d89302e39e269e70fe006493b9f930fbe78) feat: 完善用户管理、部门管理模版，前端联调
+- [`98daea0`](https://github.com/Duke1616/ecmdb/commit/98daea0741364423d9b6debe855c092a55befab9) feat: 新增部分管理模块
+- [`5df4ebf`](https://github.com/Duke1616/ecmdb/commit/5df4ebf225d80e9562ae93f0f5609531a287cff5) refactor: 改写 notify 消息通知，使用 notify.NotifierWrap 数组
+- [`4b4b810`](https://github.com/Duke1616/ecmdb/commit/4b4b81017b0384b1b81574d1126dcaebff955dd5) feat: 添加CMDB相关，资产、属性修改接口
+- [`5b48e4b`](https://github.com/Duke1616/ecmdb/commit/5b48e4b582f9c8d2e09f31ae0fe7f75f4f6b4d85) fix: 升级 golang 版本，dockerfile 打包镜像
+- [`4df159c`](https://github.com/Duke1616/ecmdb/commit/4df159cf3c010a2c0e031bf0ea044ff73fe66720) fix: 参数传递错误
+- [`cd0f1b5`](https://github.com/Duke1616/ecmdb/commit/cd0f1b55ef7f573fb9eb151d66c65fc04d9bdfcc) fix: 修复 wire 依赖注入
+- [`29d485f`](https://github.com/Duke1616/ecmdb/commit/29d485f49cf20b5f17ab7df8fdcee49cee084d0a) feat: 当在飞书点击审批后，撤回消息, 防止显示过乱
+- [`7018251`](https://github.com/Duke1616/ecmdb/commit/7018251c00b26e777410f1b6e855c7100c5f68ab) feat: 接入飞书回调，审批通过、拒绝
+- [`fd58b79`](https://github.com/Duke1616/ecmdb/commit/fd58b790c07f67891c72d90125479a7cf33ac616) feat: 接入 enotify 消息通知
+- [`2d3c5ae`](https://github.com/Duke1616/ecmdb/commit/2d3c5ae1933a383c53f3643282afcc74a1ec1d85) chore: 服务启动美化
+- [`5ee4241`](https://github.com/Duke1616/ecmdb/commit/5ee424134223fe55eead2ef38cb7ab2f8bdbd52c) fix: getVersion 逻辑返回错误，修正
+- [`11f168c`](https://github.com/Duke1616/ecmdb/commit/11f168ca476f31721e2c61f9198341df02782cb9) fix: Dockerfile 打包镜像传递版本信息
+- [`d137736`](https://github.com/Duke1616/ecmdb/commit/d1377361bf9de9695c40933080cc0ad7b7c31714) fix: 版本号 compare 比较
+
 ## [v1.5.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.5.0) - 2024-08-26
 
 - [`148048b`](https://github.com/Duke1616/ecmdb/commit/148048bb6d39c3f22307030b8583257b9d53bfe6) fix: 修复第一次查询版本为空的情况

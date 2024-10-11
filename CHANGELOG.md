@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.6.2](https://github.com/Duke1616/ecmdb/releases/tag/v1.6.2) - 2024-10-11
+
+- [`b009298`](https://github.com/Duke1616/ecmdb/commit/b0092980d2b82ed8b2732c0f41854e8a49598b2d) fix: 替换新的菜单、权限部署SQL文件
+
 ## [v1.6.1](https://github.com/Duke1616/ecmdb/releases/tag/v1.6.1) - 2024-10-11
 
 - [`8b4591a`](https://github.com/Duke1616/ecmdb/commit/8b4591a3dd0e5c283a3a0d9c7883c1c86176b273) fix: 调整任务运行顺序，修复 err.Error nil 的情况

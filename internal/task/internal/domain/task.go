@@ -31,6 +31,7 @@ type Task struct {
 	TriggerPosition string
 	CurrentNodeId   string
 	OrderId         int64
+	CodebookName    string
 	CodebookUid     string
 	WorkerName      string
 	WorkflowId      int64

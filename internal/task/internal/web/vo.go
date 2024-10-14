@@ -33,16 +33,17 @@ type ListTaskReq struct {
 }
 
 type Task struct {
-	Id          int64  `json:"id"`
-	OrderId     int64  `json:"order_id"`
-	WorkerName  string `json:"worker_name"`
-	CodebookUid string `json:"codebook_uid"`
-	Status      Status `json:"status"`
-	Code        string `json:"code"`
-	Language    string `json:"language"`
-	Args        string `json:"args"`
-	Variables   string `json:"variables"`
-	Result      string `json:"result"`
+	Id           int64  `json:"id"`
+	OrderId      int64  `json:"order_id"`
+	WorkerName   string `json:"worker_name"`
+	CodebookUid  string `json:"codebook_uid"`
+	CodebookName string `json:"codebook_name"`
+	Status       Status `json:"status"`
+	Code         string `json:"code"`
+	Language     string `json:"language"`
+	Args         string `json:"args"`
+	Variables    string `json:"variables"`
+	Result       string `json:"result"`
 }
 
 type RetryReq struct {

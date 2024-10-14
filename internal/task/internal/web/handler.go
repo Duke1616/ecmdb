@@ -84,16 +84,17 @@ func (h *Handler) Retry(ctx *gin.Context, req RetryReq) (ginx.Result, error) {
 func (h *Handler) toTaskVo(req domain.Task) Task {
 	args, _ := json.Marshal(req.Args)
 	return Task{
-		Id:          req.Id,
-		OrderId:     req.OrderId,
-		Language:    req.Language,
-		Code:        req.Code,
-		WorkerName:  req.WorkerName,
-		CodebookUid: req.CodebookUid,
-		Status:      Status(req.Status),
-		Result:      req.Result,
-		Args:        string(args),
-		Variables:   desensitization(req.Variables),
+		Id:           req.Id,
+		OrderId:      req.OrderId,
+		Language:     req.Language,
+		Code:         req.Code,
+		WorkerName:   req.WorkerName,
+		CodebookUid:  req.CodebookUid,
+		CodebookName: req.CodebookName,
+		Status:       Status(req.Status),
+		Result:       req.Result,
+		Args:         string(args),
+		Variables:    desensitization(req.Variables),
 	}
 }
 

@@ -373,6 +373,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		WorkerName:    workerResp.Name,
 		WorkflowId:    flow.Id,
 		CodebookUid:   codebookResp.Identifier,
+		CodebookName:  codebookResp.Name,
 
 		// 必传字段
 		OrderId:  orderResp.Id,

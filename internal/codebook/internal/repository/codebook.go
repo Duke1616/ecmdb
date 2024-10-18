@@ -17,6 +17,7 @@ type CodebookRepository interface {
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 	FindBySecret(ctx context.Context, identifier string, secret string) (domain.Codebook, error)
 	FindByUid(ctx context.Context, identifier string) (domain.Codebook, error)
+	FindByUids(ctx context.Context, uids []string) ([]domain.Codebook, error)
 }
 
 func NewCodebookRepository(dao dao.CodebookDAO) CodebookRepository {
@@ -27,6 +28,13 @@ func NewCodebookRepository(dao dao.CodebookDAO) CodebookRepository {
 
 type codebookRepository struct {
 	dao dao.CodebookDAO
+}
+
+func (repo *codebookRepository) FindByUids(ctx context.Context, uids []string) ([]domain.Codebook, error) {
+	codes, err := repo.dao.FindByUids(ctx, uids)
+	return slice.Map(codes, func(idx int, src dao.Codebook) domain.Codebook {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *codebookRepository) FindByUid(ctx context.Context, identifier string) (domain.Codebook, error) {

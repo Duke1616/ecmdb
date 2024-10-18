@@ -125,13 +125,26 @@ func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
 		return ginx.Result{}, err
 	}
 
+	codeUids := slice.Map(tags, func(idx int, src domain.RunnerTags) string {
+		return src.CodebookUid
+	})
+	codes, err := h.codebookSvc.FindByUids(ctx, codeUids)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+	codeMaps := slice.ToMapV(codes, func(element codebook.Codebook) (string, string) {
+		return element.Identifier, element.Name
+	})
+
 	return ginx.Result{
 		Msg: "查询 runner tags 列表成功",
 		Data: RetrieveRunnerTags{
 			RunnerTags: slice.Map(tags, func(idx int, src domain.RunnerTags) RunnerTags {
+				codeName, _ := codeMaps[src.CodebookUid]
 				return RunnerTags{
-					CodebookUid: src.CodebookUid,
-					Tags:        src.Tags,
+					CodebookUid:  src.CodebookUid,
+					CodebookName: codeName,
+					Tags:         src.Tags,
 				}
 			}),
 		},
@@ -148,7 +161,6 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 		Variables:      h.toVariablesDomain(req.Variables),
 		Action:         domain.Action(REGISTER),
 	}
-
 }
 
 func (h *Handler) toUpdateDomain(ctx context.Context, req UpdateRunnerReq) (domain.Runner, error) {

@@ -26,6 +26,7 @@ type CodebookDAO interface {
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 	FindBySecret(ctx context.Context, identifier string, secret string) (Codebook, error)
 	FindByUid(ctx context.Context, identifier string) (Codebook, error)
+	FindByUids(ctx context.Context, uids []string) ([]Codebook, error)
 }
 
 func NewCodebookDAO(db *mongox.Mongo) CodebookDAO {
@@ -36,6 +37,21 @@ func NewCodebookDAO(db *mongox.Mongo) CodebookDAO {
 
 type codebookDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *codebookDAO) FindByUids(ctx context.Context, uids []string) ([]Codebook, error) {
+	col := dao.db.Collection(CodebookCollection)
+	filter := bson.M{"identifier": bson.M{"$in": uids}}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []Codebook
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *codebookDAO) FindByUid(ctx context.Context, identifier string) (Codebook, error) {

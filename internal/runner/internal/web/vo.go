@@ -69,8 +69,9 @@ type RetrieveWorkers struct {
 }
 
 type RunnerTags struct {
-	CodebookUid string   `json:"codebook_uid"`
-	Tags        []string `json:"tags"`
+	CodebookName string   `json:"codebook_name"`
+	CodebookUid  string   `json:"codebook_uid"`
+	Tags         []string `json:"tags"`
 }
 
 type RetrieveRunnerTags struct {

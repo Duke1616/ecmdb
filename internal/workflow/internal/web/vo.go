@@ -32,6 +32,7 @@ type DeployReq struct {
 type UpdateReq struct {
 	Id           int64     `json:"id"`
 	Name         string    `json:"name"`
+	Desc         string    `json:"desc"`
 	Owner        string    `json:"owner"`
 	IsNotify     bool      `json:"is_notify"`
 	NotifyMethod uint8     `json:"notify_method"`

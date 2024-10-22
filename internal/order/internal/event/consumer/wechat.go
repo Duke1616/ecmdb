@@ -82,6 +82,21 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 		wUser.Username = evt.Applicant.UserID
 	}
 
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			// 如果用户不存在，使用申请人的UserID作为用户名
+			c.logger.Info("未找到用户，使用申请人的UserID作为用户名",
+				elog.String("user", evt.Applicant.UserID))
+			wUser = user.User{
+				Username: evt.Applicant.UserID,
+			}
+		} else {
+			// 如果是其他错误，记录错误并返回
+			c.logger.Error("创建工单，查询用户错误", elog.FieldErr(err))
+			return err
+		}
+	}
+
 	// 创建工单
 	err = c.svc.CreateOrder(ctx, domain.Order{
 		CreateBy:     wUser.Username,

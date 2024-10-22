@@ -144,6 +144,7 @@ func (h *Handler) toUpdateDomain(req UpdateReq) domain.Workflow {
 	return domain.Workflow{
 		Id:           req.Id,
 		Name:         req.Name,
+		Desc:         req.Desc,
 		Owner:        req.Owner,
 		IsNotify:     req.IsNotify,
 		NotifyMethod: domain.NotifyMethod(req.NotifyMethod),

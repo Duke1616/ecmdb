@@ -77,11 +77,6 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 
 	// 查询用户信息
 	wUser, err := c.userSvc.FindByWechatUser(ctx, evt.Applicant.UserID)
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		c.logger.Error("创建工单，查询用户错误", elog.FieldErr(err))
-		wUser.Username = evt.Applicant.UserID
-	}
-
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			// 如果用户不存在，使用申请人的UserID作为用户名

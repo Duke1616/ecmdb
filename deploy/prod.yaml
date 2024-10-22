@@ -29,6 +29,7 @@ casbin:
 
 mongodb:
   dsn: mongodb://ecmdb-mongo:27017/cmdb
+  db: cmdb
   username: cmdb
   password: 123456
 

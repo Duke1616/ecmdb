@@ -52,6 +52,7 @@ type UpdateTemplateReq struct {
 	Icon       string `json:"icon"`
 	WorkflowId int64  `json:"workflow_id"`
 	Name       string `json:"name"`
+	Desc       string `json:"desc"`
 	Rules      string `json:"rules"`
 	Options    string `json:"options"`
 }

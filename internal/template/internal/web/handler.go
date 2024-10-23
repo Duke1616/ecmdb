@@ -151,13 +151,16 @@ func (h *Handler) Pipeline(ctx *gin.Context) (ginx.Result, error) {
 
 func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 	var rulesData []map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
-		return domain.Template{}, err
+	if req.Rules != "" {
+		if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
+			return domain.Template{}, err
+		}
 	}
-
 	var optionsData map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
-		return domain.Template{}, err
+	if req.Options != "" {
+		if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
+			return domain.Template{}, err
+		}
 	}
 
 	return domain.Template{
@@ -188,18 +191,22 @@ func (h *Handler) toTemplateVo(req domain.Template) Template {
 
 func (h *Handler) toUpdateDomain(req UpdateTemplateReq) (domain.Template, error) {
 	var rulesData []map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
-		return domain.Template{}, err
+	if req.Rules != "" {
+		if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
+			return domain.Template{}, err
+		}
 	}
-
 	var optionsData map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
-		return domain.Template{}, err
+	if req.Options != "" {
+		if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
+			return domain.Template{}, err
+		}
 	}
 
 	return domain.Template{
 		Id:         req.Id,
 		Name:       req.Name,
+		Desc:       req.Desc,
 		Icon:       req.Icon,
 		GroupId:    req.GroupId,
 		WorkflowId: req.WorkflowId,

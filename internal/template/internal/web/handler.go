@@ -72,8 +72,8 @@ func (h *Handler) ListTemplate(ctx *gin.Context, req ListTemplateReq) (ginx.Resu
 		Msg: "查询工单模版列表成功",
 		Data: RetrieveTemplates{
 			Total: total,
-			Templates: slice.Map(rts, func(idx int, src domain.Template) Template {
-				return h.toTemplateVo(src)
+			Templates: slice.Map(rts, func(idx int, src domain.Template) TemplateJson {
+				return h.toTemplateJsonVo(src)
 			}),
 		},
 	}, nil
@@ -175,8 +175,39 @@ func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 	}, nil
 }
 
+//func (h *Handler) toTemplateVo(req domain.Template) Template {
+//	return Template{
+//		Id:         req.Id,
+//		Name:       req.Name,
+//		WorkflowId: req.WorkflowId,
+//		GroupId:    req.GroupId,
+//		Icon:       req.Icon,
+//		Rules:      req.Rules,
+//		Options:    req.Options,
+//		CreateType: CreateType(req.CreateType),
+//		Desc:       req.Desc,
+//	}
+//}
+
 func (h *Handler) toTemplateVo(req domain.Template) Template {
+	rules, _ := json.Marshal(req.Rules)
+
+	options, _ := json.Marshal(req.Options)
 	return Template{
+		Id:         req.Id,
+		Name:       req.Name,
+		WorkflowId: req.WorkflowId,
+		GroupId:    req.GroupId,
+		Icon:       req.Icon,
+		Rules:      string(rules),
+		Options:    string(options),
+		CreateType: CreateType(req.CreateType),
+		Desc:       req.Desc,
+	}
+}
+
+func (h *Handler) toTemplateJsonVo(req domain.Template) TemplateJson {
+	return TemplateJson{
 		Id:         req.Id,
 		Name:       req.Name,
 		WorkflowId: req.WorkflowId,

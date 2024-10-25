@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
@@ -12,6 +13,9 @@ import (
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
+	"log"
+	"net/http"
 )
 
 type Handler struct {
@@ -37,6 +41,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/register", ginx.WrapBody[RegisterUserReq](h.RegisterUser))
+	g.GET("/namespace", ginx.Wrap(h.Namespace))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -67,6 +72,69 @@ func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result
 	return ginx.Result{
 		Data: h.ToUserVo(user),
 		Msg:  "登录用户成功",
+	}, nil
+}
+
+func (h *Handler) Namespace(ctx *gin.Context) (ginx.Result, error) {
+	// 第一个请求的URL和Payload
+	url := "https://kubepi.ebondhm.com/kubepi/api/v1/sessions"
+	payload := `{"username":"admin","password":"Ebond@kubepi123"}`
+
+	// 创建请求
+	req, err := http.NewRequest("POST", url, bytes.NewBufferString(payload))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 获取响应的cookie
+	cookies := resp.Cookies()
+
+	// 第二个请求的URL
+	getURL := "https://kubepi.ebondhm.com/kubepi/api/v1/clusters/sjk-cluster/members/zhangqj"
+
+	// 发起GET请求，并添加cookie
+	getReq, err := http.NewRequest("GET", getURL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, cookie := range cookies {
+		getReq.AddCookie(cookie)
+	}
+
+	getResp, err := client.Do(getReq)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer getResp.Body.Close()
+
+	// 读取第二个请求的响应内容
+	getBody, err := ioutil.ReadAll(getResp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 打印第二个请求的响应内容
+	fmt.Println("响应内容:", string(getBody))
+
+	return ginx.Result{
+		Data: string(body),
 	}, nil
 }
 

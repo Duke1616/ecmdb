@@ -30,6 +30,20 @@ type DeleteTemplateReq struct {
 type CreateType uint8
 
 type Template struct {
+	Id         int64      `json:"id"`
+	Name       string     `json:"name"`
+	WorkflowId int64      `json:"workflow_id"`
+	Icon       string     `json:"icon"`
+	GroupId    int64      `json:"group_id"`
+	CreateType CreateType `json:"create_type"`
+	//Rules      []map[string]interface{} `json:"rules"`
+	//Options    map[string]interface{}   `json:"options"`
+	Rules   string `json:"rules"`
+	Options string `json:"options"`
+	Desc    string `json:"desc"`
+}
+
+type TemplateJson struct {
 	Id         int64                    `json:"id"`
 	Name       string                   `json:"name"`
 	WorkflowId int64                    `json:"workflow_id"`
@@ -42,8 +56,8 @@ type Template struct {
 }
 
 type RetrieveTemplates struct {
-	Total     int64      `json:"total"`
-	Templates []Template `json:"templates"`
+	Total     int64          `json:"total"`
+	Templates []TemplateJson `json:"templates"`
 }
 
 type UpdateTemplateReq struct {

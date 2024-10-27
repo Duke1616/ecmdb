@@ -1,26 +1,16 @@
-package easyflow
+package method
 
-import (
-	"github.com/Bunny3th/easy-workflow/workflow/model"
-	"github.com/Duke1616/ecmdb/internal/order"
-	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/enotify/notify"
-	lark "github.com/larksuite/oapi-sdk-go/v3"
-)
-
-type NotifierIntegration interface {
-	builder(rules []Rule, order order.Order, startUser string, users []user.User, tasks []model.Task) []notify.NotifierWrap
-}
+import lark "github.com/larksuite/oapi-sdk-go/v3"
 
 type NotifyIntegration struct {
-	notifier NotifierIntegration
-	name     string
+	Notifier NotifierIntegration
+	Name     string
 }
 
 func NewNotifyIntegration(n NotifierIntegration, name string) NotifyIntegration {
 	return NotifyIntegration{
-		notifier: n,
-		name:     name,
+		Notifier: n,
+		Name:     name,
 	}
 }
 

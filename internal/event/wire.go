@@ -6,6 +6,9 @@ import (
 	easyEngine "github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/node"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -26,6 +29,7 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 	wire.Build(
 		producer.NewOrderStatusModifyEventProducer,
 		InitNotifyIntegration,
+		InitNotification,
 		InitWorkflowEngineOnce,
 		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.FieldsOf(new(*task.Module), "Svc"),
@@ -40,8 +44,8 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 
 var engineOnce = sync.Once{}
 
-func InitNotifyIntegration(larkC *lark.Client) []easyflow.NotifyIntegration {
-	integrations, err := easyflow.BuildReceiverIntegrations(larkC)
+func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
+	integrations, err := method.BuildReceiverIntegrations(larkC)
 	if err != nil {
 		// TODO 记录日志
 		return nil
@@ -50,17 +54,23 @@ func InitNotifyIntegration(larkC *lark.Client) []easyflow.NotifyIntegration {
 	return integrations
 }
 
-func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
-	taskSvc task.Service, templateSvc template.Service, orderSvc order.Service, userSvc user.Service,
-	workflowSvc workflow.Service, integration []easyflow.NotifyIntegration) *easyflow.ProcessEvent {
-	// 消息通知
-	notify, err := easyflow.NewNotify(engineSvc, templateSvc, orderSvc, userSvc, workflowSvc, integration)
+func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
+	userSvc user.Service, workflowSvc workflow.Service,
+	integration []method.NotifyIntegration) map[string]notification.Notification {
+
+	var ns map[string]notification.Notification
+	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, workflowSvc, integration)
 	if err != nil {
 		panic(err)
 	}
+	ns["user"] = userNotify
+	return ns
+}
 
+func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
+	taskSvc task.Service, orderSvc order.Service, ns map[string]notification.Notification) *easyflow.ProcessEvent {
 	// 注册event
-	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, notify, orderSvc)
+	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, ns, orderSvc)
 	if err != nil {
 		panic(err)
 	}

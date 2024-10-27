@@ -1,12 +1,11 @@
-package easyflow
+package node
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -15,16 +14,11 @@ import (
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
-	"sync"
 	"time"
 )
 
-type NotificationService interface {
-	Send(ctx context.Context, instanceId int, userIDs []string) (bool, error)
-}
-
-type Notify struct {
-	integrations []NotifyIntegration
+type UserNotification struct {
+	integrations []method.NotifyIntegration
 	engineSvc    engineSvc.Service
 	userSvc      user.Service
 	templateSvc  templateSvc.Service
@@ -37,10 +31,10 @@ type Notify struct {
 	logger          *elog.Component
 }
 
-func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, workflowSvc workflow.Service, integrations []NotifyIntegration) (*Notify, error) {
+func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
+	userSvc user.Service, workflowSvc workflow.Service, integrations []method.NotifyIntegration) (*UserNotification, error) {
 
-	return &Notify{
+	return &UserNotification{
 		engineSvc:       engineSvc,
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
@@ -54,9 +48,9 @@ func NewNotify(engineSvc engineSvc.Service, templateSvc templateSvc.Service, ord
 	}, nil
 }
 
-func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bool, error) {
+func (n *UserNotification) Send(ctx context.Context, instanceId int, userIDs []string) (bool, error) {
 	// 查看是否需要发送消息， method 消息通知渠道
-	o, method, isNotify, er := n.isNotify(ctx, instanceId)
+	nOrder, notifyMethod, isNotify, er := n.IsNotification(ctx, instanceId)
 	if er != nil {
 		n.logger.Error("有错误跳过消息通知",
 			elog.Any("error", er),
@@ -74,7 +68,7 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 		return false, nil
 	}
 
-	rules, er := n.getRules(ctx, o)
+	rules, er := n.getRules(ctx, nOrder)
 	if er != nil {
 		return false, er
 	}
@@ -128,14 +122,15 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 		// 生成消息数据
 		var messages []notify.NotifierWrap
 		for _, integration := range n.integrations {
-			if integration.name == workflow.NotifyMethodToString(method) {
-				messages = integration.notifier.builder(rules, o, startUser.DisplayName, users, tasks)
+			if integration.Name == workflow.NotifyMethodToString(notifyMethod) {
+				messages = integration.Notifier.Builder(rules, nOrder, startUser.DisplayName, users, tasks)
 				break
 			}
 		}
 
 		// 异步发送消息
-		if ok, err := n.send(ctx, messages); err != nil || !ok {
+		var ok bool
+		if ok, err = send(ctx, messages); err != nil || !ok {
 			n.logger.Warn("发送消息失败",
 				elog.Any("error", err),
 				elog.Any("user_ids", userIDs),
@@ -146,66 +141,8 @@ func (n *Notify) Send(ctx context.Context, instanceId int, userIDs []string) (bo
 	return true, nil
 }
 
-// getUsers 获取需要通知的用户信息
-func (n *Notify) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
-	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
-		return src.UserID
-	})
-
-	users, err := n.userSvc.FindByUsernames(ctx, userIds)
-	if err != nil {
-		return nil, err
-	}
-
-	return users, err
-}
-
-// send 发送消息通知
-func (n *Notify) send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bool, error) {
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	var firstError error
-	success := true
-
-	// 使用 goroutines 发送消息
-	for _, msg := range notifyWrap {
-		wg.Add(1)
-		nw := msg
-		go func(m notify.NotifierWrap) {
-			defer wg.Done()
-
-			ok, err := nw.Send(ctx)
-			if err != nil {
-				mu.Lock() // 锁定访问共享资源
-				if firstError == nil {
-					firstError = err // 记录第一个出现的错误
-				}
-				success = false
-				mu.Unlock()
-			}
-
-			if !ok {
-				mu.Lock()
-				if firstError == nil {
-					firstError = fmt.Errorf("消息发送失败")
-				}
-				success = false
-				mu.Unlock()
-			}
-		}(msg)
-	}
-
-	// 等待所有 goroutine 完成
-	wg.Wait()
-
-	if firstError != nil {
-		return false, firstError
-	}
-	return success, nil
-}
-
-// isNotify 判断是否开启消息通知
-func (n *Notify) isNotify(ctx context.Context, InstanceId int) (order.Order, workflow.NotifyMethod, bool, error) {
+func (n *UserNotification) IsNotification(ctx context.Context, InstanceId int) (order.Order,
+	workflow.NotifyMethod, bool, error) {
 	// 获取工单详情信息
 	o, err := n.orderSvc.DetailByProcessInstId(ctx, InstanceId)
 	if err != nil {
@@ -225,29 +162,32 @@ func (n *Notify) isNotify(ctx context.Context, InstanceId int) (order.Order, wor
 	return o, wf.NotifyMethod, true, nil
 }
 
+// getUsers 获取需要通知的用户信息
+func (n *UserNotification) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
+	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
+		return src.UserID
+	})
+
+	users, err := n.userSvc.FindByUsernames(ctx, userIds)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, err
+}
+
 // isNotify 获取模版的字段信息
-func (n *Notify) getRules(ctx context.Context, order order.Order) ([]Rule, error) {
+func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]method.Rule, error) {
 	// 获取模版详情信息
 	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
 	if err != nil {
 		return nil, err
 	}
 
-	rules, err := parseRules(t.Rules)
+	rules, err := method.ParseRules(t.Rules)
 	if err != nil {
 		return nil, err
 	}
 
 	return rules, nil
-}
-
-// parseRules 解析模版字段
-func parseRules(ruleData interface{}) ([]Rule, error) {
-	var rules []Rule
-	rulesJson, err := json.Marshal(ruleData)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(rulesJson, &rules)
-	return rules, err
 }

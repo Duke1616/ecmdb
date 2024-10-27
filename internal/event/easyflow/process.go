@@ -5,6 +5,7 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -24,24 +25,24 @@ const (
 )
 
 type ProcessEvent struct {
-	notify    NotificationService
-	producer  producer.OrderStatusModifyEventProducer
-	taskSvc   task.Service
-	orderSvc  order.Service
-	engineSvc engineSvc.Service
-	logger    *elog.Component
+	notification map[string]notification.Notification
+	producer     producer.OrderStatusModifyEventProducer
+	taskSvc      task.Service
+	orderSvc     order.Service
+	engineSvc    engineSvc.Service
+	logger       *elog.Component
 }
 
 func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc engineSvc.Service,
-	taskSvc task.Service, notify NotificationService, orderSvc order.Service) (*ProcessEvent, error) {
+	taskSvc task.Service, notification map[string]notification.Notification, orderSvc order.Service) (*ProcessEvent, error) {
 
 	return &ProcessEvent{
-		logger:    elog.DefaultLogger,
-		engineSvc: engineSvc,
-		taskSvc:   taskSvc,
-		producer:  producer,
-		notify:    notify,
-		orderSvc:  orderSvc,
+		logger:       elog.DefaultLogger,
+		engineSvc:    engineSvc,
+		taskSvc:      taskSvc,
+		producer:     producer,
+		notification: notification,
+		orderSvc:     orderSvc,
 	}, nil
 }
 
@@ -132,6 +133,7 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 
 // EventNotify 通知
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	// 如果是结束节点，暂时不做任何处理
 	if CurrentNode.NodeType == model.EndNode {
 		// 关闭工单
 		err := e.orderSvc.UpdateStatusByInstanceId(context.Background(), ProcessInstanceID, order.EndProcess.ToUint8())
@@ -140,7 +142,20 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		}
 	}
 
-	ok, err := e.notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
+	// 判断消息的来源，处理不同的消息通知模式
+	method := "user"
+	if len(CurrentNode.UserIDs) == 1 && CurrentNode.UserIDs[0] == "automation" {
+		method = "automation"
+	}
+	notify, ok := e.notification[method]
+	if !ok {
+		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
+			elog.String("不存在Notify", "user"))
+		return nil
+	}
+
+	// 发送消息通知
+	ok, err := notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
 	if err != nil {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil

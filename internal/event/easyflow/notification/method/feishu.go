@@ -1,4 +1,4 @@
-package easyflow
+package method
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 )
 
 type FeishuNotify struct {
-	nc       notify.Notifier[*larkim.CreateMessageReq]
+	Nc       notify.Notifier[*larkim.CreateMessageReq]
 	tmpl     *template.Template
 	tmplName string
 }
@@ -36,12 +36,12 @@ func NewFeishuNotify(lark *lark.Client) (*FeishuNotify, error) {
 	return &FeishuNotify{
 		tmpl:     tmpl,
 		tmplName: "feishu-card-callback",
-		nc:       nc,
+		Nc:       nc,
 	}, nil
 
 }
 
-func (n *FeishuNotify) getFields(rules []Rule, o order.Order) ([]card.Field, string) {
+func (n *FeishuNotify) getFields(rules []Rule, o order.Order) []card.Field {
 	ruleMap := slice.ToMap(rules, func(element Rule) string {
 		return element.Field
 	})
@@ -79,7 +79,7 @@ func (n *FeishuNotify) getFields(rules []Rule, o order.Order) ([]card.Field, str
 	case order.WechatProvide:
 		oaData, err := wechat.Unmarshal(o.Data)
 		if err != nil {
-			return nil, ""
+			return nil
 		}
 
 		for _, contents := range oaData.ApplyData.Contents {
@@ -95,7 +95,8 @@ func (n *FeishuNotify) getFields(rules []Rule, o order.Order) ([]card.Field, str
 						Content: fmt.Sprintf(`**%s:**\n%v`, key, contents.Value.Selector.Options[0].Value[0].Text),
 					})
 				case "multi":
-					value := slice.Map(contents.Value.Selector.Options, func(idx int, src workwx.OAContentSelectorOption) string {
+					value := slice.Map(contents.Value.Selector.Options, func(idx int,
+						src workwx.OAContentSelectorOption) string {
 						return src.Value[0].Text
 					})
 
@@ -127,11 +128,13 @@ func (n *FeishuNotify) getFields(rules []Rule, o order.Order) ([]card.Field, str
 		}
 	}
 
-	return fields, o.TemplateName
+	return fields
 }
 
-func (n *FeishuNotify) generate(userId string, title string, fields []card.Field, cardVal []card.Value) notify.NotifierWrap {
-	return notify.WrapNotifierDynamic(n.nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
+// TODO title 生成规则，不同情况下应有不同的样子，比如是发送给自己的要展示 你的XXX申请 抄送给你
+func (n *FeishuNotify) generate(userId string, title string, fields []card.Field,
+	cardVal []card.Value) notify.NotifierWrap {
+	return notify.WrapNotifierDynamic(n.Nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return feishu.NewFeishuMessage(
 			"user_id", userId,
 			feishu.NewFeishuCustomCard(n.tmpl, n.tmplName,
@@ -144,9 +147,10 @@ func (n *FeishuNotify) generate(userId string, title string, fields []card.Field
 	})
 }
 
-func (n *FeishuNotify) builder(rules []Rule, order order.Order, startUser string, users []user.User, tasks []model.Task) []notify.NotifierWrap {
+func (n *FeishuNotify) Builder(rules []Rule, order order.Order, startUser string, users []user.User,
+	tasks []model.Task) []notify.NotifierWrap {
 	// 获取自定义字段
-	fields, title := n.getFields(rules, order)
+	fields := n.getFields(rules, order)
 
 	// 解析飞书用户信息
 	userMap := n.analyzeUsers(users)
@@ -161,7 +165,7 @@ func (n *FeishuNotify) builder(rules []Rule, order order.Order, startUser string
 			},
 		}
 
-		return n.generate(uid, fmt.Sprintf("%s的%s", startUser, title), fields, cardVal)
+		return n.generate(uid, fmt.Sprintf("%s的%s", startUser, order.TemplateName), fields, cardVal)
 	})
 
 	return messages

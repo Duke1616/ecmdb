@@ -141,6 +141,7 @@ func (l *logicFlow) Automation(node Node) {
 		NodeType: 1, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
 		UserIDs:         []string{AutomationApproval},
 		NodeStartEvents: []string{"EventAutomation"},
+		NodeEndEvents:   []string{"EventNotify"},
 	}
 	l.NodeList = append(l.NodeList, n)
 }

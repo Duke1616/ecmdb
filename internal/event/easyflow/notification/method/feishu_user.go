@@ -16,13 +16,13 @@ import (
 	"github.com/xen0n/go-workwx"
 )
 
-type FeishuNotify struct {
+type FeishuUserNotify struct {
 	Nc       notify.Notifier[*larkim.CreateMessageReq]
 	tmpl     *template.Template
 	tmplName string
 }
 
-func NewFeishuNotify(lark *lark.Client) (*FeishuNotify, error) {
+func NewFeishuUserNotify(lark *lark.Client) (*FeishuUserNotify, error) {
 	tmpl, err := template.FromGlobs([]string{})
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func NewFeishuNotify(lark *lark.Client) (*FeishuNotify, error) {
 		return nil, err
 	}
 
-	return &FeishuNotify{
+	return &FeishuUserNotify{
 		tmpl:     tmpl,
 		tmplName: "feishu-card-callback",
 		Nc:       nc,
@@ -41,7 +41,7 @@ func NewFeishuNotify(lark *lark.Client) (*FeishuNotify, error) {
 
 }
 
-func (n *FeishuNotify) getFields(rules []Rule, o order.Order) []card.Field {
+func (n *FeishuUserNotify) getFields(rules []Rule, nOrder order.Order) []card.Field {
 	ruleMap := slice.ToMap(rules, func(element Rule) string {
 		return element.Field
 	})
@@ -51,9 +51,9 @@ func (n *FeishuNotify) getFields(rules []Rule, o order.Order) []card.Field {
 	var fields []card.Field
 
 	// 判断不同平台的消息来源，进行处理
-	switch o.Provide {
+	switch nOrder.Provide {
 	case order.SystemProvide:
-		for field, value := range o.Data {
+		for field, value := range nOrder.Data {
 			title := field
 			val, ok := ruleMap[field]
 			if ok {
@@ -77,7 +77,7 @@ func (n *FeishuNotify) getFields(rules []Rule, o order.Order) []card.Field {
 			num++
 		}
 	case order.WechatProvide:
-		oaData, err := wechat.Unmarshal(o.Data)
+		oaData, err := wechat.Unmarshal(nOrder.Data)
 		if err != nil {
 			return nil
 		}
@@ -132,7 +132,7 @@ func (n *FeishuNotify) getFields(rules []Rule, o order.Order) []card.Field {
 }
 
 // TODO title 生成规则，不同情况下应有不同的样子，比如是发送给自己的要展示 你的XXX申请 抄送给你
-func (n *FeishuNotify) generate(userId string, title string, fields []card.Field,
+func (n *FeishuUserNotify) generate(userId string, title string, fields []card.Field,
 	cardVal []card.Value) notify.NotifierWrap {
 	return notify.WrapNotifierDynamic(n.Nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return feishu.NewFeishuMessage(
@@ -147,16 +147,15 @@ func (n *FeishuNotify) generate(userId string, title string, fields []card.Field
 	})
 }
 
-func (n *FeishuNotify) Builder(rules []Rule, order order.Order, startUser string, users []user.User,
-	tasks []model.Task) []notify.NotifierWrap {
+func (n *FeishuUserNotify) Builder(title string, users []user.User, params NotifyParams) []notify.NotifierWrap {
 	// 获取自定义字段
-	fields := n.getFields(rules, order)
+	fields := n.getFields(params.Rules, params.Order)
 
 	// 解析飞书用户信息
 	userMap := n.analyzeUsers(users)
 
 	// 生成发送消息的结构
-	messages := slice.Map(tasks, func(idx int, src model.Task) notify.NotifierWrap {
+	messages := slice.Map(params.Tasks, func(idx int, src model.Task) notify.NotifierWrap {
 		uid, _ := userMap[src.UserID]
 		cardVal := []card.Value{
 			{
@@ -165,14 +164,14 @@ func (n *FeishuNotify) Builder(rules []Rule, order order.Order, startUser string
 			},
 		}
 
-		return n.generate(uid, fmt.Sprintf("%s的%s", startUser, order.TemplateName), fields, cardVal)
+		return n.generate(uid, title, fields, cardVal)
 	})
 
 	return messages
 }
 
 // analyzeUsers 解析用户，把 ID 转换为飞书 ID
-func (n *FeishuNotify) analyzeUsers(users []user.User) map[string]string {
+func (n *FeishuUserNotify) analyzeUsers(users []user.User) map[string]string {
 	return slice.ToMapV(users, func(element user.User) (string, string) {
 		return element.Username, element.FeishuInfo.UserId
 	})

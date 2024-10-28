@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+const (
+	// ProcessEndSend 流程结束后发送
+	ProcessEndSend = 1
+	// ProcessNowSend 当前节点通过直接发送
+	ProcessNowSend = 2
+)
+
 func send(ctx context.Context, notifyWrap []notify.NotifierWrap) (bool, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex

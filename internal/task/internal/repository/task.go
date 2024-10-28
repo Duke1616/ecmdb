@@ -21,16 +21,22 @@ type TaskRepository interface {
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 	Total(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error)
+	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error)
 	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
+	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 }
 
 type taskRepository struct {
 	dao dao.TaskDAO
 }
 
-func (repo *taskRepository) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error) {
-	ts, err := repo.dao.ListTasksByCtime(ctx, offset, limit, ctime)
+func (repo *taskRepository) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {
+	task, err := repo.dao.FindTaskResult(ctx, instanceId, nodeId)
+	return repo.toDomain(task), err
+}
+
+func (repo *taskRepository) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error) {
+	ts, err := repo.dao.ListSuccessTasksByCtime(ctx, offset, limit, ctime)
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
 	}), err
@@ -121,6 +127,7 @@ func (repo *taskRepository) toUpdateEntity(req domain.TaskResult) dao.Task {
 	return dao.Task{
 		Id:              req.Id,
 		Result:          req.Result,
+		WantResult:      req.WantResult,
 		Status:          req.Status.ToUint8(),
 		TriggerPosition: req.TriggerPosition,
 	}
@@ -172,8 +179,9 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 				Secret: src.Secret,
 			}
 		}),
-		Language: req.Language,
-		Result:   req.Result,
-		Status:   domain.Status(req.Status),
+		Language:   req.Language,
+		Result:     req.Result,
+		WantResult: req.WantResult,
+		Status:     domain.Status(req.Status),
 	}
 }

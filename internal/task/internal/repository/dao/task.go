@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,17 +23,33 @@ type TaskDAO interface {
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
 	Count(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error)
+	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error)
 	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
+	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error)
 }
 
 type taskDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *taskDAO) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error) {
+func (dao *taskDAO) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
+	filter["process_inst_id"] = instanceId
+	filter["current_node_id"] = nodeId
+
+	var result Task
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Task{}, fmt.Errorf("解码错误: %w", err)
+	}
+
+	return result, nil
+}
+
+func (dao *taskDAO) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+	filter["status"] = bson.M{"$eq": domain.SUCCESS}
 	filter["ctime"] = bson.M{"$gte": ctime}
 
 	opts := &options.FindOptions{
@@ -200,6 +217,7 @@ func (dao *taskDAO) UpdateTaskStatus(ctx context.Context, t Task) (int64, error)
 		"$set": bson.M{
 			"result":           t.Result,
 			"status":           t.Status,
+			"want_result":      t.WantResult,
 			"utime":            time.Now().UnixMilli(),
 			"trigger_position": t.TriggerPosition,
 		},
@@ -283,9 +301,10 @@ type Task struct {
 	Topic           string                 `bson:"topic"`
 	Language        string                 `bson:"language"`
 	Args            map[string]interface{} `bson:"args"`
-	Variables       []Variables            `json:"variables"`
+	Variables       []Variables            `bson:"variables"`
 	Status          uint8                  `bson:"status"`
 	Result          string                 `bson:"result"`
+	WantResult      string                 `bson:"want_result"`
 	TriggerPosition string                 `bson:"trigger_position"`
 	CurrentNodeId   string                 `bson:"current_node_id"`
 	Ctime           int64                  `bson:"ctime"`

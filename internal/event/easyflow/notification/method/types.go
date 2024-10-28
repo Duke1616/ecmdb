@@ -7,7 +7,13 @@ import (
 	"github.com/Duke1616/enotify/notify"
 )
 
+type NotifyParams struct {
+	Rules      []Rule
+	Order      order.Order
+	Tasks      []model.Task
+	WantResult map[string]interface{}
+}
+
 type NotifierIntegration interface {
-	Builder(rules []Rule, order order.Order, startUser string, users []user.User,
-		tasks []model.Task) []notify.NotifierWrap
+	Builder(title string, users []user.User, params NotifyParams) []notify.NotifierWrap
 }

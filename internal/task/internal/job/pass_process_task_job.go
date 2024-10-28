@@ -18,6 +18,7 @@ type PassProcessTaskJob struct {
 	engineSvc engine.Service
 	minutes   int64
 	seconds   int64
+	offset    int64
 	limit     int64
 }
 
@@ -28,6 +29,7 @@ func NewPassProcessTaskJob(svc service.Service, engineSvc engine.Service, minute
 		engineSvc: engineSvc,
 		minutes:   minutes,
 		seconds:   seconds,
+		offset:    0,
 		limit:     limit,
 	}
 }
@@ -41,7 +43,7 @@ func (c *PassProcessTaskJob) Run(ctx context.Context) error {
 	ctime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 	for {
 		// 获取执行任务
-		tasks, total, err := c.svc.ListTasksByCtime(ctx, 0, c.limit, ctime)
+		tasks, total, err := c.svc.ListSuccessTasksByCtime(ctx, c.offset, c.limit, ctime)
 		if err != nil {
 			return fmt.Errorf("查询执行任务失败: %w", err)
 		}

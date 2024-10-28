@@ -1,6 +1,13 @@
 package method
 
-import lark "github.com/larksuite/oapi-sdk-go/v3"
+import (
+	lark "github.com/larksuite/oapi-sdk-go/v3"
+)
+
+const (
+	FeishuUserMethod       = "feishu_user"
+	FeishuAutomationMethod = "feishu_automation"
+)
 
 type NotifyIntegration struct {
 	Notifier NotifierIntegration
@@ -27,6 +34,7 @@ func BuildReceiverIntegrations(larkC *lark.Client) ([]NotifyIntegration, error) 
 		}
 	)
 
-	add("feishu", func() (NotifierIntegration, error) { return NewFeishuNotify(larkC) })
+	add(FeishuUserMethod, func() (NotifierIntegration, error) { return NewFeishuUserNotify(larkC) })
+	add(FeishuAutomationMethod, func() (NotifierIntegration, error) { return NewFeishuAutomationNotify(larkC) })
 	return integrations, nil
 }

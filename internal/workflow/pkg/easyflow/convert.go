@@ -41,7 +41,7 @@ func (l *logicFlow) GetAutomationProperty(workflow Workflow, nodeId string) (Aut
 	property := AutomationProperty{}
 	for _, node := range nodes {
 		if node.ID == nodeId {
-			property, _ = toNodeProperty[AutomationProperty](node)
+			property, _ = ToNodeProperty[AutomationProperty](node)
 		}
 	}
 
@@ -105,7 +105,7 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 
 func (l *logicFlow) Start(node Node) {
 	NodeName := "Start"
-	property, _ := toNodeProperty[StartProperty](node)
+	property, _ := ToNodeProperty[StartProperty](node)
 	if property.Name != "" {
 		NodeName = property.Name
 	}
@@ -119,7 +119,7 @@ func (l *logicFlow) Start(node Node) {
 
 func (l *logicFlow) End(node Node) {
 	NodeName := "End"
-	property, _ := toNodeProperty[EndProperty](node)
+	property, _ := ToNodeProperty[EndProperty](node)
 	if property.Name != "" {
 		NodeName = property.Name
 	}
@@ -132,7 +132,7 @@ func (l *logicFlow) End(node Node) {
 
 func (l *logicFlow) Automation(node Node) {
 	NodeName := "自动化节点"
-	property, _ := toNodeProperty[AutomationProperty](node)
+	property, _ := ToNodeProperty[AutomationProperty](node)
 	if property.Name != "" {
 		NodeName = property.Name
 	}
@@ -196,7 +196,7 @@ func (l *logicFlow) Condition(node Node) {
 
 	// 组合 conditions 条件
 	conditions := slice.Map(edgesDst, func(idx int, src Edge) model.Condition {
-		property, _ := toEdgeProperty(src)
+		property, _ := ToEdgeProperty(src)
 		return model.Condition{
 			Expression: property.Expression,
 			NodeID:     src.TargetNodeId,
@@ -207,7 +207,7 @@ func (l *logicFlow) Condition(node Node) {
 	GwCondition := model.HybridGateway{Conditions: conditions, InevitableNodes: []string{}, WaitForAllPrevNode: 0}
 
 	// node 节点录入
-	property, _ := toNodeProperty[ConditionProperty](node)
+	property, _ := ToNodeProperty[ConditionProperty](node)
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 2, GWConfig: GwCondition,
 		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
@@ -218,7 +218,7 @@ func (l *logicFlow) Condition(node Node) {
 
 func (l *logicFlow) User(node Node) {
 	// node 节点录入
-	property, _ := toNodeProperty[UserProperty](node)
+	property, _ := ToNodeProperty[UserProperty](node)
 
 	// 判断是否为会签节点
 	IsCosigned := 0
@@ -301,8 +301,8 @@ func (l *logicFlow) GetNodeInfo(nodeId string) Node {
 	return Node{}
 }
 
-// edge连线字段解析
-func toEdgeProperty(edges Edge) (EdgeProperty, error) {
+// ToEdgeProperty edge连线字段解析
+func ToEdgeProperty(edges Edge) (EdgeProperty, error) {
 	edgesJson, err := json.Marshal(edges.Properties)
 	if err != nil {
 		return EdgeProperty{}, err
@@ -317,8 +317,8 @@ func toEdgeProperty(edges Edge) (EdgeProperty, error) {
 	return edgesProperty, nil
 }
 
-// node节点字段解析
-func toNodeProperty[T any](node Node) (T, error) {
+// ToNodeProperty node节点字段解析
+func ToNodeProperty[T any](node Node) (T, error) {
 	nodesJson, err := json.Marshal(node.Properties)
 	if err != nil {
 		return zeroValue[T](), err

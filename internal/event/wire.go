@@ -55,22 +55,28 @@ func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
 }
 
 func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
-	userSvc user.Service, workflowSvc workflow.Service,
-	integration []method.NotifyIntegration) map[string]notification.Notification {
+	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.Notification {
 
-	var ns map[string]notification.Notification
-	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, workflowSvc, integration)
+	ns := make(map[string]notification.Notification, 0)
+	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
 	if err != nil {
 		panic(err)
 	}
+	automationNotify, err := node.NewAutomationNotification(taskSvc, userSvc, integration)
+	if err != nil {
+		panic(err)
+	}
+
 	ns["user"] = userNotify
+	ns["automation"] = automationNotify
 	return ns
 }
 
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
-	taskSvc task.Service, orderSvc order.Service, ns map[string]notification.Notification) *easyflow.ProcessEvent {
+	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
+	ns map[string]notification.Notification) *easyflow.ProcessEvent {
 	// 注册event
-	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, ns, orderSvc)
+	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
 	if err != nil {
 		panic(err)
 	}

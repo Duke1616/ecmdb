@@ -39,6 +39,7 @@ type Task struct {
 	Topic           string
 	Language        string
 	Result          string
+	WantResult      string
 	Status          Status
 	Variables       []Variables
 	Args            map[string]interface{}
@@ -47,6 +48,7 @@ type Task struct {
 type TaskResult struct {
 	Id              int64  `json:"id"`
 	TriggerPosition string `json:"trigger_position"`
+	WantResult      string `json:"want_result"`
 	Result          string `json:"result"`
 	Status          Status `json:"status"`
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/gotomicro/ego/core/elog"
 	"strconv"
 	"time"
@@ -30,14 +31,17 @@ type ProcessEvent struct {
 	taskSvc      task.Service
 	orderSvc     order.Service
 	engineSvc    engineSvc.Service
+	workflowSvc  workflow.Service
 	logger       *elog.Component
 }
 
 func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc engineSvc.Service,
-	taskSvc task.Service, notification map[string]notification.Notification, orderSvc order.Service) (*ProcessEvent, error) {
+	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
+	notification map[string]notification.Notification) (*ProcessEvent, error) {
 
 	return &ProcessEvent{
 		logger:       elog.DefaultLogger,
+		workflowSvc:  workflowSvc,
 		engineSvc:    engineSvc,
 		taskSvc:      taskSvc,
 		producer:     producer,
@@ -131,38 +135,84 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 	return nil
 }
 
-// EventNotify 通知
+// EventNotify 通知 中间有 Error 通过日志记录，保证不影响主体程序运行
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
 	// 如果是结束节点，暂时不做任何处理
 	if CurrentNode.NodeType == model.EndNode {
 		// 关闭工单
-		err := e.orderSvc.UpdateStatusByInstanceId(context.Background(), ProcessInstanceID, order.EndProcess.ToUint8())
+		err := e.orderSvc.UpdateStatusByInstanceId(ctx, ProcessInstanceID, order.EndProcess.ToUint8())
 		if err != nil {
 			e.logger.Error("EventNotify 关闭工单失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		}
 	}
 
 	// 判断消息的来源，处理不同的消息通知模式
-	method := "user"
+	nodeMethod := "user"
 	if len(CurrentNode.UserIDs) == 1 && CurrentNode.UserIDs[0] == "automation" {
-		method = "automation"
+		nodeMethod = "automation"
 	}
-	notify, ok := e.notification[method]
+
+	notify, ok := e.notification[nodeMethod]
 	if !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
 			elog.String("不存在Notify", "user"))
 		return nil
 	}
 
-	// 发送消息通知
-	ok, err := notify.Send(context.Background(), ProcessInstanceID, CurrentNode.UserIDs)
+	// 获取工单详情信息
+	nOrder, err := e.orderSvc.DetailByProcessInstId(ctx, ProcessInstanceID)
 	if err != nil {
-		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		e.logger.Error("查询工单详情错误",
+			elog.FieldErr(err),
+			elog.Any("instId", ProcessInstanceID),
+			elog.Any("userIds", CurrentNode.UserIDs),
+		)
 		return nil
 	}
 
-	if !ok {
-		e.logger.Info("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+	// 判断是否需要消息提示
+	wf, err := e.workflowSvc.Find(ctx, nOrder.WorkflowId)
+	if err != nil {
+		e.logger.Error("查询流程信息错误",
+			elog.FieldErr(err),
+			elog.Any("instId", ProcessInstanceID),
+			elog.Any("userIds", CurrentNode.UserIDs),
+		)
+		return nil
+	}
+
+	// 判断是否需要通知
+	IsNotification, wantResult, err := notify.IsNotification(ctx, wf, ProcessInstanceID, CurrentNode.NodeID)
+	if err != nil {
+		e.logger.Error("判断是否通知错误",
+			elog.FieldErr(err),
+			elog.Any("instId", ProcessInstanceID),
+			elog.Any("userIds", CurrentNode.UserIDs),
+		)
+		return nil
+	}
+
+	if IsNotification != true {
+		e.logger.Warn("流程控制未开启消息通知能力",
+			elog.Any("instId", ProcessInstanceID),
+			elog.Any("userIds", CurrentNode.UserIDs),
+		)
+		return nil
+	}
+
+	// 发送消息通知
+	ok, err = notify.Send(ctx, nOrder, notification.NotifyParams{
+		InstanceId:   ProcessInstanceID,
+		UserIDs:      CurrentNode.UserIDs,
+		NodeId:       CurrentNode.NodeID,
+		WantResult:   wantResult,
+		NotifyMethod: workflow.NotifyMethodToString(wf.NotifyMethod),
+	})
+
+	if err != nil || !ok {
+		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil
 	}
 

@@ -11,7 +11,7 @@ import (
 )
 
 type ProcessEngineRepository interface {
-	ListTodoList(userId, processName string, sortByAse bool, offset, limit int) (
+	TodoList(userId, processName string, sortByAse bool, offset, limit int) (
 		[]domain.Instance, error)
 	CountTodo(ctx context.Context, userId, processName string) (int64, error)
 	CountStartUser(ctx context.Context, userId, processName string) (int64, error)
@@ -59,7 +59,7 @@ func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Con
 	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
 }
 
-func (repo *processEngineRepository) ListTodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {
+func (repo *processEngineRepository) TodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {
 	ts, err := engine.GetTaskToDoList(userId, processName, sortByAse, offset, limit)
 	return slice.Map(ts, func(idx int, src model.Task) domain.Instance {
 		return repo.toDomainByTask(src)

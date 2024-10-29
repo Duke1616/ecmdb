@@ -35,10 +35,16 @@ type Service interface {
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 	// Revoke 撤销工单
 	Revoke(ctx context.Context, instanceId int, userId string, force bool) error
+	// Upstream 获取所有上游节点
+	Upstream(ctx context.Context, taskId int) ([]model.Node, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) Upstream(ctx context.Context, taskId int) ([]model.Node, error) {
+	return engine.TaskUpstreamNodeList(taskId)
 }
 
 func (s *service) Revoke(ctx context.Context, instanceId int, userId string, force bool) error {
@@ -122,7 +128,7 @@ func (s *service) ListTodoTasks(ctx context.Context, userId, processName string,
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListTodoList(userId, processName, sortByAse, offset, limit)
+		ts, err = s.repo.TodoList(userId, processName, sortByAse, offset, limit)
 		return err
 	})
 

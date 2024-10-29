@@ -83,7 +83,7 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
 		return err
 	}
 
-	return s.sendGenerateFlowEvent(ctx, req, orderId)
+	return s.sendGenerateFlowEvent(ctx, req, orderId, req.TemplateName)
 }
 
 func (s *service) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error) {
@@ -118,7 +118,8 @@ func (s *service) ListHistoryOrder(ctx context.Context, userId string, offset, l
 	return ts, total, nil
 }
 
-func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, orderId int64) error {
+func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order,
+	orderId int64, templateName string) error {
 	if req.Data == nil {
 		req.Data = make(map[string]interface{})
 	}
@@ -132,6 +133,11 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order, o
 	variables = append(variables, event.Variables{
 		Key:   "order_id",
 		Value: strconv.FormatInt(orderId, 10),
+	})
+
+	variables = append(variables, event.Variables{
+		Key:   "template_name",
+		Value: templateName,
 	})
 
 	data, err := json.Marshal(variables)

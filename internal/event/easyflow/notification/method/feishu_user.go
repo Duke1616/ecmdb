@@ -38,7 +38,6 @@ func NewFeishuUserNotify(lark *lark.Client) (*FeishuUserNotify, error) {
 		tmplName: "feishu-card-callback",
 		Nc:       nc,
 	}, nil
-
 }
 
 func (n *FeishuUserNotify) getFields(rules []Rule, nOrder order.Order) []card.Field {

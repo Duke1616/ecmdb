@@ -40,7 +40,7 @@ func (h *Handler) Upload(ctx *gin.Context) {
 
 	// 返回上传成功的信息
 	ctx.JSON(http.StatusOK, ginx.Result{
-		Data: gin.H{"message": "文件上传成功", "url": fmt.Sprintf("%s?filename=%s", url, file.Filename)},
+		Data: gin.H{"message": "文件上传成功", "url": fmt.Sprintf("%s/%s", url, file.Filename)},
 		Msg:  "文件上传成功",
 	})
 }

@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -28,7 +27,6 @@ func (h *Handler) Upload(ctx *gin.Context) {
 		return
 	}
 
-	url := ctx.PostForm("url")
 	// 定义保存文件的路径
 	savePath := filepath.Join("uploads", file.Filename)
 
@@ -40,7 +38,7 @@ func (h *Handler) Upload(ctx *gin.Context) {
 
 	// 返回上传成功的信息
 	ctx.JSON(http.StatusOK, ginx.Result{
-		Data: gin.H{"message": "文件上传成功", "url": fmt.Sprintf("%s/%s", url, file.Filename)},
+		Data: gin.H{"message": "文件上传成功", "filename": file.Filename},
 		Msg:  "文件上传成功",
 	})
 }

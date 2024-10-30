@@ -61,25 +61,28 @@ func (c *ProcessEventConsumer) Consume(ctx context.Context) error {
 	}
 
 	// 启动流程引擎，配置工单与流程引擎关系ID
-	engineId, err := engine.InstanceStart(flow.ProcessId, "业务申请", flow.Name, string(c.Variables(evt)))
+	_, err = engine.InstanceStart(flow.ProcessId, "业务申请", flow.Name, evt.Variables)
 	if err != nil {
 		return fmt.Errorf("启动流程引擎: %w", err)
 	}
 
+	return nil
 	// 需要特别注意：如果流程是从开始直接流向自动化节点，引擎会执行到相应自动化节点Event事件，但是Order表没有记录数据，是无法正常运行
 	// 我确实没有想到更好的办法解决，暂时的方案是，引擎事件仅创建 Tasks 任务记录数据库，启动任务由定时任务扫表执行完成
-	return c.svc.RegisterProcessInstanceId(ctx, evt.Id, engineId)
+	//return c.svc.RegisterProcessInstanceId(ctx, evt.Id, instId)
 }
 
 func (c *ProcessEventConsumer) Stop(_ context.Context) error {
 	return c.consumer.Close()
 }
 
+// Variables 废弃
 func (c *ProcessEventConsumer) Variables(evt event.OrderEvent) []byte {
 	var vars []event.Variables
 	switch evt.Provide {
 	case event.WECHAT:
 		val, ok := evt.Data["starter"]
+		// TODO 目前简单处理一下规则, 目前未想到更好的方案
 		if ok {
 			vars = append(vars, event.Variables{
 				Key:   "starter",

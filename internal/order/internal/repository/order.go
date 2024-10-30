@@ -13,8 +13,8 @@ type OrderRepository interface {
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
-	ListOrder(ctx context.Context, userId string, status uint8, offset, limit int64) ([]domain.Order, error)
-	CountOrder(ctx context.Context, userId string, status uint8) (int64, error)
+	ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]domain.Order, error)
+	CountOrder(ctx context.Context, userId string, status []int) (int64, error)
 }
 
 func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
@@ -51,14 +51,14 @@ func (repo *orderRepository) ListOrderByProcessInstanceIds(ctx context.Context, 
 	}), err
 }
 
-func (repo *orderRepository) ListOrder(ctx context.Context, userId string, status uint8, offset, limit int64) ([]domain.Order, error) {
+func (repo *orderRepository) ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]domain.Order, error) {
 	orders, err := repo.dao.ListOrder(ctx, userId, status, offset, limit)
 	return slice.Map(orders, func(idx int, src dao.Order) domain.Order {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *orderRepository) CountOrder(ctx context.Context, userId string, status uint8) (int64, error) {
+func (repo *orderRepository) CountOrder(ctx context.Context, userId string, status []int) (int64, error) {
 	return repo.dao.CountOrder(ctx, userId, status)
 }
 
@@ -86,5 +86,6 @@ func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 		CreateBy:     req.CreateBy,
 		Data:         req.Data,
 		Ctime:        req.Ctime,
+		Wtime:        req.Wtime,
 	}
 }

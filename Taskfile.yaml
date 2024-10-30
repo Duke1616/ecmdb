@@ -4,10 +4,14 @@ tasks:
     desc: 命令提示
     cmds:
       - task --list-all
+  init:
+    desc: 初始化系统
+    cmds:
+      -  EGO_DEBUG=true go run main.go init
   run:
     desc: 启动服务
     cmds:
-      -  EGO_DEBUG=true go run main.go
+      -  EGO_DEBUG=true go run main.go start
   gen:
     desc: 代码生成
     cmds:

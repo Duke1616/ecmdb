@@ -20,6 +20,8 @@ type Service interface {
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
 	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
 	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
+
+	// 创建流程，生成传递数据的规则
 }
 
 type service struct {

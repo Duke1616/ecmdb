@@ -18,7 +18,7 @@ func NewHandler(svc service.Service) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/codebook")
 	g.POST("/create", ginx.WrapBody[CreateCodebookReq](h.CreateCodebook))
 	g.POST("/list", ginx.WrapBody[ListCodebookReq](h.ListCodebook))

@@ -12,10 +12,12 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 )
 
 var ProviderSet = wire.NewSet(
@@ -26,14 +28,16 @@ var ProviderSet = wire.NewSet(
 )
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module,
-	templateModule *template.Module) (*Module, error) {
+	templateModule *template.Module, userModule *user.Module, lark *lark.Client) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		event.NewCreateProcessEventProducer,
 		initWechatConsumer,
 		InitProcessConsumer,
 		InitModifyStatusConsumer,
+		InitFeishuCallbackConsumer,
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
+		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.FieldsOf(new(*template.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
@@ -41,8 +45,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	return new(Module), nil
 }
 
-func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
-	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)
 	if err != nil {
 		panic(err)
 	}
@@ -63,6 +67,16 @@ func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Serv
 
 func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatusModifyEventConsumer {
 	c, err := consumer.NewOrderStatusModifyEventConsumer(q, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service, lark *lark.Client) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc, lark)
 	if err != nil {
 		return nil
 	}

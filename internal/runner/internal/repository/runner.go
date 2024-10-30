@@ -11,6 +11,7 @@ type RunnerRepository interface {
 	RegisterRunner(ctx context.Context, req domain.Runner) (int64, error)
 	Update(ctx context.Context, req domain.Runner) (int64, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	Detail(ctx context.Context, id int64) (domain.Runner, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, error)
 	Total(ctx context.Context) (int64, error)
 	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error)
@@ -25,6 +26,11 @@ func NewRunnerRepository(dao dao.RunnerDAO) RunnerRepository {
 
 type runnerRepository struct {
 	dao dao.RunnerDAO
+}
+
+func (repo *runnerRepository) Detail(ctx context.Context, id int64) (domain.Runner, error) {
+	runner, err := repo.dao.Detail(ctx, id)
+	return repo.toDomain(runner), err
 }
 
 func (repo *runnerRepository) Delete(ctx context.Context, id int64) (int64, error) {
@@ -82,8 +88,9 @@ func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 		Tags:           req.Tags,
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
 			return dao.Variables{
-				Key:   src.Key,
-				Value: src.Value,
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
 			}
 		}),
 		Desc:   req.Desc,
@@ -101,8 +108,9 @@ func (repo *runnerRepository) toDomain(req dao.Runner) domain.Runner {
 		Tags:           req.Tags,
 		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
 			return domain.Variables{
-				Key:   src.Key,
-				Value: src.Value,
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
 			}
 		}),
 		Desc:   req.Desc,

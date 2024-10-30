@@ -9,20 +9,32 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/department"
+	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
+	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/permission"
+	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
+	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/google/wire"
+)
+
+import (
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // Injectors from wire.go:
@@ -30,9 +42,17 @@ import (
 func InitApp() (*App, error) {
 	cmdable := InitRedis()
 	provider := InitSession(cmdable)
+	db := InitMySQLDB()
+	syncedEnforcer := InitCasbin(db)
+	module, err := policy.InitModule(syncedEnforcer)
+	if err != nil {
+		return nil, err
+	}
+	service := module.Svc
+	checkPolicyMiddlewareBuilder := middleware.NewCheckPolicyMiddlewareBuilder(service)
 	v := InitGinMiddlewares()
 	mongo := InitMongoDB()
-	module, err := relation.InitModule(mongo)
+	relationModule, err := relation.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
@@ -40,19 +60,19 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	resourceModule, err := resource.InitModule(mongo, attributeModule, module)
+	resourceModule, err := resource.InitModule(mongo, attributeModule, relationModule)
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(mongo, module, attributeModule, resourceModule)
+	modelModule, err := model.InitModule(mongo, relationModule, attributeModule, resourceModule)
 	if err != nil {
 		return nil, err
 	}
 	handler := modelModule.Hdl
 	webHandler := attributeModule.Hdl
 	handler2 := resourceModule.Hdl
-	relationModelHandler := module.RMHdl
-	relationResourceHandler := module.RRHdl
+	relationModelHandler := relationModule.RMHdl
+	relationResourceHandler := relationModule.RRHdl
 	mq := InitMQ()
 	client := InitEtcdClient()
 	workerModule, err := worker.InitModule(mq, mongo, client)
@@ -60,9 +80,13 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler3 := workerModule.Hdl
-	relationTypeHandler := module.RTHdl
+	relationTypeHandler := relationModule.RTHdl
 	config := InitLdapConfig()
-	userModule, err := user.InitModule(mongo, config)
+	departmentModule, err := department.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	userModule, err := user.InitModule(mongo, cmdable, config, module, departmentModule)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +112,6 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	db := InitMySQLDB()
 	engineModule, err := engine.InitModule(db)
 	if err != nil {
 		return nil, err
@@ -97,7 +120,8 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule)
+	larkClient := InitFeishu()
+	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +134,34 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler12 := taskModule.Hdl
-	ginEngine := InitWebServer(provider, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12)
-	eventModule, err := event.InitModule(mq, db, engineModule, taskModule)
+	handler13 := module.Hdl
+	menuModule, err := menu.InitModule(mq, mongo)
+	if err != nil {
+		return nil, err
+	}
+	handler14 := menuModule.Hdl
+	endpointModule, err := endpoint.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	handler15 := endpointModule.Hdl
+	roleModule, err := role.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	handler16 := roleModule.Hdl
+	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, module)
+	if err != nil {
+		return nil, err
+	}
+	handler17 := permissionModule.Hdl
+	handler18 := departmentModule.Hdl
+	handler19, err := tools.InitModule()
+	if err != nil {
+		return nil, err
+	}
+	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19)
+	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, larkClient)
 	if err != nil {
 		return nil, err
 	}
@@ -119,14 +169,16 @@ func InitApp() (*App, error) {
 	startTaskJob := taskModule.StartTaskJob
 	passProcessTaskJob := taskModule.PassProcessTaskJob
 	v2 := initCronJobs(startTaskJob, passProcessTaskJob)
+	serviceService := endpointModule.Svc
 	app := &App{
 		Web:   ginEngine,
 		Event: processEvent,
 		Jobs:  v2,
+		Svc:   serviceService,
 	}
 	return app, nil
 }
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx, InitFeishu)

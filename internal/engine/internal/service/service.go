@@ -20,7 +20,7 @@ type Service interface {
 	TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error)
 	IsReject(ctx context.Context, taskId int) (bool, error)
 	// UpdateIsFinishedByPreNodeId 系统修改 finished 状态
-	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	// Pass 通过
 	Pass(ctx context.Context, taskId int, comment string) error
 	// Reject 驳回
@@ -29,10 +29,34 @@ type Service interface {
 	ListPendingStepsOfMyTask(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	// GetAutomationTask 获取自动化完成任务
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
+	// GetTasksByInstUsers 获取指定流程 + 用户的任务
+	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
+	// GetOrderIdByVariable 获取工单ID，进行流程绑定
+	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
+	// Revoke 撤销工单
+	Revoke(ctx context.Context, instanceId int, userId string, force bool) error
+	// Upstream 获取所有上游节点
+	Upstream(ctx context.Context, taskId int) ([]model.Node, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) Upstream(ctx context.Context, taskId int) ([]model.Node, error) {
+	return engine.TaskUpstreamNodeList(taskId)
+}
+
+func (s *service) Revoke(ctx context.Context, instanceId int, userId string, force bool) error {
+	return engine.InstanceRevoke(instanceId, force, userId)
+}
+
+func (s *service) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
+	return s.repo.GetOrderIdByVariable(ctx, processInstId)
+}
+
+func (s *service) GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error) {
+	return s.repo.GetTasksByInstUsers(ctx, processInstId, userIds)
 }
 
 func (s *service) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error) {
@@ -54,8 +78,8 @@ func (s *service) IsReject(ctx context.Context, taskId int) (bool, error) {
 	return false, err
 }
 
-func (s *service) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
-	return s.repo.UpdateIsFinishedByPreNodeId(ctx, nodeId)
+func (s *service) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	return s.repo.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
 }
 
 func (s *service) Reject(ctx context.Context, taskId int, comment string) error {
@@ -104,7 +128,7 @@ func (s *service) ListTodoTasks(ctx context.Context, userId, processName string,
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListTodoList(userId, processName, sortByAse, offset, limit)
+		ts, err = s.repo.TodoList(userId, processName, sortByAse, offset, limit)
 		return err
 	})
 

@@ -4,55 +4,56 @@ import (
 	"context"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
-	"github.com/Bunny3th/easy-workflow/workflow/web_api/router"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"strconv"
+	"time"
 )
 
 type Handler struct {
 	svc       service.Service
+	userSvc   user.Service
 	engineSvc engine.Service
 }
 
-func NewHandler(svc service.Service, engineSvc engine.Service) *Handler {
+func NewHandler(svc service.Service, engineSvc engine.Service, userSvc user.Service) *Handler {
 	return &Handler{
 		svc:       svc,
+		userSvc:   userSvc,
 		engineSvc: engineSvc,
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
-	router.NewRouter(server, "/api/process", false, "")
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
+	//router.NewRouter(server, "/api/process", false, "")
 
 	g := server.Group("/api/order")
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
 	g.POST("/detail/process_inst_id", ginx.WrapBody[DetailProcessInstIdReq](h.Detail))
-	g.POST("/todo", ginx.WrapBody[Todo](h.Todo))
-	g.POST("/todo/user", ginx.WrapBody[Todo](h.TodoByUser))
 	g.POST("/task/record", ginx.WrapBody[RecordTaskReq](h.TaskRecord))
+	g.POST("/todo", ginx.WrapBody[Todo](h.TodoAll))
+	g.POST("/todo/user", ginx.WrapBody[Todo](h.TodoByUser))
 	g.POST("/history", ginx.WrapBody[HistoryReq](h.History))
 	g.POST("/start/user", ginx.WrapBody[StartUserReq](h.StartUser))
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
-	g.POST("/list", ginx.WrapBody[Todo](h.Todo))
+	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
 	if req.CreateBy == "" {
-		sess, err := session.Get(&gctx.Context{Context: ctx})
+		u, err := h.getSessUser(ctx)
 		if err != nil {
-			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+			return systemErrorResult, err
 		}
-
-		req.CreateBy = strconv.FormatInt(sess.Claims().Uid, 10)
+		req.CreateBy = u.Username
 	}
 
 	err := h.svc.CreateOrder(ctx, h.toDomain(req))
@@ -66,7 +67,8 @@ func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result
 	}, nil
 }
 
-func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
+// TodoAll 全部待办
+func (h *Handler) TodoAll(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	// 校验传递参数
 	validate := validator.New()
 	err := validate.Struct(req)
@@ -84,7 +86,7 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	// 数据处理
 	orders, err := h.toVoEngineOrder(ctx, instances)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
@@ -96,6 +98,7 @@ func (h *Handler) Todo(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}, err
 }
 
+// TodoByUser 我的待办
 func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	// 校验传递参数
 	validate := validator.New()
@@ -104,13 +107,14 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 		return validateErrorResult, fmt.Errorf("参数传递错误：%w", err)
 	}
 
-	sess, err := session.Get(&gctx.Context{Context: ctx})
+	// 查询用户信息 - 为了统一存储为 username
+	u, err := h.getSessUser(ctx)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+		return systemErrorResult, err
 	}
 
 	// 查询待处理工单
-	instances, total, err := h.engineSvc.ListTodoTasks(ctx, strconv.FormatInt(sess.Claims().Uid, 10), req.ProcessName, req.SortByAsc,
+	instances, total, err := h.engineSvc.ListTodoTasks(ctx, u.Username, req.ProcessName, req.SortByAsc,
 		req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
@@ -131,22 +135,83 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 	}, err
 }
 
-func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error) {
-	os, _, err := h.svc.ListHistoryOrder(ctx, req.UserId, req.Offset, req.Limit)
+func (h *Handler) Revoke(ctx *gin.Context, req RevokeOrderReq) (ginx.Result, error) {
+	u, err := h.getSessUser(ctx)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	instIds := slice.Map(os, func(idx int, src domain.Order) int {
-		return src.Process.InstanceId
-	})
+	// 撤销流程工单
+	err = h.engineSvc.Revoke(ctx, req.InstanceId, u.Username, req.Force)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 修改状态
+	err = h.svc.UpdateStatusByInstanceId(ctx, req.InstanceId, domain.WITHDRAW.ToUint8())
+	if err != nil {
+		return systemErrorResult, err
+	}
 
 	return ginx.Result{
-		Data: instIds,
+		Msg:  "撤销工单成功",
+		Data: true,
+	}, nil
+}
+
+// History 历史工单
+func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error) {
+	os, total, err := h.svc.ListHistoryOrder(ctx, req.UserId, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	uniqueMap := make(map[string]bool)
+	uns := slice.FilterMap(os, func(idx int, src domain.Order) (string, bool) {
+		if !uniqueMap[src.CreateBy] {
+			uniqueMap[src.CreateBy] = true
+			return src.CreateBy, true
+		}
+
+		return src.CreateBy, false
+	})
+
+	uMap, err := h.getUserMap(ctx, uns)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: RetrieveOrders{
+			Total: total,
+			Tasks: slice.Map(os, func(idx int, src domain.Order) Order {
+				starter, ok := uMap[src.CreateBy]
+				if !ok {
+					starter = src.CreateBy
+				}
+
+				return Order{
+					Id:                src.Id,
+					TemplateId:        src.TemplateId,
+					TemplateName:      src.TemplateName,
+					Starter:           starter,
+					Status:            src.Status.ToUint8(),
+					Provide:           src.Provide.ToUint8(),
+					ProcessInstanceId: src.Process.InstanceId,
+					WorkflowId:        src.WorkflowId,
+					Ctime:             time.Unix(src.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
+					Wtime:             time.Unix(src.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
+					Data:              src.Data,
+				}
+			}),
+		},
 	}, nil
 }
 
 func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) {
+	// TODO 超级管理员 任意通过 （ 可选 ）
+
+	// TODO 校验是否为自己的任务
+
 	err := h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
 	if err != nil {
 		return systemErrorResult, err
@@ -170,18 +235,17 @@ func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, err
 	}, nil
 }
 
+// StartUser 与我相关的工单
 func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, error) {
-	// 获取登录用户 sess 获取ID
-	sess, err := session.Get(&gctx.Context{Context: ctx})
+	u, err := h.getSessUser(ctx)
 	if err != nil {
-		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+		return systemErrorResult, err
 	}
-	starter := strconv.FormatInt(sess.Claims().Uid, 10)
 
 	// 查找本地存储，关于我的工单（未完成）
-	orders, total, err := h.svc.ListOrdersByUser(ctx, starter, req.Offset, req.Limit)
+	orders, total, err := h.svc.ListOrdersByUser(ctx, u.Username, req.Offset, req.Limit)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	// 查找出所有的流程ID
@@ -190,15 +254,15 @@ func (h *Handler) StartUser(ctx *gin.Context, req StartUserReq) (ginx.Result, er
 	})
 
 	// 查询所有流程等待运行的信息 ( 当前步骤、审批人 ）
-	processTasks, err := h.engineSvc.ListPendingStepsOfMyTask(ctx, procInstIds, starter)
+	processTasks, err := h.engineSvc.ListPendingStepsOfMyTask(ctx, procInstIds, u.Username)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	// 数据处理
 	tasks, err := h.toVoEngineOrder(ctx, processTasks)
 	if err != nil {
-		return ginx.Result{}, err
+		return systemErrorResult, err
 	}
 
 	return ginx.Result{
@@ -221,20 +285,46 @@ func (h *Handler) Detail(ctx *gin.Context, req DetailProcessInstIdReq) (ginx.Res
 	}, nil
 }
 
+// TaskRecord 任务记录
 func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, error) {
 	ts, total, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstId, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	records := slice.Map(ts, func(idx int, src model.Task) TaskRecord {
-		return h.toVoTaskRecords(src)
+	uniqueMap := make(map[string]bool)
+	uns := slice.FilterMap(ts, func(idx int, src model.Task) (string, bool) {
+		if !uniqueMap[src.UserID] {
+			uniqueMap[src.UserID] = true
+			return src.UserID, true
+		}
+
+		return src.UserID, false
 	})
+
+	uMap, err := h.getUserMap(ctx, uns)
+	if err != nil {
+		return systemErrorResult, err
+	}
 
 	return ginx.Result{
 		Data: RetrieveTaskRecords{
-			TaskRecords: records,
-			Total:       total,
+			TaskRecords: slice.Map(ts, func(idx int, src model.Task) TaskRecord {
+				starter, ok := uMap[src.UserID]
+				if !ok {
+					starter = src.UserID
+				}
+				return TaskRecord{
+					Nodename:     src.NodeName,
+					ApprovedBy:   starter,
+					IsCosigned:   src.IsCosigned,
+					Status:       src.Status,
+					Comment:      src.Comment,
+					IsFinished:   src.IsFinished,
+					FinishedTime: src.FinishedTime,
+				}
+			}),
+			Total: total,
 		},
 	}, nil
 }
@@ -253,19 +343,16 @@ func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 
 func (h *Handler) toVoOrder(req domain.Order) Order {
 	return Order{
-		Data: req.Data,
-	}
-}
-
-func (h *Handler) toVoTaskRecords(req model.Task) TaskRecord {
-	return TaskRecord{
-		Nodename:     req.NodeName,
-		ApprovedBy:   req.UserID,
-		IsCosigned:   req.IsCosigned,
-		Status:       req.Status,
-		Comment:      req.Comment,
-		IsFinished:   req.IsFinished,
-		FinishedTime: req.FinishedTime,
+		TemplateId:        req.TemplateId,
+		TemplateName:      req.TemplateName,
+		Starter:           req.CreateBy,
+		ProcessInstanceId: req.Process.InstanceId,
+		Provide:           req.Provide.ToUint8(),
+		Status:            req.Status.ToUint8(),
+		WorkflowId:        req.WorkflowId,
+		Ctime:             time.Unix(req.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
+		Wtime:             time.Unix(req.Wtime/1000, 0).Format("2006-01-02 15:04:05"),
+		Data:              req.Data,
 	}
 }
 
@@ -308,15 +395,27 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 }
 
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
-	procInstIds := slice.Map(instances, func(idx int, src engine.Instance) int {
-		return src.ProcInstID
+	if len(instances) == 0 {
+		// 没有工单信息
+		return nil, nil
+	}
+
+	uniqueProcInstIds := make(map[int]bool)
+	procInstIds := slice.FilterMap(instances, func(idx int, src engine.Instance) (int, bool) {
+		if !uniqueProcInstIds[src.ProcInstID] {
+			uniqueProcInstIds[src.ProcInstID] = true
+			return src.ProcInstID, true
+		}
+
+		return src.ProcInstID, false
 	})
+
+	us, err := h.getUsers(ctx, instances)
+	if err != nil {
+		return nil, err
+	}
 
 	os, err := h.svc.ListOrderByProcessInstanceIds(ctx, procInstIds)
-	slice.ToMap(os, func(element domain.Order) int64 {
-		return element.Id
-	})
-
 	m := slice.ToMap(os, func(element domain.Order) int {
 		return element.Process.InstanceId
 	})
@@ -324,18 +423,79 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 	// 数据转换为前端可用
 	return slice.Map(instances, func(idx int, src engine.Instance) Order {
 		val, _ := m[src.ProcInstID]
+		starter, ok := us[src.Starter]
+		if !ok {
+			starter = src.Starter
+		}
+		approved, ok := us[src.ApprovedBy]
+		if !ok {
+			approved = src.ApprovedBy
+		}
 		return Order{
 			Id:                 val.Id,
 			TaskId:             src.TaskID,
 			ProcessInstanceId:  src.ProcInstID,
-			Starter:            src.Starter,
+			Starter:            starter,
 			CurrentStep:        src.CurrentNodeName,
-			ApprovedBy:         src.ApprovedBy,
+			ApprovedBy:         approved,
 			ProcInstCreateTime: src.CreateTime,
+			Provide:            val.Provide.ToUint8(),
+			Status:             val.Status.ToUint8(),
 			TemplateId:         val.TemplateId,
 			TemplateName:       val.TemplateName,
 			WorkflowId:         val.WorkflowId,
-			Ctime:              val.Ctime,
+			Ctime:              time.Unix(val.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
 		}
 	}), err
+}
+
+func (h *Handler) getUsers(ctx context.Context, instances []engine.Instance) (map[string]string, error) {
+	var uns []string
+	uniqueMap := make(map[string]bool)
+	approved := slice.FilterMap(instances, func(idx int, src engine.Instance) (string, bool) {
+		if !uniqueMap[src.ApprovedBy] {
+			uniqueMap[src.ApprovedBy] = true
+			return src.ApprovedBy, true
+		}
+
+		return src.ApprovedBy, false
+	})
+
+	starter := slice.FilterMap(instances, func(idx int, src engine.Instance) (string, bool) {
+		if !uniqueMap[src.Starter] {
+			uniqueMap[src.Starter] = true
+			return src.Starter, true
+		}
+
+		return src.Starter, false
+	})
+
+	uns = append(uns, approved...)
+	uns = append(uns, starter...)
+
+	return h.getUserMap(ctx, uns)
+}
+
+// 根据 Sess 获取用户
+func (h *Handler) getSessUser(ctx *gin.Context) (user.User, error) {
+	// 获取登录用户 sess 获取ID
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return user.User{}, fmt.Errorf("获取 Session 失败, %w", err)
+	}
+
+	// 查询用户信息 - 为了统一存储为 username
+	return h.userSvc.FindById(ctx, sess.Claims().Uid)
+}
+
+// 获取用户Map映射
+func (h *Handler) getUserMap(ctx context.Context, uns []string) (map[string]string, error) {
+	us, err := h.userSvc.FindByUsernames(ctx, uns)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.ToMapV(us, func(element user.User) (string, string) {
+		return element.Username, element.DisplayName
+	}), nil
 }

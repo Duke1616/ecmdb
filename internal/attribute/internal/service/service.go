@@ -29,11 +29,17 @@ type Service interface {
 	CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error)
 	ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error)
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
+
+	UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error)
 }
 
 type service struct {
 	repo      repository.AttributeRepository
 	groupRepo repository.AttributeGroupRepository
+}
+
+func (s *service) UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error) {
+	return s.repo.UpdateAttribute(ctx, attribute)
 }
 
 func NewService(repo repository.AttributeRepository, groupRepo repository.AttributeGroupRepository) Service {

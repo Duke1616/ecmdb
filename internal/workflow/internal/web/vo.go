@@ -1,12 +1,14 @@
 package web
 
 type CreateReq struct {
-	TemplateId int64     `json:"template_id"`
-	Name       string    `json:"name"`
-	Icon       string    `json:"icon"`
-	Owner      string    `json:"owner"`
-	Desc       string    `json:"desc"`
-	FlowData   LogicFlow `json:"flow_data"`
+	TemplateId   int64     `json:"template_id"`
+	Name         string    `json:"name"`
+	Icon         string    `json:"icon"`
+	Owner        string    `json:"owner"`
+	Desc         string    `json:"desc"`
+	IsNotify     bool      `json:"is_notify"`
+	NotifyMethod uint8     `json:"notify_method"`
+	FlowData     LogicFlow `json:"flow_data"`
 }
 
 type LogicFlow struct {
@@ -28,10 +30,13 @@ type DeployReq struct {
 }
 
 type UpdateReq struct {
-	Id       int64     `json:"id"`
-	Name     string    `json:"name"`
-	Owner    string    `json:"owner"`
-	FlowData LogicFlow `json:"flow_data"`
+	Id           int64     `json:"id"`
+	Name         string    `json:"name"`
+	Desc         string    `json:"desc"`
+	Owner        string    `json:"owner"`
+	IsNotify     bool      `json:"is_notify"`
+	NotifyMethod uint8     `json:"notify_method"`
+	FlowData     LogicFlow `json:"flow_data"`
 }
 
 type DeleteReq struct {
@@ -39,13 +44,15 @@ type DeleteReq struct {
 }
 
 type Workflow struct {
-	Id         int64     `json:"id"`
-	TemplateId int64     `json:"template_id"`
-	Name       string    `json:"name"`
-	Icon       string    `json:"icon"`
-	Owner      string    `json:"owner"`
-	Desc       string    `json:"desc"`
-	FlowData   LogicFlow `json:"flow_data"`
+	Id           int64     `json:"id"`
+	TemplateId   int64     `json:"template_id"`
+	Name         string    `json:"name"`
+	Icon         string    `json:"icon"`
+	Owner        string    `json:"owner"`
+	Desc         string    `json:"desc"`
+	IsNotify     bool      `json:"is_notify"`
+	NotifyMethod uint8     `json:"notify_method"`
+	FlowData     LogicFlow `json:"flow_data"`
 }
 
 type RetrieveWorkflows struct {

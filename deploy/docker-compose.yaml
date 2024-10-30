@@ -1,17 +1,115 @@
-version: '3'
 services:
+  mysql:
+    restart: always
+    container_name: ecmdb-mysql
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/mysql:8.0.37
+    ports:
+      - 3306:3306
+    environment:
+      - TZ=Asia/Shanghai
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=cmdb
+      - MYSQL_USER=cmdb
+      - MYSQL_PASSWORD=123456
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+    volumes:
+      - mysql:/var/lib/mysql
+  mongo:
+    restart: always
+    container_name: ecmdb-mongo
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/mongodb:7.0.12
+    ports:
+      - 27017:27017
+    environment:
+      - TZ=Asia/Shanghai
+      - MONGODB_ROOT_USER=mongo_admin
+      - MONGODB_ROOT_PASSWORD=123456
+      - MONGODB_USERNAME=cmdb
+      - MONGODB_PASSWORD=123456
+      - MONGODB_DATABASE=cmdb
+    volumes:
+      - mongo:/bitnami/mongodb
+  etcd:
+    restart: always
+    container_name: ecmdb-etcd
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/etcd:3.5.14
+    ports:
+      - 2379:2379
+      - 2380:2380
+    volumes:
+      - etcd:/var/lib/etcd
+    environment:
+      - TZ=Asia/Shanghai
+      - ALLOW_NONE_AUTHENTICATION=true
+      - ETCDCTL_API=3
+      - ETCD_DATA_DIR=/var/lib/etcd
+      - ETCD_NAME=node1
+      - INITIAL_CLUSTER_TOKEN=etcd-v3-cluster
+      - ETCD_ADVERTISE_CLIENT_URLS=http://127.0.0.1:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_CLUSTER=node1=http://0.0.0.0:2380
+      - ETCD_AUTO_COMPACTION_RETENTION=1
+  redis:
+    restart: always
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/redis:7.2.4
+    container_name: ecmdb-redis
+    ports:
+      - 6379:6379
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - redis:/data
+  kafka:
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/kafka:3.6.1-debian-12-r13
+    container_name: ecmdb-kafka
+    user: 0:0
+    restart: always
+    ports:
+      - 9092:9092
+      - 9094:9094
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+    volumes:
+      - kafka:/bitnami/kafka
   ecmdb:
     restart: always
     container_name: ecmdb
-    image: duke1616/ecmdb:latest
-    command: ./ecmdb
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/ecmdb:main
+    command: ./ecmdb start
     ports:
       - 8666:8000
     environment:
       - TZ=Asia/Shanghai
     volumes:
       - ./prod.yaml:/app/config/prod.yaml
+      - /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai
+    depends_on:
+      - mysql
+      - mongo
+      - etcd
+      - redis
+      - kafka
+
+volumes:
+  mysql:
+  mongo:
+  etcd:
+  redis:
+  kafka:
+
 networks:
   default:
-    external:
-      name: sre
+    name: ecmdb
+    external: true

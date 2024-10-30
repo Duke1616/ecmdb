@@ -19,16 +19,38 @@ type ProcessEngineDAO interface {
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
 	SearchStartByProcessInstIds(ctx context.Context, processInstIds []int) ([]Instance, error)
-	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 
 	ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) ([]model.Task, error)
 
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
+	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
+	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 }
 
 type processEngineDAO struct {
 	db *gorm.DB
+}
+
+func (g *processEngineDAO) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
+	var res database.ProcInstVariable
+	err := g.db.WithContext(ctx).Model(&database.ProcInstVariable{}).Table("proc_inst_variable").
+		Where("proc_inst_id = ? AND `key` = ?", processInstId, `order_id`).
+		First(&res).Error
+
+	return res.Value, err
+}
+
+func (g *processEngineDAO) GetTasksByInstUsers(ctx context.Context, processInstId int,
+	userIds []string) ([]model.Task, error) {
+	var res []model.Task
+	err := g.db.WithContext(ctx).Model(&model.Task{}).Table("proc_task").
+		Where("proc_inst_id = ? AND status = ? AND is_finished = ? AND user_id IN ?",
+			processInstId, 0, 0, userIds).
+		Find(&res).Error
+
+	return res, err
 }
 
 func (g *processEngineDAO) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (
@@ -59,8 +81,8 @@ func (g *processEngineDAO) CountReject(ctx context.Context, taskId int) (int64, 
 	return res, err
 }
 
-func (g *processEngineDAO) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
-	proTask := database.ProcTask{IsFinished: 1, Comment: "其余节点进行驳回，系统判定无法继续审批",
+func (g *processEngineDAO) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	proTask := database.ProcTask{Status: status, IsFinished: 1, Comment: comment,
 		FinishedTime: database.LTime.Now()}
 
 	return g.db.WithContext(ctx).

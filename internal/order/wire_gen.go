@@ -16,15 +16,17 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	"github.com/larksuite/oapi-sdk-go/v3"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module, userModule *user.Module, lark2 *lark.Client) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
@@ -33,18 +35,21 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	}
 	serviceService := service.NewService(orderRepository, createProcessEventProducer)
 	service2 := engineModule.Svc
-	handler := web.NewHandler(serviceService, service2)
-	service3 := templateModule.Svc
-	wechatOrderConsumer := initWechatConsumer(serviceService, service3, q)
-	service4 := workflowModule.Svc
-	processEventConsumer := InitProcessConsumer(q, service4, serviceService)
+	service3 := userModule.Svc
+	handler := web.NewHandler(serviceService, service2, service3)
+	service4 := templateModule.Svc
+	wechatOrderConsumer := initWechatConsumer(serviceService, service4, service3, q)
+	service5 := workflowModule.Svc
+	processEventConsumer := InitProcessConsumer(q, service5, serviceService)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
+	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2)
 	module := &Module{
 		Hdl: handler,
 		Svc: serviceService,
 		cw:  wechatOrderConsumer,
 		cs:  processEventConsumer,
 		cms: orderStatusModifyEventConsumer,
+		cf:  feishuCallbackEventConsumer,
 	}
 	return module, nil
 }
@@ -53,8 +58,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
 
-func initWechatConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) *consumer.WechatOrderConsumer {
-	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, q)
+func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
+	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)
 	if err != nil {
 		panic(err)
 	}
@@ -75,6 +80,16 @@ func InitProcessConsumer(q mq.MQ, workflowSvc workflow.Service, svc service.Serv
 
 func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatusModifyEventConsumer {
 	c, err := consumer.NewOrderStatusModifyEventConsumer(q, svc)
+	if err != nil {
+		return nil
+	}
+
+	c.Start(context.Background())
+	return c
+}
+
+func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service, lark2 *lark.Client) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc, lark2)
 	if err != nil {
 		return nil
 	}

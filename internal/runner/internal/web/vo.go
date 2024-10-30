@@ -39,8 +39,9 @@ type DeleteRunnerReq struct {
 }
 
 type Variables struct {
-	Key   string `json:"key"`
-	Value any    `json:"value"`
+	Key    string `json:"key"`
+	Value  any    `json:"value"`
+	Secret bool   `json:"secret"`
 }
 
 type Page struct {
@@ -68,8 +69,9 @@ type RetrieveWorkers struct {
 }
 
 type RunnerTags struct {
-	CodebookUid string   `json:"codebook_uid"`
-	Tags        []string `json:"tags"`
+	CodebookName string   `json:"codebook_name"`
+	CodebookUid  string   `json:"codebook_uid"`
+	Tags         []string `json:"tags"`
 }
 
 type RetrieveRunnerTags struct {

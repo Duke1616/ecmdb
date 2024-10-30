@@ -10,4 +10,8 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+	userOrPassErrorResult = ginx.Result{
+		Code: errs.UserPassError.Code,
+		Msg:  errs.UserPassError.Msg,
+	}
 )

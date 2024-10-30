@@ -12,27 +12,37 @@ type Service interface {
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource,
 		int64, error)
+	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 	// ListExcludeAndFilterResourceByIds 排序以及过滤
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
 		ids []int64, filter domain.Condition) ([]domain.Resource, int64, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
-	// PipelineByModelUid 聚合查看模型下的数量
-	PipelineByModelUid(ctx context.Context) (map[string]int, error)
+	// CountByModelUids 聚合查看模型下的数量
+	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
+	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 }
 
 type service struct {
 	repo repository.ResourceRepository
 }
 
+func (s *service) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	return s.repo.TotalByModelUid(ctx, modelUid)
+}
+
 func NewService(repo repository.ResourceRepository) Service {
 	return &service{
 		repo: repo,
 	}
+}
+
+func (s *service) UpdateResource(ctx context.Context, resource domain.Resource) (int64, error) {
+	return s.repo.UpdateResource(ctx, resource)
 }
 
 func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
@@ -57,7 +67,7 @@ func (s *service) ListResource(ctx context.Context, fields []string, modelUid st
 	})
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.Total(ctx, modelUid)
+		total, err = s.repo.TotalByModelUid(ctx, modelUid)
 		return err
 	})
 	if err := eg.Wait(); err != nil {
@@ -97,8 +107,8 @@ func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteResource(ctx, id)
 }
 
-func (s *service) PipelineByModelUid(ctx context.Context) (map[string]int, error) {
-	return s.repo.PipelineByModelUid(ctx)
+func (s *service) CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error) {
+	return s.repo.CountByModelUids(ctx, modelUids)
 }
 
 func (s *service) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {

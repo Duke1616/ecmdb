@@ -1,14 +1,5 @@
 package ldapx
 
-type Profile struct {
-	DN          string
-	Email       string
-	Username    string
-	Title       string
-	DisplayName string
-	Groups      []string
-}
-
 type Config struct {
 	Url                  string `mapstructure:"url" json:"url,omitempty"`
 	BaseDN               string `mapstructure:"base_dn" json:"base_dn,omitempty"`
@@ -19,6 +10,8 @@ type Config struct {
 	DisplayNameAttribute string `mapstructure:"display_name_attribute" json:"display_name_attribute,omitempty"`
 	TitleAttribute       string `mapstructure:"title_attribute" json:"title_attribute,omitempty"`
 	UserFilter           string `mapstructure:"user_filter" json:"user_filter,omitempty"`
+	SyncUserFilter       string `mapstructure:"sync_user_filter" json:"sync_user_filter,omitempty"`
+	SyncExcludeOu        string `mapstructure:"sync_exclude_ou" json:"sync_exclude_ou,omitempty"`
 	GroupFilter          string `mapstructure:"group_filter" json:"group_filter"`
 	GroupNameAttribute   string `mapstructure:"group_name_attribute" json:"group_name_attribute"`
 }

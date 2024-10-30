@@ -21,6 +21,8 @@ const (
 	CreateProcessEventName = "create_process_events"
 	// OrderStatusModifyEventName 修改状态事件
 	OrderStatusModifyEventName = "order_status_modify_events"
+	// FeishuCallbackEventName 飞书回调事件
+	FeishuCallbackEventName = "feishu_callback_events"
 )
 
 type OrderEvent struct {
@@ -28,6 +30,8 @@ type OrderEvent struct {
 	WorkflowId int64                  `json:"workflow_id"`
 	Provide    Provide                `json:"provide"`
 	Data       map[string]interface{} `json:"data"`
+	// 流程引擎使用的变量, 根据这样可以定制express判断公式
+	Variables string `json:"variables"`
 }
 
 type Variables struct {
@@ -58,3 +62,11 @@ const (
 	// WECHAT 企业微信
 	WECHAT Provide = 2
 )
+
+type FeishuCallback struct {
+	Action       string `json:"action"`
+	MessageId    string `json:"message_id"`
+	FeishuUserId string `json:"feishu_user_id"`
+	TaskId       string `json:"task_id"`
+	Comment      string `json:"comment"`
+}

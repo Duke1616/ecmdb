@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/domain"
-	"github.com/Duke1616/ecmdb/internal/codebook/internal/repostory"
+	"github.com/Duke1616/ecmdb/internal/codebook/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -16,10 +16,15 @@ type Service interface {
 	DeleteCodebook(ctx context.Context, id int64) (int64, error)
 	ValidationSecret(ctx context.Context, identifier string, secret string) (bool, error)
 	FindByUid(ctx context.Context, identifier string) (domain.Codebook, error)
+	FindByUids(ctx context.Context, uids []string) ([]domain.Codebook, error)
 }
 
 type service struct {
 	repo repository.CodebookRepository
+}
+
+func (s *service) FindByUids(ctx context.Context, uids []string) ([]domain.Codebook, error) {
+	return s.repo.FindByUids(ctx, uids)
 }
 
 func (s *service) FindByUid(ctx context.Context, identifier string) (domain.Codebook, error) {

@@ -7,8 +7,8 @@
 package codebook
 
 import (
-	"github.com/Duke1616/ecmdb/internal/codebook/internal/repostory"
-	"github.com/Duke1616/ecmdb/internal/codebook/internal/repostory/dao"
+	"github.com/Duke1616/ecmdb/internal/codebook/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/codebook/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/service"
 	"github.com/Duke1616/ecmdb/internal/codebook/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"

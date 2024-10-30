@@ -21,9 +21,3 @@ type ModelGroup struct {
 	Ctime int64  `bson:"ctime"`
 	Utime int64  `bson:"utime"`
 }
-
-type ModelsByGroupId struct {
-	GroupID int64   `bson:"id"`
-	Name    string  `bson:"name"`
-	Models  []Model `bson:"models"`
-}

@@ -27,7 +27,7 @@ func NewHandler(service service.Service, attributeSvc attribute.Service, RRSvc r
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/resource")
 	// 资源操作
 	g.POST("/create", ginx.WrapBody[CreateResourceReq](h.CreateResource))
@@ -45,12 +45,11 @@ func (h *Handler) RegisterRoutes(server *gin.Engine) {
 
 	// 根据模型 UID 查询资源列表
 	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
-
 	// 全文检索
 	g.POST("/search", ginx.WrapBody[SearchReq](h.Search))
-
 	// 查询加密字段信息
 	g.POST("/secure", ginx.WrapBody[FindSecureReq](h.FindSecureData))
+	g.POST("/update", ginx.WrapBody[UpdateResourceReq](h.UpdateResource))
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -109,6 +108,19 @@ func (h *Handler) ListResource(ctx *gin.Context, req ListResourceReq) (ginx.Resu
 			Total:     total,
 		},
 		Msg: "查看资源列表成功",
+	}, nil
+}
+
+func (h *Handler) UpdateResource(ctx *gin.Context, req UpdateResourceReq) (ginx.Result, error) {
+	resource := h.toDomainUpdate(req)
+	t, err := h.svc.UpdateResource(ctx, resource)
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: t,
 	}, nil
 }
 
@@ -514,6 +526,14 @@ func (h *Handler) toResourceRelationVo(src relation.ResourceRelation) ResourceRe
 		TargetResourceID: src.TargetResourceID,
 		RelationTypeUID:  src.RelationTypeUID,
 		RelationName:     src.RelationName,
+	}
+}
+
+func (h *Handler) toDomainUpdate(src UpdateResourceReq) domain.Resource {
+	return domain.Resource{
+		ID:   src.Id,
+		Name: src.Name,
+		Data: src.Data,
 	}
 }
 

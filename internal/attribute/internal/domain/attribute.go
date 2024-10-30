@@ -10,6 +10,7 @@ type Attribute struct {
 	Required  bool
 	Display   bool
 	Secure    bool
+	Link      bool
 	Index     int64
 	Option    interface{}
 }

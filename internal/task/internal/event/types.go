@@ -17,7 +17,8 @@ const (
 )
 
 type ExecuteResultEvent struct {
-	TaskId int64  `json:"task_id"`
-	Result string `json:"result"`
-	Status Status `json:"status"`
+	TaskId     int64  `json:"task_id"`
+	Result     string `json:"result"`
+	WantResult string `json:"want_result"`
+	Status     Status `json:"status"`
 }

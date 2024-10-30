@@ -6,6 +6,10 @@ func (s Status) ToUint8() uint8 {
 	return uint8(s)
 }
 
+func (s Status) ToInt() int {
+	return int(s)
+}
+
 const (
 	// START 等待开始
 	START Status = 1
@@ -13,10 +17,8 @@ const (
 	PROCESS Status = 2
 	// END 完成
 	END Status = 3
-	// RETRY 重试
-	RETRY Status = 4
-	// AUTOMATION 自动化
-	AUTOMATION Status = 5
+	// WITHDRAW 撤回
+	WITHDRAW Status = 4
 )
 
 type Provide uint8
@@ -43,6 +45,7 @@ type Order struct {
 	CreateBy     string
 	Process      Process
 	Ctime        int64
+	Wtime        int64
 }
 
 type Process struct {

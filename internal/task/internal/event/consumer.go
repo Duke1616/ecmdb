@@ -52,9 +52,10 @@ func (c *ExecuteResultConsumer) Consume(ctx context.Context) error {
 	}
 
 	_, err = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
-		Id:     evt.TaskId,
-		Result: evt.Result,
-		Status: domain.Status(evt.Status),
+		Id:         evt.TaskId,
+		Result:     evt.Result,
+		WantResult: evt.WantResult,
+		Status:     domain.Status(evt.Status),
 	})
 
 	return err

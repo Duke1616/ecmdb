@@ -11,7 +11,7 @@ import (
 )
 
 type ProcessEngineRepository interface {
-	ListTodoList(userId, processName string, sortByAse bool, offset, limit int) (
+	TodoList(userId, processName string, sortByAse bool, offset, limit int) (
 		[]domain.Instance, error)
 	CountTodo(ctx context.Context, userId, processName string) (int64, error)
 	CountStartUser(ctx context.Context, userId, processName string) (int64, error)
@@ -19,14 +19,24 @@ type ProcessEngineRepository interface {
 		[]domain.Instance, error)
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
-	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error
+	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 	ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
+	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
+	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 }
 
 type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
+}
+
+func (repo *processEngineRepository) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
+	return repo.engineDao.GetOrderIdByVariable(ctx, processInstId)
+}
+
+func (repo *processEngineRepository) GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error) {
+	return repo.engineDao.GetTasksByInstUsers(ctx, processInstId, userIds)
 }
 
 func (repo *processEngineRepository) GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error) {
@@ -45,11 +55,11 @@ func (repo *processEngineRepository) CountReject(ctx context.Context, taskId int
 	return repo.engineDao.CountReject(ctx, taskId)
 }
 
-func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string) error {
-	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId)
+func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
 }
 
-func (repo *processEngineRepository) ListTodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {
+func (repo *processEngineRepository) TodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {
 	ts, err := engine.GetTaskToDoList(userId, processName, sortByAse, offset, limit)
 	return slice.Map(ts, func(idx int, src model.Task) domain.Instance {
 		return repo.toDomainByTask(src)

@@ -2,55 +2,47 @@ package main
 
 import (
 	"fmt"
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/ioc"
-	"github.com/gotomicro/ego/task/ecron"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
+	"github.com/Duke1616/ecmdb/cmd"
+	"github.com/fatih/color"
+	git "github.com/purpleclay/gitz"
+)
+
+var (
+	version string
 )
 
 func main() {
-	initViper()
-	app, err := ioc.InitApp()
-	if err != nil {
-		panic(err)
+	ver := version
+	if version == "" {
+		ver = latestTag()
 	}
 
-	initCronjob(app.Jobs)
-	engine.RegisterEvents(app.Event)
-	err = app.Web.Run(":8000")
-	panic(err)
+	fmt.Println("  ______    _____   __  __   _____    ____  ")
+	fmt.Println(" |  ____|  / ____| |  \\/  | |  __ \\  |  _ \\ ")
+	fmt.Println(" | |__    | |      | \\  / | | |  | | | |_) |")
+	fmt.Println(" |  __|   | |      | |\\/| | | |  | | |  _ < ")
+	fmt.Println(" | |____  | |____  | |  | | | |__| | | |_) |")
+	fmt.Println(" |______|  \\_____| |_|  |_| |_____/  |____/ ")
+
+	// 使用颜色来突出显示
+	cyan := color.New(color.FgCyan).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+	fmt.Printf(" %s: %s\n", cyan("Service Version"), green(ver))
+
+	cmd.Execute(ver)
 }
 
-func initCronjob(jobs []*ecron.Component) {
-	type Config struct {
-		Enabled bool `mapstructure:"enabled"`
-	}
-
-	var cfg Config
-	if err := viper.UnmarshalKey("cronjob", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
-	}
-
-	if !cfg.Enabled {
-		return
-	}
-
-	for _, job := range jobs {
-		go job.Start()
-	}
-}
-
-func initViper() {
-	file := pflag.String("config",
-		"config/prod.yaml", "配置文件路径")
-	pflag.Parse()
-	// 直接指定文件路径
-	viper.SetConfigFile(*file)
-	viper.WatchConfig()
-	err := viper.ReadInConfig()
-
+func latestTag() string {
+	gc, err := git.NewClient()
 	if err != nil {
-		panic(err)
+		return ""
 	}
+
+	tags, _ := gc.Tags(
+		git.WithShellGlob("*.*.*"),
+		git.WithSortBy(git.CreatorDateDesc, git.VersionDesc),
+		git.WithCount(1),
+	)
+
+	return tags[0]
 }

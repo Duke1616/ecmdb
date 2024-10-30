@@ -5,28 +5,37 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/department"
+	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
+	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/permission"
+	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
+	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx, InitFeishu)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
 		BaseSet,
 		InitSession,
+		InitCasbin,
 		InitLdapConfig,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
@@ -58,6 +67,20 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*event.Module), "Event"),
 		task.InitModule,
 		wire.FieldsOf(new(*task.Module), "Hdl", "StartTaskJob", "PassProcessTaskJob"),
+		policy.InitModule,
+		wire.FieldsOf(new(*policy.Module), "Hdl", "Svc"),
+		menu.InitModule,
+		wire.FieldsOf(new(*menu.Module), "Hdl"),
+		endpoint.InitModule,
+		wire.FieldsOf(new(*endpoint.Module), "Hdl", "Svc"),
+		department.InitModule,
+		wire.FieldsOf(new(*department.Module), "Hdl"),
+		role.InitModule,
+		wire.FieldsOf(new(*role.Module), "Hdl"),
+		permission.InitModule,
+		wire.FieldsOf(new(*permission.Module), "Hdl"),
+		tools.InitModule,
+		middleware.NewCheckPolicyMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,
 		InitGinMiddlewares)

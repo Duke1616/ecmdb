@@ -23,7 +23,7 @@ func NewHandler(svc service.Service, templateSvc template.Service) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/strategy")
 	g.POST("/get_specified_template", ginx.WrapBody[GetSpecifiedTemplate](h.GetSpecifiedTemplate))
 	g.POST("/create", ginx.WrapBody[GetSpecifiedTemplate](h.GetSpecifiedTemplate))

@@ -11,7 +11,7 @@ type Instance struct {
 	ProcName        string              //流程名称
 	ProcVersion     int                 //流程版本号
 	BusinessID      string              //业务ID
-	Starter         string              //流程发起人用户ID
+	Starter         string              //流程发起人用户名称
 	CurrentNodeID   string              //当前进行节点ID
 	CurrentNodeName string              //当前进行节点名称
 	CreateTime      *database.LocalTime //创建时间

@@ -20,6 +20,8 @@ const (
 	PENDING Status = 5
 	// SCHEDULE 等待调度
 	SCHEDULE Status = 6
+	//RETRY 重试
+	RETRY Status = 7
 )
 
 type Task struct {
@@ -29,6 +31,7 @@ type Task struct {
 	TriggerPosition string
 	CurrentNodeId   string
 	OrderId         int64
+	CodebookName    string
 	CodebookUid     string
 	WorkerName      string
 	WorkflowId      int64
@@ -36,14 +39,22 @@ type Task struct {
 	Topic           string
 	Language        string
 	Result          string
+	WantResult      string
 	Status          Status
-	Variables       string
+	Variables       []Variables
 	Args            map[string]interface{}
 }
 
 type TaskResult struct {
 	Id              int64  `json:"id"`
 	TriggerPosition string `json:"trigger_position"`
+	WantResult      string `json:"want_result"`
 	Result          string `json:"result"`
 	Status          Status `json:"status"`
+}
+
+type Variables struct {
+	Key    string
+	Value  any
+	Secret bool
 }

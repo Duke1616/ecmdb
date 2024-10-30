@@ -6,15 +6,18 @@ import (
 	"github.com/Duke1616/ecmdb/internal/runner/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
 	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 type Handler struct {
 	svc         service.Service
 	workerSvc   worker.Service
 	codebookSvc codebook.Service
+	aesKey      string
 }
 
 func NewHandler(svc service.Service, workerSvc worker.Service, codebookSvc codebook.Service) *Handler {
@@ -22,10 +25,11 @@ func NewHandler(svc service.Service, workerSvc worker.Service, codebookSvc codeb
 		svc:         svc,
 		workerSvc:   workerSvc,
 		codebookSvc: codebookSvc,
+		aesKey:      viper.Get("crypto_aes_key").(string),
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/runner")
 	g.POST("/register", ginx.WrapBody[RegisterRunnerReq](h.Register))
 	g.POST("/list", ginx.WrapBody[ListRunnerReq](h.ListRunner))
@@ -85,7 +89,12 @@ func (h *Handler) UpdateRunner(ctx *gin.Context, req UpdateRunnerReq) (ginx.Resu
 	}
 
 	// 注册
-	_, err = h.svc.Update(ctx, h.toUpdateDomain(req))
+	runner, err := h.toUpdateDomain(ctx, req)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	_, err = h.svc.Update(ctx, runner)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -116,13 +125,26 @@ func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
 		return ginx.Result{}, err
 	}
 
+	codeUids := slice.Map(tags, func(idx int, src domain.RunnerTags) string {
+		return src.CodebookUid
+	})
+	codes, err := h.codebookSvc.FindByUids(ctx, codeUids)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+	codeMaps := slice.ToMapV(codes, func(element codebook.Codebook) (string, string) {
+		return element.Identifier, element.Name
+	})
+
 	return ginx.Result{
 		Msg: "查询 runner tags 列表成功",
 		Data: RetrieveRunnerTags{
 			RunnerTags: slice.Map(tags, func(idx int, src domain.RunnerTags) RunnerTags {
+				codeName, _ := codeMaps[src.CodebookUid]
 				return RunnerTags{
-					CodebookUid: src.CodebookUid,
-					Tags:        src.Tags,
+					CodebookUid:  src.CodebookUid,
+					CodebookName: codeName,
+					Tags:         src.Tags,
 				}
 			}),
 		},
@@ -136,17 +158,21 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
-			return domain.Variables{
-				Key:   src.Key,
-				Value: src.Value,
-			}
-		}),
-		Action: domain.Action(REGISTER),
+		Variables:      h.toVariablesDomain(req.Variables),
+		Action:         domain.Action(REGISTER),
 	}
 }
 
-func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
+func (h *Handler) toUpdateDomain(ctx context.Context, req UpdateRunnerReq) (domain.Runner, error) {
+	runner, err := h.svc.Detail(ctx, req.Id)
+	if err != nil {
+		return domain.Runner{}, err
+	}
+
+	oldVars := slice.ToMap(runner.Variables, func(element domain.Variables) string {
+		return element.Key
+	})
+
 	return domain.Runner{
 		Id:             req.Id,
 		Name:           req.Name,
@@ -154,14 +180,54 @@ func (h *Handler) toUpdateDomain(req UpdateRunnerReq) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
-		Variables: slice.Map(req.Variables, func(idx int, src Variables) domain.Variables {
-			return domain.Variables{
-				Key:   src.Key,
-				Value: src.Value,
+		Variables:      h.toUpdateVariablesDomain(oldVars, req.Variables),
+		Action:         domain.Action(REGISTER),
+	}, nil
+}
+
+func (h *Handler) toUpdateVariablesDomain(oldVars map[string]domain.Variables, req []Variables) []domain.Variables {
+	return slice.Map(req, func(idx int, src Variables) domain.Variables {
+		value := src.Value
+		if src.Secret {
+			val, ok := oldVars[src.Key]
+			if ok && src.Value == nil {
+				value = val.Value
+			} else {
+				aesVal, err := cryptox.EncryptAES(h.aesKey, src.Value)
+				if err != nil {
+					return domain.Variables{}
+				}
+				value = aesVal
 			}
-		}),
-		Action: domain.Action(REGISTER),
-	}
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Secret: src.Secret,
+			Value:  value,
+		}
+	})
+}
+
+func (h *Handler) toVariablesDomain(req []Variables) []domain.Variables {
+	return slice.Map(req, func(idx int, src Variables) domain.Variables {
+		val := src.Value
+		if src.Secret {
+			// 如果加密失败就存储原始存储
+			aesVal, err := cryptox.EncryptAES(h.aesKey, src.Value)
+			if err != nil {
+				return domain.Variables{}
+			}
+
+			val = aesVal
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Secret: src.Secret,
+			Value:  val,
+		}
+	})
 }
 
 func (h *Handler) toRunnerVo(req domain.Runner) Runner {
@@ -172,9 +238,16 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 		Tags:        req.Tags,
 		Desc:        req.Desc,
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) Variables {
+			if src.Secret {
+				return Variables{
+					Key:    src.Key,
+					Secret: src.Secret,
+				}
+			}
 			return Variables{
-				Key:   src.Key,
-				Value: src.Value,
+				Key:    src.Key,
+				Secret: src.Secret,
+				Value:  src.Value,
 			}
 		}),
 		WorkerName: req.WorkerName,

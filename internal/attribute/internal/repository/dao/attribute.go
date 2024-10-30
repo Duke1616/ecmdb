@@ -26,10 +26,33 @@ type AttributeDAO interface {
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error)
+	UpdateAttribute(ctx context.Context, attribute Attribute) (int64, error)
 }
 
 type attributeDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"field_name": attr.FieldName,
+			"field_type": attr.FieldType,
+			"required":   attr.Required,
+			"secure":     attr.Secure,
+			"link":       attr.Link,
+			"option":     attr.Option,
+			"utime":      time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": attr.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
@@ -231,6 +254,7 @@ type Attribute struct {
 	Display   bool        `bson:"display"`    // 是否前端展示
 	Index     int64       `bson:"index"`      // 字段前端展示顺序
 	Secure    bool        `bson:"secure"`     // 是否字段安全、脱敏、加密
+	Link      bool        `bson:"link"`       // 是否外链
 	Option    interface{} `bson:"option"`     // TODO: 为了后续扩展，不同类型的 option 可能不同
 	Ctime     int64       `bson:"ctime"`
 	Utime     int64       `bson:"utime"`

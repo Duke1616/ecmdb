@@ -3,24 +3,29 @@ package consumer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+	"github.com/Duke1616/ecmdb/internal/pkg/wechat"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/xen0n/go-workwx"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type WechatOrderConsumer struct {
 	svc         service.Service
 	templateSvc template.Service
+	userSvc     user.Service
 	consumer    mq.Consumer
 	logger      *elog.Component
 }
 
-func NewWechatOrderConsumer(svc service.Service, templateSvc template.Service, q mq.MQ) (*WechatOrderConsumer, error) {
+func NewWechatOrderConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) (*WechatOrderConsumer, error) {
 	groupID := "wechat_create_order"
 	consumer, err := q.Consumer(event.WechatOrderEventName, groupID)
 	if err != nil {
@@ -29,6 +34,7 @@ func NewWechatOrderConsumer(svc service.Service, templateSvc template.Service, q
 	return &WechatOrderConsumer{
 		svc:         svc,
 		consumer:    consumer,
+		userSvc:     userSvc,
 		templateSvc: templateSvc,
 		logger:      elog.DefaultLogger,
 	}, nil
@@ -58,7 +64,7 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 	}
 
 	// 转换成 map[string]interface{}
-	data, err := convert(evt)
+	data, err := wechat.Marshal(evt)
 	if err != nil {
 		return fmt.Errorf("数据转换失败: %w", err)
 	}
@@ -69,9 +75,17 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("查看模版信息错误: %w", err)
 	}
 
+	// 查询用户信息
+	wUser, err := c.userSvc.FindByWechatUser(ctx, evt.Applicant.UserID)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		c.logger.Error("需要手动修复数据: 未找到用户，使用申请人的UserID作为用户名",
+			elog.String("user", evt.Applicant.UserID))
+		wUser.Username = evt.Applicant.UserID
+	}
+
 	// 创建工单
 	err = c.svc.CreateOrder(ctx, domain.Order{
-		CreateBy:     "企业微信",
+		CreateBy:     wUser.Username,
 		TemplateName: t.Name,
 		TemplateId:   t.Id,
 		WorkflowId:   t.WorkflowId,
@@ -88,15 +102,4 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 
 func (c *WechatOrderConsumer) Stop(_ context.Context) error {
 	return c.consumer.Close()
-}
-
-func convert(evt workwx.OAApprovalDetail) (map[string]interface{}, error) {
-	evtData, err := json.Marshal(evt)
-	if err != nil {
-		fmt.Println("Error marshalling struct:", err)
-	}
-
-	var data map[string]interface{}
-	err = json.Unmarshal(evtData, &data)
-	return data, err
 }

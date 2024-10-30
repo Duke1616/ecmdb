@@ -21,7 +21,7 @@ func NewRelationResourceHandler(svc service.RelationResourceService) *RelationRe
 	}
 }
 
-func (h *RelationResourceHandler) RegisterRoute(server *gin.Engine) {
+func (h *RelationResourceHandler) PrivateRoute(server *gin.Engine) {
 	g := server.Group("/api/resource/relation")
 	// 资源关联关系
 	g.POST("/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))

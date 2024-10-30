@@ -25,7 +25,7 @@ func NewHandler(svc service.Service, groupSvc service.GroupService) *Handler {
 	}
 }
 
-func (h *Handler) RegisterRoutes(server *gin.Engine) {
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/template")
 	g.POST("/create", ginx.WrapBody[CreateTemplateReq](h.CreateTemplate))
 	g.POST("/detail", ginx.WrapBody[DetailTemplateReq](h.DetailTemplate))
@@ -72,8 +72,8 @@ func (h *Handler) ListTemplate(ctx *gin.Context, req ListTemplateReq) (ginx.Resu
 		Msg: "查询工单模版列表成功",
 		Data: RetrieveTemplates{
 			Total: total,
-			Templates: slice.Map(rts, func(idx int, src domain.Template) Template {
-				return h.toTemplateVo(src)
+			Templates: slice.Map(rts, func(idx int, src domain.Template) TemplateJson {
+				return h.toTemplateJsonVo(src)
 			}),
 		},
 	}, nil
@@ -151,13 +151,16 @@ func (h *Handler) Pipeline(ctx *gin.Context) (ginx.Result, error) {
 
 func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 	var rulesData []map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
-		return domain.Template{}, err
+	if req.Rules != "" {
+		if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
+			return domain.Template{}, err
+		}
 	}
-
 	var optionsData map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
-		return domain.Template{}, err
+	if req.Options != "" {
+		if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
+			return domain.Template{}, err
+		}
 	}
 
 	return domain.Template{
@@ -172,8 +175,39 @@ func (h *Handler) toDomain(req CreateTemplateReq) (domain.Template, error) {
 	}, nil
 }
 
+//func (h *Handler) toTemplateVo(req domain.Template) Template {
+//	return Template{
+//		Id:         req.Id,
+//		Name:       req.Name,
+//		WorkflowId: req.WorkflowId,
+//		GroupId:    req.GroupId,
+//		Icon:       req.Icon,
+//		Rules:      req.Rules,
+//		Options:    req.Options,
+//		CreateType: CreateType(req.CreateType),
+//		Desc:       req.Desc,
+//	}
+//}
+
 func (h *Handler) toTemplateVo(req domain.Template) Template {
+	rules, _ := json.Marshal(req.Rules)
+
+	options, _ := json.Marshal(req.Options)
 	return Template{
+		Id:         req.Id,
+		Name:       req.Name,
+		WorkflowId: req.WorkflowId,
+		GroupId:    req.GroupId,
+		Icon:       req.Icon,
+		Rules:      string(rules),
+		Options:    string(options),
+		CreateType: CreateType(req.CreateType),
+		Desc:       req.Desc,
+	}
+}
+
+func (h *Handler) toTemplateJsonVo(req domain.Template) TemplateJson {
+	return TemplateJson{
 		Id:         req.Id,
 		Name:       req.Name,
 		WorkflowId: req.WorkflowId,
@@ -188,18 +222,22 @@ func (h *Handler) toTemplateVo(req domain.Template) Template {
 
 func (h *Handler) toUpdateDomain(req UpdateTemplateReq) (domain.Template, error) {
 	var rulesData []map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
-		return domain.Template{}, err
+	if req.Rules != "" {
+		if err := json.Unmarshal([]byte(req.Rules), &rulesData); err != nil {
+			return domain.Template{}, err
+		}
 	}
-
 	var optionsData map[string]interface{}
-	if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
-		return domain.Template{}, err
+	if req.Options != "" {
+		if err := json.Unmarshal([]byte(req.Options), &optionsData); err != nil {
+			return domain.Template{}, err
+		}
 	}
 
 	return domain.Template{
 		Id:         req.Id,
 		Name:       req.Name,
+		Desc:       req.Desc,
 		Icon:       req.Icon,
 		GroupId:    req.GroupId,
 		WorkflowId: req.WorkflowId,

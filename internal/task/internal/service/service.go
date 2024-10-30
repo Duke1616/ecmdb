@@ -13,7 +13,10 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
@@ -26,16 +29,20 @@ type Service interface {
 	RetryTask(ctx context.Context, id int64) error
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error)
 	// ListTaskByStatus 列表任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
 
-	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error)
+	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error)
+
+	// FindTaskResult 查找自动化任务
+	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 }
 
 type service struct {
 	repo        repository.TaskRepository
+	aesKey      string
 	logger      *elog.Component
 	orderSvc    order.Service
 	engineSvc   engine.Service
@@ -45,7 +52,11 @@ type service struct {
 	workerSvc   worker.Service
 }
 
-func (s *service) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error) {
+func (s *service) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {
+	return s.repo.FindTaskResult(ctx, instanceId, nodeId)
+}
+
+func (s *service) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error) {
 	var (
 		eg    errgroup.Group
 		ts    []domain.Task
@@ -53,7 +64,7 @@ func (s *service) ListTasksByCtime(ctx context.Context, offset, limit int64, cti
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListTasksByCtime(ctx, offset, limit, ctime)
+		ts, err = s.repo.ListSuccessTasksByCtime(ctx, offset, limit, ctime)
 		return err
 	})
 
@@ -106,6 +117,7 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service) Service {
 	return &service{
 		repo:        repo,
+		aesKey:      viper.Get("crypto_aes_key").(string),
 		logger:      elog.DefaultLogger,
 		orderSvc:    orderSvc,
 		workflowSvc: workflowSvc,
@@ -171,7 +183,43 @@ func (s *service) UpdateArgs(ctx context.Context, id int64, args map[string]inte
 	return s.repo.UpdateArgs(ctx, id, args)
 }
 
-func (s *service) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+func (s *service) UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error) {
+	task, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	mapKey := slice.ToMap(task.Variables, func(element domain.Variables) string {
+		return element.Key
+	})
+
+	variables = slice.Map(variables, func(idx int, src domain.Variables) domain.Variables {
+		val, ok := mapKey[src.Key]
+		if ok {
+			// 拒绝对于敏感信息的修改
+			if val.Secret {
+				return domain.Variables{
+					Key:    src.Key,
+					Value:  val.Value,
+					Secret: val.Secret,
+				}
+			} else {
+				return domain.Variables{
+					Key:    src.Key,
+					Value:  src.Value,
+					Secret: val.Secret,
+				}
+			}
+		}
+
+		// 如果修改了 key 的话，那我也没有什么办法了
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
+
 	return s.repo.UpdateVariables(ctx, id, variables)
 }
 
@@ -203,13 +251,42 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 }
 
 func (s *service) retry(ctx context.Context, task domain.Task) error {
+	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+		Id:              task.Id,
+		TriggerPosition: "重试任务",
+		Status:          domain.RETRY,
+	})
+
+	// 变量数据梳理
+	vars := slice.Map(task.Variables, func(idx int, src domain.Variables) domain.Variables {
+		if src.Secret {
+			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
+			if er != nil {
+				return domain.Variables{}
+			}
+
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  val,
+				Secret: src.Secret,
+			}
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
+
+	variables, _ := json.Marshal(vars)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     task.Topic,
 		Code:      task.Code,
 		Language:  task.Language,
 		Args:      task.Args,
-		Variables: task.Variables,
+		Variables: string(variables),
 	})
 }
 
@@ -295,15 +372,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return err
 	}
 
-	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
-	switch workerResp.Status {
-	case worker.STOPPING:
-	case worker.OFFLINE:
-
-	}
-
 	// TODO 创建一份任务到数据库中，后续执行失败，重试机制
-	vars, _ := json.Marshal(runnerResp.Variables)
 	_, err = s.repo.UpdateTask(ctx, domain.Task{
 		// 字段可有可无
 		Id:            task.Id,
@@ -311,21 +380,64 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		WorkerName:    workerResp.Name,
 		WorkflowId:    flow.Id,
 		CodebookUid:   codebookResp.Identifier,
+		CodebookName:  codebookResp.Name,
 
 		// 必传字段
-		OrderId:   orderResp.Id,
-		Code:      codebookResp.Code,
-		Topic:     workerResp.Topic,
-		Language:  codebookResp.Language,
-		Status:    domain.RUNNING,
-		Args:      orderResp.Data,
-		Variables: string(vars),
+		OrderId:  orderResp.Id,
+		Code:     codebookResp.Code,
+		Topic:    workerResp.Topic,
+		Language: codebookResp.Language,
+		Status:   domain.RUNNING,
+		Args:     orderResp.Data,
+		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
+			}
+		}),
 	})
 	if err != nil {
 		return err
 	}
 
-	// 发送任务执行
+	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
+	switch workerResp.Status {
+	case worker.STOPPING:
+	case worker.OFFLINE:
+		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+			Id:              task.Id,
+			TriggerPosition: "调度任务节点失败, 工作节点离线",
+			Status:          domain.FAILED,
+			Result:          "调度任务节点失败, 工作节点离线",
+		})
+		return err
+	}
+
+	// 变量数据梳理
+	variables := slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
+		if src.Secret {
+			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
+			if er != nil {
+				return domain.Variables{}
+			}
+
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  val,
+				Secret: src.Secret,
+			}
+		}
+
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
+
+	// 运行任务
+	vars, _ := json.Marshal(variables)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
 		Topic:     workerResp.Topic,

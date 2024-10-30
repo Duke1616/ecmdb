@@ -1,21 +1,48 @@
 package domain
 
-const (
-	Ldap   = iota + 1 // LDAP 创建
-	System            // 系统 创建
-)
+type CreateType uint8
+
+func (s CreateType) ToUint8() uint8 {
+	return uint8(s)
+}
 
 const (
-	LdapSync = iota + 1
-	UserRegistry
+	// LDAP LDAP创建
+	LDAP CreateType = 1
+	// SYSTEM 系统创建
+	SYSTEM CreateType = 2
+)
+
+type Status uint8
+
+func (s Status) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// ENABLED 启用
+	ENABLED Status = 1
+	// DISABLED 禁用
+	DISABLED Status = 2
 )
 
 type User struct {
-	ID         int64
-	Username   string
-	Password   string
-	Email      string
-	Title      string
-	SourceType int64
-	CreateType int64
+	Id           int64
+	DepartmentId int64
+	Username     string
+	Password     string
+	Email        string
+	Title        string
+	DisplayName  string
+	Status       Status
+	CreateType   CreateType
+	RoleCodes    []string
+	FeishuInfo   FeishuInfo
+	WechatInfo   WechatInfo
+}
+
+type UserCombination struct {
+	DepartMentId int64
+	Total        int
+	Users        []User
 }

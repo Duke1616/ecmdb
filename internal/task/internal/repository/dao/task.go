@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,22 +18,38 @@ type TaskDAO interface {
 	FindById(ctx context.Context, id int64) (Task, error)
 	UpdateTask(ctx context.Context, t Task) (int64, error)
 	UpdateTaskStatus(ctx context.Context, req Task) (int64, error)
-	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables []Variables) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]Task, error)
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
 	Count(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error)
+	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error)
 	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
+	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error)
 }
 
 type taskDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *taskDAO) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error) {
+func (dao *taskDAO) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
+	filter["process_inst_id"] = instanceId
+	filter["current_node_id"] = nodeId
+
+	var result Task
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Task{}, fmt.Errorf("解码错误: %w", err)
+	}
+
+	return result, nil
+}
+
+func (dao *taskDAO) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+	filter["status"] = bson.M{"$eq": domain.SUCCESS}
 	filter["ctime"] = bson.M{"$gte": ctime}
 
 	opts := &options.FindOptions{
@@ -96,7 +113,7 @@ func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, 
 	return result, nil
 }
 
-func (dao *taskDAO) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
+func (dao *taskDAO) UpdateVariables(ctx context.Context, id int64, variables []Variables) (int64, error) {
 	col := dao.db.Collection(TaskCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
@@ -173,6 +190,7 @@ func (dao *taskDAO) UpdateTask(ctx context.Context, t Task) (int64, error) {
 			"order_id":         t.OrderId,
 			"worker_name":      t.WorkerName,
 			"codebook_uid":     t.CodebookUid,
+			"codebook_name":    t.CodebookName,
 			"workflow_id":      t.WorkflowId,
 			"topic":            t.Topic,
 			"language":         t.Language,
@@ -199,6 +217,7 @@ func (dao *taskDAO) UpdateTaskStatus(ctx context.Context, t Task) (int64, error)
 		"$set": bson.M{
 			"result":           t.Result,
 			"status":           t.Status,
+			"want_result":      t.WantResult,
 			"utime":            time.Now().UnixMilli(),
 			"trigger_position": t.TriggerPosition,
 		},
@@ -274,6 +293,7 @@ type Task struct {
 	Id              int64                  `bson:"id"`
 	OrderId         int64                  `bson:"order_id"`
 	ProcessInstId   int                    `bson:"process_inst_id"`
+	CodebookName    string                 `bson:"codebook_name"`
 	CodebookUid     string                 `bson:"codebook_uid"`
 	WorkerName      string                 `bson:"worker_name"`
 	WorkflowId      int64                  `bson:"workflow_id"`
@@ -281,11 +301,18 @@ type Task struct {
 	Topic           string                 `bson:"topic"`
 	Language        string                 `bson:"language"`
 	Args            map[string]interface{} `bson:"args"`
-	Variables       string                 `json:"variables"`
+	Variables       []Variables            `bson:"variables"`
 	Status          uint8                  `bson:"status"`
 	Result          string                 `bson:"result"`
+	WantResult      string                 `bson:"want_result"`
 	TriggerPosition string                 `bson:"trigger_position"`
 	CurrentNodeId   string                 `bson:"current_node_id"`
 	Ctime           int64                  `bson:"ctime"`
 	Utime           int64                  `bson:"utime"`
+}
+
+type Variables struct {
+	Key    string `bson:"key"`
+	Value  any    `bson:"value"`
+	Secret bool   `bson:"secret"`
 }

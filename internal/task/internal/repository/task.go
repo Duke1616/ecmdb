@@ -16,21 +16,27 @@ type TaskRepository interface {
 	FindById(ctx context.Context, id int64) (domain.Task, error)
 	UpdateTask(ctx context.Context, req domain.Task) (int64, error)
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
-	UpdateVariables(ctx context.Context, id int64, variables string) (int64, error)
+	UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error)
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 	Total(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error)
+	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error)
 	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
+	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 }
 
 type taskRepository struct {
 	dao dao.TaskDAO
 }
 
-func (repo *taskRepository) ListTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error) {
-	ts, err := repo.dao.ListTasksByCtime(ctx, offset, limit, ctime)
+func (repo *taskRepository) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {
+	task, err := repo.dao.FindTaskResult(ctx, instanceId, nodeId)
+	return repo.toDomain(task), err
+}
+
+func (repo *taskRepository) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error) {
+	ts, err := repo.dao.ListSuccessTasksByCtime(ctx, offset, limit, ctime)
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
 	}), err
@@ -47,8 +53,14 @@ func (repo *taskRepository) ListTask(ctx context.Context, offset, limit int64) (
 	}), err
 }
 
-func (repo *taskRepository) UpdateVariables(ctx context.Context, id int64, variables string) (int64, error) {
-	return repo.dao.UpdateVariables(ctx, id, variables)
+func (repo *taskRepository) UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error) {
+	return repo.dao.UpdateVariables(ctx, id, slice.Map(variables, func(idx int, src domain.Variables) dao.Variables {
+		return dao.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	}))
 }
 
 func (repo *taskRepository) FindById(ctx context.Context, id int64) (domain.Task, error) {
@@ -115,6 +127,7 @@ func (repo *taskRepository) toUpdateEntity(req domain.TaskResult) dao.Task {
 	return dao.Task{
 		Id:              req.Id,
 		Result:          req.Result,
+		WantResult:      req.WantResult,
 		Status:          req.Status.ToUint8(),
 		TriggerPosition: req.TriggerPosition,
 	}
@@ -128,14 +141,21 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		CurrentNodeId:   req.CurrentNodeId,
 		OrderId:         req.OrderId,
 		CodebookUid:     req.CodebookUid,
+		CodebookName:    req.CodebookName,
 		WorkerName:      req.WorkerName,
 		WorkflowId:      req.WorkflowId,
 		Code:            req.Code,
 		Topic:           req.Topic,
 		Language:        req.Language,
 		Args:            req.Args,
-		Variables:       req.Variables,
-		Status:          req.Status.ToUint8(),
+		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
+			return dao.Variables{
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
+			}
+		}),
+		Status: req.Status.ToUint8(),
 	}
 }
 
@@ -146,14 +166,22 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		CurrentNodeId: req.CurrentNodeId,
 		OrderId:       req.OrderId,
 		CodebookUid:   req.CodebookUid,
+		CodebookName:  req.CodebookName,
 		WorkerName:    req.WorkerName,
 		WorkflowId:    req.WorkflowId,
 		Code:          req.Code,
 		Topic:         req.Topic,
 		Args:          req.Args,
-		Variables:     req.Variables,
-		Language:      req.Language,
-		Result:        req.Result,
-		Status:        domain.Status(req.Status),
+		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
+			}
+		}),
+		Language:   req.Language,
+		Result:     req.Result,
+		WantResult: req.WantResult,
+		Status:     domain.Status(req.Status),
 	}
 }

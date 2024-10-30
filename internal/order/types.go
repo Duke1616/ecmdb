@@ -11,5 +11,9 @@ type Service = service.Service
 type Handler = web.Handler
 
 const (
-	StatusProcess = domain.PROCESS
+	EndProcess    = domain.END
+	SystemProvide = domain.SYSTEM
+	WechatProvide = domain.WECHAT
 )
+
+type Order = domain.Order

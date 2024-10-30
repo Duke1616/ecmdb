@@ -21,6 +21,7 @@ type AttributeRepository interface {
 	CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error)
+	UpdateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 }
 
 type attributeRepository struct {
@@ -33,52 +34,56 @@ func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {
 	}
 }
 
-func (a *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
-	return a.dao.CreateAttribute(ctx, a.toEntity(req))
+func (repo *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
+	return repo.dao.CreateAttribute(ctx, repo.toEntity(req))
+}
+
+func (repo *attributeRepository) UpdateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
+	return repo.dao.UpdateAttribute(ctx, repo.toEntity(req))
 }
 
 // SearchAttributeFieldsByModelUid 查询对应模型的字段信息
-func (a *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
-	attrs, err := a.dao.SearchAttributeByModelUID(ctx, modelUid)
+func (repo *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
+	attrs, err := repo.dao.SearchAttributeByModelUID(ctx, modelUid)
 
 	return slice.Map(attrs, func(idx int, src dao.Attribute) string {
 		return src.FieldUid
 	}), err
 }
 
-func (a *attributeRepository) ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
-	attrs, err := a.dao.ListAttribute(ctx, modelUID)
+func (repo *attributeRepository) ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
+	attrs, err := repo.dao.ListAttribute(ctx, modelUID)
 
 	return slice.Map(attrs, func(idx int, src dao.Attribute) domain.Attribute {
-		return a.toDomain(src)
+		return repo.toDomain(src)
 	}), err
 }
 
-func (a *attributeRepository) Total(ctx context.Context, modelUID string) (int64, error) {
-	return a.dao.Count(ctx, modelUID)
+func (repo *attributeRepository) Total(ctx context.Context, modelUID string) (int64, error) {
+	return repo.dao.Count(ctx, modelUID)
 }
 
-func (a *attributeRepository) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
-	return a.dao.UpdateFieldIndex(ctx, modelUid, customField)
+func (repo *attributeRepository) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+	return repo.dao.UpdateFieldIndex(ctx, modelUid, customField)
 }
 
-func (a *attributeRepository) CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
-	return a.dao.UpdateFieldIndexReverse(ctx, modelUid, customField)
+func (repo *attributeRepository) CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+	return repo.dao.UpdateFieldIndexReverse(ctx, modelUid, customField)
 }
 
-func (a *attributeRepository) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
-	return a.dao.DeleteAttribute(ctx, id)
+func (repo *attributeRepository) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.DeleteAttribute(ctx, id)
 }
 
-func (a *attributeRepository) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {
-	rrs, err := a.dao.ListAttributePipeline(ctx, modelUid)
+func (repo *attributeRepository) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {
+	rrs, err := repo.dao.ListAttributePipeline(ctx, modelUid)
 	return slice.Map(rrs, func(idx int, src dao.AttributePipeline) domain.AttributePipeline {
-		return a.toAttributeGroupsDomain(src)
+		return repo.toAttributeGroupsDomain(src)
 	}), err
 }
 
-func (a *attributeRepository) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error) {
-	attrs, err := a.dao.SearchAttributeFieldsBySecure(ctx, modelUids)
+func (repo *attributeRepository) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error) {
+	attrs, err := repo.dao.SearchAttributeFieldsBySecure(ctx, modelUids)
 	return slice.ToMapV(attrs, func(element dao.Attribute) (string, []string) {
 		return element.ModelUID, slice.FilterMap(attrs, func(idx int, src dao.Attribute) (string, bool) {
 			if src.ModelUID == element.ModelUID {
@@ -89,8 +94,9 @@ func (a *attributeRepository) SearchAttributeFieldsBySecure(ctx context.Context,
 	}), err
 }
 
-func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
+func (repo *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 	return dao.Attribute{
+		Id:        req.ID,
 		ModelUID:  req.ModelUid,
 		FieldUid:  req.FieldUid,
 		FieldName: req.FieldName,
@@ -98,13 +104,14 @@ func (a *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		GroupId:   req.GroupId,
 		Required:  req.Required,
 		Secure:    req.Secure,
+		Link:      req.Link,
 		Index:     req.Index,
 		Option:    req.Option,
 		Display:   req.Display,
 	}
 }
 
-func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
+func (repo *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 	return domain.Attribute{
 		ID:        attr.Id,
 		FieldUid:  attr.FieldUid,
@@ -112,6 +119,7 @@ func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		FieldType: attr.FieldType,
 		ModelUid:  attr.ModelUID,
 		Secure:    attr.Secure,
+		Link:      attr.Link,
 		Required:  attr.Required,
 		Option:    attr.Option,
 		Display:   attr.Display,
@@ -119,12 +127,12 @@ func (a *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 	}
 }
 
-func (a *attributeRepository) toAttributeGroupsDomain(ags dao.AttributePipeline) domain.AttributePipeline {
+func (repo *attributeRepository) toAttributeGroupsDomain(ags dao.AttributePipeline) domain.AttributePipeline {
 	return domain.AttributePipeline{
 		GroupId: ags.GroupId,
 		Total:   ags.Total,
 		Attributes: slice.Map(ags.Attributes, func(idx int, src dao.Attribute) domain.Attribute {
-			return a.toDomain(src)
+			return repo.toDomain(src)
 		}),
 	}
 }

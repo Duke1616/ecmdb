@@ -18,7 +18,7 @@ func NewRelationModelHandler(svc service.RelationModelService) *RelationModelHan
 	}
 }
 
-func (h *RelationModelHandler) RegisterRoute(server *gin.Engine) {
+func (h *RelationModelHandler) PrivateRoute(server *gin.Engine) {
 	g := server.Group("/api/model")
 	// 模型关联关系
 	g.POST("/relation/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))

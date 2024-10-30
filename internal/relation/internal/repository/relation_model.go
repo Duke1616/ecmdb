@@ -11,13 +11,11 @@ import (
 
 type RelationModelRepository interface {
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
-
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
-
-	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {

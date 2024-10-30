@@ -5,22 +5,18 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
 type RelationModelDAO interface {
 	CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error)
-
-	// ListRelationByModelUid 查询模型关联关系
+	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error)
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// FindModelDiagramBySrcUids 查询模型拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]ModelRelation, error)
-
-	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
 }
 
 func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
@@ -72,13 +68,14 @@ func (dao *modelDAO) FindModelDiagramBySrcUids(ctx context.Context, srcUids []st
 
 func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error) {
 	col := dao.db.Collection(ModelRelationCollection)
-	//filter := bson.M{
-	//	"$or": bson.A{
-	//		bson.M{"source_model_uid": modelUid},
-	//		bson.M{"target_model_uid": modelUid},
-	//	},
-	//}
-	filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"source_model_uid": modelUid},
+			bson.M{"target_model_uid": modelUid},
+		},
+	}
+	// 这种情况会出现意外、比如 host-1 host-2 会查询错误
+	//filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -103,7 +100,13 @@ func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit i
 
 func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	col := dao.db.Collection(ModelRelationCollection)
-	filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"source_model_uid": modelUid},
+			bson.M{"target_model_uid": modelUid},
+		},
+	}
+	//filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {

@@ -59,6 +59,8 @@ github.com/Duke1616/easy-workflow v1.0.3 h1:K2wzeC8RUZqAYHHLFuu0fdcyKD1xITtCJo2n
 github.com/Duke1616/easy-workflow v1.0.3/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
 github.com/Duke1616/enotify v0.1.8 h1:mwyrjSr5fc3yJDL4N9zZIreThtIeWpdas0NpHdhpsaE=
 github.com/Duke1616/enotify v0.1.8/go.mod h1:2+OiQ6PGDy2dcE6vwXLBV+kM9cPP9XYOusPIo9UY4xY=
+github.com/RediSearch/redisearch-go/v2 v2.1.1 h1:cCn3i40uLsVD8cxwrdrGfhdAgbR5Cld9q11eYyVOwpM=
+github.com/RediSearch/redisearch-go/v2 v2.1.1/go.mod h1:Uw93Wi97QqAsw1DwbQrhVd88dBorGTfSuCS42zfh1iA=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
@@ -229,6 +231,8 @@ github.com/golang/protobuf v1.5.3 h1:KhyjKVUg7Usr/dYsdSqoFveMYd5ko72D+zANwlG1mmg
 github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
 github.com/golang/snappy v0.0.1 h1:Qgr9rKW7uDUkrbSmQeiDsGa8SjGyCOGtuasMWwvp2P4=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
+github.com/gomodule/redigo v1.8.9 h1:Sl3u+2BI/kk+VEatbj0scLdrFhjPmbxOc1myhDP41ws=
+github.com/gomodule/redigo v1.8.9/go.mod h1:7ArFNvsTjH8GMMzB4uy1snslv2BwmginuMs06a1uzZE=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=

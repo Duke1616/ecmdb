@@ -15,6 +15,7 @@ import (
 
 type Service interface {
 	FindOrCreateByLdap(ctx context.Context, req domain.User) (domain.User, error)
+	SyncCreateLdapUser(ctx context.Context, req domain.User) (int64, error)
 	FindOrCreateBySystem(ctx context.Context, username, password, displayName string) (domain.User, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, int64, error)
 	UpdateUser(ctx context.Context, req domain.User) (int64, error)
@@ -32,6 +33,10 @@ type Service interface {
 type service struct {
 	repo   repository.UserRepository
 	logger *elog.Component
+}
+
+func (s *service) SyncCreateLdapUser(ctx context.Context, req domain.User) (int64, error) {
+	return s.repo.CreatUser(ctx, req)
 }
 
 func (s *service) FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error) {

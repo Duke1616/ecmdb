@@ -1,21 +1,16 @@
 package web
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
-	"github.com/Duke1616/ecmdb/internal/user/ldapx"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
-	"log"
-	"net/http"
 )
 
 type Handler struct {
@@ -41,7 +36,6 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/register", ginx.WrapBody[RegisterUserReq](h.RegisterUser))
-	g.GET("/namespace", ginx.Wrap(h.Namespace))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -55,6 +49,96 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/find/regex/username", ginx.WrapBody[FindByUsernameRegexReq](h.FindByUsernameRegex))
 	g.POST("/find/username", ginx.WrapBody[FindByUserNameReq](h.FindByUsername))
 	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
+
+	// 查询 LDAP 用户
+	g.POST("/ldap/search", ginx.WrapBody[Page](h.SearchLdapUser))
+	g.POST("/ldap/sync", ginx.WrapBody[SyncLdapUserReq](h.SyncLdapUser))
+	g.POST("/ldap/refresh_cache", ginx.Wrap(h.LdapRefreshCache))
+}
+
+func (h *Handler) SyncLdapUser(ctx *gin.Context, req SyncLdapUserReq) (ginx.Result, error) {
+	userId, err := h.svc.SyncCreateLdapUser(ctx, domain.User{
+		DepartmentId: req.DepartmentId,
+		Username:     req.Username,
+		Email:        req.Email,
+		Title:        req.Title,
+		DisplayName:  req.DisplayName,
+		Status:       domain.ENABLED,
+		CreateType:   domain.LDAP,
+		RoleCodes:    req.RoleCodes,
+		FeishuInfo: domain.FeishuInfo{
+			UserId: req.FeishuInfo.UserId,
+		},
+		WechatInfo: domain.WechatInfo{
+			UserId: req.WechatInfo.UserId,
+		},
+	})
+
+	if err != nil {
+		return systemErrorResult, nil
+	}
+
+	return ginx.Result{
+		Data: userId,
+		Msg:  "录入用户成功",
+	}, nil
+}
+
+func (h *Handler) SearchLdapUser(ctx *gin.Context, req Page) (ginx.Result, error) {
+	// 这个是全量的数据查询
+	pager, total, err := h.ldapSvc.SearchUserWithPager(ctx, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 查询本地数据库，去除已经插入的用户
+	us := slice.Map(pager, func(idx int, src domain.Profile) string {
+		return src.Username
+	})
+
+	users, err := h.svc.FindByUsernames(ctx, us)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	uniqueMap := slice.ToMapV(users, func(element domain.User) (string, bool) {
+		return element.Username, true
+	})
+
+	result := slice.Map(pager, func(idx int, src domain.Profile) LdapUser {
+		isExist := false
+		if _, ok := uniqueMap[src.Username]; ok {
+			isExist = true
+		}
+
+		return LdapUser{
+			Username:      src.Username,
+			Email:         src.Email,
+			Title:         src.Title,
+			DisplayName:   src.DisplayName,
+			IsSystemExist: isExist,
+		}
+	})
+
+	return ginx.Result{
+		Data: RetrieveLdapUsers{
+			Total: total,
+			Users: result,
+		},
+		Msg: "查询 LDAP 用户",
+	}, nil
+}
+
+func (h *Handler) LdapRefreshCache(ctx *gin.Context) (ginx.Result, error) {
+	err := h.ldapSvc.RefreshCacheUserWithPager(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: "ok",
+		Msg:  "刷新缓存成功",
+	}, nil
 }
 
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
@@ -72,69 +156,6 @@ func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result
 	return ginx.Result{
 		Data: h.ToUserVo(user),
 		Msg:  "登录用户成功",
-	}, nil
-}
-
-func (h *Handler) Namespace(ctx *gin.Context) (ginx.Result, error) {
-	// 第一个请求的URL和Payload
-	url := "https://kubepi.ebondhm.com/kubepi/api/v1/sessions"
-	payload := `{"username":"admin","password":"Ebond@kubepi123"}`
-
-	// 创建请求
-	req, err := http.NewRequest("POST", url, bytes.NewBufferString(payload))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 设置请求头
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	// 发送请求
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	// 读取响应
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 获取响应的cookie
-	cookies := resp.Cookies()
-
-	// 第二个请求的URL
-	getURL := "https://kubepi.ebondhm.com/kubepi/api/v1/clusters/sjk-cluster/members/zhangqj"
-
-	// 发起GET请求，并添加cookie
-	getReq, err := http.NewRequest("GET", getURL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, cookie := range cookies {
-		getReq.AddCookie(cookie)
-	}
-
-	getResp, err := client.Do(getReq)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer getResp.Body.Close()
-
-	// 读取第二个请求的响应内容
-	getBody, err := ioutil.ReadAll(getResp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 打印第二个请求的响应内容
-	fmt.Println("响应内容:", string(getBody))
-
-	return ginx.Result{
-		Data: string(body),
 	}, nil
 }
 
@@ -363,7 +384,7 @@ func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) toDomain(profile *ldapx.Profile) domain.User {
+func (h *Handler) toDomain(profile domain.Profile) domain.User {
 	return domain.User{
 		Username:    profile.Username,
 		Email:       profile.Email,

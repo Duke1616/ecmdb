@@ -12,6 +12,8 @@ ldap:
   group_name_attribute: "cn"
   user_filter: "(&(sAMAccountName={input})(!(UserAccountControl=514)))"
   group_filter: "(|(member={dn}))"
+  sync_user_filter: "(&(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=512)(userAccountControl:1.2.840.113556.1.4.803:=512)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+  sync_exclude_ou: "unknown"
 
 session:
   session_encrypted_key: "1234567890"

@@ -17,6 +17,11 @@ type RegisterUserReq struct {
 	DisplayName string `json:"display_name"`
 }
 
+type SearchLdapUser struct {
+	Username string `json:"username"`
+	PageSize uint32 `json:"page_size"`
+}
+
 type User struct {
 	Id           int64      `json:"id"`
 	DepartmentId int64      `json:"department_id"`
@@ -92,4 +97,15 @@ type UserDepartmentCombination struct {
 	Disabled    bool                         `json:"disabled"`
 	Sort        int64                        `json:"sort"`
 	Children    []*UserDepartmentCombination `json:"children"`
+}
+
+type SyncLdapUserReq struct {
+	Email        string     `json:"email"`
+	DepartmentId int64      `json:"department_id"`
+	Username     string     `json:"username"`
+	Title        string     `json:"title"`
+	DisplayName  string     `json:"display_name"`
+	RoleCodes    []string   `json:"role_codes"`
+	FeishuInfo   FeishuInfo `json:"feishu_info"`
+	WechatInfo   WechatInfo `json:"wechat_info"`
 }

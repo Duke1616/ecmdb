@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
 	github.com/Duke1616/enotify v0.1.8
+	github.com/RediSearch/redisearch-go/v2 v2.1.1
 	github.com/casbin/casbin/v2 v2.98.0
 	github.com/casbin/gorm-adapter/v3 v3.26.0
 	github.com/casbin/redis-watcher/v2 v2.5.0
@@ -71,6 +72,7 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/gomodule/redigo v1.8.9 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

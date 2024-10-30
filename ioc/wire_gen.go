@@ -86,7 +86,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, config, module, departmentModule)
+	userModule, err := user.InitModule(mongo, cmdable, config, module, departmentModule)
 	if err != nil {
 		return nil, err
 	}

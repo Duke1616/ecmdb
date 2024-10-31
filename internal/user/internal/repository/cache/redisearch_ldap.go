@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"time"
 )
@@ -44,10 +45,35 @@ func NewRedisearchLdapUserCache(conn *redisearch.Client) RedisearchLdapUserCache
 	}
 }
 
+func (cache *redisearchLdapUserCache) dropDocument(existDocs map[string]bool) error {
+	query := redisearch.NewQuery("*").SetReturnFields()
+	allDocs, _, err := cache.conn.Search(query)
+	if err != nil {
+		return err
+	}
+
+	docIds := slice.FilterMap(allDocs, func(idx int, src redisearch.Document) (string, bool) {
+		if _, ok := existDocs[src.Id]; ok {
+			return src.Id, true
+		}
+
+		return src.Id, false
+	})
+
+	for _, id := range docIds {
+		err = cache.conn.DeleteDocument(id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cache *redisearchLdapUserCache) Document(ctx context.Context, profiles []domain.Profile) error {
 	var docs []redisearch.Document
+	var existDocs map[string]bool
 	for _, profile := range profiles {
-		// 时间处理、后续排序处理
 		t, _ := time.Parse("20060102150405.0Z", profile.WhenCreated)
 		doc := redisearch.NewDocument(cache.key(profile.Username), 1.0)
 
@@ -57,23 +83,35 @@ func (cache *redisearchLdapUserCache) Document(ctx context.Context, profiles []d
 			Set("email", profile.Email).
 			Set("when_created", t.Unix())
 		docs = append(docs, doc)
+
+		// 缓存存在的数据
+		existDocs[profile.Username] = true
 	}
 
-	return cache.conn.IndexOptions(redisearch.IndexingOptions{
+	if err := cache.conn.IndexOptions(redisearch.IndexingOptions{
 		NoSave:           false,
 		Replace:          true,
 		Partial:          false,
 		ReplaceCondition: "",
-	}, docs...)
+	}, docs...); err != nil {
+		return err
+	}
+
+	return cache.dropDocument(existDocs)
 }
 
 func (cache *redisearchLdapUserCache) Query(ctx context.Context, keywords string,
 	offset, limit int) ([]domain.Profile, int, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			cache.logger.Info("LDAP 查询数据可能为空，刷新缓存", elog.Any("recover", r))
+		}
+	}()
+
 	// 判断传递关键字，如果为空查询所有
 	raw := "*"
 	if keywords != "" {
 		// 进行模糊匹配
-		//raw = fmt.Sprintf("%%%%%s%%%%", keywords)
 		raw = fmt.Sprintf("*%s*", keywords)
 	}
 

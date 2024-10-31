@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const KeyPrefix = "ecmdb:user:ldap"
+const KeyPrefix = "ecmdb:user:ldap:"
 
 type RedisearchLdapUserCache interface {
 	Document(ctx context.Context, profiles []domain.Profile) error
@@ -34,7 +34,8 @@ func NewRedisearchLdapUserCache(conn *redisearch.Client) RedisearchLdapUserCache
 	// 检查索引是否已经存在
 	_, err := conn.Info()
 	if err != nil {
-		if err = conn.CreateIndex(sc); err != nil {
+		indexDefinition := redisearch.NewIndexDefinition().AddPrefix(KeyPrefix)
+		if err = conn.CreateIndexWithIndexDefinition(sc, indexDefinition); err != nil {
 			logger.Error("redisearch 创建索引失败, 将影响 LDAP 获取用户功能", elog.FieldErr(err))
 		}
 	}
@@ -45,34 +46,9 @@ func NewRedisearchLdapUserCache(conn *redisearch.Client) RedisearchLdapUserCache
 	}
 }
 
-func (cache *redisearchLdapUserCache) dropDocument(existDocs map[string]bool) error {
-	query := redisearch.NewQuery("*").SetReturnFields()
-	allDocs, _, err := cache.conn.Search(query)
-	if err != nil {
-		return err
-	}
-
-	docIds := slice.FilterMap(allDocs, func(idx int, src redisearch.Document) (string, bool) {
-		if _, ok := existDocs[src.Id]; ok {
-			return src.Id, true
-		}
-
-		return src.Id, false
-	})
-
-	for _, id := range docIds {
-		err = cache.conn.DeleteDocument(id)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (cache *redisearchLdapUserCache) Document(ctx context.Context, profiles []domain.Profile) error {
 	var docs []redisearch.Document
-	var existDocs map[string]bool
+	existDocs := make(map[string]bool)
 	for _, profile := range profiles {
 		t, _ := time.Parse("20060102150405.0Z", profile.WhenCreated)
 		doc := redisearch.NewDocument(cache.key(profile.Username), 1.0)
@@ -98,6 +74,35 @@ func (cache *redisearchLdapUserCache) Document(ctx context.Context, profiles []d
 	}
 
 	return cache.dropDocument(existDocs)
+}
+
+func (cache *redisearchLdapUserCache) dropDocument(existDocs map[string]bool) error {
+	query := redisearch.NewQuery("*").SetReturnFields()
+	allDocs, _, err := cache.conn.Search(query)
+	if err != nil {
+		return err
+	}
+
+	docIds := slice.FilterMap(allDocs, func(idx int, src redisearch.Document) (string, bool) {
+		if _, ok := existDocs[src.Id]; ok {
+			return src.Id, true
+		}
+
+		return src.Id, false
+	})
+
+	if len(docIds) == len(allDocs) {
+		return nil
+	}
+
+	for _, id := range docIds {
+		err = cache.conn.DeleteDocument(id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (cache *redisearchLdapUserCache) Query(ctx context.Context, keywords string,
@@ -141,5 +146,5 @@ func (cache *redisearchLdapUserCache) Query(ctx context.Context, keywords string
 }
 
 func (cache *redisearchLdapUserCache) key(username string) string {
-	return fmt.Sprintf("%s:%s", KeyPrefix, username)
+	return fmt.Sprintf("%s%s", KeyPrefix, username)
 }

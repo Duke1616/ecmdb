@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"time"
 )
@@ -61,7 +60,7 @@ func (cache *redisearchLdapUserCache) Document(ctx context.Context, profiles []d
 		docs = append(docs, doc)
 
 		// 缓存存在的数据
-		existDocs[profile.Username] = true
+		existDocs[cache.key(profile.Username)] = true
 	}
 
 	if err := cache.conn.IndexOptions(redisearch.IndexingOptions{
@@ -77,24 +76,37 @@ func (cache *redisearchLdapUserCache) Document(ctx context.Context, profiles []d
 }
 
 func (cache *redisearchLdapUserCache) dropDocument(existDocs map[string]bool) error {
-	query := redisearch.NewQuery("*").SetReturnFields()
-	allDocs, _, err := cache.conn.Search(query)
+	offset := 0
+	limit := 10
+
+	_, total, err := cache.next(offset, limit)
 	if err != nil {
 		return err
 	}
 
-	docIds := slice.FilterMap(allDocs, func(idx int, src redisearch.Document) (string, bool) {
-		if _, ok := existDocs[src.Id]; ok {
-			return src.Id, true
-		}
-
-		return src.Id, false
-	})
-
-	if len(docIds) == len(allDocs) {
+	// 如果两边的数量一致, 不需要任何处理
+	if len(existDocs) == total {
 		return nil
 	}
 
+	// 获取所有数据
+	var docIds []string
+	for offset < total {
+		docs, _, er := cache.next(offset, limit)
+		if er != nil {
+			return er
+		}
+
+		for _, doc := range docs {
+			_, ok := existDocs[doc.Id]
+			if !ok {
+				docIds = append(docIds, doc.Id)
+			}
+		}
+		offset += limit
+	}
+
+	// 数据校对，删除多余缓存数据
 	for _, id := range docIds {
 		err = cache.conn.DeleteDocument(id)
 		if err != nil {
@@ -103,6 +115,19 @@ func (cache *redisearchLdapUserCache) dropDocument(existDocs map[string]bool) er
 	}
 
 	return nil
+}
+
+func (cache *redisearchLdapUserCache) next(offset, limit int) ([]redisearch.Document, int, error) {
+	query := redisearch.NewQuery("*").
+		SetReturnFields().
+		Limit(offset, limit)
+
+	docs, total, err := cache.conn.Search(query)
+	if err != nil {
+		return nil, total, err
+	}
+
+	return docs, total, nil
 }
 
 func (cache *redisearchLdapUserCache) Query(ctx context.Context, keywords string,

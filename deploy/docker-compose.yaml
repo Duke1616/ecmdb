@@ -56,12 +56,13 @@ services:
       - ETCD_AUTO_COMPACTION_RETENTION=1
   redis:
     restart: always
-    image: registry.cn-qingdao.aliyuncs.com/duke1616/redis:7.2.4
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/redis-stack:7.2.0-v13-x86_64
     container_name: ecmdb-redis
     ports:
       - 6379:6379
     environment:
       - TZ=Asia/Shanghai
+      - REDIS_ARGS=--requirepass 1234567890
     volumes:
       - redis:/data
   kafka:

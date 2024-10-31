@@ -51,7 +51,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
 
 	// 查询 LDAP 用户
-	g.POST("/ldap/search", ginx.WrapBody[Page](h.SearchLdapUser))
+	g.POST("/ldap/search", ginx.WrapBody[SearchLdapUser](h.SearchLdapUser))
 	g.POST("/ldap/sync", ginx.WrapBody[SyncLdapUserReq](h.SyncLdapUser))
 	g.POST("/ldap/refresh_cache", ginx.Wrap(h.LdapRefreshCache))
 }
@@ -84,9 +84,9 @@ func (h *Handler) SyncLdapUser(ctx *gin.Context, req SyncLdapUserReq) (ginx.Resu
 	}, nil
 }
 
-func (h *Handler) SearchLdapUser(ctx *gin.Context, req Page) (ginx.Result, error) {
+func (h *Handler) SearchLdapUser(ctx *gin.Context, req SearchLdapUser) (ginx.Result, error) {
 	// 这个是全量的数据查询
-	pager, total, err := h.ldapSvc.SearchUserWithPager(ctx, req.Offset, req.Limit)
+	pager, total, err := h.ldapSvc.SearchUserWithPager(ctx, req.Keywords, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}

@@ -81,12 +81,13 @@ func InitApp() (*App, error) {
 	}
 	handler3 := workerModule.Hdl
 	relationTypeHandler := relationModule.RTHdl
+	redisearchClient := InitRediSearch()
 	config := InitLdapConfig()
 	departmentModule, err := department.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, cmdable, config, module, departmentModule)
+	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule)
 	if err != nil {
 		return nil, err
 	}
@@ -181,4 +182,5 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitWorkWx, InitFeishu)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ,
+	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu)

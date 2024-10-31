@@ -18,8 +18,9 @@ type RegisterUserReq struct {
 }
 
 type SearchLdapUser struct {
-	Username string `json:"username"`
-	PageSize uint32 `json:"page_size"`
+	Offset   int    `json:"offset,omitempty"`
+	Limit    int    `json:"limit,omitempty"`
+	Keywords string `json:"keywords,omitempty"`
 }
 
 type User struct {

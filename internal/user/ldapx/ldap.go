@@ -38,6 +38,7 @@ func (p *ldapX) SearchUserWithPaging() ([]domain.Profile, error) {
 			p.conf.UsernameAttribute,
 			p.conf.DisplayNameAttribute,
 			p.conf.TitleAttribute,
+			p.conf.WhenCreatedAttribute,
 		}, nil,
 	)
 
@@ -76,6 +77,10 @@ func (p *ldapX) SearchUserWithPaging() ([]domain.Profile, error) {
 
 			if attr.Name == p.conf.TitleAttribute {
 				userProfile.Title = attr.Values[0]
+			}
+
+			if attr.Name == p.conf.WhenCreatedAttribute {
+				userProfile.WhenCreated = attr.Values[0]
 			}
 		}
 

@@ -10,5 +10,5 @@ type LdapUser struct {
 
 type RetrieveLdapUsers struct {
 	Users []LdapUser `json:"users"`
-	Total int64      `json:"total"`
+	Total int        `json:"total"`
 }

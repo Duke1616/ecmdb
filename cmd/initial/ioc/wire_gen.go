@@ -23,7 +23,7 @@ import (
 
 func InitApp() (*App, error) {
 	mongo := InitMongoDB()
-	cmdable := InitRedis()
+	client := InitRediSearch()
 	config := InitLdapConfig()
 	db := InitMySQLDB()
 	syncedEnforcer := InitCasbin(db)
@@ -35,7 +35,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, cmdable, config, module, departmentModule)
+	userModule, err := user.InitModule(mongo, client, config, module, departmentModule)
 	if err != nil {
 		return nil, err
 	}
@@ -57,4 +57,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ, InitEtcdClient, InitLdapConfig)
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitRediSearch, InitMQ, InitEtcdClient, InitLdapConfig)

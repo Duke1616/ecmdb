@@ -16,18 +16,18 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/google/wire"
-	"github.com/redis/go-redis/v9"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, redisClient redis.Cmdable, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
 	userRepository := repository.NewResourceRepository(userDAO)
 	serviceService := service.NewService(userRepository)
-	ldapUserCache := InitLdapUserCache(redisClient)
-	ldapService := service.NewLdapService(ldapConfig, ldapUserCache)
+	redisearchLdapUserCache := InitLdapUserCache(redisClient)
+	ldapService := service.NewLdapService(ldapConfig, redisearchLdapUserCache)
 	service2 := policyModule.Svc
 	service3 := departmentModule.Svc
 	handler := web.NewHandler(serviceService, ldapService, service2, service3)
@@ -42,6 +42,6 @@ func InitModule(db *mongox.Mongo, redisClient redis.Cmdable, ldapConfig ldapx.Co
 
 var ProviderSet = wire.NewSet(service.NewLdapService, service.NewService, repository.NewResourceRepository, dao.NewUserDao, web.NewHandler)
 
-func InitLdapUserCache(redisClient redis.Cmdable) cache.LdapUserCache {
-	return cache.NewLdapUserCache(redisClient, 0)
+func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
+	return cache.NewRedisearchLdapUserCache(conn)
 }

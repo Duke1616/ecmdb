@@ -12,8 +12,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/google/wire"
-	"github.com/redis/go-redis/v9"
 )
 
 var ProviderSet = wire.NewSet(
@@ -24,11 +24,11 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 )
 
-func InitLdapUserCache(redisClient redis.Cmdable) cache.LdapUserCache {
-	return cache.NewLdapUserCache(redisClient, 0)
+func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
+	return cache.NewRedisearchLdapUserCache(conn)
 }
 
-func InitModule(db *mongox.Mongo, redisClient redis.Cmdable, ldapConfig ldapx.Config, policyModule *policy.Module,
+func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module,
 	departmentModule *department.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,

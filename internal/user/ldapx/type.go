@@ -9,6 +9,7 @@ type Config struct {
 	MailAttribute        string `mapstructure:"mail_attribute" json:"mail_attribute,omitempty"`
 	DisplayNameAttribute string `mapstructure:"display_name_attribute" json:"display_name_attribute,omitempty"`
 	TitleAttribute       string `mapstructure:"title_attribute" json:"title_attribute,omitempty"`
+	WhenCreatedAttribute string `mapstructure:"when_created_attribute" json:"when_created_attribute,omitempty"`
 	UserFilter           string `mapstructure:"user_filter" json:"user_filter,omitempty"`
 	SyncUserFilter       string `mapstructure:"sync_user_filter" json:"sync_user_filter,omitempty"`
 	SyncExcludeOu        string `mapstructure:"sync_exclude_ou" json:"sync_exclude_ou,omitempty"`

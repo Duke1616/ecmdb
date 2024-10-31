@@ -1,11 +1,13 @@
 package ioc
 
 import (
+	"fmt"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/gomodule/redigo/redis"
+	"github.com/spf13/viper"
 )
 
-func InitRedisSearch() *redisearch.Client {
+func InitRediSearch() *redisearch.Client {
 	type Config struct {
 		Addr     string `mapstructure:"addr"`
 		Password string `mapstructure:"password"`
@@ -13,6 +15,10 @@ func InitRedisSearch() *redisearch.Client {
 	}
 
 	var cfg Config
+	if err := viper.UnmarshalKey("redis", &cfg); err != nil {
+		panic(fmt.Errorf("unable to decode into struct: %v", err))
+	}
+
 	pool := &redis.Pool{Dial: func() (redis.Conn, error) {
 		return redis.Dial("tcp", cfg.Addr,
 			redis.DialPassword(cfg.Password),

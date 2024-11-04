@@ -9,7 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
-
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/Duke1616/enotify/notify/feishu/card"
@@ -28,6 +28,7 @@ type FeishuCallbackEventConsumer struct {
 	Svc service.Service
 
 	tmpl        *template.Template
+	userSvc     user.Service
 	tmplName    string
 	engineSvc   engineSvc.Service
 	templateSvc templateSvc.Service
@@ -37,7 +38,7 @@ type FeishuCallbackEventConsumer struct {
 }
 
 func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, service service.Service,
-	templateSvc templateSvc.Service, lark *lark.Client) (*FeishuCallbackEventConsumer, error) {
+	templateSvc templateSvc.Service, userSvc user.Service, lark *lark.Client) (*FeishuCallbackEventConsumer, error) {
 	groupID := "feishu_callback"
 	consumer, err := q.Consumer(event.FeishuCallbackEventName, groupID)
 	if err != nil {
@@ -57,6 +58,7 @@ func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, servic
 	return &FeishuCallbackEventConsumer{
 		consumer:    consumer,
 		engineSvc:   engineSvc,
+		userSvc:     userSvc,
 		Nc:          nc,
 		templateSvc: templateSvc,
 		Svc:         service,
@@ -136,12 +138,17 @@ func (c *FeishuCallbackEventConsumer) withdraw(ctx context.Context, messageId st
 		return err
 	}
 	fields := rule.GetFields(rules, fOrder.Provide.ToUint8(), fOrder.Data)
+	userInfo, err := c.userSvc.FindByUsername(ctx, fOrder.CreateBy)
+	if err != nil {
+		return err
+	}
 
 	notifyWrap := notify.WrapNotifierDynamic(c.Nc, func() (notify.BasicNotificationMessage[*larkim.PatchMessageReq], error) {
 		return feishuMsg.NewPatchFeishuMessage(
 			messageId,
 			feishu.NewFeishuCustomCard(c.tmpl, c.tmplName,
 				card.NewApprovalCardBuilder().
+					SetToTitle(rule.GenerateTitle(userInfo.DisplayName, t.Name)).
 					SetToFields(fields).
 					SetWantResult(wantResult).
 					Build(),

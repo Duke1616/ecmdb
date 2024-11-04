@@ -107,7 +107,7 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, params 
 		}
 
 		// 生成消息数据
-		title := fmt.Sprintf("%s的%s", startUser.DisplayName, nOrder.TemplateName)
+		title := rule.GenerateTitle(startUser.DisplayName, nOrder.TemplateName)
 		var messages []notify.NotifierWrap
 		for _, integration := range n.integrations {
 			if integration.Name == fmt.Sprintf("%s_%s", params.NotifyMethod, "user") {

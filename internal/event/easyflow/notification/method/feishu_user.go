@@ -158,6 +158,10 @@ func (n *FeishuUserNotify) Builder(title string, users []user.User, params Notif
 		uid, _ := userMap[src.UserID]
 		cardVal := []card.Value{
 			{
+				Key:   "order_id",
+				Value: params.Order.Id,
+			},
+			{
 				Key:   "task_id",
 				Value: src.TaskID,
 			},

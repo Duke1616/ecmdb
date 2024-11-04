@@ -66,12 +66,12 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 	case "pass":
 		err = c.engineSvc.Pass(ctx, taskId, evt.Comment)
 		if err != nil {
-			return err
+			c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 		}
 	case "reject":
 		err = c.engineSvc.Reject(ctx, taskId, evt.Comment)
 		if err != nil {
-			return err
+			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
 		}
 	}
 

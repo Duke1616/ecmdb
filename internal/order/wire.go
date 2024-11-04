@@ -75,8 +75,9 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 	return c
 }
 
-func InitFeishuCallbackConsumer(q mq.MQ, svc engine.Service, lark *lark.Client) *consumer.FeishuCallbackEventConsumer {
-	c, err := consumer.NewFeishuCallbackEventConsumer(q, svc, lark)
+func InitFeishuCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark *lark.Client,
+	templateSvc template.Service, svc service.Service) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, engineSvc, svc, templateSvc, lark)
 	if err != nil {
 		return nil
 	}

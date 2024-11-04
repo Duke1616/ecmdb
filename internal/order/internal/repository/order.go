@@ -10,6 +10,7 @@ import (
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, req domain.Order) (int64, error)
 	DetailByProcessInstId(ctx context.Context, instanceId int) (domain.Order, error)
+	Detail(ctx context.Context, id int64) (domain.Order, error)
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
@@ -25,6 +26,11 @@ func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
 
 type orderRepository struct {
 	dao dao.OrderDAO
+}
+
+func (repo *orderRepository) Detail(ctx context.Context, id int64) (domain.Order, error) {
+	order, err := repo.dao.Detail(ctx, id)
+	return repo.toDomain(order), err
 }
 
 func (repo *orderRepository) UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error {

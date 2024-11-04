@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/Duke1616/enotify/notify/feishu/card"
+	"github.com/Duke1616/enotify/notify/feishu/message"
 	"github.com/Duke1616/enotify/template"
 	"github.com/ecodeclub/ekit/slice"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -24,7 +25,7 @@ func NewFeishuAutomationNotify(lark *lark.Client) (*FeishuAutomationNotify, erro
 		return nil, err
 	}
 
-	nc, err := feishu.NewFeishuNotifyByClient(lark)
+	nc, err := feishu.NewCreateFeishuNotifyByClient(lark)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func (n *FeishuAutomationNotify) getFields(wantResult map[string]interface{}) []
 func (n *FeishuAutomationNotify) generate(userId string, title string, fields []card.Field,
 	cardVal []card.Value) notify.NotifierWrap {
 	return notify.WrapNotifierDynamic(n.Nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
-		return feishu.NewFeishuMessage(
+		return message.NewCreateFeishuMessage(
 			"user_id", userId,
 			feishu.NewFeishuCustomCard(n.tmpl, n.tmplName,
 				card.NewApprovalCardBuilder().

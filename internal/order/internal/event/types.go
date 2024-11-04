@@ -69,4 +69,5 @@ type FeishuCallback struct {
 	FeishuUserId string `json:"feishu_user_id"`
 	TaskId       string `json:"task_id"`
 	Comment      string `json:"comment"`
+	OrderId      string `json:"order_id"`
 }

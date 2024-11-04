@@ -3,12 +3,13 @@ package method
 import (
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/enotify/notify"
 )
 
 type NotifyParams struct {
-	Rules      []Rule
+	Rules      []rule.Rule
 	Order      order.Order
 	Tasks      []model.Task
 	WantResult map[string]interface{}

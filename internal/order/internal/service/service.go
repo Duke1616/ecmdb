@@ -19,6 +19,7 @@ import (
 type Service interface {
 	CreateOrder(ctx context.Context, req domain.Order) error
 	DetailByProcessInstId(ctx context.Context, instanceId int) (domain.Order, error)
+	Detail(ctx context.Context, id int64) (domain.Order, error)
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
 	// RegisterProcessInstanceId 注册流程引擎ID
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error
@@ -36,6 +37,10 @@ type service struct {
 	repo     repository.OrderRepository
 	producer event.CreateProcessEventProducer
 	l        *elog.Component
+}
+
+func (s *service) Detail(ctx context.Context, id int64) (domain.Order, error) {
+	return s.repo.Detail(ctx, id)
 }
 
 func (s *service) ListOrdersByUser(ctx context.Context, userId string, offset, limit int64) ([]domain.Order, int64, error) {

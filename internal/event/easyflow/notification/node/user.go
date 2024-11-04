@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/task"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -201,14 +202,14 @@ func (n *UserNotification) getUsers(ctx context.Context, tasks []model.Task) ([]
 }
 
 // isNotify 获取模版的字段信息
-func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]method.Rule, error) {
+func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
 	// 获取模版详情信息
 	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
 	if err != nil {
 		return nil, err
 	}
 
-	rules, err := method.ParseRules(t.Rules)
+	rules, err := rule.ParseRules(t.Rules)
 	if err != nil {
 		return nil, err
 	}

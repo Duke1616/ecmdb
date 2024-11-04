@@ -1,4 +1,4 @@
-package method
+package rule
 
 import "encoding/json"
 
@@ -19,4 +19,14 @@ func ParseRules(ruleData interface{}) ([]Rule, error) {
 	}
 	err = json.Unmarshal(rulesJson, &rules)
 	return rules, err
+}
+
+const (
+	SystemProvide = 1
+	WechatProvide = 2
+)
+
+type Data struct {
+	Provide  uint8
+	OderData map[string]interface{}
 }

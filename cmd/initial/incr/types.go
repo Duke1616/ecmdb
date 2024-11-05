@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/spf13/cobra"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -42,8 +43,11 @@ func RunIncrementalOperations(currentVersion string) error {
 	// 将当前版本号解析为一个切片，以便进行比较
 	currentVerSlice := parseVersion(currentVersion)
 
+	// 获取所有版本号并进行排序
+	versions := sortedVersions()
+
 	// 遍历注册表中的所有增量操作
-	for version, incr := range incrRegistry {
+	for _, version := range versions {
 		// 将注册表中的版本号解析为切片
 		versionSlice := parseVersion(version)
 
@@ -51,20 +55,38 @@ func RunIncrementalOperations(currentVersion string) error {
 		if compare(versionSlice, currentVerSlice) {
 			fmt.Printf("Executing incremental operation for version %s...\n", version)
 			// 程序运行前
-			err := incr.Before()
+			err := incrRegistry[version].Before()
 			cobra.CheckErr(err)
 
 			// 执行提交操作
-			err = incr.Commit()
+			err = incrRegistry[version].Commit()
 			cobra.CheckErr(err)
 
 			// 程序运行后
-			err = incr.Before()
+			err = incrRegistry[version].After()
 			cobra.CheckErr(err)
 		}
 	}
 
 	return nil
+}
+
+// sortedVersions 返回排序后的版本号切片
+func sortedVersions() []string {
+	// 将注册表中的版本号提取到一个切片
+	var versions []string
+	for version := range incrRegistry {
+		versions = append(versions, version)
+	}
+
+	// 使用自定义的排序规则进行排序
+	sort.SliceStable(versions, func(i, j int) bool {
+		v1 := parseVersion(versions[i])
+		v2 := parseVersion(versions[j])
+		return compare(v1, v2)
+	})
+
+	return versions
 }
 
 // parseVersion 将版本号字符串转换为整数切片，以便进行比较

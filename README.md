@@ -50,33 +50,34 @@ docker restart ecmdb
 
 # 环境销毁
 docker compose -p ecmdb -f deploy/docker-compose.yaml down
-
 ```
 
 ## 关联项目
 具体内容请查看相关项目，如果没有工单自动化任务需求，可以不部署任务执行器
 - 前端： https://github.com/Duke1616/ecmdb-web
 - 任务执行器：https://github.com/Duke1616/ework-runner
+- 消息通知：https://github.com/Duke1616/enotify
 
 ## 功能
 - CMDB
   - 全文检索、针对资产数据全文检索
-  - 提供了模型的抽象管理，自定义模型属性
+  - 提供了模型的抽象管理，自定义模型属性、加密属性
   - 模型关联关系、资产关联关系
 - 工单系统
   - 集成了Easy-Workflow流程引擎，支持或签、并签、判断、会签、自动化
-  - 支持绑定自定义脚本执行自动化任务
+  - 自定义执行单元绑定工作节点和任务模版、绑定自定义变量
   - 支持接收企业微信OA回调消息、转换自动化任务执行
     - 接收企业微信数据请自行开发、只要把消息推送到 `wechat_callback_events` 消息队列中即可, 如有需要，可以联系我进行咨询，提供具体方案思路
   - 自动化任务支持篡改变量、篡改输入，任务重试
+  - 集成飞书消息通知、消息回调 `pass` `reject` 相应业务处理
 - 用户权限
-  - 支持 LDAP 登录
+  - 支持LDAP、账号密码登录方式
   - 支持前端动态菜单、按钮、后端API鉴权
 
 ## 技术栈
 - 数据库：MongoDB、MySQL
-- 中间件：Redis、kafka、Etcd、Easy-Workflow
-- 框架：Gin、Gorm、Wire、Casbin
+- 中间件：Redis、kafka、Etcd
+- 框架：Gin、Gorm、Wire、Casbin、Easy-Workflow
 
 ## 目录结构
 ```
@@ -108,10 +109,11 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
 │   ├── user       # 权限 - 用户模块
 │   ├── role       # 权限 - 角色管理
 │   ├── endpoint   # 权限 - API接口管理
+│   ├── department # 权限 - 人员分组管理
 │   ├── policy     # 权限 - 集成casbin 
 │   ├── menu       # 权限 - 菜单信息
 │   ├── permission # 权限 - 整合鉴权
-│   ├── pkg        # 通用
+│   ├── pkg        # 通用工具包
 ├── ioc # 依赖注入
 │   ├── app.go
 │   ├── casbin.go
@@ -123,6 +125,7 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
 │   ├── mq.go
 │   ├── mysql.go
 │   ├── redis.go
+│   ├── redisearch.go
 │   ├── session.go
 │   ├── wire_gen.go
 │   ├── wire.go

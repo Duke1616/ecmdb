@@ -134,7 +134,7 @@ func (cache *redisearchLdapUserCache) Query(ctx context.Context, keywords string
 	offset, limit int) ([]domain.Profile, int, error) {
 	defer func() {
 		if r := recover(); r != nil {
-			cache.logger.Info("LDAP 查询数据可能为空，刷新缓存", elog.Any("recover", r))
+			cache.logger.Error("LDAP 查询数据可能为空，刷新缓存", elog.Any("recover", r))
 		}
 	}()
 

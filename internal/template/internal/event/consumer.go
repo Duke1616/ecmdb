@@ -39,7 +39,7 @@ func (c *WechatApprovalCallbackConsumer) Start(ctx context.Context) {
 		for {
 			err := c.Consume(ctx)
 			if err != nil {
-				elog.Error("同步事件失败", elog.Any("err", err))
+				elog.Error("创建企业微信工单事件失败", elog.Any("err", err))
 			}
 		}
 	}()

@@ -21,5 +21,10 @@ func InitWorkWx() *workwx.WorkwxApp {
 		panic(fmt.Errorf("unable to decode into struct: %v", err))
 	}
 
-	return workwx.New(cfg.CorpID).WithApp(cfg.CorpSecret, cfg.AgentID)
+	workApp := workwx.New(cfg.CorpID).WithApp(cfg.CorpSecret, cfg.AgentID)
+
+	// refresh token
+	go workApp.SpawnAccessTokenRefresher()
+
+	return workApp
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/role"
+	"github.com/Duke1616/ecmdb/internal/rota"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -37,7 +38,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
-	departmentHdl *department.Handler, toolsHdl *tools.Handler,
+	departmentHdl *department.Handler, toolsHdl *tools.Handler, rotaHdl *rota.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	gin.SetMode(gin.ReleaseMode)
@@ -77,6 +78,9 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	codebookHdl.PrivateRoutes(server)
 	workerHdl.PrivateRoutes(server)
 	runnerHdl.PrivateRoutes(server)
+
+	// 排班系统相关接口
+	rotaHdl.PrivateRoutes(server)
 
 	// 用户权限相关接口
 	userHdl.PrivateRoutes(server)

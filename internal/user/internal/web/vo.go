@@ -69,6 +69,10 @@ type FindByUserNameReq struct {
 	Username string `json:"username"`
 }
 
+type FindByIdReq struct {
+	Id int64 `json:"id"`
+}
+
 type FindUsersByDepartmentIdReq struct {
 	Page
 	DepartmentId int64 `json:"department_id"`

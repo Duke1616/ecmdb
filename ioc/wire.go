@@ -18,6 +18,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/role"
+	"github.com/Duke1616/ecmdb/internal/rota"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -80,6 +81,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*role.Module), "Hdl"),
 		permission.InitModule,
 		wire.FieldsOf(new(*permission.Module), "Hdl"),
+		rota.InitModule,
+		wire.FieldsOf(new(*rota.Module), "Hdl"),
 		tools.InitModule,
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		initCronJobs,

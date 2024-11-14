@@ -48,6 +48,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/pipeline/department_id", ginx.Wrap(h.PipelineDepartmentId))
 	g.POST("/find/regex/username", ginx.WrapBody[FindByUsernameRegexReq](h.FindByUsernameRegex))
 	g.POST("/find/username", ginx.WrapBody[FindByUserNameReq](h.FindByUsername))
+	g.POST("/find/id", ginx.WrapBody[FindByIdReq](h.FindById))
 	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
 
 	// 查询 LDAP 用户
@@ -173,7 +174,6 @@ func (h *Handler) FindByUsername(ctx *gin.Context, req FindByUserNameReq) (ginx.
 		}
 
 		u = h.ToUserVo(user)
-
 	} else {
 		user, err := h.svc.FindByUsername(ctx, req.Username)
 		if err != nil {
@@ -242,6 +242,37 @@ func (h *Handler) UpdateUser(ctx *gin.Context, req UpdateUserReq) (ginx.Result, 
 
 	return ginx.Result{
 		Data: id,
+	}, nil
+}
+
+func (h *Handler) FindById(ctx *gin.Context, req FindByIdReq) (ginx.Result, error) {
+	var u User
+	if req.Id == 0 {
+		sess, err := session.Get(&gctx.Context{Context: ctx})
+		if err != nil {
+			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
+		}
+
+		user, err := h.svc.FindById(ctx, sess.Claims().Uid)
+		if err != nil {
+			return systemErrorResult, err
+		}
+
+		u = h.ToUserVo(user)
+	} else {
+		user, err := h.svc.FindById(ctx, req.Id)
+		if err != nil {
+			return systemErrorResult, err
+		}
+		if err != nil {
+			return systemErrorResult, err
+		}
+
+		u = h.ToUserVo(user)
+	}
+
+	return ginx.Result{
+		Data: u,
 	}, nil
 }
 

@@ -17,13 +17,14 @@ type UserDAO interface {
 	CreatUser(ctx context.Context, user User) (int64, error)
 	FindByUsername(ctx context.Context, username string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
+	FindByIds(ctx context.Context, ids []int64) ([]User, error)
 	UpdateUser(ctx context.Context, req User) (int64, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]User, error)
 	AddOrUpdateRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	Count(ctx context.Context) (int64, error)
 	UpdatePassword(ctx context.Context, id int64, password string) error
-	FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]User, error)
-	CountByUsernameRegex(ctx context.Context, username string) (int64, error)
+	FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]User, error)
+	CountByKeywords(ctx context.Context, keyword string) (int64, error)
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]User, error)
 	CountByDepartmentId(ctx context.Context, departmentId int64) (int64, error)
 	PipelineDepartmentId(ctx context.Context) ([]UserPipeline, error)
@@ -31,8 +32,28 @@ type UserDAO interface {
 	FindByWechatUser(ctx context.Context, wechatUserId string) (User, error)
 }
 
+func NewUserDao(db *mongox.Mongo) UserDAO {
+	return &userDao{
+		db: db,
+	}
+}
+
 type userDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *userDao) FindByIds(ctx context.Context, ids []int64) ([]User, error) {
+	col := dao.db.Collection(UserCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+	cursor, err := col.Find(ctx, filter)
+	var result []User
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *userDao) FindByWechatUser(ctx context.Context, wechatUserId string) (User, error) {
@@ -148,9 +169,14 @@ func (dao *userDao) CountByDepartmentId(ctx context.Context, departmentId int64)
 	return count, nil
 }
 
-func (dao *userDao) FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]User, error) {
+func (dao *userDao) FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]User, error) {
 	col := dao.db.Collection(UserCollection)
-	filter := bson.M{"username": bson.M{"$regex": primitive.Regex{Pattern: username, Options: "i"}}}
+	filter := bson.M{
+		"$or": []bson.M{
+			{"username": bson.M{"$regex": primitive.Regex{Pattern: keyword, Options: "i"}}},
+			{"display_name": bson.M{"$regex": primitive.Regex{Pattern: keyword, Options: "i"}}},
+		},
+	}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -168,12 +194,12 @@ func (dao *userDao) FindByUsernameRegex(ctx context.Context, offset, limit int64
 	return result, nil
 }
 
-func (dao *userDao) CountByUsernameRegex(ctx context.Context, username string) (int64, error) {
+func (dao *userDao) CountByKeywords(ctx context.Context, keyword string) (int64, error) {
 	col := dao.db.Collection(UserCollection)
 	filter := bson.M{
 		"$or": []bson.M{
-			{"username": bson.M{"$regex": primitive.Regex{Pattern: username, Options: "i"}}},
-			{"display_name": bson.M{"$regex": primitive.Regex{Pattern: username, Options: "i"}}},
+			{"username": bson.M{"$regex": primitive.Regex{Pattern: keyword, Options: "i"}}},
+			{"display_name": bson.M{"$regex": primitive.Regex{Pattern: keyword, Options: "i"}}},
 		},
 	}
 	count, err := col.CountDocuments(ctx, filter)
@@ -266,12 +292,6 @@ func (dao *userDao) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
-}
-
-func NewUserDao(db *mongox.Mongo) UserDAO {
-	return &userDao{
-		db: db,
-	}
 }
 
 func (dao *userDao) CreatUser(ctx context.Context, user User) (int64, error) {

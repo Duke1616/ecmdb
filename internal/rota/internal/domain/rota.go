@@ -32,7 +32,6 @@ type RotaRule struct {
 	StartTime  int64       // 开始时间
 	EndTime    int64       // 结束时间
 	RotaGroups []RotaGroup // 值班人员组
-	IsRotate   bool        // 是否开启轮换
 	Rotate     Rotate      // 轮换相关参数
 }
 
@@ -44,6 +43,7 @@ type Rotate struct {
 
 // RotaGroup 值班组
 type RotaGroup struct {
+	Id      int64
 	Name    string  // 组名称
-	Members []uint8 // 值班人员
+	Members []int64 // 值班人员
 }

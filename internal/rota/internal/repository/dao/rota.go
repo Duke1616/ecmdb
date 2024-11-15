@@ -17,7 +17,9 @@ type RotaDao interface {
 	Create(ctx context.Context, req Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]Rota, error)
 	Count(ctx context.Context) (int64, error)
-	FindOrUpdateRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
+	FindOrUpdatesSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
+	FindOrUpdatesAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
+	Detail(ctx context.Context, id int64) (Rota, error)
 }
 
 func NewRotaDao(db *mongox.Mongo) RotaDao {
@@ -28,6 +30,18 @@ func NewRotaDao(db *mongox.Mongo) RotaDao {
 
 type rotaDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *rotaDao) Detail(ctx context.Context, id int64) (Rota, error) {
+	col := dao.db.Collection(RotaCollection)
+	var rota Rota
+	filter := bson.M{"id": id}
+
+	if err := col.FindOne(ctx, filter).Decode(&rota); err != nil {
+		return Rota{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return rota, nil
 }
 
 func (dao *rotaDao) List(ctx context.Context, offset, limit int64) ([]Rota, error) {
@@ -67,12 +81,42 @@ func (dao *rotaDao) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (dao *rotaDao) FindOrUpdateRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
+func (dao *rotaDao) FindOrUpdatesSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
+	col := dao.db.Collection(RotaCollection)
+	filter := bson.M{"id": id}
+
+	// 然后执行实际的更新操作
+	update := bson.M{
+		"$set": bson.M{
+			"utime": time.Now().UnixMilli(),
+		},
+		"$push": bson.M{
+			"rules": rr,
+		},
+	}
+
+	result := col.FindOneAndUpdate(ctx, filter, update,
+		options.FindOneAndUpdate().SetReturnDocument(options.After).SetUpsert(true),
+	)
+
+	if result.Err() != nil {
+		return 0, result.Err()
+	}
+
+	var updatedRota Rota
+	if err := result.Decode(&updatedRota); err != nil {
+		return 0, err
+	}
+
+	return updatedRota.Id, nil
+}
+
+func (dao *rotaDao) FindOrUpdatesAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
 	col := dao.db.Collection(RotaCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{
 		"$push": bson.M{
-			"rule": rr,
+			"temp_rules": rr,
 		},
 		"$set": bson.M{
 			"utime": time.Now().UnixMilli(),
@@ -122,7 +166,6 @@ type Rota struct {
 // RotaRule 值班规则
 type RotaRule struct {
 	RotaGroups []RotaGroup `bson:"rota_groups"`
-	IsRotate   bool        `bson:"is_rotate"`
 	Rotate     Rotate      `bson:"rotate"`
 	StartTime  int64       `bson:"start_time"`
 	EndTime    int64       `bson:"end_time"`
@@ -136,6 +179,7 @@ type Rotate struct {
 
 // RotaGroup 值班组
 type RotaGroup struct {
+	Id      int64   `bson:"id"`
 	Name    string  `bson:"name"`
-	Members []uint8 `bson:"members"`
+	Members []int64 `bson:"members"`
 }

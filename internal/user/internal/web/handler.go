@@ -46,9 +46,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/info", ginx.Wrap(h.GetUserInfo))
 	g.POST("/find/usernames", ginx.WrapBody[FindByUserNamesReq](h.FindByUsernames))
 	g.POST("/pipeline/department_id", ginx.Wrap(h.PipelineDepartmentId))
-	g.POST("/find/regex/username", ginx.WrapBody[FindByUsernameRegexReq](h.FindByUsernameRegex))
+	g.POST("/find/by_keyword", ginx.WrapBody[FindByKeywordReq](h.FindByKeywords))
 	g.POST("/find/username", ginx.WrapBody[FindByUserNameReq](h.FindByUsername))
 	g.POST("/find/id", ginx.WrapBody[FindByIdReq](h.FindById))
+	g.POST("/find/by_ids", ginx.WrapBody[FindByIdsReq](h.FindByIds))
 	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
 
 	// 查询 LDAP 用户
@@ -82,6 +83,27 @@ func (h *Handler) SyncLdapUser(ctx *gin.Context, req SyncLdapUserReq) (ginx.Resu
 	return ginx.Result{
 		Data: userId,
 		Msg:  "录入用户成功",
+	}, nil
+}
+
+func (h *Handler) FindByIds(ctx *gin.Context, req FindByIdsReq) (ginx.Result, error) {
+	if len(req.Ids) < 0 {
+		return systemErrorResult, fmt.Errorf("输入为空，不符合要求")
+	}
+
+	users, err := h.svc.FindByIds(ctx, req.Ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "获取多个用户信息成功",
+		Data: RetrieveUsers{
+			Total: int64(len(users)),
+			Users: slice.Map(users, func(idx int, src domain.User) User {
+				return h.ToUserVo(src)
+			}),
+		},
 	}, nil
 }
 
@@ -293,8 +315,8 @@ func (h *Handler) FindByDepartmentId(ctx *gin.Context, req FindUsersByDepartment
 	}, nil
 }
 
-func (h *Handler) FindByUsernameRegex(ctx *gin.Context, req FindByUsernameRegexReq) (ginx.Result, error) {
-	users, total, err := h.svc.FindByUsernameRegex(ctx, req.Offset, req.Limit, req.Username)
+func (h *Handler) FindByKeywords(ctx *gin.Context, req FindByKeywordReq) (ginx.Result, error) {
+	users, total, err := h.svc.FindByKeywords(ctx, req.Offset, req.Limit, req.Keyword)
 	if err != nil {
 		return systemErrorResult, err
 	}

@@ -56,9 +56,9 @@ type WechatInfo struct {
 	UserId string `json:"user_id"`
 }
 
-type FindByUsernameRegexReq struct {
+type FindByKeywordReq struct {
 	Page
-	Username string `json:"username"`
+	Keyword string `json:"keyword"`
 }
 
 type FindByUserNamesReq struct {
@@ -71,6 +71,10 @@ type FindByUserNameReq struct {
 
 type FindByIdReq struct {
 	Id int64 `json:"id"`
+}
+
+type FindByIdsReq struct {
+	Ids []int64 `json:"ids"`
 }
 
 type FindUsersByDepartmentIdReq struct {

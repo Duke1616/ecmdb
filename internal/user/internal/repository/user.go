@@ -11,13 +11,14 @@ type UserRepository interface {
 	CreatUser(ctx context.Context, user domain.User) (int64, error)
 	FindByUsername(ctx context.Context, username string) (domain.User, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	FindByIds(ctx context.Context, ids []int64) ([]domain.User, error)
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, error)
 	UpdateUser(ctx context.Context, req domain.User) (int64, error)
 	Total(ctx context.Context) (int64, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	UpdatePassword(ctx context.Context, id int64, password string) error
-	FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, error)
-	TotalByUsernameRegex(ctx context.Context, username string) (int64, error)
+	FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]domain.User, error)
+	TotalByKeywords(ctx context.Context, keyword string) (int64, error)
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, error)
 	TotalByDepartmentId(ctx context.Context, departmentId int64) (int64, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
@@ -27,6 +28,13 @@ type UserRepository interface {
 
 type userRepo struct {
 	dao dao.UserDAO
+}
+
+func (repo *userRepo) FindByIds(ctx context.Context, ids []int64) ([]domain.User, error) {
+	us, err := repo.dao.FindByIds(ctx, ids)
+	return slice.Map(us, func(idx int, src dao.User) domain.User {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *userRepo) FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error) {
@@ -69,15 +77,15 @@ func (repo *userRepo) TotalByDepartmentId(ctx context.Context, departmentId int6
 	return repo.dao.CountByDepartmentId(ctx, departmentId)
 }
 
-func (repo *userRepo) FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, error) {
-	us, err := repo.dao.FindByUsernameRegex(ctx, offset, limit, username)
+func (repo *userRepo) FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]domain.User, error) {
+	us, err := repo.dao.FindByKeywords(ctx, offset, limit, keyword)
 	return slice.Map(us, func(idx int, src dao.User) domain.User {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *userRepo) TotalByUsernameRegex(ctx context.Context, username string) (int64, error) {
-	return repo.dao.CountByUsernameRegex(ctx, username)
+func (repo *userRepo) TotalByKeywords(ctx context.Context, keyword string) (int64, error) {
+	return repo.dao.CountByKeywords(ctx, keyword)
 }
 
 func (repo *userRepo) UpdatePassword(ctx context.Context, id int64, password string) error {

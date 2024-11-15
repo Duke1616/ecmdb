@@ -6,6 +6,10 @@ type AddRoleReq struct {
 	RotaRule RotaRule `json:"rota_rule"`
 }
 
+type DetailById struct {
+	Id int64 `json:"id"`
+}
+
 type Rota struct {
 	Id        int64      `json:"id"`
 	Name      string     `json:"name"`
@@ -20,8 +24,7 @@ type Rota struct {
 type RotaRule struct {
 	StartTime  int64       `json:"start_time"`
 	EndTime    int64       `json:"end_time"`
-	RotaGroups []RotaGroup `json:"rota_group"`
-	IsRotate   bool        `json:"is_rotate"`
+	RotaGroups []RotaGroup `json:"rota_groups"`
 	Rotate     Rotate      `json:"rotate"`
 }
 
@@ -33,8 +36,9 @@ type Rotate struct {
 
 // RotaGroup 值班组
 type RotaGroup struct {
+	Id      int64   `json:"id"`
 	Name    string  `json:"name"`
-	Members []uint8 `json:"members"`
+	Members []int64 `json:"members"`
 }
 
 // CreateRotaReq 创建值班请求

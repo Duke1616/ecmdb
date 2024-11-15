@@ -22,8 +22,9 @@ type Service interface {
 	Login(ctx context.Context, username, password string) (domain.User, error)
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	FindByIds(ctx context.Context, ids []int64) ([]domain.User, error)
 	FindByUsername(ctx context.Context, username string) (domain.User, error)
-	FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, int64, error)
+	FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]domain.User, int64, error)
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
@@ -33,6 +34,10 @@ type Service interface {
 type service struct {
 	repo   repository.UserRepository
 	logger *elog.Component
+}
+
+func (s *service) FindByIds(ctx context.Context, ids []int64) ([]domain.User, error) {
+	return s.repo.FindByIds(ctx, ids)
 }
 
 func (s *service) SyncCreateLdapUser(ctx context.Context, req domain.User) (int64, error) {
@@ -82,7 +87,7 @@ func (s *service) FindByUsernames(ctx context.Context, uns []string) ([]domain.U
 	return s.repo.FindByUsernames(ctx, uns)
 }
 
-func (s *service) FindByUsernameRegex(ctx context.Context, offset, limit int64, username string) ([]domain.User, int64, error) {
+func (s *service) FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]domain.User, int64, error) {
 	var (
 		eg    errgroup.Group
 		us    []domain.User
@@ -90,13 +95,13 @@ func (s *service) FindByUsernameRegex(ctx context.Context, offset, limit int64, 
 	)
 	eg.Go(func() error {
 		var err error
-		us, err = s.repo.FindByUsernameRegex(ctx, offset, limit, username)
+		us, err = s.repo.FindByKeywords(ctx, offset, limit, keyword)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalByUsernameRegex(ctx, username)
+		total, err = s.repo.TotalByKeywords(ctx, keyword)
 		return err
 	})
 	if err := eg.Wait(); err != nil {

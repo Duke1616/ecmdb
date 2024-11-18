@@ -56,8 +56,7 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 	// 初始化当前排班和下期排班
 	var currentSchedule, nextSchedule *domain.Schedule
 
-	for i, t := range data {
-
+	for _, t := range data {
 		schedule := domain.Schedule{
 			Title:     "空空如也",
 			StartTime: t.UnixMilli(),
@@ -73,11 +72,10 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 		// 判断下期排班
 		if currentTime >= t.UnixMilli() && currentTime < t.UnixMilli()+durationMilli && nextSchedule == nil {
 			index := (groupIndex + 1) % groupCount
-			d := data[i+1]
 			nextSchedule = &domain.Schedule{
 				Title:     "空空如也",
-				StartTime: d.UnixMilli(),
-				EndTime:   d.UnixMilli() + durationMilli,
+				StartTime: t.UnixMilli() + durationMilli,
+				EndTime:   t.UnixMilli() + durationMilli + durationMilli,
 				RotaGroup: rotaGroups[index],
 			}
 		}

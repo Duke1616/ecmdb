@@ -10,6 +10,7 @@ import (
 type RotaRepository interface {
 	Create(ctx context.Context, req domain.Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Rota, error)
+	UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
 	Total(ctx context.Context) (int64, error)
 	AddSchedulingRole(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
@@ -23,6 +24,12 @@ func NewRotaRepository(dao dao.RotaDao) RotaRepository {
 
 type rotaRepository struct {
 	dao dao.RotaDao
+}
+
+func (repo *rotaRepository) UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error) {
+	return repo.dao.UpdateSchedulingRole(ctx, id, slice.Map(rotaRules, func(idx int, src domain.RotaRule) dao.RotaRule {
+		return repo.toRuleEntity(src)
+	}))
 }
 
 func (repo *rotaRepository) Detail(ctx context.Context, id int64) (domain.Rota, error) {
@@ -42,7 +49,7 @@ func (repo *rotaRepository) Total(ctx context.Context) (int64, error) {
 }
 
 func (repo *rotaRepository) AddSchedulingRole(ctx context.Context, id int64, rr domain.RotaRule) (int64, error) {
-	return repo.dao.FindOrUpdatesSchedulingRole(ctx, id, repo.toRuleEntity(rr))
+	return repo.dao.FindOrAddSchedulingRole(ctx, id, repo.toRuleEntity(rr))
 }
 
 func (repo *rotaRepository) Create(ctx context.Context, req domain.Rota) (int64, error) {

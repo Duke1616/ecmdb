@@ -10,6 +10,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, req domain.Rota) (int64, error)
 	AddSchedulingRole(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
+	UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Rota, int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
 }
@@ -22,6 +23,10 @@ func NewService(repo repository.RotaRepository) Service {
 
 type service struct {
 	repo repository.RotaRepository
+}
+
+func (s *service) UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error) {
+	return s.repo.UpdateSchedulingRole(ctx, id, rotaRules)
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Rota, error) {

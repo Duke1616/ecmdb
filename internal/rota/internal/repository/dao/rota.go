@@ -17,8 +17,9 @@ type RotaDao interface {
 	Create(ctx context.Context, req Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]Rota, error)
 	Count(ctx context.Context) (int64, error)
-	FindOrUpdatesSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
-	FindOrUpdatesAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
+	FindOrAddSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
+	UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error)
+	FindOrAddAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
 	Detail(ctx context.Context, id int64) (Rota, error)
 }
 
@@ -30,6 +31,23 @@ func NewRotaDao(db *mongox.Mongo) RotaDao {
 
 type rotaDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *rotaDao) UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error) {
+	col := dao.db.Collection(RotaCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"rules": rotaRules,
+			"utime": time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *rotaDao) Detail(ctx context.Context, id int64) (Rota, error) {
@@ -81,7 +99,7 @@ func (dao *rotaDao) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (dao *rotaDao) FindOrUpdatesSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
+func (dao *rotaDao) FindOrAddSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
 	col := dao.db.Collection(RotaCollection)
 	filter := bson.M{"id": id}
 
@@ -111,7 +129,7 @@ func (dao *rotaDao) FindOrUpdatesSchedulingRole(ctx context.Context, id int64, r
 	return updatedRota.Id, nil
 }
 
-func (dao *rotaDao) FindOrUpdatesAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
+func (dao *rotaDao) FindOrAddAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
 	col := dao.db.Collection(RotaCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{

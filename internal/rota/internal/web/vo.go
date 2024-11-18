@@ -65,6 +65,11 @@ type DeleteReq struct {
 type UpdateReq struct {
 }
 
+type UpdateShiftSchedulingRoleReq struct {
+	Id        int64      `json:"id"`
+	RotaRules []RotaRule `json:"rota_rules"`
+}
+
 type RetrieveRotas struct {
 	Rotas []Rota `json:"rotas"`
 	Total int64  `json:"total"`

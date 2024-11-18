@@ -30,7 +30,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// 常规排班规则
 	g.POST("/rule/shift_scheduling/add", ginx.WrapBody[AddRoleReq](h.AddShiftSchedulingRole))
 	g.POST("/rule/shift_scheduling/delete", ginx.WrapBody[AddRoleReq](h.AddShiftSchedulingRole))
-	g.POST("/rule/shift_scheduling/update", ginx.WrapBody[AddRoleReq](h.AddShiftSchedulingRole))
+	g.POST("/rule/shift_scheduling/update",
+		ginx.WrapBody[UpdateShiftSchedulingRoleReq](h.UpdateShiftSchedulingRole))
 
 	// 临时排班规则
 	g.POST("/rule/shift_adjustment/add", ginx.WrapBody[AddRoleReq](h.AddShiftAdjustmentRole))
@@ -47,7 +48,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 // AddShiftSchedulingRole 新增排班规则
 func (h *Handler) AddShiftSchedulingRole(ctx *gin.Context, req AddRoleReq) (ginx.Result, error) {
-	id, err := h.svc.AddSchedulingRole(ctx, req.Id, h.toRuleDomain(req))
+	id, err := h.svc.AddSchedulingRole(ctx, req.Id, h.toRuleDomain(req.RotaRule))
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -75,7 +76,7 @@ func (h *Handler) GetRuleListById(ctx *gin.Context, req DetailById) (ginx.Result
 
 // AddShiftAdjustmentRole 新增临时排班规则
 func (h *Handler) AddShiftAdjustmentRole(ctx *gin.Context, req AddRoleReq) (ginx.Result, error) {
-	id, err := h.svc.AddSchedulingRole(ctx, req.Id, h.toRuleDomain(req))
+	id, err := h.svc.AddSchedulingRole(ctx, req.Id, h.toRuleDomain(req.RotaRule))
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -128,13 +129,27 @@ func (h *Handler) Delete(ctx *gin.Context, req DeleteReq) (ginx.Result, error) {
 	return ginx.Result{}, nil
 }
 
+func (h *Handler) UpdateShiftSchedulingRole(ctx *gin.Context, req UpdateShiftSchedulingRoleReq) (ginx.Result, error) {
+	role, err := h.svc.UpdateSchedulingRole(ctx, req.Id, slice.Map(req.RotaRules,
+		func(idx int, src RotaRule) domain.RotaRule {
+			return h.toRuleDomain(src)
+		}))
+	if err != nil {
+		return systemErrorResult, nil
+	}
+
+	return ginx.Result{
+		Data: role,
+	}, nil
+}
+
 func (h *Handler) Update(ctx *gin.Context, req UpdateReq) (ginx.Result, error) {
 	return ginx.Result{}, nil
 }
 
-func (h *Handler) toRuleDomain(req AddRoleReq) domain.RotaRule {
+func (h *Handler) toRuleDomain(req RotaRule) domain.RotaRule {
 	return domain.RotaRule{
-		RotaGroups: slice.Map(req.RotaRule.RotaGroups, func(idx int, src RotaGroup) domain.RotaGroup {
+		RotaGroups: slice.Map(req.RotaGroups, func(idx int, src RotaGroup) domain.RotaGroup {
 			return domain.RotaGroup{
 				Id:      src.Id,
 				Name:    src.Name,
@@ -142,11 +157,29 @@ func (h *Handler) toRuleDomain(req AddRoleReq) domain.RotaRule {
 			}
 		}),
 		Rotate: domain.Rotate{
-			TimeUnit:     domain.TimeUnit(req.RotaRule.Rotate.TimeUnit),
-			TimeDuration: req.RotaRule.Rotate.TimeDuration,
+			TimeUnit:     domain.TimeUnit(req.Rotate.TimeUnit),
+			TimeDuration: req.Rotate.TimeDuration,
 		},
-		StartTime: req.RotaRule.StartTime,
-		EndTime:   req.RotaRule.EndTime,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+	}
+}
+
+func (h *Handler) toUpdateRuleDomain(req RotaRule) domain.RotaRule {
+	return domain.RotaRule{
+		RotaGroups: slice.Map(req.RotaGroups, func(idx int, src RotaGroup) domain.RotaGroup {
+			return domain.RotaGroup{
+				Id:      src.Id,
+				Name:    src.Name,
+				Members: src.Members,
+			}
+		}),
+		Rotate: domain.Rotate{
+			TimeUnit:     domain.TimeUnit(req.Rotate.TimeUnit),
+			TimeDuration: req.Rotate.TimeDuration,
+		},
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
 	}
 }
 

@@ -6,6 +6,10 @@ func (s TimeUnit) ToUint8() uint8 {
 	return uint8(s)
 }
 
+func (s TimeUnit) ToInt() int {
+	return int(s)
+}
+
 const (
 	YEARLY   TimeUnit = 1
 	MONTHLY  TimeUnit = 2
@@ -46,4 +50,18 @@ type RotaGroup struct {
 	Id      int64
 	Name    string  // 组名称
 	Members []int64 // 值班人员
+}
+
+// ShiftRostered 排班表
+type ShiftRostered struct {
+	FinalSchedule   []Schedule // 总排班
+	CurrentSchedule Schedule   // 当前排班
+	NextSchedule    Schedule   // 下期排班
+}
+
+type Schedule struct {
+	Title     string    // 标题
+	StartTime int64     // 开始时间
+	EndTime   int64     // 结束时间
+	RotaGroup RotaGroup // 分组
 }

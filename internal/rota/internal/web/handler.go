@@ -43,7 +43,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 排班数据渲染
 	g.POST("/schedule/by_my/list", ginx.Wrap(h.AllMySchedules))
-	g.POST("/schedule/preview", ginx.Wrap(h.AllMySchedules))
+	g.POST("/schedule/preview", ginx.WrapBody[GenerateShiftRosteredReq](h.GenerateShiftRostered))
 }
 
 // AddShiftSchedulingRole 新增排班规则
@@ -71,6 +71,24 @@ func (h *Handler) GetRuleListById(ctx *gin.Context, req DetailById) (ginx.Result
 		Data: slice.Map(rota.Rules, func(idx int, src domain.RotaRule) RotaRule {
 			return h.toVoRule(src)
 		}),
+	}, nil
+}
+
+// GenerateShiftRostered 生成排班表
+func (h *Handler) GenerateShiftRostered(ctx *gin.Context, req GenerateShiftRosteredReq) (ginx.Result, error) {
+	rostered, err := h.svc.GenerateShiftRostered(ctx, req.Id, req.StartTime, req.EndTime)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: RetrieveShiftRostered{
+			FinalSchedule: slice.Map(rostered.FinalSchedule, func(idx int, src domain.Schedule) Schedule {
+				return h.toVoSchedule(src)
+			}),
+			CurrentSchedule: h.toVoSchedule(rostered.CurrentSchedule),
+			NextSchedule:    h.toVoSchedule(rostered.NextSchedule),
+		},
 	}, nil
 }
 
@@ -223,5 +241,18 @@ func (h *Handler) toVoRule(req domain.RotaRule) RotaRule {
 		},
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
+	}
+}
+
+func (h *Handler) toVoSchedule(req domain.Schedule) Schedule {
+	return Schedule{
+		Title:     req.Title,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+		RotaGroup: RotaGroup{
+			Id:      req.RotaGroup.Id,
+			Name:    req.RotaGroup.Name,
+			Members: req.RotaGroup.Members,
+		},
 	}
 }

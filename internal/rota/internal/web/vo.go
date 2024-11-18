@@ -70,7 +70,27 @@ type UpdateShiftSchedulingRoleReq struct {
 	RotaRules []RotaRule `json:"rota_rules"`
 }
 
+// GenerateShiftRosteredReq 生成排班表请求
+type GenerateShiftRosteredReq struct {
+	Id        int64 `json:"id"`
+	StartTime int64 `json:"start_time"` // 开始时间
+	EndTime   int64 `json:"end_time"`   // 结束时间
+}
+
 type RetrieveRotas struct {
 	Rotas []Rota `json:"rotas"`
 	Total int64  `json:"total"`
+}
+
+type RetrieveShiftRostered struct {
+	FinalSchedule   []Schedule `json:"final_schedule"`
+	CurrentSchedule Schedule   `json:"current_schedule"`
+	NextSchedule    Schedule   `json:"next_schedule"`
+}
+
+type Schedule struct {
+	Title     string    `json:"title"`
+	StartTime int64     `json:"start_time"`
+	EndTime   int64     `json:"end_time"`
+	RotaGroup RotaGroup `json:"rota_group"`
 }

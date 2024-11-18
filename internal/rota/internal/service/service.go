@@ -13,6 +13,7 @@ type Service interface {
 	UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Rota, int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
+	GenerateShiftRostered(ctx context.Context, id, stime, etime int64) (domain.ShiftRostered, error)
 }
 
 func NewService(repo repository.RotaRepository) Service {
@@ -23,6 +24,28 @@ func NewService(repo repository.RotaRepository) Service {
 
 type service struct {
 	repo repository.RotaRepository
+}
+
+func (s *service) GenerateShiftRostered(ctx context.Context, id, stime, etime int64) (domain.ShiftRostered, error) {
+	rota, err := s.repo.Detail(ctx, id)
+	if err != nil {
+		return domain.ShiftRostered{}, err
+	}
+
+	if len(rota.Rules) == 0 {
+		return domain.ShiftRostered{}, nil
+	}
+
+	var rotas []domain.ShiftRostered
+	for _, rule := range rota.Rules {
+		r, er := RruleSchedule(rule, stime, etime)
+		if er != nil {
+			return domain.ShiftRostered{}, er
+		}
+		rotas = append(rotas, r)
+	}
+
+	return rotas[0], err
 }
 
 func (s *service) UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error) {

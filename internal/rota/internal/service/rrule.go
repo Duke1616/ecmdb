@@ -14,23 +14,30 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 		return domain.ShiftRostered{}, err
 	}
 
+	var durationMilli int64
+	resultTime := stime
+	switch rule.Rotate.TimeUnit {
+	case domain.DAILY:
+		durationMilli = int64(rule.Rotate.TimeDuration) * 24 * 60 * 60 * 1000
+		resultTime = stime - int64(rule.Rotate.TimeDuration)*24*60*60*1000
+	case domain.HOURLY:
+		durationMilli = int64(rule.Rotate.TimeDuration) * 60 * 60 * 1000
+	default:
+		return domain.ShiftRostered{}, fmt.Errorf("unsupported frequency: %d", rule.Rotate.TimeUnit)
+	}
+
 	set := rrule.Set{}
 	option := rrule.ROption{
 		Freq:     rrule.Frequency(rule.Rotate.TimeUnit.ToInt() - 1),
 		Interval: int(rule.Rotate.TimeDuration),
-		//Bymonth:   []int{10, 9},
-		//Byweekday: []rrule.Weekday{rrule.SA, rrule.SU},
-		Dtstart: time.UnixMilli(rule.StartTime).In(location),
-		Until:   time.UnixMilli(etime).In(location),
+		Dtstart:  time.UnixMilli(rule.StartTime).In(location),
+		Until:    time.UnixMilli(etime).In(location),
 	}
 	r, err := rrule.NewRRule(option)
 	if err != nil {
 		return domain.ShiftRostered{}, err
 	}
 	set.RRule(r)
-	// 计算当前排班
-
-	// 计算下期排班
 
 	// 计算范围内排班
 	data := set.Between(time.UnixMilli(rule.StartTime).In(location), time.UnixMilli(etime).In(location), true)
@@ -42,16 +49,14 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 		return domain.ShiftRostered{}, fmt.Errorf("RotaGroups is empty")
 	}
 	groupIndex := 0
-	for _, t := range data {
-		var durationMilli int64
-		switch option.Freq {
-		case rrule.DAILY:
-			durationMilli = int64(option.Interval) * 24 * 60 * 60 * 1000
-		case rrule.HOURLY:
-			durationMilli = int64(option.Interval) * 60 * 60 * 1000
-		default:
-			return domain.ShiftRostered{}, fmt.Errorf("unsupported frequency: %d", option.Freq)
-		}
+
+	// 获取当前时间
+	currentTime := time.Now().UnixMilli()
+
+	// 初始化当前排班和下期排班
+	var currentSchedule, nextSchedule *domain.Schedule
+
+	for i, t := range data {
 
 		schedule := domain.Schedule{
 			Title:     "空空如也",
@@ -59,11 +64,44 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 			EndTime:   t.UnixMilli() + durationMilli,
 			RotaGroup: rotaGroups[groupIndex],
 		}
-		finalSchedule = append(finalSchedule, schedule)
+
+		// 判断当前排班
+		if currentTime >= t.UnixMilli() && currentTime < t.UnixMilli()+durationMilli && currentSchedule == nil {
+			currentSchedule = &schedule
+		}
+
+		// 判断下期排班
+		if currentTime >= t.UnixMilli() && currentTime < t.UnixMilli()+durationMilli && nextSchedule == nil {
+			index := (groupIndex + 1) % groupCount
+			d := data[i+1]
+			nextSchedule = &domain.Schedule{
+				Title:     "空空如也",
+				StartTime: d.UnixMilli(),
+				EndTime:   d.UnixMilli() + durationMilli,
+				RotaGroup: rotaGroups[index],
+			}
+		}
+
 		groupIndex = (groupIndex + 1) % groupCount
+
+		// 判断是否需要保存
+		if t.UnixMilli() < resultTime {
+			continue
+		}
+
+		finalSchedule = append(finalSchedule, schedule)
+	}
+
+	// 如果没有计算
+	if currentSchedule == nil && nextSchedule == nil {
+		return domain.ShiftRostered{
+			FinalSchedule: finalSchedule,
+		}, nil
 	}
 
 	return domain.ShiftRostered{
-		FinalSchedule: finalSchedule,
+		FinalSchedule:   finalSchedule,
+		CurrentSchedule: *currentSchedule,
+		NextSchedule:    *nextSchedule,
 	}, nil
 }

@@ -15,6 +15,12 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 		return domain.ShiftRostered{}, err
 	}
 
+	// 如果设置了，截止时间，查询就以截止时间为止
+	endTime := etime
+	if rule.EndTime != 0 {
+		endTime = rule.EndTime
+	}
+
 	var durationMilli int64
 	resultTime := stime
 	switch rule.Rotate.TimeUnit {
@@ -32,7 +38,7 @@ func RruleSchedule(rule domain.RotaRule, stime int64, etime int64) (domain.Shift
 		Freq:     rrule.Frequency(rule.Rotate.TimeUnit.ToInt() - 1),
 		Interval: int(rule.Rotate.TimeDuration),
 		Dtstart:  time.UnixMilli(rule.StartTime).In(location),
-		Until:    time.UnixMilli(etime).In(location),
+		Until:    time.UnixMilli(endTime).In(location),
 	}
 	r, err := rrule.NewRRule(option)
 	if err != nil {

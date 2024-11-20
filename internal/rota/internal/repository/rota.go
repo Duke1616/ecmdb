@@ -10,10 +10,14 @@ import (
 type RotaRepository interface {
 	Create(ctx context.Context, req domain.Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Rota, error)
-	UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
 	Total(ctx context.Context) (int64, error)
-	AddSchedulingRole(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
+
+	AddSchedulingRule(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
+	UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
+
+	AddAdjustmentRule(ctx context.Context, id int64, rr domain.RotaAdjustmentRule) (int64, error)
+	UpdateAdjustmentRule(ctx context.Context, id int64, rotaRules []domain.RotaAdjustmentRule) (int64, error)
 }
 
 func NewRotaRepository(dao dao.RotaDao) RotaRepository {
@@ -26,8 +30,19 @@ type rotaRepository struct {
 	dao dao.RotaDao
 }
 
-func (repo *rotaRepository) UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error) {
-	return repo.dao.UpdateSchedulingRole(ctx, id, slice.Map(rotaRules, func(idx int, src domain.RotaRule) dao.RotaRule {
+func (repo *rotaRepository) UpdateAdjustmentRule(ctx context.Context, id int64, rotaRules []domain.RotaAdjustmentRule) (int64, error) {
+	return repo.dao.UpdateAdjustmentRule(ctx, id,
+		slice.Map(rotaRules, func(idx int, src domain.RotaAdjustmentRule) dao.RotaAdjustmentRule {
+			return repo.toAdjustmentRuleEntity(src)
+		}))
+}
+
+func (repo *rotaRepository) AddAdjustmentRule(ctx context.Context, id int64, rr domain.RotaAdjustmentRule) (int64, error) {
+	return repo.dao.FindOrAddAdjustmentRule(ctx, id, repo.toAdjustmentRuleEntity(rr))
+}
+
+func (repo *rotaRepository) UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error) {
+	return repo.dao.UpdateSchedulingRule(ctx, id, slice.Map(rotaRules, func(idx int, src domain.RotaRule) dao.RotaRule {
 		return repo.toRuleEntity(src)
 	}))
 }
@@ -48,8 +63,8 @@ func (repo *rotaRepository) Total(ctx context.Context) (int64, error) {
 	return repo.dao.Count(ctx)
 }
 
-func (repo *rotaRepository) AddSchedulingRole(ctx context.Context, id int64, rr domain.RotaRule) (int64, error) {
-	return repo.dao.FindOrAddSchedulingRole(ctx, id, repo.toRuleEntity(rr))
+func (repo *rotaRepository) AddSchedulingRule(ctx context.Context, id int64, rr domain.RotaRule) (int64, error) {
+	return repo.dao.FindOrAddSchedulingRule(ctx, id, repo.toRuleEntity(rr))
 }
 
 func (repo *rotaRepository) Create(ctx context.Context, req domain.Rota) (int64, error) {
@@ -58,12 +73,12 @@ func (repo *rotaRepository) Create(ctx context.Context, req domain.Rota) (int64,
 
 func (repo *rotaRepository) toEntity(req domain.Rota) dao.Rota {
 	return dao.Rota{
-		Id:        req.Id,
-		Name:      req.Name,
-		Desc:      req.Desc,
-		Enabled:   req.Enabled,
-		Rules:     []dao.RotaRule{},
-		TempRules: []dao.RotaRule{},
+		Id:              req.Id,
+		Name:            req.Name,
+		Desc:            req.Desc,
+		Enabled:         req.Enabled,
+		Rules:           []dao.RotaRule{},
+		AdjustmentRules: []dao.RotaAdjustmentRule{},
 	}
 }
 
@@ -77,8 +92,8 @@ func (repo *rotaRepository) toDomain(req dao.Rota) domain.Rota {
 		Rules: slice.Map(req.Rules, func(idx int, src dao.RotaRule) domain.RotaRule {
 			return repo.toRuleDomain(src)
 		}),
-		TempRules: slice.Map(req.TempRules, func(idx int, src dao.RotaRule) domain.RotaRule {
-			return repo.toRuleDomain(src)
+		AdjustmentRules: slice.Map(req.AdjustmentRules, func(idx int, src dao.RotaAdjustmentRule) domain.RotaAdjustmentRule {
+			return repo.toAdjustmentRuleDomain(src)
 		}),
 	}
 }
@@ -101,6 +116,18 @@ func (repo *rotaRepository) toRuleEntity(req domain.RotaRule) dao.RotaRule {
 	}
 }
 
+func (repo *rotaRepository) toAdjustmentRuleEntity(req domain.RotaAdjustmentRule) dao.RotaAdjustmentRule {
+	return dao.RotaAdjustmentRule{
+		RotaGroup: dao.RotaGroup{
+			Id:      req.RotaGroup.Id,
+			Name:    req.RotaGroup.Name,
+			Members: req.RotaGroup.Members,
+		},
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+	}
+}
+
 func (repo *rotaRepository) toRuleDomain(req dao.RotaRule) domain.RotaRule {
 	return domain.RotaRule{
 		RotaGroups: slice.Map(req.RotaGroups, func(idx int, src dao.RotaGroup) domain.RotaGroup {
@@ -113,6 +140,18 @@ func (repo *rotaRepository) toRuleDomain(req dao.RotaRule) domain.RotaRule {
 		Rotate: domain.Rotate{
 			TimeUnit:     domain.TimeUnit(req.Rotate.TimeUnit),
 			TimeDuration: req.Rotate.TimeDuration,
+		},
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+	}
+}
+
+func (repo *rotaRepository) toAdjustmentRuleDomain(req dao.RotaAdjustmentRule) domain.RotaAdjustmentRule {
+	return domain.RotaAdjustmentRule{
+		RotaGroup: domain.RotaGroup{
+			Id:      req.RotaGroup.Id,
+			Name:    req.RotaGroup.Name,
+			Members: req.RotaGroup.Members,
 		},
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,

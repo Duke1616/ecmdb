@@ -17,10 +17,13 @@ type RotaDao interface {
 	Create(ctx context.Context, req Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]Rota, error)
 	Count(ctx context.Context) (int64, error)
-	FindOrAddSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
-	UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error)
-	FindOrAddAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error)
 	Detail(ctx context.Context, id int64) (Rota, error)
+
+	FindOrAddSchedulingRule(ctx context.Context, id int64, rr RotaRule) (int64, error)
+	UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error)
+
+	FindOrAddAdjustmentRule(ctx context.Context, id int64, rr RotaAdjustmentRule) (int64, error)
+	UpdateAdjustmentRule(ctx context.Context, id int64, rotaRules []RotaAdjustmentRule) (int64, error)
 }
 
 func NewRotaDao(db *mongox.Mongo) RotaDao {
@@ -33,7 +36,24 @@ type rotaDao struct {
 	db *mongox.Mongo
 }
 
-func (dao *rotaDao) UpdateSchedulingRole(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error) {
+func (dao *rotaDao) UpdateAdjustmentRule(ctx context.Context, id int64, rotaRules []RotaAdjustmentRule) (int64, error) {
+	col := dao.db.Collection(RotaCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"adjustment_rules": rotaRules,
+			"utime":            time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
+}
+
+func (dao *rotaDao) UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error) {
 	col := dao.db.Collection(RotaCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
@@ -99,7 +119,7 @@ func (dao *rotaDao) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (dao *rotaDao) FindOrAddSchedulingRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
+func (dao *rotaDao) FindOrAddSchedulingRule(ctx context.Context, id int64, rr RotaRule) (int64, error) {
 	col := dao.db.Collection(RotaCollection)
 	filter := bson.M{"id": id}
 
@@ -129,12 +149,12 @@ func (dao *rotaDao) FindOrAddSchedulingRole(ctx context.Context, id int64, rr Ro
 	return updatedRota.Id, nil
 }
 
-func (dao *rotaDao) FindOrAddAdjustmentRole(ctx context.Context, id int64, rr RotaRule) (int64, error) {
+func (dao *rotaDao) FindOrAddAdjustmentRule(ctx context.Context, id int64, rr RotaAdjustmentRule) (int64, error) {
 	col := dao.db.Collection(RotaCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{
 		"$push": bson.M{
-			"temp_rules": rr,
+			"adjustment_rules": rr,
 		},
 		"$set": bson.M{
 			"utime": time.Now().UnixMilli(),
@@ -170,15 +190,15 @@ func (dao *rotaDao) Create(ctx context.Context, r Rota) (int64, error) {
 }
 
 type Rota struct {
-	Id        int64      `bson:"id"`
-	Name      string     `bson:"name"`
-	Desc      string     `bson:"desc"`
-	Enabled   bool       `bson:"enabled"`
-	Owner     int64      `bson:"owner"`
-	Rules     []RotaRule `bson:"rules"`
-	TempRules []RotaRule `bson:"temp_rules"`
-	Ctime     int64      `bson:"ctime"`
-	Utime     int64      `bson:"utime"`
+	Id              int64                `bson:"id"`
+	Name            string               `bson:"name"`
+	Desc            string               `bson:"desc"`
+	Enabled         bool                 `bson:"enabled"`
+	Owner           int64                `bson:"owner"`
+	Rules           []RotaRule           `bson:"rules"`
+	AdjustmentRules []RotaAdjustmentRule `bson:"adjustment_rules"`
+	Ctime           int64                `bson:"ctime"`
+	Utime           int64                `bson:"utime"`
 }
 
 // RotaRule 值班规则
@@ -187,6 +207,13 @@ type RotaRule struct {
 	Rotate     Rotate      `bson:"rotate"`
 	StartTime  int64       `bson:"start_time"`
 	EndTime    int64       `bson:"end_time"`
+}
+
+// RotaAdjustmentRule 临时值班规则
+type RotaAdjustmentRule struct {
+	StartTime int64     `bson:"start_time"`
+	EndTime   int64     `bson:"end_time"`
+	RotaGroup RotaGroup `bson:"rota_group"`
 }
 
 // Rotate 轮换相关参数

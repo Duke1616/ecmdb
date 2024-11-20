@@ -6,18 +6,25 @@ type AddRoleReq struct {
 	RotaRule RotaRule `json:"rota_rule"`
 }
 
+// AddOrUpdateAdjustmentRoleReq 新增修改值班规则
+type AddOrUpdateAdjustmentRoleReq struct {
+	Id       int64              `json:"id"`
+	GroupId  int64              `json:"group_id"`
+	RotaRule RotaAdjustmentRule `json:"rota_rule"`
+}
+
 type DetailById struct {
 	Id int64 `json:"id"`
 }
 
 type Rota struct {
-	Id        int64      `json:"id"`
-	Name      string     `json:"name"`
-	Desc      string     `json:"desc"`
-	Enabled   bool       `json:"enabled"`
-	Owner     int64      `json:"owner"`
-	Rules     []RotaRule `json:"rules"`
-	TempRules []RotaRule `json:"temp_rules"`
+	Id              int64                `json:"id"`
+	Name            string               `json:"name"`
+	Desc            string               `json:"desc"`
+	Enabled         bool                 `json:"enabled"`
+	Owner           int64                `json:"owner"`
+	Rules           []RotaRule           `json:"rules"`
+	AdjustmentRules []RotaAdjustmentRule `json:"adjustment_rules"`
 }
 
 // RotaRule 值班规则
@@ -26,6 +33,13 @@ type RotaRule struct {
 	EndTime    int64       `json:"end_time"`
 	RotaGroups []RotaGroup `json:"rota_groups"`
 	Rotate     Rotate      `json:"rotate"`
+}
+
+// RotaAdjustmentRule 临时值班规则
+type RotaAdjustmentRule struct {
+	StartTime int64     `json:"start_time"`
+	EndTime   int64     `json:"end_time"`
+	RotaGroup RotaGroup `json:"rota_group"`
 }
 
 // Rotate 轮换相关参数
@@ -65,7 +79,7 @@ type DeleteReq struct {
 type UpdateReq struct {
 }
 
-type UpdateShiftSchedulingRoleReq struct {
+type UpdateShiftRuleReq struct {
 	Id        int64      `json:"id"`
 	RotaRules []RotaRule `json:"rota_rules"`
 }
@@ -86,6 +100,7 @@ type RetrieveShiftRostered struct {
 	FinalSchedule   []Schedule `json:"final_schedule"`
 	CurrentSchedule Schedule   `json:"current_schedule"`
 	NextSchedule    Schedule   `json:"next_schedule"`
+	Members         []int64    `json:"members"`
 }
 
 type Schedule struct {
@@ -93,4 +108,9 @@ type Schedule struct {
 	StartTime int64     `json:"start_time"`
 	EndTime   int64     `json:"end_time"`
 	RotaGroup RotaGroup `json:"rota_group"`
+}
+
+type DeleteAdjustmentRoleReq struct {
+	Id      int64 `json:"id"`
+	GroupId int64 `json:"group_id"`
 }

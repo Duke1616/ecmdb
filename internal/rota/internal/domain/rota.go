@@ -22,13 +22,13 @@ const (
 
 // Rota 值班信息
 type Rota struct {
-	Id        int64
-	Name      string     // 名称
-	Desc      string     // 描述
-	Enabled   bool       // 是否启用
-	Owner     int64      // 管理员
-	Rules     []RotaRule // 值班规则
-	TempRules []RotaRule // 临时调班
+	Id              int64
+	Name            string               // 名称
+	Desc            string               // 描述
+	Enabled         bool                 // 是否启用
+	Owner           int64                // 管理员
+	Rules           []RotaRule           // 值班规则
+	AdjustmentRules []RotaAdjustmentRule // 临时调班
 }
 
 // RotaRule 值班规则
@@ -37,6 +37,13 @@ type RotaRule struct {
 	EndTime    int64       // 结束时间
 	RotaGroups []RotaGroup // 值班人员组
 	Rotate     Rotate      // 轮换相关参数
+}
+
+// RotaAdjustmentRule 临时值班规则
+type RotaAdjustmentRule struct {
+	StartTime int64     // 开始时间
+	EndTime   int64     // 结束时间
+	RotaGroup RotaGroup // 值班组
 }
 
 // Rotate 轮换相关参数
@@ -57,6 +64,7 @@ type ShiftRostered struct {
 	FinalSchedule   []Schedule // 总排班
 	CurrentSchedule Schedule   // 当前排班
 	NextSchedule    Schedule   // 下期排班
+	Members         []int64    // 用户
 }
 
 type Schedule struct {

@@ -17,7 +17,9 @@ type RotaDao interface {
 	Create(ctx context.Context, req Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]Rota, error)
 	Count(ctx context.Context) (int64, error)
+	Update(ctx context.Context, req Rota) (int64, error)
 	Detail(ctx context.Context, id int64) (Rota, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 
 	FindOrAddSchedulingRule(ctx context.Context, id int64, rr RotaRule) (int64, error)
 	UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error)
@@ -34,6 +36,38 @@ func NewRotaDao(db *mongox.Mongo) RotaDao {
 
 type rotaDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *rotaDao) Delete(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(RotaCollection)
+	filter := bson.M{"id": id}
+
+	result, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *rotaDao) Update(ctx context.Context, req Rota) (int64, error) {
+	col := dao.db.Collection(RotaCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"name":    req.Name,
+			"desc":    req.Desc,
+			"owner":   req.Owner,
+			"enabled": req.Enabled,
+			"utime":   time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": req.Id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *rotaDao) UpdateAdjustmentRule(ctx context.Context, id int64, rotaRules []RotaAdjustmentRule) (int64, error) {

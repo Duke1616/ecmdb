@@ -11,7 +11,9 @@ type RotaRepository interface {
 	Create(ctx context.Context, req domain.Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Rota, error)
 	Total(ctx context.Context) (int64, error)
+	Update(ctx context.Context, req domain.Rota) (int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 
 	AddSchedulingRule(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
 	UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
@@ -28,6 +30,14 @@ func NewRotaRepository(dao dao.RotaDao) RotaRepository {
 
 type rotaRepository struct {
 	dao dao.RotaDao
+}
+
+func (repo *rotaRepository) Delete(ctx context.Context, id int64) (int64, error) {
+	return repo.dao.Delete(ctx, id)
+}
+
+func (repo *rotaRepository) Update(ctx context.Context, req domain.Rota) (int64, error) {
+	return repo.dao.Update(ctx, repo.toEntity(req))
 }
 
 func (repo *rotaRepository) UpdateAdjustmentRule(ctx context.Context, id int64, rotaRules []domain.RotaAdjustmentRule) (int64, error) {
@@ -76,6 +86,7 @@ func (repo *rotaRepository) toEntity(req domain.Rota) dao.Rota {
 		Id:              req.Id,
 		Name:            req.Name,
 		Desc:            req.Desc,
+		Owner:           req.Owner,
 		Enabled:         req.Enabled,
 		Rules:           []dao.RotaRule{},
 		AdjustmentRules: []dao.RotaAdjustmentRule{},

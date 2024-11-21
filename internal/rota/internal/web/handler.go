@@ -168,7 +168,14 @@ func (h *Handler) Detail(ctx *gin.Context, req DetailReq) (ginx.Result, error) {
 }
 
 func (h *Handler) Delete(ctx *gin.Context, req DeleteReq) (ginx.Result, error) {
-	return ginx.Result{}, nil
+	count, err := h.svc.Delete(ctx, req.Id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: count,
+	}, nil
 }
 
 func (h *Handler) UpdateShiftSchedulingRole(ctx *gin.Context, req UpdateShiftRuleReq) (ginx.Result, error) {
@@ -186,7 +193,14 @@ func (h *Handler) UpdateShiftSchedulingRole(ctx *gin.Context, req UpdateShiftRul
 }
 
 func (h *Handler) Update(ctx *gin.Context, req UpdateReq) (ginx.Result, error) {
-	return ginx.Result{}, nil
+	count, err := h.svc.Update(ctx, h.toUpdateDomain(req))
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: count,
+	}, nil
 }
 
 func (h *Handler) toRuleDomain(req RotaRule) domain.RotaRule {
@@ -239,6 +253,16 @@ func (h *Handler) toUpdateRuleDomain(req RotaRule) domain.RotaRule {
 
 func (h *Handler) toDomain(req CreateRotaReq) domain.Rota {
 	return domain.Rota{
+		Name:    req.Name,
+		Desc:    req.Desc,
+		Owner:   req.Owner,
+		Enabled: req.Enabled,
+	}
+}
+
+func (h *Handler) toUpdateDomain(req UpdateReq) domain.Rota {
+	return domain.Rota{
+		Id:      req.Id,
 		Name:    req.Name,
 		Desc:    req.Desc,
 		Owner:   req.Owner,

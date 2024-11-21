@@ -120,3 +120,43 @@ func TestExampleSet(t *testing.T) {
 	// 1997-09-09 09:00:00 +0000 UTC
 	// 1997-09-23 09:00:00 +0000 UTC
 }
+
+type MyInterface interface {
+	SetValue(int)
+	GetValue() int
+}
+
+type MyStruct struct {
+	value int
+}
+
+func (m *MyStruct) SetValue(v int) {
+	m.value = v
+}
+
+func (m *MyStruct) GetValue() int {
+	return m.value
+}
+
+func TestEa(*testing.T) {
+	// 创建一个结构体实例
+	s := MyStruct{}
+	t := MyStruct{}
+
+	// 将结构体指针赋值给接口
+	var iface1 MyInterface = &s
+	var iface2 MyInterface = &t
+
+	// 通过接口调用方法
+	iface1.SetValue(20)
+	iface2.SetValue(40)
+
+	// 打印原始结构体的值
+	fmt.Println("Original struct value:", s.value) // 输出: Original struct value: 20
+	fmt.Println("Original struct value:", t.value)
+
+	// 打印接口中的值
+	fmt.Println("Interface value:", iface1.GetValue()) // 输出: Interface value: 20
+	fmt.Println("Original struct value:", iface2.GetValue())
+
+}

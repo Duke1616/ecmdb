@@ -77,6 +77,11 @@ type DeleteReq struct {
 }
 
 type UpdateReq struct {
+	Id      int64  `json:"id"`
+	Name    string `json:"name"`
+	Desc    string `json:"desc"`
+	Enabled bool   `json:"enabled"`
+	Owner   int64  `json:"owner"`
 }
 
 type UpdateShiftRuleReq struct {

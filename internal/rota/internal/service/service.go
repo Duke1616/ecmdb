@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/rota/internal/service/schedule"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -11,6 +12,8 @@ type Service interface {
 	Create(ctx context.Context, req domain.Rota) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Rota, int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
+	Update(ctx context.Context, rota domain.Rota) (int64, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 
 	// AddSchedulingRule 常规规则
 	AddSchedulingRule(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
@@ -26,14 +29,24 @@ type Service interface {
 	GenerateShiftRostered(ctx context.Context, id, stime, etime int64) (domain.ShiftRostered, error)
 }
 
-func NewService(repo repository.RotaRepository) Service {
+func NewService(repo repository.RotaRepository, rule schedule.Scheduler) Service {
 	return &service{
 		repo: repo,
+		rule: rule,
 	}
 }
 
 type service struct {
+	rule schedule.Scheduler
 	repo repository.RotaRepository
+}
+
+func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
+	return s.repo.Delete(ctx, id)
+}
+
+func (s *service) Update(ctx context.Context, rota domain.Rota) (int64, error) {
+	return s.repo.Update(ctx, rota)
 }
 
 func (s *service) DeleteAdjustmentRule(ctx context.Context, id int64, groupId int64) (int64, error) {
@@ -97,20 +110,14 @@ func (s *service) GenerateShiftRostered(ctx context.Context, id, stime, etime in
 
 	var rotas []domain.ShiftRostered
 	for _, rule := range rota.Rules {
-		r, er := RruleSchedule(rule, stime, etime)
+		r, er := s.rule.GenerateSchedule(rule, rota.AdjustmentRules, stime, etime)
 
 		r.Members = toMembers(rule.RotaGroups)
 		if er != nil {
 			return domain.ShiftRostered{}, er
 		}
 
-		// 处理临时值班插入
-		schedule, er := RruleAdjustmentSchedule(r, rota.AdjustmentRules)
-		if er != nil {
-			return domain.ShiftRostered{}, er
-		}
-
-		rotas = append(rotas, schedule)
+		rotas = append(rotas, r)
 	}
 
 	return rotas[0], err

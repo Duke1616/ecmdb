@@ -7,7 +7,5 @@ type Scheduler interface {
 	GenerateSchedule(rule domain.RotaRule, adjustmentRules []domain.RotaAdjustmentRule,
 		stime int64, etime int64) (domain.ShiftRostered, error)
 	// GetCurrentSchedule 查询当期排班
-	GetCurrentSchedule(rule domain.RotaRule) (domain.Schedule, error)
-	// GetNextSchedule 查看下期排班
-	GetNextSchedule(rule domain.RotaRule) (domain.Schedule, error)
+	GetCurrentSchedule(rule domain.RotaRule, adjustmentRules []domain.RotaAdjustmentRule) (domain.Schedule, error)
 }

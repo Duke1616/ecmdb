@@ -27,6 +27,7 @@ type Service interface {
 
 	// GenerateShiftRostered 生成排班表
 	GenerateShiftRostered(ctx context.Context, id, stime, etime int64) (domain.ShiftRostered, error)
+	GetCurrentSchedule(ctx context.Context, id int64) (domain.Schedule, error)
 }
 
 func NewService(repo repository.RotaRepository, rule schedule.Scheduler) Service {
@@ -39,6 +40,28 @@ func NewService(repo repository.RotaRepository, rule schedule.Scheduler) Service
 type service struct {
 	rule schedule.Scheduler
 	repo repository.RotaRepository
+}
+
+func (s *service) GetCurrentSchedule(ctx context.Context, id int64) (domain.Schedule, error) {
+	rota, err := s.repo.Detail(ctx, id)
+	if err != nil {
+		return domain.Schedule{}, err
+	}
+
+	if len(rota.Rules) == 0 {
+		return domain.Schedule{}, nil
+	}
+
+	// TODO 暂时不处理多规则情况，前端控制只能有一条规则
+	var sc domain.Schedule
+	for _, rule := range rota.Rules {
+		sc, err = s.rule.GetCurrentSchedule(rule, rota.AdjustmentRules)
+		if err != nil {
+			return domain.Schedule{}, err
+		}
+	}
+
+	return sc, err
 }
 
 func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
@@ -108,6 +131,7 @@ func (s *service) GenerateShiftRostered(ctx context.Context, id, stime, etime in
 		return domain.ShiftRostered{}, nil
 	}
 
+	// TODO 暂时不处理多规则情况，前端控制只能有一条规则
 	var rotas []domain.ShiftRostered
 	for _, rule := range rota.Rules {
 		r, er := s.rule.GenerateSchedule(rule, rota.AdjustmentRules, stime, etime)

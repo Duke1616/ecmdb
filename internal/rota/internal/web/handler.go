@@ -41,7 +41,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/rule/detail", ginx.WrapBody[DetailById](h.GetRuleListById))
 
 	// 排班数据渲染
-	g.POST("/schedule/by_my/list", ginx.Wrap(h.AllMySchedules))
 	g.POST("/schedule/preview", ginx.WrapBody[GenerateShiftRosteredReq](h.GenerateShiftRostered))
 }
 
@@ -127,10 +126,6 @@ func (h *Handler) UpdateShiftAdjustmentRule(ctx *gin.Context, req AddOrUpdateAdj
 	return ginx.Result{
 		Data: rule,
 	}, nil
-}
-
-func (h *Handler) AllMySchedules(ctx *gin.Context) (ginx.Result, error) {
-	return ginx.Result{}, nil
 }
 
 // Create 创建排班表

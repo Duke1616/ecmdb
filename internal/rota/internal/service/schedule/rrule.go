@@ -11,11 +11,10 @@ import (
 const TITLE = "调班组"
 
 type rruleSchedule struct {
-	location        *time.Location
-	rule            domain.RotaRule
-	adjustmentRules []domain.RotaAdjustmentRule
-	durationMilli   int64
-	resultTime      int64
+	location      *time.Location
+	rule          *domain.RotaRule
+	durationMilli int64
+	resultTime    int64
 }
 
 func NewRruleSchedule(location *time.Location) Scheduler {
@@ -24,14 +23,29 @@ func NewRruleSchedule(location *time.Location) Scheduler {
 	}
 }
 
-func (r *rruleSchedule) GetCurrentSchedule(rule domain.RotaRule) (domain.Schedule, error) {
-	//TODO implement me
-	panic("implement me")
-}
+func (r *rruleSchedule) GetCurrentSchedule(rule domain.RotaRule,
+	adjustmentRules []domain.RotaAdjustmentRule) (domain.Schedule, error) {
+	r.rule = &rule
 
-func (r *rruleSchedule) GetNextSchedule(rule domain.RotaRule) (domain.Schedule, error) {
-	//TODO implement me
-	panic("implement me")
+	// 解析规则
+	err := r.parseRotate(time.Now().UnixMilli())
+	if err != nil {
+		return domain.Schedule{}, err
+	}
+
+	// 执行 rrule 获取范围值班数据
+	endTime := r.computeEndTime(time.Now().UnixMilli())
+	set, err := r.setRrule(endTime)
+	if err != nil {
+		return domain.Schedule{}, err
+	}
+
+	// 计算范围内排班
+	times := set.Between(r.parserTime(rule.StartTime), r.parserTime(endTime), true)
+
+	// 返回当前排班
+	rostered, err := r.generate(times, adjustmentRules)
+	return rostered.CurrentSchedule, err
 }
 
 // GenerateSchedule 根据规则生成排期表
@@ -40,8 +54,7 @@ func (r *rruleSchedule) GetNextSchedule(rule domain.RotaRule) (domain.Schedule, 
 func (r *rruleSchedule) GenerateSchedule(rule domain.RotaRule, adjustmentRules []domain.RotaAdjustmentRule,
 	stime int64, etime int64) (domain.ShiftRostered, error) {
 	// 结构体赋值
-	r.rule = rule
-	r.adjustmentRules = adjustmentRules
+	r.rule = &rule
 
 	// 解析规则
 	err := r.parseRotate(stime)
@@ -57,7 +70,7 @@ func (r *rruleSchedule) GenerateSchedule(rule domain.RotaRule, adjustmentRules [
 	finalTimes := set.Between(r.parserTime(rule.StartTime), r.parserTime(endTime), true)
 
 	// 生成返回数据
-	return r.generate(finalTimes)
+	return r.generate(finalTimes, adjustmentRules)
 }
 
 // parseRotate 根据排班规则进行解析
@@ -70,6 +83,7 @@ func (r *rruleSchedule) parseRotate(stime int64) error {
 		r.resultTime = stime - int64(r.rule.Rotate.TimeDuration)*24*60*60*1000
 	case domain.HOURLY:
 		r.durationMilli = int64(r.rule.Rotate.TimeDuration) * 60 * 60 * 1000
+		r.resultTime = stime - int64(r.rule.Rotate.TimeDuration)*60*60*1000
 	default:
 		return fmt.Errorf("unsupported frequency: %d", r.rule.Rotate.TimeUnit)
 	}
@@ -92,7 +106,7 @@ func (r *rruleSchedule) computeEndTime(etime int64) int64 {
 	return endTime
 }
 
-func (r *rruleSchedule) generate(finalTimes []time.Time) (domain.ShiftRostered, error) {
+func (r *rruleSchedule) generate(finalTimes []time.Time, adjustmentRules []domain.RotaAdjustmentRule) (domain.ShiftRostered, error) {
 	var finalSchedule []domain.Schedule
 	groupCount := len(r.rule.RotaGroups)
 	if groupCount == 0 {
@@ -151,7 +165,7 @@ func (r *rruleSchedule) generate(finalTimes []time.Time) (domain.ShiftRostered, 
 		FinalSchedule:   finalSchedule,
 		CurrentSchedule: *currentSchedule,
 		NextSchedule:    *nextSchedule,
-	}), nil
+	}, adjustmentRules), nil
 }
 
 // setRrule 通过 rrule 自动计算出范围时间
@@ -179,12 +193,13 @@ func (r *rruleSchedule) parserTime(unixTime int64) time.Time {
 }
 
 // filterAdjustmentSchedule 过滤临时调班
-func (r *rruleSchedule) filterAdjustmentSchedule(rostered domain.ShiftRostered) domain.ShiftRostered {
+func (r *rruleSchedule) filterAdjustmentSchedule(rostered domain.ShiftRostered,
+	adjustmentRules []domain.RotaAdjustmentRule) domain.ShiftRostered {
 	rs := slice.ToMap(rostered.FinalSchedule, func(element domain.Schedule) int64 {
 		return element.StartTime
 	})
 
-	for _, rule := range r.adjustmentRules {
+	for _, rule := range adjustmentRules {
 		if _, ok := rs[rule.StartTime]; !ok {
 			continue
 		}
@@ -234,12 +249,12 @@ func (r *rruleSchedule) filterAdjustmentSchedule(rostered domain.ShiftRostered) 
 		rs[rule.StartTime] = d
 	}
 
-	rostered.FinalSchedule = FromMap(rs)
+	rostered.FinalSchedule = fromMap(rs)
 
 	return rostered
 }
 
-func FromMap[T any, K comparable](input map[K]T) []T {
+func fromMap[T any, K comparable](input map[K]T) []T {
 	result := make([]T, 0, len(input)) // 创建切片，初始容量等于 map 的大小
 	for _, value := range input {
 		result = append(result, value) // 将 map 中的值添加到切片

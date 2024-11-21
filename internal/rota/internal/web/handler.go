@@ -38,7 +38,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/rule/shift_adjustment/update", ginx.WrapBody[AddOrUpdateAdjustmentRoleReq](h.UpdateShiftAdjustmentRule))
 
 	// 查看指定规则
-	g.POST("/rule/list_by_id", ginx.WrapBody[DetailById](h.GetRuleListById))
+	g.POST("/rule/detail", ginx.WrapBody[DetailById](h.GetRuleListById))
 
 	// 排班数据渲染
 	g.POST("/schedule/by_my/list", ginx.Wrap(h.AllMySchedules))

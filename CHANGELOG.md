@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.7.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.7.0) - 2024-11-22
+
+- [`c7177ba`](https://github.com/Duke1616/ecmdb/commit/c7177ba505c8f277f220a2e4caf8b2ce4f8d4ba8) chore: 排班系统功能性开发完成，替换最新版本权限菜单, 进行初步发版
+- [`547e776`](https://github.com/Duke1616/ecmdb/commit/547e776aaccc1129ace77f258dc63604f3702e44) chore: 新增查询当前排班接口，兼容以小时为单位 resulttime 赋值
+- [`0215458`](https://github.com/Duke1616/ecmdb/commit/021545856894edad7bc29533f837b04436bb18c7) chore: web 接口路由变更
+- [`4e401a9`](https://github.com/Duke1616/ecmdb/commit/4e401a9f2d5e03e8af129fe972dd6ef64dbfea51) chore: 优化 rrule 计算排班表代码
+- [`09c6494`](https://github.com/Duke1616/ecmdb/commit/09c6494ee53666705383d5a9056d9fbae62085bb) chore: 规则截止时间配置
+- [`22b20e8`](https://github.com/Duke1616/ecmdb/commit/22b20e85d5f483abf295ccd5c620d85dd65644c6) feat: 排班系统完善临时调班功能
+- [`67219b9`](https://github.com/Duke1616/ecmdb/commit/67219b9b879213b6f545fd4d5e9169f4b968b8fe) chore: 规避月末 etime 传输不够
+- [`c1fcab9`](https://github.com/Duke1616/ecmdb/commit/c1fcab947b3ad8240256651ad5e6b5798660b049) chore: rrule 当前下期排班信息
+- [`1de0521`](https://github.com/Duke1616/ecmdb/commit/1de052197ce603b674e7d1abb66324431d43d0d4) chore: 后端 rrule 排班规则, 初步版本
+- [`02134aa`](https://github.com/Duke1616/ecmdb/commit/02134aa2c50146fe97bea4c31b2b8dde5dddee55) chore: 排班支持修改删除规则
+- [`e9de143`](https://github.com/Duke1616/ecmdb/commit/e9de1430d9ca4491f0f49d96c0dd393527dd790a) chore: 排班系统提供接口支持
+- [`a033619`](https://github.com/Duke1616/ecmdb/commit/a03361965de2090f3dbdedfa965f902780c28c75) feat: 排班系统、完成部分接口
+- [`c0dcf20`](https://github.com/Duke1616/ecmdb/commit/c0dcf20ac8c2bb17db8707d508172c5253c2c3fe) fix: 修复企业微信token失效, 导致无法正常处理业务逻辑
+- [`e2902d6`](https://github.com/Duke1616/ecmdb/commit/e2902d6b4d84d78b695cb560c58a93844b467172) chore: 事件报错日志提示
+- [`16b0c9a`](https://github.com/Duke1616/ecmdb/commit/16b0c9a83fad5496811ffb4c2ab694e5be6fe143) chore: 消息通知 title 信息
+- [`7b1dca9`](https://github.com/Duke1616/ecmdb/commit/7b1dca9ca48c85b630fb011a8131d48b8b72c715) chore: 提供飞书回调审批后续消息处理
+- [`600b02f`](https://github.com/Duke1616/ecmdb/commit/600b02f62f9c4acdfbeb63a2f8dc6a7ecbbcc605) chore: 回调消息，新增工单ID
+- [`7f5f0a5`](https://github.com/Duke1616/ecmdb/commit/7f5f0a5f1b83cbbf53d0739197967e2ce4d28d51) fix: 数据 map key值存储和缓存不一致，导致批量删除
+- [`805d67a`](https://github.com/Duke1616/ecmdb/commit/805d67a04e40d3041af9bc21ece0a0b8421fff1c) chore: Prefix 区分索引
+- [`c328797`](https://github.com/Duke1616/ecmdb/commit/c3287973ed05450c17cd927922d090bf5ab454f9) chore: 缓存数据一致，当 LDAP 删除用户了，重新同步缓存也要进行删除
+- [`b9fe762`](https://github.com/Duke1616/ecmdb/commit/b9fe762e45952b0c6f34b8b59478588550596b79) feat: 使用 redisearch 支持全文检索， 增强查询能力
+- [`9b137f9`](https://github.com/Duke1616/ecmdb/commit/9b137f9790d2de57b362a6f8a02a06e3c17c9637) chore: ioc redisearch
+- [`8555b60`](https://github.com/Duke1616/ecmdb/commit/8555b60e42844c88dfc45fde9b511a69beaadd6d) Merge branch 'main' of https://github.com/Duke1616/ecmdb
+- [`027ab6e`](https://github.com/Duke1616/ecmdb/commit/027ab6e6f15d928a7bec0aac9ac87e1c46e05ba2) feat: 同步 LDAP 用户，导入到本系统中
+- [`19a549c`](https://github.com/Duke1616/ecmdb/commit/19a549c2fefa30f4aac6221d233da3a3e6a82954) chore: 通过前端 windows.location 获取当前 url 地址
+- [`c196bbc`](https://github.com/Duke1616/ecmdb/commit/c196bbc174c86f62a2a122c29fec79ec8f4e2d2d) chore: 接口地址
+- [`1703f9d`](https://github.com/Duke1616/ecmdb/commit/1703f9dae344ffc641b28ef689b45019079a85a8) chore: downlaod 接口
+- [`3e2ea16`](https://github.com/Duke1616/ecmdb/commit/3e2ea1636d6f77ad9719a5d5a7d695d20b2f9ce9) chore: 封装工具类方法，文件上传
+- [`09e37af`](https://github.com/Duke1616/ecmdb/commit/09e37af456049f51db94526c3d8c3ac536e5732b) chore: 流程录入模版名称变量
+- [`0f63e78`](https://github.com/Duke1616/ecmdb/commit/0f63e78446e32dd6023d2b64d2a9dbdde554bc03) chore: 封装 automation 消息通知，写烂了！！！ 后续重构吧
+- [`44a8c57`](https://github.com/Duke1616/ecmdb/commit/44a8c57007db9d279e06289ec9575f55944a98fc) refactor: 重构消息通知, 拆解不同流程节点，处理通知类型不同
+- [`a97201b`](https://github.com/Duke1616/ecmdb/commit/a97201b4922cc11ef45e4eaa65c1f18f3663a23c) chore: 工单系统模版功能完善
+- [`12a1e21`](https://github.com/Duke1616/ecmdb/commit/12a1e212533d71d498b0a6cf2b14aecebaead73d) chore: 模版支持修改 Desc 描述信息
+- [`56934a6`](https://github.com/Duke1616/ecmdb/commit/56934a6011ba16e8b5bb63b95777bcdc1962504d) chore: 工单创建，当用户查询为空异常处理
+- [`91d7b2a`](https://github.com/Duke1616/ecmdb/commit/91d7b2af560170aec29249bd1f291d7ded988e1f) chore: 工单创建，当用户查询为空异常处理
+- [`070ad96`](https://github.com/Duke1616/ecmdb/commit/070ad9696c34b4d8b4905c0f45cae8a799546f21) fix: ioc 注册 库名写死，导致切换其余数据库无法启动
+- [`dce8a37`](https://github.com/Duke1616/ecmdb/commit/dce8a3713862d75d39fbca8ba01628c88bdd85ae) chore: 优化前端自动化流程提供展示
+- [`14d5bda`](https://github.com/Duke1616/ecmdb/commit/14d5bdaa96e3bea1dc94f2f1211931fae94dcdea) chore: 任务历史里面添加代码库名称字段
+- [`fdb7702`](https://github.com/Duke1616/ecmdb/commit/fdb770218f41f6bef98a7720be48fdaa7c5fccad) Merge branch 'main' of https://github.com/Duke1616/ecmdb
+- [`2091c0c`](https://github.com/Duke1616/ecmdb/commit/2091c0c48b4310311d56283e1b76e169429fd993) 策略
+
 ## [v1.6.2](https://github.com/Duke1616/ecmdb/releases/tag/v1.6.2) - 2024-10-11
 
 - [`b009298`](https://github.com/Duke1616/ecmdb/commit/b0092980d2b82ed8b2732c0f41854e8a49598b2d) fix: 替换新的菜单、权限部署SQL文件

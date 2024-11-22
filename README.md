@@ -38,8 +38,8 @@ docker exec ecmdb-mongo mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:2701
 docker exec ecmdb-mongo mongorestore --uri="mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --gzip  --collection c_role --archive=/mnt/role.tar.gz
 
 # 修正 ID 自增值
-docker exec ecmdb-mongo mongosh "mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("4") })
-docker exec ecmdb-mongo mongosh "mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --eval 'db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("146") } )'
+docker exec ecmdb-mongo mongosh "mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("5") })
+docker exec ecmdb-mongo mongosh "mongodb://cmdb:123456@127.0.0.1:27017/cmdb" --eval 'db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("161") } )'
 
 # 导入 Casbin 权限数据
 docker exec -i ecmdb-mysql mysql -u cmdb -p123456 cmdb < ./init/casbin_rule.sql

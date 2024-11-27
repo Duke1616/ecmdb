@@ -4,7 +4,6 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,49 +29,35 @@ func (h *Handler) Upload(ctx *gin.Context) {
 		return
 	}
 
-	// 定义保存文件的路径
-	//savePath := filepath.Join("uploads", file.Filename)
-	//
-	//// 保存文件到指定路径
-	//if err = ctx.SaveUploadedFile(file, savePath); err != nil {
-	//	ctx.JSON(http.StatusInternalServerError, gin.H{"error": "文件保存失败"})
-	//	return
-	//}
-
 	// 打开上传的文件
 	src, err := file.Open()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "无法打开文件"})
 		return
 	}
-	defer func(src multipart.File) {
-		er := src.Close()
-		if er != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "关闭文件失败"})
-		}
-	}(src)
+
+	defer src.Close()
 
 	// 定义保存路径
-	savePath := filepath.Join("uploads", file.Filename)
-	dst, err := os.Create(savePath)
+	dst := filepath.Join("uploads", file.Filename)
+	if err = os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "无法创建目录"})
+		return
+	}
+
+	out, err := os.Create(dst)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "无法创建文件"})
 		return
 	}
+	defer out.Close()
 
-	defer func(src multipart.File) {
-		er := dst.Close()
-		if er != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "关闭文件失败"})
-		}
-	}(src)
-
-	// 缓冲区读取并写入，每次读取16MB
-	buffer := make([]byte, 16*1024*1024)
+	// 缓冲区读取并写入 4MB
+	buffer := make([]byte, 4*1024*1024)
 	for {
 		n, readErr := src.Read(buffer)
 		if n > 0 {
-			if _, writeErr := dst.Write(buffer[:n]); writeErr != nil {
+			if _, writeErr := out.Write(buffer[:n]); writeErr != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "写入文件失败"})
 				return
 			}

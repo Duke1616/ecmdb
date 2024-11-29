@@ -38,6 +38,9 @@ type Service interface {
 
 	// FindTaskResult 查找自动化任务
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
+
+	// Detail 查看任务信息
+	Detail(ctx context.Context, id int64) (domain.Task, error)
 }
 
 type service struct {
@@ -50,6 +53,10 @@ type service struct {
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
 	workerSvc   worker.Service
+}
+
+func (s *service) Detail(ctx context.Context, id int64) (domain.Task, error) {
+	return s.repo.FindById(ctx, id)
 }
 
 func (s *service) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {

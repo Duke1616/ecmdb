@@ -14,11 +14,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/internal/task/internal/web"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"time"
 )
 
@@ -31,7 +33,7 @@ var ProviderSet = wire.NewSet(
 
 func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module,
 	engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module,
-	runnerModule *runner.Module) (*Module, error) {
+	runnerModule *runner.Module, userModule *user.Module, lark *lark.Client) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initStartTaskJob,
@@ -40,6 +42,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.FieldsOf(new(*codebook.Module), "Svc"),
+		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.FieldsOf(new(*worker.Module), "Svc"),
 		wire.FieldsOf(new(*runner.Module), "Svc"),
 		wire.FieldsOf(new(*engine.Module), "Svc"),
@@ -48,8 +51,9 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	return new(Module), nil
 }
 
-func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
-	consumer, err := event.NewExecuteResultConsumer(q, svc)
+func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
+	userSvc user.Service, lark *lark.Client) *event.ExecuteResultConsumer {
+	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, lark)
 	if err != nil {
 		panic(err)
 	}

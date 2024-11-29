@@ -79,6 +79,7 @@ func (repo *codebookRepository) toEntity(req domain.Codebook) dao.Codebook {
 	return dao.Codebook{
 		Id:         req.Id,
 		Name:       req.Name,
+		Owner:      req.Owner,
 		Code:       req.Code,
 		Language:   req.Language,
 		Secret:     uuid.NewString(),
@@ -90,6 +91,7 @@ func (repo *codebookRepository) toDomain(req dao.Codebook) domain.Codebook {
 	return domain.Codebook{
 		Id:         req.Id,
 		Name:       req.Name,
+		Owner:      req.Owner,
 		Code:       req.Code,
 		Language:   req.Language,
 		Secret:     req.Secret,

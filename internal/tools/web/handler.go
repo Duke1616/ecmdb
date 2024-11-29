@@ -39,7 +39,7 @@ func (h *Handler) Upload(ctx *gin.Context) {
 	defer src.Close()
 
 	// 定义保存路径
-	dst := filepath.Join("uploads", file.Filename)
+	dst := filepath.Join("./uploads", file.Filename)
 	if err = os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "无法创建目录"})
 		return

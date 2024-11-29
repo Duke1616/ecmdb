@@ -25,6 +25,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/update/args", ginx.WrapBody[UpdateArgsReq](h.UpdateArgs))
 	g.POST("/update/variables", ginx.WrapBody[UpdateVariablesReq](h.UpdateVariableReq))
 	g.POST("/retry", ginx.WrapBody[RetryReq](h.Retry))
+	g.POST("/success", ginx.WrapBody[UpdateStatusToSuccessReq](h.UpdateStatusToSuccess))
 }
 
 func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, error) {
@@ -40,6 +41,26 @@ func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, erro
 				return h.toTaskVo(src)
 			}),
 		},
+	}, nil
+}
+
+// UpdateStatusToSuccess 当自动化任务卡住, 确实无法完成的情况为了防止工单无法结束、手动修改状态为完成
+func (h *Handler) UpdateStatusToSuccess(ctx *gin.Context, req UpdateStatusToSuccessReq) (ginx.Result, error) {
+	count, err := h.svc.UpdateTaskStatus(ctx, domain.TaskResult{
+		Id:              req.Id,
+		TriggerPosition: "手动修改状态为成功",
+		WantResult:      "",
+		Result:          "",
+		Status:          domain.SUCCESS,
+	})
+
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: count,
+		Msg:  "消息状态修改为成功",
 	}, nil
 }
 

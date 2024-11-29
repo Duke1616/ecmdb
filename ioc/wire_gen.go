@@ -131,7 +131,7 @@ func InitApp() (*App, error) {
 	handler10 := workflowModule.Hdl
 	groupHandler := templateModule.GroupHdl
 	handler11 := engineModule.Hdl
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule)
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, larkClient)
 	if err != nil {
 		return nil, err
 	}

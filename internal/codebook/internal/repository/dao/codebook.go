@@ -135,6 +135,7 @@ func (dao *codebookDAO) UpdateCodebook(ctx context.Context, c Codebook) (int64, 
 		"$set": bson.M{
 			"name":  c.Name,
 			"code":  c.Code,
+			"owner": c.Owner,
 			"utime": time.Now().UnixMilli(),
 		},
 	}
@@ -175,6 +176,7 @@ func (dao *codebookDAO) FindBySecret(ctx context.Context, identifier string, sec
 type Codebook struct {
 	Id         int64  `bson:"id"`
 	Name       string `bson:"name"`
+	Owner      int64  `bson:"owner"`
 	Identifier string `bson:"identifier"` // 唯一标识
 	Code       string `bson:"code"`
 	Language   string `bson:"language"`

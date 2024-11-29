@@ -65,6 +65,10 @@ type RetrieveTasks struct {
 	Tasks []Task `json:"tasks"`
 }
 
+type UpdateStatusToSuccessReq struct {
+	Id int64 `json:"id"`
+}
+
 type Variables struct {
 	Key    string `json:"key"`
 	Value  any    `json:"value"`

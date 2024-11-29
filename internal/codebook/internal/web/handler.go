@@ -90,6 +90,7 @@ func (h *Handler) DeleteCodebook(ctx *gin.Context, req DeleteCodebookReq) (ginx.
 func (h *Handler) toDomain(req CreateCodebookReq) domain.Codebook {
 	return domain.Codebook{
 		Name:       req.Name,
+		Owner:      req.Owner,
 		Code:       req.Code,
 		Language:   req.Language,
 		Identifier: req.Identifier,
@@ -100,6 +101,7 @@ func (h *Handler) toUpdateDomain(req UpdateCodebookReq) domain.Codebook {
 	return domain.Codebook{
 		Id:       req.Id,
 		Name:     req.Name,
+		Owner:    req.Owner,
 		Code:     req.Code,
 		Language: req.Language,
 	}
@@ -109,6 +111,7 @@ func (h *Handler) toCodebookVo(req domain.Codebook) Codebook {
 	return Codebook{
 		Id:         req.Id,
 		Name:       req.Name,
+		Owner:      req.Owner,
 		Code:       req.Code,
 		Language:   req.Language,
 		Secret:     req.Secret,

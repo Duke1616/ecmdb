@@ -18,17 +18,19 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/internal/task/internal/web"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
+	"github.com/larksuite/oapi-sdk-go/v3"
 	"time"
 )
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, lark2 *lark.Client) (*Module, error) {
 	taskDAO := dao.NewTaskDAO(db)
 	taskRepository := repository.NewTaskRepository(taskDAO)
 	serviceService := orderModule.Svc
@@ -39,7 +41,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service6 := engineModule.Svc
 	service7 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6)
 	handler := web.NewHandler(service7)
-	executeResultConsumer := initConsumer(service7, q)
+	service8 := userModule.Svc
+	executeResultConsumer := initConsumer(service7, q, service3, service8, lark2)
 	startTaskJob := initStartTaskJob(service7)
 	passProcessTaskJob := initPassProcessTaskJob(service7, service6)
 	module := &Module{
@@ -56,8 +59,9 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
 
-func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
-	consumer, err := event.NewExecuteResultConsumer(q, svc)
+func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
+	userSvc user.Service, lark2 *lark.Client) *event.ExecuteResultConsumer {
+	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, lark2)
 	if err != nil {
 		panic(err)
 	}

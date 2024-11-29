@@ -103,20 +103,25 @@ func (c *ExecuteResultConsumer) failedNotify(ctx context.Context, id int64) erro
 	}
 
 	wrap := notify.WrapNotifierDynamic(c.nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
+		content := fmt.Sprintf(`{"text": "任务执行失败, 请通过平台进行查看，任务ID: %d, 工作节点: %s"}`,
+			id, t.WorkerName)
+
 		return message.NewCreateFeishuMessage(
 			"user_id", u.FeishuInfo.UserId,
-			feishu.NewFeishuCustom("markdown", fmt.Sprintf("任务执行失败，, "+
-				"任务ID: %d, 工单名称: %s", id, t.CodebookName)),
+			feishu.NewFeishuCustom("text", content),
 		), nil
 	})
 
 	ok, err := wrap.Send(ctx)
-	if !ok {
-		c.logger.Error("任务执行失败，触发发送信息失败", elog.Int64("工单ID", id))
-
+	if err != nil {
+		return err
 	}
 
-	return err
+	if !ok {
+		c.logger.Error("任务执行失败，触发发送信息失败", elog.Int64("工单ID", id))
+	}
+
+	return nil
 }
 
 func (c *ExecuteResultConsumer) Stop(_ context.Context) error {

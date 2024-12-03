@@ -45,6 +45,12 @@ etcd:
   endpoints:
     - ecmdb-etcd:2379
 
+minio:
+  endpoint: minio:9000
+  accessKeyID: minio
+  secretAccessKey: minio123
+  useSSL: false
+
 wechat:
   corpId: ""
   corpSecret: ""

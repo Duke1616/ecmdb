@@ -30,7 +30,7 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ,
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
 	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu)
 
 func InitApp() (*App, error) {

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/Duke1616/ecmdb/internal/tools/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -10,10 +11,13 @@ import (
 )
 
 type Handler struct {
+	svc service.Service
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(svc service.Service) *Handler {
+	return &Handler{
+		svc: svc,
+	}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {

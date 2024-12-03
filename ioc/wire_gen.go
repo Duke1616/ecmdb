@@ -158,7 +158,8 @@ func InitApp() (*App, error) {
 	}
 	handler17 := permissionModule.Hdl
 	handler18 := departmentModule.Hdl
-	handler19, err := tools.InitModule()
+	minioClient := InitMinioClient()
+	handler19, err := tools.InitModule(minioClient)
 	if err != nil {
 		return nil, err
 	}
@@ -188,5 +189,5 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMQ,
+var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
 	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu)

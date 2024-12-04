@@ -15,7 +15,7 @@ func InitMinioClient() *minio.Client {
 		UseSSL          bool   `mapstructure:"useSSL"`
 	}
 	var cfg Config
-	if err := viper.UnmarshalKey("mysql", &cfg); err != nil {
+	if err := viper.UnmarshalKey("minio", &cfg); err != nil {
 		panic(fmt.Errorf("unable to decode into struct: %v", err))
 	}
 

@@ -28,6 +28,8 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.GET("/download/:filename", h.Download)
 
 	g.POST("/minio/get_presigned_url", ginx.WrapBody[GetPresignedUrl](h.GetPresignedUrl))
+	g.POST("/minio/put_presigned_url", ginx.WrapBody[PutPresignedUrl](h.PutPresignedUrl))
+	g.POST("/minio/object/remove", ginx.WrapBody[RemoveObjectReq](h.RemoveObject))
 }
 
 func (h *Handler) Upload(ctx *gin.Context) {
@@ -107,7 +109,7 @@ func (h *Handler) Download(ctx *gin.Context) {
 	ctx.File(filePath)
 }
 
-func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.Result, error) {
+func (h *Handler) PutPresignedUrl(ctx *gin.Context, req PutPresignedUrl) (ginx.Result, error) {
 	// 获取当前日期并格式化为年月日
 	currentDate := time.Now()
 	dateDir := currentDate.Format("2006/01/02")
@@ -115,7 +117,30 @@ func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.R
 	// 构建 MinIO 上的文件路径，包括日期目录结构
 	objectPath := fmt.Sprintf("%s/%s", dateDir, req.ObjectName)
 
-	url, err := h.svc.GetPresignedUrl(ctx, "ecmdb", objectPath)
+	url, err := h.svc.PutPresignedUrl(ctx, "ecmdb", objectPath)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: url.String(),
+	}, nil
+}
+
+func (h *Handler) RemoveObject(ctx *gin.Context, req RemoveObjectReq) (ginx.Result, error) {
+	err := h.svc.RemoveObject(ctx, "ecmdb", req.ObjectName)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "删除对象成功",
+	}, nil
+
+}
+
+func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.Result, error) {
+	url, err := h.svc.GetPresignedUrl(ctx, "ecmdb", req.ObjectName)
 	if err != nil {
 		return systemErrorResult, err
 	}

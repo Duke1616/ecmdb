@@ -9,6 +9,8 @@ import (
 
 type Service interface {
 	GetPresignedUrl(ctx context.Context, bucketName string, objectName string) (*url.URL, error)
+	PutPresignedUrl(ctx context.Context, bucketName string, objectName string) (*url.URL, error)
+	RemoveObject(ctx context.Context, bucketName string, objetName string) error
 }
 
 type service struct {
@@ -23,6 +25,18 @@ func NewService(minioClient *minio.Client) Service {
 	}
 }
 
-func (s *service) GetPresignedUrl(ctx context.Context, bucketName string, objectName string) (*url.URL, error) {
+func (s *service) PutPresignedUrl(ctx context.Context, bucketName string, objectName string) (*url.URL, error) {
 	return s.minioClient.PresignedPutObject(ctx, bucketName, objectName, s.expires)
+}
+
+func (s *service) GetPresignedUrl(ctx context.Context, bucketName string, objectName string) (*url.URL, error) {
+	reqParams := make(url.Values)
+	return s.minioClient.PresignedGetObject(ctx, bucketName, objectName, s.expires, reqParams)
+}
+
+func (s *service) RemoveObject(ctx context.Context, bucketName string, objetName string) error {
+	return s.minioClient.RemoveObject(ctx, bucketName, objetName, minio.RemoveObjectOptions{
+		ForceDelete:      true,
+		GovernanceBypass: true,
+	})
 }

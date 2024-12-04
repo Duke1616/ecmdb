@@ -84,6 +84,21 @@ services:
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
     volumes:
       - kafka:/bitnami/kafka
+  minio:
+    restart: always
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/bitnami_minio:2024.11.7
+    user: root
+    container_name: minio
+    ports:
+      - 9000:9000
+      - 9001:9001
+    environment:
+      - TZ=Asia/Shanghai
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+      - MINIO_DEFAULT_BUCKETS=ecmdb
+    volumes:
+      - minio:/bitnami/minio/data
   ecmdb:
     restart: always
     container_name: ecmdb
@@ -101,14 +116,15 @@ services:
       - mongo
       - etcd
       - redis
+      - minio
       - kafka
-
 volumes:
   mysql:
   mongo:
   etcd:
   redis:
   kafka:
+  minio:
 
 networks:
   default:

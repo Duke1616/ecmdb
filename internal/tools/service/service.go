@@ -31,6 +31,7 @@ func (s *service) PutPresignedUrl(ctx context.Context, bucketName string, object
 
 func (s *service) GetPresignedUrl(ctx context.Context, bucketName string, objectName string) (*url.URL, error) {
 	reqParams := make(url.Values)
+	reqParams.Set("response-content-disposition", "attachment; filename="+objectName)
 	return s.minioClient.PresignedGetObject(ctx, bucketName, objectName, s.expires, reqParams)
 }
 

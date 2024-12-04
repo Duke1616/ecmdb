@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/tools/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Handler struct {
@@ -24,6 +26,8 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/tools")
 	g.POST("/upload", h.Upload)
 	g.GET("/download/:filename", h.Download)
+
+	g.POST("/minio/get_presigned_url", ginx.WrapBody[GetPresignedUrl](h.GetPresignedUrl))
 }
 
 func (h *Handler) Upload(ctx *gin.Context) {
@@ -101,4 +105,22 @@ func (h *Handler) Download(ctx *gin.Context) {
 	ctx.Header("Content-Type", "application/octet-stream")
 
 	ctx.File(filePath)
+}
+
+func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.Result, error) {
+	// 获取当前日期并格式化为年月日
+	currentDate := time.Now()
+	dateDir := currentDate.Format("2006/01/02")
+
+	// 构建 MinIO 上的文件路径，包括日期目录结构
+	objectPath := fmt.Sprintf("%s/%s", dateDir, req.ObjectName)
+
+	url, err := h.svc.GetPresignedUrl(ctx, "ecmdb", objectPath)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: url.String(),
+	}, nil
 }

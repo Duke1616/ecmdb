@@ -51,10 +51,16 @@ minio:
   secretAccessKey: minio123
   useSSL: false
 
+# 用于查询企业微信API
 wechat:
   corpId: ""
   corpSecret: ""
   agentId: 1000002
+
+# 用于飞书发送消息通知
+feishu:
+  appId: ""
+  appSecret: ""
 
 cronjob:
   enabled: true

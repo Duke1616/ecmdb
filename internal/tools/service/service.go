@@ -21,7 +21,7 @@ type service struct {
 func NewService(minioClient *minio.Client) Service {
 	return &service{
 		minioClient: minioClient,
-		expires:     time.Second * 10,
+		expires:     time.Minute * 2,
 	}
 }
 

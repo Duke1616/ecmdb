@@ -11,6 +11,7 @@ type Service interface {
 	Create(ctx context.Context, req domain.Model) (int64, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error)
 	ListAll(ctx context.Context) ([]domain.Model, error)
+	GetByUids(ctx context.Context, uids []string) ([]domain.Model, error)
 
 	DeleteById(ctx context.Context, id int64) (int64, error)
 	DeleteByModelUid(ctx context.Context, modelUid string) (int64, error)
@@ -20,6 +21,10 @@ type Service interface {
 
 type service struct {
 	repo repository.ModelRepository
+}
+
+func (s *service) GetByUids(ctx context.Context, uids []string) ([]domain.Model, error) {
+	return s.repo.GetByUids(ctx, uids)
 }
 
 func NewModelService(repo repository.ModelRepository) Service {

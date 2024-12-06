@@ -20,6 +20,10 @@ type DetailModelReq struct {
 	ID int64 `json:"id"`
 }
 
+type GetByUidsReq struct {
+	Uids []string `json:"uids"`
+}
+
 type Page struct {
 	Offset int64 `json:"offset,omitempty"`
 	Limit  int64 `json:"limit,omitempty"`

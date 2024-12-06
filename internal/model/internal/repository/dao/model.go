@@ -13,6 +13,7 @@ import (
 type ModelDAO interface {
 	Create(ctx context.Context, m Model) (int64, error)
 	GetById(ctx context.Context, id int64) (Model, error)
+	GetByUids(ctx context.Context, uids []string) ([]Model, error)
 	List(ctx context.Context, offset, limit int64) ([]Model, error)
 	Count(ctx context.Context) (int64, error)
 	ListAll(ctx context.Context) ([]Model, error)
@@ -30,6 +31,20 @@ func NewModelDAO(db *mongox.Mongo) ModelDAO {
 
 type modelDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *modelDAO) GetByUids(ctx context.Context, uids []string) ([]Model, error) {
+	col := dao.db.Collection(ModelCollection)
+	filter := bson.M{"uid": bson.M{"$in": uids}}
+	cursor, err := col.Find(ctx, filter)
+	var result []Model
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *modelDAO) ListByGroupIds(ctx context.Context, mgids []int64) ([]Model, error) {

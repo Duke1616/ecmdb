@@ -46,8 +46,25 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/delete", ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid))
 	g.POST("/by_group", ginx.WrapBody[Page](h.ListModelsByGroup))
 
+	// 根据 uids 查询模型
+	g.POST("by_uids", ginx.WrapBody(h.GetByUids))
 	// 模型 - 关联拓扑图
 	g.POST("/relation/graph", ginx.WrapBody[Page](h.FindModelsGraph))
+}
+
+func (h *Handler) GetByUids(ctx *gin.Context, req GetByUidsReq) (ginx.Result, error) {
+	ms, err := h.svc.GetByUids(ctx, req.Uids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: RetrieveModelsListResp{
+			Models: slice.Map(ms, func(idx int, m domain.Model) Model {
+				return toModelVo(m)
+			}),
+		},
+	}, nil
 }
 
 func (h *Handler) CreateModelGroup(ctx *gin.Context, req CreateModelGroupReq) (ginx.Result, error) {

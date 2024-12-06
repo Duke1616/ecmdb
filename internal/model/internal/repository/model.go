@@ -11,6 +11,7 @@ import (
 type ModelRepository interface {
 	Create(ctx context.Context, req domain.Model) (int64, error)
 	FindById(ctx context.Context, id int64) (domain.Model, error)
+	GetByUids(ctx context.Context, uids []string) ([]domain.Model, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Model, error)
 	ListAll(ctx context.Context) ([]domain.Model, error)
 	Total(ctx context.Context) (int64, error)
@@ -27,6 +28,14 @@ func NewModelRepository(dao dao.ModelDAO) ModelRepository {
 
 type modelRepository struct {
 	dao dao.ModelDAO
+}
+
+func (repo *modelRepository) GetByUids(ctx context.Context, uids []string) ([]domain.Model, error) {
+	models, err := repo.dao.GetByUids(ctx, uids)
+
+	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *modelRepository) ListAll(ctx context.Context) ([]domain.Model, error) {

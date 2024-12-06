@@ -19,10 +19,10 @@ func InitIndexes(db *mongox.Mongo) error {
 			},
 			Options: options.Index().SetUnique(true),
 		},
-		// 创建支持中文的通配符文本索引
+		// 使用 percona mongo 创建全文检索，ngram 进行分词
 		{
 			Keys:    bson.D{{Key: "$**", Value: "text"}},
-			Options: options.Index().SetDefaultLanguage("english"),
+			Options: options.Index().SetDefaultLanguage("ngram"),
 		},
 	}
 

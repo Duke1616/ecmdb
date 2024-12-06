@@ -19,6 +19,7 @@ type ResourceDAO interface {
 	FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error)
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
+	SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
@@ -35,6 +36,25 @@ type ResourceDAO interface {
 
 type resourceDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *resourceDAO) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+
+	updateDoc := bson.M{
+		"$set": bson.M{
+			field:   data,
+			"utime": time.Now().UnixMilli(),
+		},
+	}
+
+	filter := bson.M{"id": id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *resourceDAO) UpdateAttribute(ctx context.Context, resource Resource) (int64, error) {

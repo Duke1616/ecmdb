@@ -36,6 +36,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// 根据模型 UID 查询资源列表
 	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
 	g.POST("/delete", ginx.WrapBody[DeleteResourceReq](h.DeleteResource))
+
+	// 修改资产信息
+	g.POST("/update", ginx.WrapBody[UpdateResourceReq](h.UpdateResource))
+	g.POST("/set_custom_field", ginx.WrapBody[SetCustomFieldReq](h.SetCustomField))
 	// 资源关联关系
 	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReqByModel](h.ListCanBeFilterRelated))
 	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
@@ -49,7 +53,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/search", ginx.WrapBody[SearchReq](h.Search))
 	// 查询加密字段信息
 	g.POST("/secure", ginx.WrapBody[FindSecureReq](h.FindSecureData))
-	g.POST("/update", ginx.WrapBody[UpdateResourceReq](h.UpdateResource))
+
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {
@@ -79,6 +83,17 @@ func (h *Handler) DetailResource(ctx *gin.Context, req DetailResourceReq) (ginx.
 	return ginx.Result{
 		Data: resp,
 		Msg:  "查看资源详情成功",
+	}, nil
+}
+
+func (h *Handler) SetCustomField(ctx *gin.Context, req SetCustomFieldReq) (ginx.Result, error) {
+	count, err := h.svc.SetCustomField(ctx, req.Id, req.Field, req.Data)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: count,
 	}, nil
 }
 

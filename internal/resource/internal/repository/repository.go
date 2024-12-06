@@ -12,6 +12,7 @@ type ResourceRepository interface {
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
+	SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error)
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
@@ -27,6 +28,10 @@ type ResourceRepository interface {
 
 type resourceRepository struct {
 	dao dao.ResourceDAO
+}
+
+func (repo *resourceRepository) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
+	return repo.dao.SetCustomField(ctx, id, field, data)
 }
 
 func NewResourceRepository(dao dao.ResourceDAO) ResourceRepository {

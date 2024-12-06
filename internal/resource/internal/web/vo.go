@@ -19,6 +19,12 @@ type DetailResourceReq struct {
 	ID       int64  `json:"id"`
 }
 
+type SetCustomFieldReq struct {
+	Id    int64       `json:"id"`
+	Field string      `json:"field"`
+	Data  interface{} `json:"data"`
+}
+
 type Page struct {
 	Offset int64 `json:"offset,omitempty"`
 	Limit  int64 `json:"limit,omitempty"`

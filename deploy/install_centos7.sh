@@ -145,8 +145,8 @@ install_backend(){
     # 同步权限数据
     docker cp $workdir/init/menu.tar.gz ecmdb-mongo:/mnt
     docker cp $workdir/init/role.tar.gz ecmdb-mongo:/mnt
-    docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --gzip  --collection c_menu --archive=/mnt/menu.tar.gz
-    docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --gzip  --collection c_role --archive=/mnt/role.tar.gz
+    docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --gzip  --collection c_menu --archive=/mnt/menu.tar.gz
+    docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --gzip  --collection c_role --archive=/mnt/role.tar.gz
 
     # 修正 ID 自增值
     docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("5") })'
@@ -157,7 +157,7 @@ install_backend(){
     docker exec -i ecmdb-mysql mysql -u ecmdb -p123456 ecmdb < $workdir/init/casbin_rule.sql
 
     # 用户添加权限
-    docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --eval 'db.c_user.updateOne( { username: "admin" }, { $set: { role_codes: ["admin"] } } )'
+    docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_user.updateOne( { username: "admin" }, { $set: { role_codes: ["admin"] } } )'
 
     # 重启后端服务，加载策略
     docker restart ecmdb

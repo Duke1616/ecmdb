@@ -28,13 +28,13 @@ casbin:
     password: "1234567890"
 
 mongodb:
-  dsn: mongodb://ecmdb-mongo:27017/cmdb
-  db: cmdb
-  username: cmdb
+  dsn: mongodb://mongo:27017/ecmdb?authSource=admin
+  db: ecmdb
+  username: ecmdb
   password: 123456
 
 mysql:
-  dsn: cmdb:123456@tcp(ecmdb-mysql:3306)/cmdb?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
+  dsn: ecmdb:123456@tcp(ecmdb-mysql:3306)/ecmdb?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
 
 kafka:
   network: tcp

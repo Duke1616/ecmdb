@@ -8,8 +8,8 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - MYSQL_ROOT_PASSWORD=123456
-      - MYSQL_DATABASE=cmdb
-      - MYSQL_USER=cmdb
+      - MYSQL_DATABASE=ecmdb
+      - MYSQL_USER=ecmdb
       - MYSQL_PASSWORD=123456
     command:
       --character-set-server=utf8mb4
@@ -20,18 +20,15 @@ services:
   mongo:
     restart: always
     container_name: ecmdb-mongo
-    image: registry.cn-qingdao.aliyuncs.com/duke1616/mongodb:7.0.12
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/percona-server-mongodb:7.0.15
     ports:
       - 27017:27017
     environment:
       - TZ=Asia/Shanghai
-      - MONGODB_ROOT_USER=mongo_admin
-      - MONGODB_ROOT_PASSWORD=123456
-      - MONGODB_USERNAME=cmdb
-      - MONGODB_PASSWORD=123456
-      - MONGODB_DATABASE=cmdb
+      - MONGO_INITDB_ROOT_USERNAME=ecmdb
+      - MONGO_INITDB_ROOT_PASSWORD=123456
     volumes:
-      - mongo:/bitnami/mongodb
+      - mongo:/data/db
   etcd:
     restart: always
     container_name: ecmdb-etcd
@@ -88,7 +85,7 @@ services:
     restart: always
     image: registry.cn-qingdao.aliyuncs.com/duke1616/bitnami_minio:2024.11.7
     user: root
-    container_name: minio
+    container_name: ecmdb-minio
     ports:
       - 9000:9000
       - 9001:9001

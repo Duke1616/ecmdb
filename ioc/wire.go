@@ -23,6 +23,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/terminal"
 	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -84,6 +85,7 @@ func InitApp() (*App, error) {
 		rota.InitModule,
 		wire.FieldsOf(new(*rota.Module), "Hdl"),
 		tools.InitModule,
+		terminal.InitModule,
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,

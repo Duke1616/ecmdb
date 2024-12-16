@@ -20,6 +20,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/terminal"
 	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -38,7 +39,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
-	departmentHdl *department.Handler, toolsHdl *tools.Handler, rotaHdl *rota.Handler,
+	departmentHdl *department.Handler, toolsHdl *tools.Handler, rotaHdl *rota.Handler, termHdl *terminal.Handler,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	gin.SetMode(gin.ReleaseMode)
@@ -50,6 +51,8 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	userHdl.PublicRoutes(server)
 	strategyHdl.PublicRoutes(server)
 	toolsHdl.PublicRoutes(server)
+
+	termHdl.PrivateRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())

@@ -49,6 +49,14 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
 		err     error
 	)
 
+	// 传递参数
+	resourceId := ctx.Query("resource_id")
+	resourceIdInt, err := strconv.ParseInt(resourceId, 10, 64)
+	cols := ctx.Query("cols")
+	colsInt, err := strconv.Atoi(cols)
+	rows := ctx.Query("rows")
+	rowsInt, err := strconv.Atoi(rows)
+
 	// 升级 WebSocket 连接
 	conn, err = UpGrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
@@ -59,13 +67,13 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
 	defer conn.Close()
 
 	// 获取关联数据
-	ids, err := h.RRSvc.ListDstRelated(ctx, "host", "gateway_default_host", 57)
+	ids, err := h.RRSvc.ListDstRelated(ctx, "host", "AuthGateway_default_host", resourceIdInt)
 	if err != nil {
 		return ginx.Result{}, err
 	}
 
 	// 查看所有字段信息
-	fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "gateway")
+	fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "AuthGateway")
 	rs, err := h.resourceSvc.ListResourceByIds(ctx, fields, ids)
 	if err != nil {
 		return ginx.Result{}, err
@@ -94,7 +102,7 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
 		return ginx.Result{}, err
 	}
 
-	host, err := h.resourceSvc.FindResourceById(ctx, filesHost, 57)
+	host, err := h.resourceSvc.FindResourceById(ctx, filesHost, resourceIdInt)
 	if err != nil {
 		return ginx.Result{}, err
 	}
@@ -113,10 +121,6 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
 		return ginx.Result{}, err
 	}
 
-	cols := ctx.Query("cols")
-	colsInt, err := strconv.Atoi(cols)
-	rows := ctx.Query("rows")
-	rowsInt, err := strconv.Atoi(rows)
 	if sshConn, err = sshx.NewSSHConnect(client, conn, rowsInt, colsInt); err != nil {
 		return ginx.Result{
 			Msg: "WebSocket create client failed",

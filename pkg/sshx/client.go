@@ -30,7 +30,7 @@ func ConnectToNextJumpHost(currentClient *ssh.Client, user string, host string, 
 	return ssh.NewClient(nextClient, nextChan, nextReqs), nil
 }
 
-func (mgm *MultiGatewayManager) Connect(target *GatewayConfig) (*ssh.Client, error) {
+func (mgm *MultiGatewayManager) Connect() (*ssh.Client, error) {
 	var client *ssh.Client
 	var err error
 
@@ -56,11 +56,6 @@ func (mgm *MultiGatewayManager) Connect(target *GatewayConfig) (*ssh.Client, err
 				return nil, fmt.Errorf("连接第一个网关失败: %v", err)
 			}
 		} else {
-			// 通过当前网关连接到下一个网关或目标主机
-			if client == nil {
-				return nil, fmt.Errorf("网关连接错误")
-			}
-
 			// 这里你应该确保 client 是继续在原连接上做的，而不是新建连接
 			client, err = ConnectToNextJumpHost(client, gateway.Username, gateway.Host, gateway.Port, authMethod)
 			if err != nil {
@@ -68,22 +63,7 @@ func (mgm *MultiGatewayManager) Connect(target *GatewayConfig) (*ssh.Client, err
 			}
 		}
 	}
-
-	if client == nil {
-		return nil, fmt.Errorf("网关连接错误")
-	}
-
-	// 连接最终目标主机
-	authMethod, err := Auth(target)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err = ConnectToNextJumpHost(client, target.Username, target.Host, target.Port, authMethod)
-	if err != nil {
-		return nil, fmt.Errorf("连接到目标主机失败: %v", err)
-	}
-
+	
 	return client, nil
 }
 

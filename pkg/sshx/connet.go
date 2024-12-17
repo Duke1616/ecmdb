@@ -26,7 +26,11 @@ type SSHConnect struct {
 	buf          bytes.Buffer
 }
 
-func (s *SSHConnect) recv() {
+func (s *SSHConnect) send() {
+	defer func() {
+		s.buf.Reset()
+	}()
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -72,18 +76,18 @@ func (s *SSHConnect) output() {
 }
 
 func (s *SSHConnect) Start() {
-	go s.recv()
+	go s.send()
 	go s.output()
 }
 
 func (s *SSHConnect) SendMessageToWebSocket(msg string) error {
-	defer s.mutex.Unlock()
-	s.mutex.Lock()
 	message, err := json.Marshal(TerminalMessage{Operation: "stdout", Data: msg})
 	if err != nil {
 		return err
 	}
 
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	return s.conn.WriteMessage(websocket.TextMessage, message)
 }
 
@@ -140,5 +144,15 @@ func (s *SSHConnect) WindowChange(h int, w int) error {
 func (s *SSHConnect) Stop() {
 	s.cancel()
 	s.tick.Stop()
-	close(s.dataChan) // 关闭通道
+	close(s.dataChan)
+
+	// 关闭 SSH 会话
+	if s.session != nil {
+		_ = s.session.Close()
+	}
+
+	// 关闭 WebSocket 连接
+	if s.conn != nil {
+		_ = s.conn.Close()
+	}
 }

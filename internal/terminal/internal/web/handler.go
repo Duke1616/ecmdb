@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -9,6 +10,8 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/sshx"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"golang.org/x/sync/errgroup"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -39,49 +42,51 @@ var UpGrader = websocket.Upgrader{
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/term")
 	g.GET("/guac/tunnel", ginx.Wrap(h.ConnectGuacTunnel))
-	g.GET("/ssh/tunnel", ginx.Wrap(h.ConnectSshTunnel))
+	g.GET("/ssh/tunnel", ginx.Ws(h.ConnectSshTunnel))
 }
 
-func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
+func (h *Handler) ConnectSshTunnel(ctx *gin.Context) error {
 	var (
 		conn    *websocket.Conn
 		sshConn *sshx.SSHConnect
-		err     error
 	)
 
 	// 传递参数
 	resourceId := ctx.Query("resource_id")
 	resourceIdInt, err := strconv.ParseInt(resourceId, 10, 64)
+	if err != nil {
+		return err
+	}
+
 	cols := ctx.Query("cols")
 	colsInt, err := strconv.Atoi(cols)
+	if err != nil {
+		return err
+	}
+
 	rows := ctx.Query("rows")
 	rowsInt, err := strconv.Atoi(rows)
+	if err != nil {
+		return err
+	}
 
 	// 升级 WebSocket 连接
 	conn, err = UpGrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		return ginx.Result{
-			Msg: "WebSocket upgrade failed",
-		}, err
+		return err
 	}
+
 	defer conn.Close()
 
-	// 获取关联数据
-	ids, err := h.RRSvc.ListDstRelated(ctx, "host", "AuthGateway_default_host", resourceIdInt)
+	// 获取指定资产关联网关数据
+	hostResource, gatewayRs, err := h.queryResource(ctx, resourceIdInt)
 	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	// 查看所有字段信息
-	fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "AuthGateway")
-	rs, err := h.resourceSvc.ListResourceByIds(ctx, fields, ids)
-	if err != nil {
-		return ginx.Result{}, err
+		return err
 	}
 
 	// 组合所有网关
-	var multiGateways []*sshx.GatewayConfig
-	for _, item := range rs {
+	var multiGateways = make([]*sshx.GatewayConfig, 0)
+	for _, item := range gatewayRs {
 		gateway := &sshx.GatewayConfig{
 			Username:   sshx.GetStringField(item.Data, "username", ""),
 			Host:       sshx.GetStringField(item.Data, "host", ""),
@@ -95,49 +100,49 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
 
 		multiGateways = append(multiGateways, gateway)
 	}
-	manager := sshx.NewMultiGatewayManager(multiGateways)
 
-	filesHost, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "host")
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	host, err := h.resourceSvc.FindResourceById(ctx, filesHost, resourceIdInt)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	client, err := manager.Connect(&sshx.GatewayConfig{
-		AuthType:   sshx.GetStringField(host.Data, "auth_type", ""),
-		Host:       sshx.GetStringField(host.Data, "ip", ""),
-		Port:       sshx.GetIntField(host.Data, "port", 22),
-		Username:   sshx.GetStringField(host.Data, "username", ""),
-		Password:   sshx.GetStringField(host.Data, "password", ""),
-		PrivateKey: sshx.GetStringField(host.Data, "private_key", ""),
-		Passphrase: sshx.GetStringField(host.Data, "password", "passwd"),
-		Sort:       0,
+	// 组合真实的目标节点
+	multiGateways = append(multiGateways, &sshx.GatewayConfig{
+		AuthType:   sshx.GetStringField(hostResource.Data, "auth_type", ""),
+		Host:       sshx.GetStringField(hostResource.Data, "ip", ""),
+		Port:       sshx.GetIntField(hostResource.Data, "port", 22),
+		Username:   sshx.GetStringField(hostResource.Data, "username", ""),
+		Password:   sshx.GetStringField(hostResource.Data, "password", ""),
+		PrivateKey: sshx.GetStringField(hostResource.Data, "private_key", ""),
+		Passphrase: sshx.GetStringField(hostResource.Data, "password", "passwd"),
+		Sort:       len(multiGateways) + 1,
 	})
+
+	// 连接网关和目标节点
+	manager := sshx.NewMultiGatewayManager(multiGateways)
+	client, err := manager.Connect()
 	if err != nil {
-		return ginx.Result{}, err
+		return err
 	}
 
+	// 创建Session
 	if sshConn, err = sshx.NewSSHConnect(client, conn, rowsInt, colsInt); err != nil {
-		return ginx.Result{
-			Msg: "WebSocket create client failed",
-		}, err
+		return err
 	}
 
+	// 监听 SSH 执行写入 websocket
 	sshConn.Start()
 	defer sshConn.Stop()
 
+	// 接收 websocket 信息处理
 	for {
 		select {
 		case <-ctx.Done():
-			return ginx.Result{}, nil
+			return nil
 		default:
-			_, message, er := conn.ReadMessage()
-			if er != nil {
-				return ginx.Result{}, er
+			var message []byte
+			_, message, err = conn.ReadMessage()
+			if err == io.EOF {
+				return nil
+			}
+
+			if err != nil {
+				return err
 			}
 
 			msg, er := sshx.ParseTerminalMessage(message)
@@ -148,16 +153,17 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) (ginx.Result, error) {
 			switch msg.Operation {
 			case "resize":
 				if err = sshConn.WindowChange(msg.Rows, msg.Cols); err != nil {
+					return err
 				}
 			case "stdin":
 				_, err = sshConn.StdinPipe.Write([]byte(msg.Data))
 				if err != nil {
-					return ginx.Result{}, err
+					return err
 				}
 			case "ping":
 				_, _, err = client.Conn.SendRequest("PING", true, nil)
 				if err != nil {
-					return ginx.Result{}, err
+					return err
 				}
 			}
 		}
@@ -212,4 +218,50 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 			return ginx.Result{}, er
 		}
 	}
+}
+
+func (h *Handler) queryResource(ctx context.Context, resourceId int64) (resource.Resource, []resource.Resource, error) {
+	var (
+		eg           errgroup.Group
+		hostResource resource.Resource
+		gatewayRs    []resource.Resource
+	)
+	eg.Go(func() error {
+		ids, err := h.RRSvc.ListDstRelated(ctx, "host", "AuthGateway_default_host", resourceId)
+		if err != nil {
+			return err
+		}
+
+		if len(ids) == 0 {
+			return nil
+		}
+
+		fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "AuthGateway")
+		if err != nil {
+			return err
+		}
+		gatewayRs, err = h.resourceSvc.ListResourceByIds(ctx, fields, ids)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	eg.Go(func() error {
+		fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "host")
+		if err != nil {
+			return err
+		}
+
+		hostResource, err = h.resourceSvc.FindResourceById(ctx, fields, resourceId)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err := eg.Wait(); err != nil {
+		return resource.Resource{}, nil, err
+	}
+
+	return hostResource, gatewayRs, nil
 }

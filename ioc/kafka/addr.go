@@ -1,3 +1,3 @@
 package kafka
 
-var addr = []string{"10.31.0.200:9094"}
+var addr = []string{"127.0.0.1:9094"}

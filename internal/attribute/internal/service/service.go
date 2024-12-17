@@ -12,8 +12,10 @@ import (
 //go:generate mockgen -source=./service.go -destination=../../mocks/attribute.mock.go -package=attributemocks -typed Service
 type Service interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
-	// SearchAttributeFieldsByModelUid 查询模型下的所有字段信息，内部使用
+	// SearchAttributeFieldsByModelUid 查询模型下的所有字段信息，不包含安全字段，内部使用
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
+	// SearchAllAttributeFieldsByModelUid 查询模型下的所有字段信息，内部使用
+	SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
 	// SearchAttributeFieldsBySecure 查询全有的安全字段
 	SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error)
 	// ListAttributes 查询模型下的所有字段详情信息，前端使用
@@ -47,6 +49,10 @@ func NewService(repo repository.AttributeRepository, groupRepo repository.Attrib
 		repo:      repo,
 		groupRepo: groupRepo,
 	}
+}
+
+func (s *service) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
+	return s.repo.SearchAllAttributeFieldsByModelUid(ctx, modelUid)
 }
 
 func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {

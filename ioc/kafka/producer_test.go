@@ -29,7 +29,7 @@ func TestAsyncProducer(t *testing.T) {
 
 			atomic.AddInt64(&counter, 1)
 			msg := &sarama.ProducerMessage{
-				Topic: "idl_test_event",
+				Topic: "test_event",
 				Key:   sarama.StringEncoder(fmt.Sprintf("idl-%d", counter)), // 使用动态 key 来确保均匀分配
 				Value: sarama.StringEncoder(fmt.Sprintf("Hello, 这是一条消息 %d", counter)),
 				Headers: []sarama.RecordHeader{

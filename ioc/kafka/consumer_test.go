@@ -13,7 +13,7 @@ import (
 func TestConsumer(t *testing.T) {
 	cfg := sarama.NewConfig()
 	consumer, err := sarama.NewConsumerGroup(addr,
-		"idl_group", cfg)
+		"group", cfg)
 	require.NoError(t, err)
 
 	start := time.Now()
@@ -22,7 +22,7 @@ func TestConsumer(t *testing.T) {
 		cancel()
 	})
 	err = consumer.Consume(ctx,
-		[]string{"idl_test_event"}, testConsumerGroupHandler{})
+		[]string{"test_event"}, testConsumerGroupHandler{})
 	t.Log(err, time.Since(start).String())
 }
 
@@ -90,7 +90,7 @@ func (t testConsumerGroupHandler) ConsumeClaim(
 //	cfg.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 //
 //	// 创建一个消费者组实例
-//	consumerGroup, err := sarama.NewConsumerGroup(addr, "idl_group", cfg)
+//	consumerGroup, err := sarama.NewConsumerGroup(addr, "group", cfg)
 //	require.NoError(t, err)
 //
 //	start := time.Now()
@@ -104,14 +104,14 @@ func (t testConsumerGroupHandler) ConsumeClaim(
 //
 //	// 启动两个消费者并发消费
 //	go func() {
-//		err := consumerGroup.Consume(ctx, []string{"idl_test_event"}, &testConsumerGroupHandler{ID: "Consumer1"})
+//		err := consumerGroup.Consume(ctx, []string{"test_event"}, &testConsumerGroupHandler{ID: "Consumer1"})
 //		if err != nil {
 //			log.Printf("Consumer1 error: %v\n", err)
 //		}
 //	}()
 //
 //	go func() {
-//		err := consumerGroup.Consume(ctx, []string{"idl_test_event"}, &testConsumerGroupHandler{ID: "Consumer2"})
+//		err := consumerGroup.Consume(ctx, []string{"test_event"}, &testConsumerGroupHandler{ID: "Consumer2"})
 //		if err != nil {
 //			log.Printf("Consumer2 error: %v\n", err)
 //		}

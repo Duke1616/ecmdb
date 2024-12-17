@@ -7,12 +7,18 @@
 package terminal
 
 import (
+	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/relation"
+	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/terminal/internal/web"
 )
 
 // Injectors from wire.go:
 
-func InitModule() (*web.Handler, error) {
-	handler := web.NewHandler()
+func InitModule(relationModule *relation.Module, resourceModule *resource.Module, attributeModule *attribute.Module) (*web.Handler, error) {
+	relationResourceService := relationModule.RRSvc
+	service := resourceModule.Svc
+	serviceService := attributeModule.Svc
+	handler := web.NewHandler(relationResourceService, service, serviceService)
 	return handler, nil
 }

@@ -11,6 +11,7 @@ import (
 type AttributeRepository interface {
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
+	SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
 	SearchAttributeFieldsBySecure(ctx context.Context, modelUid []string) (map[string][]string, error)
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error)
 	Total(ctx context.Context, modelUID string) (int64, error)
@@ -32,6 +33,14 @@ func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {
 	return &attributeRepository{
 		dao: dao,
 	}
+}
+
+func (repo *attributeRepository) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
+	attrs, err := repo.dao.SearchAllAttributeByModelUID(ctx, modelUid)
+
+	return slice.Map(attrs, func(idx int, src dao.Attribute) string {
+		return src.FieldUid
+	}), err
 }
 
 func (repo *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {

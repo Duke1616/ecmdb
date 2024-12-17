@@ -13,7 +13,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
-	"github.com/Duke1616/ecmdb/internal/terminal"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -28,6 +27,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/strategy"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
+	"github.com/Duke1616/ecmdb/internal/terminal"
 	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -169,7 +169,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler20 := rotaModule.Hdl
-	handler21, err := terminal.InitModule()
+	handler21, err := terminal.InitModule(relationModule, resourceModule, attributeModule)
 	if err != nil {
 		return nil, err
 	}

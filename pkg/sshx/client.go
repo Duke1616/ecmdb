@@ -51,9 +51,11 @@ func (mgm *MultiGatewayManager) Connect() (*ssh.Client, error) {
 
 		if i == 0 {
 			// 连接第一个网关
+			fmt.Print("connecting to ")
 			client, err = ssh.Dial("tcp", fmt.Sprintf("%s:%d", gateway.Host, gateway.Port), config)
+			fmt.Print("connecting down ")
 			if err != nil {
-				return nil, fmt.Errorf("连接第一个网关失败: %v", err)
+				return nil, fmt.Errorf("连接失败: %v", err)
 			}
 		} else {
 			// 这里你应该确保 client 是继续在原连接上做的，而不是新建连接
@@ -63,7 +65,7 @@ func (mgm *MultiGatewayManager) Connect() (*ssh.Client, error) {
 			}
 		}
 	}
-	
+
 	return client, nil
 }
 
@@ -89,5 +91,5 @@ func Auth(gateway *GatewayConfig) (ssh.AuthMethod, error) {
 		return ssh.PublicKeys(signer), nil
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("无可匹配认证类型, 请进行绑定")
 }

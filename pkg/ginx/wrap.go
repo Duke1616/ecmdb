@@ -41,7 +41,7 @@ func Ws(fn func(ctx *gin.Context) error) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		err := fn(ctx)
 		if err != nil {
-			slog.Error("执行业务逻辑失败", slog.Any("err", err))
+			slog.Warn("Websocket", slog.Any("err", err))
 			return
 		}
 		ctx.PureJSON(http.StatusOK, "OK")

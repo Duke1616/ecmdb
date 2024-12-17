@@ -97,7 +97,6 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) error {
 			Passphrase: sshx.GetStringField(item.Data, "password", "default_password"),
 			Sort:       sshx.GetIntField(item.Data, "sort", 0),
 		}
-
 		multiGateways = append(multiGateways, gateway)
 	}
 
@@ -117,6 +116,7 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) error {
 	manager := sshx.NewMultiGatewayManager(multiGateways)
 	client, err := manager.Connect()
 	if err != nil {
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return err
 	}
 

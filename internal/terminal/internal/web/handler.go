@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/guacx"
 	"github.com/Duke1616/ecmdb/pkg/sshx"
+	"github.com/Duke1616/ecmdb/pkg/termx"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"golang.org/x/sync/errgroup"
@@ -20,6 +21,7 @@ type Handler struct {
 	RRSvc        relation.RRSvc
 	resourceSvc  resource.Service
 	attributeSvc attribute.Service
+	session      *termx.SessionPool
 }
 
 func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc attribute.Service) *Handler {
@@ -27,6 +29,7 @@ func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc
 		RRSvc:        RRSvc,
 		resourceSvc:  resourceSvc,
 		attributeSvc: attributeSvc,
+		session:      termx.NewSessionPool(),
 	}
 }
 
@@ -42,46 +45,17 @@ var UpGrader = websocket.Upgrader{
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/term")
 	g.GET("/guac/tunnel", ginx.Wrap(h.ConnectGuacTunnel))
-	g.GET("/ssh/tunnel", ginx.Ws(h.ConnectSshTunnel))
+	g.GET("/ssh/session", ginx.Ws(h.SshSessionTunnel))
+
+	// 主要用于连接管理成功后，存储到Session中，不需要重复建立连接
+	g.POST("/connect", ginx.WrapBody(h.Connect))
 }
 
-func (h *Handler) ConnectSshTunnel(ctx *gin.Context) error {
-	var (
-		conn    *websocket.Conn
-		sshConn *sshx.SSHConnect
-	)
-
-	// 传递参数
-	resourceId := ctx.Query("resource_id")
-	resourceIdInt, err := strconv.ParseInt(resourceId, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	cols := ctx.Query("cols")
-	colsInt, err := strconv.Atoi(cols)
-	if err != nil {
-		return err
-	}
-
-	rows := ctx.Query("rows")
-	rowsInt, err := strconv.Atoi(rows)
-	if err != nil {
-		return err
-	}
-
-	// 升级 WebSocket 连接
-	conn, err = UpGrader.Upgrade(ctx.Writer, ctx.Request, nil)
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
+func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error) {
 	// 获取指定资产关联网关数据
-	hostResource, gatewayRs, err := h.queryResource(ctx, resourceIdInt)
+	hostResource, gatewayRs, err := h.queryResource(ctx, req.ResourceId)
 	if err != nil {
-		return err
+		return ginx.Result{}, err
 	}
 
 	// 组合所有网关
@@ -116,12 +90,61 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) error {
 	manager := sshx.NewMultiGatewayManager(multiGateways)
 	client, err := manager.Connect()
 	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	h.session.SetSession(req.ResourceId, termx.NewSessions(client))
+	return ginx.Result{
+		Msg: "SSH 连接成功",
+	}, nil
+}
+
+func (h *Handler) SshSessionTunnel(ctx *gin.Context) error {
+	// 传递参数
+	resourceId := ctx.Query("resource_id")
+	resourceIdInt, err := strconv.ParseInt(resourceId, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	cols := ctx.Query("cols")
+	colsInt, err := strconv.Atoi(cols)
+	if err != nil {
+		return err
+	}
+
+	rows := ctx.Query("rows")
+	rowsInt, err := strconv.Atoi(rows)
+	if err != nil {
+		return err
+	}
+
+	return h.wsSShSession(ctx, resourceIdInt, colsInt, rowsInt)
+}
+
+func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, rowsInt int) error {
+	var (
+		err     error
+		conn    *websocket.Conn
+		sshConn *sshx.SSHConnect
+	)
+
+	// 升级 WebSocket 连接
+	conn, err = UpGrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// 获取 SSH Client
+	sess, err := h.session.GetSession(resourceIdInt)
+	if err != nil {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return err
 	}
 
 	// 创建Session
-	if sshConn, err = sshx.NewSSHConnect(client, conn, rowsInt, colsInt); err != nil {
+	if sshConn, err = sshx.NewSSHConnect(sess.SshClient, conn, rowsInt, colsInt); err != nil {
 		return err
 	}
 
@@ -161,7 +184,7 @@ func (h *Handler) ConnectSshTunnel(ctx *gin.Context) error {
 					return err
 				}
 			case "ping":
-				_, _, err = client.Conn.SendRequest("PING", true, nil)
+				_, _, err = sess.SshClient.Conn.SendRequest("PING", true, nil)
 				if err != nil {
 					return err
 				}

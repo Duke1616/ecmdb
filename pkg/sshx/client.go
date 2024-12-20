@@ -3,6 +3,7 @@ package sshx
 import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
+	"time"
 )
 
 func ConnectToNextJumpHost(currentClient *ssh.Client, user string, host string, port int, method ssh.AuthMethod) (*ssh.Client, error) {
@@ -11,6 +12,7 @@ func ConnectToNextJumpHost(currentClient *ssh.Client, user string, host string, 
 		User:            user,
 		Auth:            []ssh.AuthMethod{method},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         5 * time.Second,
 	}
 
 	address := fmt.Sprintf("%s:%d", host, port)
@@ -47,13 +49,12 @@ func (mgm *MultiGatewayManager) Connect() (*ssh.Client, error) {
 			User:            gateway.Username,
 			Auth:            []ssh.AuthMethod{authMethod},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         5 * time.Second,
 		}
 
 		if i == 0 {
 			// 连接第一个网关
-			fmt.Print("connecting to ")
 			client, err = ssh.Dial("tcp", fmt.Sprintf("%s:%d", gateway.Host, gateway.Port), config)
-			fmt.Print("connecting down ")
 			if err != nil {
 				return nil, fmt.Errorf("连接失败: %v", err)
 			}

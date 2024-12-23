@@ -6,12 +6,16 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/tools/web"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/guacx"
 	"github.com/Duke1616/ecmdb/pkg/sshx"
 	"github.com/Duke1616/ecmdb/pkg/termx"
+	"github.com/Duke1616/vuefinder-go/pkg/finder"
+	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/sftp"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"net/http"
@@ -24,7 +28,9 @@ type Handler struct {
 	resourceSvc  resource.Service
 	attributeSvc attribute.Service
 	session      *termx.SessionPool
+	finder       web.Handler
 	timeout      time.Duration
+	finderWeb    *finderWeb.Handler
 }
 
 func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc attribute.Service) *Handler {
@@ -34,6 +40,7 @@ func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc
 		attributeSvc: attributeSvc,
 		session:      termx.NewSessionPool(),
 		timeout:      5 * time.Second,
+		finderWeb:    finderWeb.NewHandler(),
 	}
 }
 
@@ -53,6 +60,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 主要用于连接管理成功后，存储到Session中，不需要重复建立连接
 	g.POST("/connect", ginx.WrapBody(h.Connect))
+
+	// 注册 FinderWeb 路由
+	h.finderWeb.RegisterRoutes(server)
 }
 
 func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error) {
@@ -106,7 +116,15 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 		return ginx.Result{Msg: "连接服务器失败"}, err
 	}
 
+	// 每次连接都重新替换Session
 	h.session.SetSession(req.ResourceId, termx.NewSessions(client))
+
+	// 替换 sftp finder
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+	h.finderWeb.SetFinder(req.ResourceId, finder.NewSftpFinder(sftpClient))
 	return ginx.Result{
 		Msg: "SSH 连接成功",
 	}, nil

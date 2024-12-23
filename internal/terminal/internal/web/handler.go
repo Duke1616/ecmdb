@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -15,6 +16,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Handler struct {
@@ -22,6 +24,7 @@ type Handler struct {
 	resourceSvc  resource.Service
 	attributeSvc attribute.Service
 	session      *termx.SessionPool
+	timeout      time.Duration
 }
 
 func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc attribute.Service) *Handler {
@@ -30,6 +33,7 @@ func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc
 		resourceSvc:  resourceSvc,
 		attributeSvc: attributeSvc,
 		session:      termx.NewSessionPool(),
+		timeout:      5 * time.Second,
 	}
 }
 
@@ -55,7 +59,9 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	// 获取指定资产关联网关数据
 	hostResource, gatewayRs, err := h.queryResource(ctx, req.ResourceId)
 	if err != nil {
-		return ginx.Result{}, err
+		return ginx.Result{
+			Msg: "获取基本连接信息失败",
+		}, err
 	}
 
 	// 组合所有网关
@@ -88,9 +94,16 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 
 	// 连接网关和目标节点
 	manager := sshx.NewMultiGatewayManager(multiGateways)
-	client, err := manager.Connect()
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), h.timeout)
+	defer cancel()
+
+	client, err := manager.Connect(ctxWithTimeout)
 	if err != nil {
-		return ginx.Result{}, err
+		// 检查是否是超时错误
+		if errors.Is(err, context.DeadlineExceeded) {
+			return ginx.Result{Msg: "连接超时，请重试"}, err
+		}
+		return ginx.Result{Msg: "连接服务器失败"}, err
 	}
 
 	h.session.SetSession(req.ResourceId, termx.NewSessions(client))

@@ -27,7 +27,6 @@ require (
 	github.com/gotomicro/ego v1.2.2
 	github.com/larksuite/oapi-sdk-go/v3 v3.3.2
 	github.com/minio/minio-go/v7 v7.0.81
-	github.com/pkg/sftp v1.13.6
 	github.com/purpleclay/gitz v0.9.0
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/spf13/cobra v1.8.1
@@ -102,7 +101,6 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
-	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

@@ -146,13 +146,8 @@ func (s *SSHConnect) Stop() {
 	s.tick.Stop()
 	close(s.dataChan)
 
-	// 关闭 SSH 会话
+	// 关闭会话
 	if s.session != nil {
 		_ = s.session.Close()
-	}
-
-	// 关闭 WebSocket 连接
-	if s.conn != nil {
-		_ = s.conn.Close()
 	}
 }

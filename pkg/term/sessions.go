@@ -1,4 +1,4 @@
-package termx
+package term
 
 import (
 	"fmt"

@@ -1,7 +1,7 @@
 package web
 
 import (
-	"github.com/Duke1616/ecmdb/pkg/guacx"
+	"github.com/Duke1616/ecmdb/pkg/term/guacx"
 	"github.com/gorilla/websocket"
 	"sync"
 )

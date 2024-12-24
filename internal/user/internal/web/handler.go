@@ -165,12 +165,13 @@ func (h *Handler) LdapRefreshCache(ctx *gin.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
+	fmt.Print(req.Username, "查询用户")
 	user, err := h.svc.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		return userOrPassErrorResult, err
 	}
 
-	jwtData := make(map[string]string, 0)
+	jwtData := make(map[string]string)
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.Id).SetJwtData(jwtData).Build()
 	if err != nil {
 		return systemErrorResult, err
@@ -283,9 +284,6 @@ func (h *Handler) FindById(ctx *gin.Context, req FindByIdReq) (ginx.Result, erro
 		u = h.ToUserVo(user)
 	} else {
 		user, err := h.svc.FindById(ctx, req.Id)
-		if err != nil {
-			return systemErrorResult, err
-		}
 		if err != nil {
 			return systemErrorResult, err
 		}

@@ -8,9 +8,9 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/tools/web"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
-	"github.com/Duke1616/ecmdb/pkg/guacx"
-	"github.com/Duke1616/ecmdb/pkg/sshx"
-	"github.com/Duke1616/ecmdb/pkg/termx"
+	"github.com/Duke1616/ecmdb/pkg/term"
+	guacx2 "github.com/Duke1616/ecmdb/pkg/term/guacx"
+	sshx2 "github.com/Duke1616/ecmdb/pkg/term/sshx"
 	"github.com/Duke1616/vuefinder-go/pkg/finder"
 	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
 	"github.com/gin-gonic/gin"
@@ -27,7 +27,7 @@ type Handler struct {
 	RRSvc        relation.RRSvc
 	resourceSvc  resource.Service
 	attributeSvc attribute.Service
-	session      *termx.SessionPool
+	session      *term.SessionPool
 	finder       web.Handler
 	timeout      time.Duration
 	finderWeb    *finderWeb.Handler
@@ -38,7 +38,7 @@ func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc
 		RRSvc:        RRSvc,
 		resourceSvc:  resourceSvc,
 		attributeSvc: attributeSvc,
-		session:      termx.NewSessionPool(),
+		session:      term.NewSessionPool(),
 		timeout:      5 * time.Second,
 		finderWeb:    finderWeb.NewHandler(),
 	}
@@ -75,35 +75,35 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	}
 
 	// 组合所有网关
-	var multiGateways = make([]*sshx.GatewayConfig, 0)
+	var multiGateways = make([]*sshx2.GatewayConfig, 0)
 	for _, item := range gatewayRs {
-		gateway := &sshx.GatewayConfig{
-			Username:   sshx.GetStringField(item.Data, "username", ""),
-			Host:       sshx.GetStringField(item.Data, "host", ""),
-			PrivateKey: sshx.GetStringField(item.Data, "private_key", ""),
-			Port:       sshx.GetIntField(item.Data, "port", 22),
-			Password:   sshx.GetStringField(item.Data, "password", "default_password"),
-			AuthType:   sshx.GetStringField(item.Data, "auth_type", "passwd"),
-			Passphrase: sshx.GetStringField(item.Data, "password", "default_password"),
-			Sort:       sshx.GetIntField(item.Data, "sort", 0),
+		gateway := &sshx2.GatewayConfig{
+			Username:   sshx2.GetStringField(item.Data, "username", ""),
+			Host:       sshx2.GetStringField(item.Data, "host", ""),
+			PrivateKey: sshx2.GetStringField(item.Data, "private_key", ""),
+			Port:       sshx2.GetIntField(item.Data, "port", 22),
+			Password:   sshx2.GetStringField(item.Data, "password", "default_password"),
+			AuthType:   sshx2.GetStringField(item.Data, "auth_type", "passwd"),
+			Passphrase: sshx2.GetStringField(item.Data, "password", "default_password"),
+			Sort:       sshx2.GetIntField(item.Data, "sort", 0),
 		}
 		multiGateways = append(multiGateways, gateway)
 	}
 
 	// 组合真实的目标节点
-	multiGateways = append(multiGateways, &sshx.GatewayConfig{
-		AuthType:   sshx.GetStringField(hostResource.Data, "auth_type", ""),
-		Host:       sshx.GetStringField(hostResource.Data, "ip", ""),
-		Port:       sshx.GetIntField(hostResource.Data, "port", 22),
-		Username:   sshx.GetStringField(hostResource.Data, "username", ""),
-		Password:   sshx.GetStringField(hostResource.Data, "password", ""),
-		PrivateKey: sshx.GetStringField(hostResource.Data, "private_key", ""),
-		Passphrase: sshx.GetStringField(hostResource.Data, "password", "passwd"),
+	multiGateways = append(multiGateways, &sshx2.GatewayConfig{
+		AuthType:   sshx2.GetStringField(hostResource.Data, "auth_type", ""),
+		Host:       sshx2.GetStringField(hostResource.Data, "ip", ""),
+		Port:       sshx2.GetIntField(hostResource.Data, "port", 22),
+		Username:   sshx2.GetStringField(hostResource.Data, "username", ""),
+		Password:   sshx2.GetStringField(hostResource.Data, "password", ""),
+		PrivateKey: sshx2.GetStringField(hostResource.Data, "private_key", ""),
+		Passphrase: sshx2.GetStringField(hostResource.Data, "password", "passwd"),
 		Sort:       len(multiGateways) + 1,
 	})
 
 	// 连接网关和目标节点
-	manager := sshx.NewMultiGatewayManager(multiGateways)
+	manager := sshx2.NewMultiGatewayManager(multiGateways)
 	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
@@ -117,7 +117,7 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	}
 
 	// 每次连接都重新替换Session
-	h.session.SetSession(req.ResourceId, termx.NewSessions(client))
+	h.session.SetSession(req.ResourceId, term.NewSessions(client))
 
 	// 替换 sftp finder
 	sftpClient, err := sftp.NewClient(client)
@@ -157,7 +157,7 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 	var (
 		err     error
 		conn    *websocket.Conn
-		sshConn *sshx.SSHConnect
+		sshConn *sshx2.SSHConnect
 	)
 
 	// 升级 WebSocket 连接
@@ -175,7 +175,7 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 	}
 
 	// 创建Session
-	if sshConn, err = sshx.NewSSHConnect(sess.SshClient, conn, rowsInt, colsInt); err != nil {
+	if sshConn, err = sshx2.NewSSHConnect(sess.SshClient, conn, rowsInt, colsInt); err != nil {
 		return err
 	}
 
@@ -199,7 +199,7 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 				return err
 			}
 
-			msg, er := sshx.ParseTerminalMessage(message)
+			msg, er := sshx2.ParseTerminalMessage(message)
 			if er != nil {
 				continue
 			}
@@ -234,7 +234,7 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 		}, err
 	}
 
-	cfg := guacx.NewConfig()
+	cfg := guacx2.NewConfig()
 	cfg.SetParameter("width", ctx.Query("width"))
 	cfg.SetParameter("height", ctx.Query("height"))
 	cfg.SetParameter("dpi", ctx.Query("dpi"))
@@ -246,7 +246,7 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 	cfg.SetParameter("scheme", "rdp")
 	cfg.Protocol = "rdp"
 
-	tunnel, err := guacx.NewTunnel("", cfg)
+	tunnel, err := guacx2.NewTunnel("", cfg)
 	if err != nil {
 
 	}
@@ -257,7 +257,7 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 		}, err
 	}
 
-	guacHandler := guacx.NewGuacamoleHandler(ws, tunnel)
+	guacHandler := guacx2.NewGuacamoleHandler(ws, tunnel)
 	guacHandler.Start()
 	defer guacHandler.Stop()
 

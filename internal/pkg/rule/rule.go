@@ -3,9 +3,10 @@ package rule
 import "encoding/json"
 
 type Rule struct {
-	Type  string `json:"type"`
-	Field string `json:"field"`
-	Title string `json:"title"`
+	Type  string                 `json:"type"`
+	Field string                 `json:"field"`
+	Title string                 `json:"title"`
+	Style map[string]interface{} `json:"style"`
 }
 
 type Rules []Rule

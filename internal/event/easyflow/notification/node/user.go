@@ -210,6 +210,7 @@ func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]r
 	}
 
 	rules, err := rule.ParseRules(t.Rules)
+
 	if err != nil {
 		return nil, err
 	}

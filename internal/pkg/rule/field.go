@@ -6,12 +6,30 @@ import (
 	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/xen0n/go-workwx"
+	"sort"
 )
 
 func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []card.Field {
+	// 排除不使用的字段
+	for _, rule := range rules {
+		if _, ok := rule.Style["notify_display"]; ok {
+			// 如果匹配成功，则从 data 中删除该字段
+			if _, exists := data[rule.Field]; exists {
+				delete(data, rule.Field)
+			}
+		}
+	}
+
 	ruleMap := slice.ToMap(rules, func(element Rule) string {
 		return element.Field
 	})
+
+	// 进行统一排序
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
 
 	// 拼接消息体
 	num := 1
@@ -20,7 +38,8 @@ func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []card.
 	// 判断不同平台的消息来源，进行处理
 	switch provide {
 	case SystemProvide:
-		for field, value := range data {
+		for _, field := range keys {
+			value := data[field]
 			title := field
 			val, ok := ruleMap[field]
 			if ok {

@@ -202,9 +202,6 @@ func (h *Handler) FindByUsername(ctx *gin.Context, req FindByUserNameReq) (ginx.
 		if err != nil {
 			return systemErrorResult, err
 		}
-		if err != nil {
-			return systemErrorResult, err
-		}
 
 		u = h.ToUserVo(user)
 	}

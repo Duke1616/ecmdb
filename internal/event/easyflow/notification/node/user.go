@@ -7,7 +7,6 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -23,7 +22,7 @@ import (
 	"time"
 )
 
-type UserNotification[T any] struct {
+type UserNotification struct {
 	integrations []method.NotifyIntegration
 	engineSvc    engineSvc.Service
 	taskSvc      task.Service
@@ -37,16 +36,10 @@ type UserNotification[T any] struct {
 	logger          *elog.Component
 }
 
-func (n *UserNotification[T]) UnmarshalProperty(ctx context.Context, wf workflow.Workflow, nodeId string) (T, error) {
-	var t T
+func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
+	userSvc user.Service, taskSvc task.Service, integrations []method.NotifyIntegration) (*UserNotification, error) {
 
-	return t, nil
-}
-
-func NewUserNotification[T any](engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, integrations []method.NotifyIntegration) (*UserNotification[T], error) {
-
-	return &UserNotification[T]{
+	return &UserNotification{
 		engineSvc:       engineSvc,
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
@@ -60,26 +53,71 @@ func NewUserNotification[T any](engineSvc engineSvc.Service, templateSvc templat
 	}, nil
 }
 
-func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, params notification.NotifyParams) (bool, error) {
-	rules, er := n.getRules(ctx, nOrder)
-	if er != nil {
-		return false, er
+func (n *UserNotification) isNotify(wf workflow.Workflow, instanceId int, userIds []string) bool {
+	if !wf.IsNotify {
+		n.logger.Warn("流程控制未开启消息通知能力",
+			elog.Any("instId", instanceId),
+			elog.Any("userIds", userIds),
+		)
+		return false
 	}
 
-	variables, er := engine.ResolveVariables(params.InstanceId, []string{"$starter"})
-	if er != nil {
-		return false, er
+	return true
+}
+
+func (n *UserNotification) Unmarshal(wf workflow.Workflow) ([]easyflow.Node, error) {
+	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
+	if err != nil {
+		return nil, err
+	}
+	var nodes []easyflow.Node
+	err = json.Unmarshal(nodesJSON, &nodes)
+	if err != nil {
+		return nil, err
 	}
 
-	startUser, er := n.userSvc.FindByUsername(ctx, variables["$starter"])
-	if er != nil {
-		return false, er
+	return nodes, nil
+}
+
+func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow, instanceId int, nodeId string,
+	userIds []string) (bool, error) {
+	// 判断是否开启
+	if ok := n.isNotify(wf, instanceId, userIds); !ok {
+		return false, nil
+	}
+
+	// 获取流程节点 nodes 信息
+	nodes, err := n.Unmarshal(wf)
+	if err != nil {
+		return false, err
+	}
+
+	// 获取自动化任务执行结果
+	wantResult, err := n.wantAllResult(ctx, instanceId, nodes)
+	if err != nil {
+		return false, err
+	}
+
+	// 解析配置
+	rules, err := n.getRules(ctx, nOrder)
+	if err != nil {
+		return false, err
+	}
+
+	variables, err := engine.ResolveVariables(instanceId, []string{"$starter"})
+	if err != nil {
+		return false, err
+	}
+
+	startUser, err := n.userSvc.FindByUsername(ctx, variables["$starter"])
+	if err != nil {
+		return false, err
 	}
 
 	// 只有当 Event 结束才能正确获取到 TaskId 信息，放到 Go Routine 异步运行, 通过重试机制获取到数据
 	go func() {
-		strategy, err := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
-		if err != nil {
+		strategy, er := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
+		if er != nil {
 			return
 		}
 
@@ -88,14 +126,14 @@ func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, para
 			d, ok := strategy.Next()
 			if !ok {
 				n.logger.Error("处理执行任务超过最大重试次数",
-					elog.Any("error", err),
-					elog.Any("instId", params.InstanceId),
+					elog.Any("error", er),
+					elog.Any("instId", instanceId),
 				)
 				break
 			}
 
 			// 获取当前任务流转到的用户
-			tasks, err = n.engineSvc.GetTasksByInstUsers(context.Background(), params.InstanceId, params.UserIDs)
+			tasks, err = n.engineSvc.GetTasksByInstUsers(context.Background(), instanceId, userIds)
 			if err != nil || len(tasks) == 0 {
 				time.Sleep(d)
 				continue
@@ -105,10 +143,10 @@ func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, para
 		}
 
 		// 获取用户的详情信息
-		users, err := n.getUsers(context.Background(), tasks)
-		if err != nil {
+		users, er := n.getUsers(context.Background(), tasks)
+		if er != nil {
 			n.logger.Error("用户查询失败",
-				elog.FieldErr(err),
+				elog.FieldErr(er),
 			)
 		}
 
@@ -116,10 +154,10 @@ func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, para
 		title := rule.GenerateTitle(startUser.DisplayName, nOrder.TemplateName)
 		var messages []notify.NotifierWrap
 		for _, integration := range n.integrations {
-			if integration.Name == fmt.Sprintf("%s_%s", params.NotifyMethod, "user") {
+			if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "user") {
 				messages = integration.Notifier.Builder(title, users, method.NotifyParams{
 					Order:      nOrder,
-					WantResult: params.WantResult,
+					WantResult: wantResult,
 					Tasks:      tasks,
 					Rules:      rules,
 				})
@@ -129,10 +167,10 @@ func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, para
 
 		// 异步发送消息
 		var ok bool
-		if ok, err = send(context.Background(), messages); err != nil || !ok {
+		if ok, er = send(context.Background(), messages); er != nil || !ok {
 			n.logger.Warn("发送消息失败",
-				elog.Any("error", err),
-				elog.Any("user_ids", params.UserIDs),
+				elog.Any("error", er),
+				elog.Any("user_ids", userIds),
 			)
 		}
 	}()
@@ -140,63 +178,8 @@ func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, para
 	return true, nil
 }
 
-func (n *UserNotification[T]) IsNotification(ctx context.Context, wf workflow.Workflow, instanceId int,
-	nodeId string) (bool, map[string]interface{}, error) {
-	if !wf.IsNotify {
-		return false, nil, nil
-	}
-
-	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
-	if err != nil {
-		return false, nil, err
-	}
-	var nodes []easyflow.Node
-	err = json.Unmarshal(nodesJSON, &nodes)
-	if err != nil {
-		return false, nil, err
-	}
-
-	mergedResult := make(map[string]interface{})
-	for _, node := range nodes {
-		switch node.Type {
-		case "automation":
-			property, _ := easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
-			if !property.IsNotify || property.NotifyMethod != ProcessEndSend {
-				continue
-			}
-
-			result, er := n.taskSvc.FindTaskResult(ctx, instanceId, node.ID)
-			if er != nil {
-				return false, nil, er
-			}
-
-			if result.WantResult == "" {
-				continue
-			}
-
-			var wantResult map[string]interface{}
-			er = json.Unmarshal([]byte(result.WantResult), &wantResult)
-			if er != nil {
-				return false, nil, er
-			}
-
-			for key, value := range wantResult {
-				mergedResult[key] = value
-			}
-			//case "user":
-			//	property, _ := easyflow.ToNodeProperty[easyflow.UserProperty](node)
-		}
-	}
-
-	if len(mergedResult) == 0 {
-		return true, nil, nil
-	}
-
-	return true, mergedResult, nil
-}
-
 // getUsers 获取需要通知的用户信息
-func (n *UserNotification[T]) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
+func (n *UserNotification) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
 	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
 		return src.UserID
 	})
@@ -210,7 +193,7 @@ func (n *UserNotification[T]) getUsers(ctx context.Context, tasks []model.Task) 
 }
 
 // isNotify 获取模版的字段信息
-func (n *UserNotification[T]) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
+func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
 	// 获取模版详情信息
 	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
 	if err != nil {
@@ -224,4 +207,47 @@ func (n *UserNotification[T]) getRules(ctx context.Context, order order.Order) (
 	}
 
 	return rules, nil
+}
+
+// 当自动化节点返回信息在流程结束后通知用户，组合所有自动化节点返回的数据，进行消息通知
+// 但是全局消息通知关闭的情况下，不会运行此部分
+func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, nodes []easyflow.Node) (map[string]interface{}, error) {
+	mergedResult := make(map[string]interface{})
+	for _, node := range nodes {
+		switch node.Type {
+		case "automation":
+			property, _ := easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
+			// 判断是否进行通知
+			if !property.IsNotify || property.NotifyMethod != ProcessEndSend {
+				continue
+			}
+
+			// 查找自动化任务返回
+			result, err := n.taskSvc.FindTaskResult(ctx, instanceId, node.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			// 返回为空则不处理
+			if result.WantResult == "" {
+				continue
+			}
+
+			var wantResult map[string]interface{}
+			err = json.Unmarshal([]byte(result.WantResult), &wantResult)
+			if err != nil {
+				return nil, err
+			}
+
+			for key, value := range wantResult {
+				mergedResult[key] = value
+			}
+		}
+	}
+
+	if len(mergedResult) == 0 {
+		return nil, fmt.Errorf("自动化任务无返回数据")
+	}
+
+	return mergedResult, nil
 }

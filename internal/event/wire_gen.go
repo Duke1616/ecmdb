@@ -9,7 +9,7 @@ package event
 import (
 	engine2 "github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/internal/engine"
-	easyflow2 "github.com/Duke1616/ecmdb/internal/event/easyflow"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/node"
@@ -19,7 +19,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
-	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/larksuite/oapi-sdk-go/v3"
 	"gorm.io/gorm"
@@ -67,12 +66,12 @@ func InitNotification(engineSvc engine.Service, templateSvc template.Service, or
 	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.Notification {
 
 	ns := make(map[string]notification.Notification)
-	userNotify, err := node.NewUserNotification[easyflow.UserProperty](engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
+	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
 	if err != nil {
 		panic(err)
 	}
 
-	automationNotify, err := node.NewAutomationNotification[easyflow.AutomationProperty](taskSvc, userSvc, integration)
+	automationNotify, err := node.NewAutomationNotification(taskSvc, userSvc, integration)
 	if err != nil {
 		panic(err)
 	}
@@ -84,9 +83,9 @@ func InitNotification(engineSvc engine.Service, templateSvc template.Service, or
 
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 producer.OrderStatusModifyEventProducer,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
-	ns map[string]notification.Notification) *easyflow2.ProcessEvent {
+	ns map[string]notification.Notification) *easyflow.ProcessEvent {
 
-	event, err := easyflow2.NewProcessEvent(producer2, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
+	event, err := easyflow.NewProcessEvent(producer2, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
 	if err != nil {
 		panic(err)
 	}

@@ -210,7 +210,7 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) {
 	// TODO 超级管理员 任意通过 （ 可选 ）
 
-	// TODO 校验是否为自己的任务
+	// TODO 校验是否为自己的任务，排除部分类型情况
 
 	err := h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
 	if err != nil {

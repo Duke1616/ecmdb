@@ -100,15 +100,17 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		evt.Comment = "无"
 	}
 
-	wantResult := fmt.Sprintf("你已同意该申请, 批注：%s", evt.Comment)
+	var wantResult string
 	switch evt.Action {
 	case "pass":
+		wantResult = fmt.Sprintf("你已同意该申请, 批注：%s", evt.Comment)
 		err = c.engineSvc.Pass(ctx, taskId, evt.Comment)
 		if err != nil {
 			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 			c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 		}
 	case "reject":
+		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", evt.Comment)
 		err = c.engineSvc.Reject(ctx, taskId, evt.Comment)
 		if err != nil {
 			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"

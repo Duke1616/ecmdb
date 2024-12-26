@@ -184,33 +184,34 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	}
 
 	// 判断是否需要通知
-	IsNotification, wantResult, err := notify.IsNotification(ctx, wf, ProcessInstanceID, CurrentNode.NodeID)
-	if err != nil {
-		e.logger.Error("判断是否通知错误",
-			elog.FieldErr(err),
-			elog.Any("instId", ProcessInstanceID),
-			elog.Any("userIds", CurrentNode.UserIDs),
-		)
-		return nil
-	}
-
-	if IsNotification != true {
-		e.logger.Warn("流程控制未开启消息通知能力",
-			elog.Any("instId", ProcessInstanceID),
-			elog.Any("userIds", CurrentNode.UserIDs),
-		)
-		return nil
-	}
+	//IsNotification, wantResult, err := notify.IsNotification(ctx, wf, ProcessInstanceID, CurrentNode.NodeID)
+	//if err != nil {
+	//	e.logger.Error("判断是否通知错误",
+	//		elog.FieldErr(err),
+	//		elog.Any("instId", ProcessInstanceID),
+	//		elog.Any("userIds", CurrentNode.UserIDs),
+	//	)
+	//	return nil
+	//}
+	//
+	//if IsNotification != true {
+	//	e.logger.Warn("流程控制未开启消息通知能力",
+	//		elog.Any("instId", ProcessInstanceID),
+	//		elog.Any("userIds", CurrentNode.UserIDs),
+	//	)
+	//	return nil
+	//}
 
 	// 发送消息通知
-	ok, err = notify.Send(ctx, nOrder, notification.NotifyParams{
-		InstanceId:   ProcessInstanceID,
-		UserIDs:      CurrentNode.UserIDs,
-		NodeId:       CurrentNode.NodeID,
-		WantResult:   wantResult,
-		NotifyMethod: workflow.NotifyMethodToString(wf.NotifyMethod),
-	})
+	//ok, err = notify.Send(ctx, nOrder, notification.NotifyParams{
+	//	InstanceId:   ProcessInstanceID,
+	//	UserIDs:      CurrentNode.UserIDs,
+	//	NodeId:       CurrentNode.NodeID,
+	//	WantResult:   wantResult,
+	//	NotifyMethod: workflow.NotifyMethodToString(wf.NotifyMethod),
+	//})
 
+	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode.NodeID, CurrentNode.UserIDs)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil

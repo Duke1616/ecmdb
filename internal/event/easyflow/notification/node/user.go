@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-type UserNotification struct {
+type UserNotification[T any] struct {
 	integrations []method.NotifyIntegration
 	engineSvc    engineSvc.Service
 	taskSvc      task.Service
@@ -37,10 +37,16 @@ type UserNotification struct {
 	logger          *elog.Component
 }
 
-func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, integrations []method.NotifyIntegration) (*UserNotification, error) {
+func (n *UserNotification[T]) UnmarshalProperty(ctx context.Context, wf workflow.Workflow, nodeId string) (T, error) {
+	var t T
 
-	return &UserNotification{
+	return t, nil
+}
+
+func NewUserNotification[T any](engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
+	userSvc user.Service, taskSvc task.Service, integrations []method.NotifyIntegration) (*UserNotification[T], error) {
+
+	return &UserNotification[T]{
 		engineSvc:       engineSvc,
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
@@ -54,7 +60,7 @@ func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Se
 	}, nil
 }
 
-func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, params notification.NotifyParams) (bool, error) {
+func (n *UserNotification[T]) Send(ctx context.Context, nOrder order.Order, params notification.NotifyParams) (bool, error) {
 	rules, er := n.getRules(ctx, nOrder)
 	if er != nil {
 		return false, er
@@ -134,7 +140,7 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, params 
 	return true, nil
 }
 
-func (n *UserNotification) IsNotification(ctx context.Context, wf workflow.Workflow, instanceId int,
+func (n *UserNotification[T]) IsNotification(ctx context.Context, wf workflow.Workflow, instanceId int,
 	nodeId string) (bool, map[string]interface{}, error) {
 	if !wf.IsNotify {
 		return false, nil, nil
@@ -152,7 +158,8 @@ func (n *UserNotification) IsNotification(ctx context.Context, wf workflow.Workf
 
 	mergedResult := make(map[string]interface{})
 	for _, node := range nodes {
-		if node.Type == "automation" {
+		switch node.Type {
+		case "automation":
 			property, _ := easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
 			if !property.IsNotify || property.NotifyMethod != ProcessEndSend {
 				continue
@@ -176,7 +183,8 @@ func (n *UserNotification) IsNotification(ctx context.Context, wf workflow.Workf
 			for key, value := range wantResult {
 				mergedResult[key] = value
 			}
-
+			//case "user":
+			//	property, _ := easyflow.ToNodeProperty[easyflow.UserProperty](node)
 		}
 	}
 
@@ -188,7 +196,7 @@ func (n *UserNotification) IsNotification(ctx context.Context, wf workflow.Workf
 }
 
 // getUsers 获取需要通知的用户信息
-func (n *UserNotification) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
+func (n *UserNotification[T]) getUsers(ctx context.Context, tasks []model.Task) ([]user.User, error) {
 	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
 		return src.UserID
 	})
@@ -202,7 +210,7 @@ func (n *UserNotification) getUsers(ctx context.Context, tasks []model.Task) ([]
 }
 
 // isNotify 获取模版的字段信息
-func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
+func (n *UserNotification[T]) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
 	// 获取模版详情信息
 	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
 	if err != nil {

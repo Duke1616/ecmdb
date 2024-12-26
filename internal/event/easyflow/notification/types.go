@@ -15,11 +15,12 @@ type NotifyParams struct {
 }
 
 type Notification interface {
-	SendAction
+	SendAction[any]
 }
 
-type SendAction interface {
+type SendAction[T any] interface {
 	Send(ctx context.Context, nOrder order.Order, params NotifyParams) (bool, error)
+	// UnmarshalProperty(ctx context.Context, wf workflow.Workflow, nodeId string) (T, error)
 	IsNotification(ctx context.Context, wf workflow.Workflow, instanceId int,
 		nodeId string) (bool, map[string]interface{}, error)
 }

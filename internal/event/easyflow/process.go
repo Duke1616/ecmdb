@@ -313,10 +313,6 @@ func (e *ProcessEvent) EventRevoke(ProcessInstanceID int, RevokeUserID string) e
 		return err
 	}
 
-	if err != nil {
-		return err
-	}
-
 	log.Printf("--------流程[%s],由[%s]发起撤销--------", processName, RevokeUserID)
 
 	return nil

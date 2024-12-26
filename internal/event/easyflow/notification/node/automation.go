@@ -15,15 +15,15 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type AutomationNotification struct {
+type AutomationNotification[T any] struct {
 	integrations []method.NotifyIntegration
 	taskSvc      task.Service
 	userSvc      user.Service
 	logger       *elog.Component
 }
 
-func NewAutomationNotification(taskSvc task.Service, userSvc user.Service, integrations []method.NotifyIntegration) (*AutomationNotification, error) {
-	return &AutomationNotification{
+func NewAutomationNotification[T any](taskSvc task.Service, userSvc user.Service, integrations []method.NotifyIntegration) (*AutomationNotification[T], error) {
+	return &AutomationNotification[T]{
 		integrations: integrations,
 		taskSvc:      taskSvc,
 		userSvc:      userSvc,
@@ -31,7 +31,12 @@ func NewAutomationNotification(taskSvc task.Service, userSvc user.Service, integ
 	}, nil
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order,
+func (n *AutomationNotification[T]) UnmarshalProperty(ctx context.Context, wf workflow.Workflow, nodeId string) (T, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (n *AutomationNotification[T]) Send(ctx context.Context, nOrder order.Order,
 	params notification.NotifyParams) (bool, error) {
 
 	u, err := n.userSvc.FindByUsername(ctx, nOrder.CreateBy)
@@ -61,7 +66,7 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order,
 	return true, nil
 }
 
-func (n *AutomationNotification) IsNotification(ctx context.Context, wf workflow.Workflow, instanceId int,
+func (n *AutomationNotification[T]) IsNotification(ctx context.Context, wf workflow.Workflow, instanceId int,
 	nodeId string) (bool, map[string]interface{}, error) {
 	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
 	if err != nil {

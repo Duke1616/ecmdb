@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	easy "github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -57,12 +58,13 @@ func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
 func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
 	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.Notification {
 
-	ns := make(map[string]notification.Notification, 0)
-	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
+	ns := make(map[string]notification.Notification)
+	userNotify, err := node.NewUserNotification[easy.UserProperty](engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
 	if err != nil {
 		panic(err)
 	}
-	automationNotify, err := node.NewAutomationNotification(taskSvc, userSvc, integration)
+
+	automationNotify, err := node.NewAutomationNotification[easy.AutomationProperty](taskSvc, userSvc, integration)
 	if err != nil {
 		panic(err)
 	}

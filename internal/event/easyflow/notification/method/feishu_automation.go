@@ -14,9 +14,8 @@ import (
 )
 
 type FeishuAutomationNotify struct {
-	Nc       notify.Notifier[*larkim.CreateMessageReq]
-	tmpl     *template.Template
-	tmplName string
+	Nc   notify.Notifier[*larkim.CreateMessageReq]
+	tmpl *template.Template
 }
 
 func NewFeishuAutomationNotify(lark *lark.Client) (*FeishuAutomationNotify, error) {
@@ -31,9 +30,8 @@ func NewFeishuAutomationNotify(lark *lark.Client) (*FeishuAutomationNotify, erro
 	}
 
 	return &FeishuAutomationNotify{
-		tmpl:     tmpl,
-		tmplName: "feishu-card-callback",
-		Nc:       nc,
+		tmpl: tmpl,
+		Nc:   nc,
 	}, nil
 
 }
@@ -67,11 +65,11 @@ func (n *FeishuAutomationNotify) getFields(wantResult map[string]interface{}) []
 
 // TODO title 生成规则，不同情况下应有不同的样子，比如是发送给自己的要展示 你的XXX申请 抄送给你
 func (n *FeishuAutomationNotify) generate(userId string, title string, fields []card.Field,
-	cardVal []card.Value) notify.NotifierWrap {
+	cardVal []card.Value, template string) notify.NotifierWrap {
 	return notify.WrapNotifierDynamic(n.Nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return message.NewCreateFeishuMessage(
 			"user_id", userId,
-			feishu.NewFeishuCustomCard(n.tmpl, n.tmplName,
+			feishu.NewFeishuCustomCard(n.tmpl, template,
 				card.NewApprovalCardBuilder().
 					SetToTitle(title).
 					SetToFields(fields).
@@ -82,7 +80,7 @@ func (n *FeishuAutomationNotify) generate(userId string, title string, fields []
 	})
 }
 
-func (n *FeishuAutomationNotify) Builder(title string, users []user.User, params NotifyParams) []notify.NotifierWrap {
+func (n *FeishuAutomationNotify) Builder(title string, users []user.User, template string, params NotifyParams) []notify.NotifierWrap {
 	// 获取自定义字段
 	fields := n.getFields(params.WantResult)
 
@@ -94,7 +92,7 @@ func (n *FeishuAutomationNotify) Builder(title string, users []user.User, params
 		uid, _ := userMap[src.Username]
 		var cardVal []card.Value
 
-		return n.generate(uid, title, fields, cardVal)
+		return n.generate(uid, title, fields, cardVal, template)
 	})
 
 	return messages

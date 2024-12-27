@@ -56,9 +56,9 @@ func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
 }
 
 func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.Notification {
+	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.SendAction {
 
-	ns := make(map[string]notification.Notification)
+	ns := make(map[string]notification.SendAction)
 	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
 	if err != nil {
 		panic(err)
@@ -76,7 +76,7 @@ func InitNotification(engineSvc engine.Service, templateSvc template.Service, or
 
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
-	ns map[string]notification.Notification) *easyflow.ProcessEvent {
+	ns map[string]notification.SendAction) *easyflow.ProcessEvent {
 	// 注册event
 	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
 	if err != nil {

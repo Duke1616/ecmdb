@@ -16,5 +16,5 @@ type NotifyParams struct {
 }
 
 type NotifierIntegration interface {
-	Builder(title string, users []user.User, params NotifyParams) []notify.NotifierWrap
+	Builder(title string, users []user.User, template string, params NotifyParams) []notify.NotifierWrap
 }

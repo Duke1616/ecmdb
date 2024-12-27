@@ -16,6 +16,8 @@ type ProcessEngineDAO interface {
 	ListStartUser(ctx context.Context, userId, processName string, offset, limit int) (
 		[]Instance, error)
 
+	GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error)
+
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
 	SearchStartByProcessInstIds(ctx context.Context, processInstIds []int) ([]Instance, error)
@@ -31,6 +33,16 @@ type ProcessEngineDAO interface {
 
 type processEngineDAO struct {
 	db *gorm.DB
+}
+
+func (g *processEngineDAO) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {
+	var res []model.Task
+	err := g.db.WithContext(ctx).Model(&model.Task{}).Table("proc_task").
+		Where("proc_inst_id = ? AND status = ? AND is_finished = ? AND node_id = ?",
+			processInstId, 0, 0, currentNodeId).
+		Find(&res).Error
+
+	return res, err
 }
 
 func (g *processEngineDAO) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {

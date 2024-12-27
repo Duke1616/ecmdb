@@ -15,6 +15,7 @@ type ProcessEngineRepository interface {
 		[]domain.Instance, error)
 	CountTodo(ctx context.Context, userId, processName string) (int64, error)
 	CountStartUser(ctx context.Context, userId, processName string) (int64, error)
+	GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error)
 	ListStartUser(ctx context.Context, userId, processName string, offset, limit int) (
 		[]domain.Instance, error)
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
@@ -29,6 +30,10 @@ type ProcessEngineRepository interface {
 
 type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
+}
+
+func (repo *processEngineRepository) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {
+	return repo.engineDao.GetTasksByCurrentNodeId(ctx, processInstId, currentNodeId)
 }
 
 func (repo *processEngineRepository) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {

@@ -30,14 +30,13 @@ func NewAutomationNotification(taskSvc task.Service, userSvc user.Service, integ
 	}, nil
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow, instanceId int, nodeId string,
-	userIds []string) (bool, error) {
+func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
+	instanceId int, nodeId string) (bool, error) {
 	wantResult, err := n.wantResult(ctx, wf, instanceId, nodeId)
 	if err != nil {
 		n.logger.Warn("执行错误或未开启消息通知",
 			elog.FieldErr(err),
 			elog.Any("instId", instanceId),
-			elog.Any("userIds", userIds),
 		)
 		return false, err
 	}
@@ -50,10 +49,11 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 	var messages []notify.NotifierWrap
 	for _, integration := range n.integrations {
 		if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "automation") {
-			messages = integration.Notifier.Builder("自动化任务返回结果", []user.User{u}, method.NotifyParams{
-				Order:      nOrder,
-				WantResult: wantResult,
-			})
+			messages = integration.Notifier.Builder("自动化任务返回结果", []user.User{u},
+				method.FeishuTemplateApprovalName, method.NotifyParams{
+					Order:      nOrder,
+					WantResult: wantResult,
+				})
 			break
 		}
 	}

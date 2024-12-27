@@ -14,6 +14,13 @@ import (
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
+const (
+	// FeishuTemplateApprovalName 正常审批通知
+	FeishuTemplateApprovalName = "feishu-card-callback"
+	// FeishuTemplateCC 抄送通知
+	FeishuTemplateCC = "feishu-card-cc"
+)
+
 type FeishuUserNotify struct {
 	Nc       notify.Notifier[*larkim.CreateMessageReq]
 	tmpl     *template.Template
@@ -40,11 +47,11 @@ func NewFeishuUserNotify(lark *lark.Client) (*FeishuUserNotify, error) {
 
 // TODO title 生成规则，不同情况下应有不同的样子，比如是发送给自己的要展示 你的XXX申请 抄送给你
 func (n *FeishuUserNotify) generate(userId string, title string, fields []card.Field,
-	cardVal []card.Value) notify.NotifierWrap {
+	cardVal []card.Value, template string) notify.NotifierWrap {
 	return notify.WrapNotifierDynamic(n.Nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return feishuMsg.NewCreateFeishuMessage(
 			"user_id", userId,
-			feishu.NewFeishuCustomCard(n.tmpl, n.tmplName,
+			feishu.NewFeishuCustomCard(n.tmpl, template,
 				card.NewApprovalCardBuilder().
 					SetToTitle(title).
 					SetToFields(fields).
@@ -54,7 +61,7 @@ func (n *FeishuUserNotify) generate(userId string, title string, fields []card.F
 	})
 }
 
-func (n *FeishuUserNotify) Builder(title string, users []user.User, params NotifyParams) []notify.NotifierWrap {
+func (n *FeishuUserNotify) Builder(title string, users []user.User, template string, params NotifyParams) []notify.NotifierWrap {
 	// 获取自定义字段
 	fields := rule.GetFields(params.Rules, params.Order.Provide.ToUint8(), params.Order.Data)
 
@@ -75,7 +82,7 @@ func (n *FeishuUserNotify) Builder(title string, users []user.User, params Notif
 			},
 		}
 
-		return n.generate(uid, title, fields, cardVal)
+		return n.generate(uid, title, fields, cardVal, template)
 	})
 
 	return messages

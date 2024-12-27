@@ -8,6 +8,21 @@ type ProcessEngineConvert interface {
 	GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error)
 }
 
+type UserPropertyType string
+
+func (s UserPropertyType) ToString() string {
+	return string(s)
+}
+
+const (
+	// APPOINT 指定内部人员
+	APPOINT UserPropertyType = "appoint"
+	// FOUNDER 工单创建人
+	FOUNDER UserPropertyType = "founder"
+	// TEMPLATE 根据模版字段提取用户
+	TEMPLATE UserPropertyType = "template"
+)
+
 type Workflow struct {
 	Id       int64
 	Name     string
@@ -46,6 +61,7 @@ type UserProperty struct {
 	Type          string   `json:"type"`
 	TemplateField string   `json:"template_field"`
 	IsCosigned    bool     `json:"is_cosigned"`
+	IsCC          bool     `json:"is_cc"`
 }
 
 type StartProperty struct {

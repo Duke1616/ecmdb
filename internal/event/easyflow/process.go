@@ -2,6 +2,7 @@ package easyflow
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -10,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/gotomicro/ego/core/elog"
 	"strconv"
 	"time"
@@ -26,27 +28,27 @@ const (
 )
 
 type ProcessEvent struct {
-	notification map[string]notification.Notification
-	producer     producer.OrderStatusModifyEventProducer
-	taskSvc      task.Service
-	orderSvc     order.Service
-	engineSvc    engineSvc.Service
-	workflowSvc  workflow.Service
-	logger       *elog.Component
+	action      map[string]notification.SendAction
+	producer    producer.OrderStatusModifyEventProducer
+	taskSvc     task.Service
+	orderSvc    order.Service
+	engineSvc   engineSvc.Service
+	workflowSvc workflow.Service
+	logger      *elog.Component
 }
 
 func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc engineSvc.Service,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
-	notification map[string]notification.Notification) (*ProcessEvent, error) {
+	action map[string]notification.SendAction) (*ProcessEvent, error) {
 
 	return &ProcessEvent{
-		logger:       elog.DefaultLogger,
-		workflowSvc:  workflowSvc,
-		engineSvc:    engineSvc,
-		taskSvc:      taskSvc,
-		producer:     producer,
-		notification: notification,
-		orderSvc:     orderSvc,
+		logger:      elog.DefaultLogger,
+		workflowSvc: workflowSvc,
+		engineSvc:   engineSvc,
+		taskSvc:     taskSvc,
+		producer:    producer,
+		action:      action,
+		orderSvc:    orderSvc,
 	}, nil
 }
 
@@ -135,6 +137,20 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 	return nil
 }
 
+func Unmarshal(wf workflow.Workflow) ([]easyflow.Node, error) {
+	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
+	if err != nil {
+		return nil, err
+	}
+	var nodes []easyflow.Node
+	err = json.Unmarshal(nodesJSON, &nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
+}
+
 // EventNotify 通知 中间有 Error 通过日志记录，保证不影响主体程序运行
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
@@ -154,7 +170,7 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		nodeMethod = "automation"
 	}
 
-	notify, ok := e.notification[nodeMethod]
+	notify, ok := e.action[nodeMethod]
 	if !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
 			elog.String("不存在Notify", "user"))
@@ -183,35 +199,7 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		return nil
 	}
 
-	// 判断是否需要通知
-	//IsNotification, wantResult, err := notify.IsNotification(ctx, wf, ProcessInstanceID, CurrentNode.NodeID)
-	//if err != nil {
-	//	e.logger.Error("判断是否通知错误",
-	//		elog.FieldErr(err),
-	//		elog.Any("instId", ProcessInstanceID),
-	//		elog.Any("userIds", CurrentNode.UserIDs),
-	//	)
-	//	return nil
-	//}
-	//
-	//if IsNotification != true {
-	//	e.logger.Warn("流程控制未开启消息通知能力",
-	//		elog.Any("instId", ProcessInstanceID),
-	//		elog.Any("userIds", CurrentNode.UserIDs),
-	//	)
-	//	return nil
-	//}
-
-	// 发送消息通知
-	//ok, err = notify.Send(ctx, nOrder, notification.NotifyParams{
-	//	InstanceId:   ProcessInstanceID,
-	//	UserIDs:      CurrentNode.UserIDs,
-	//	NodeId:       CurrentNode.NodeID,
-	//	WantResult:   wantResult,
-	//	NotifyMethod: workflow.NotifyMethodToString(wf.NotifyMethod),
-	//})
-
-	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode.NodeID, CurrentNode.UserIDs)
+	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode.NodeID)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil

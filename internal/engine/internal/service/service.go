@@ -19,6 +19,8 @@ type Service interface {
 	// TaskRecord 工单任务变更记录
 	TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error)
 	IsReject(ctx context.Context, taskId int) (bool, error)
+	// GetTasksByCurrentNodeId 获取当前节点下的所有任务
+	GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error)
 	// UpdateIsFinishedByPreNodeId 系统修改 finished 状态
 	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	// Pass 通过
@@ -41,6 +43,10 @@ type Service interface {
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {
+	return s.repo.GetTasksByCurrentNodeId(ctx, processInstId, currentNodeId)
 }
 
 func (s *service) Upstream(ctx context.Context, taskId int) ([]model.Node, error) {

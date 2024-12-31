@@ -20,6 +20,8 @@ func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []card.
 		}
 	}
 
+	// 构建排序值映射
+
 	ruleMap := slice.ToMap(rules, func(element Rule) string {
 		return element.Field
 	})
@@ -115,4 +117,14 @@ func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []card.
 	}
 
 	return fields
+}
+
+func getSortMap(rule Rule) int {
+	if sortValue, ok := rule.Style["sort"]; ok {
+		if sortInt, okk := sortValue.(int); okk {
+			return sortInt
+		}
+	}
+
+	return 1<<31 - 1
 }

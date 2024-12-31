@@ -9,11 +9,14 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"io/ioutil"
+	"log"
 	"time"
 )
 
@@ -33,7 +36,6 @@ func NewHandler(svc service.Service, engineSvc engine.Service, userSvc user.Serv
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	//router.NewRouter(server, "/api/process", false, "")
-
 	g := server.Group("/api/order")
 	g.POST("/create", ginx.WrapBody[CreateOrderReq](h.CreateOrder))
 	g.POST("/detail/process_inst_id", ginx.WrapBody[DetailProcessInstIdReq](h.Detail))
@@ -45,6 +47,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
 	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
+
+	g.POST("/Progress", ginx.WrapBody[progressReq](h.Progress))
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
@@ -394,6 +398,45 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 	return steps
 }
 
+func (h *Handler) Progress(gCtx *gin.Context, req progressReq) (ginx.Result, error) {
+	ctx, cancel := chromedp.NewContext(gCtx, chromedp.WithLogf(log.Printf))
+	defer cancel()
+
+	// 设置超时时间
+	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 存储截图的 buffer
+	var buf []byte
+
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(req.TargetUrl),
+		chromedp.WaitReady("body"),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			log.Println("Page loaded, waiting for LF-preview...")
+			return nil
+		}),
+		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
+		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			log.Println("LF-preview is visible, capturing screenshot...")
+			return nil
+		}),
+		chromedp.FullScreenshot(&buf, 2000),
+	)
+
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	// 保存截图到文件
+	err = ioutil.WriteFile("logicflow.png", buf, 0644)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{}, nil
+}
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
 	if len(instances) == 0 {
 		// 没有工单信息

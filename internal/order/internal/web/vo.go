@@ -16,6 +16,10 @@ type DetailProcessInstIdReq struct {
 	ProcessInstanceId int `json:"process_instance_id"`
 }
 
+type progressReq struct {
+	TargetUrl string `json:"target_url"`
+}
+
 type Todo struct {
 	UserId      string `json:"user_id"`
 	ProcessName string `json:"proc_name"`

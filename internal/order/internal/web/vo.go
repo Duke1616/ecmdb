@@ -16,7 +16,7 @@ type DetailProcessInstIdReq struct {
 	ProcessInstanceId int `json:"process_instance_id"`
 }
 
-type progressReq struct {
+type ProgressReq struct {
 	TargetUrl string `json:"target_url"`
 }
 

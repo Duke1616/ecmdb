@@ -47,8 +47,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
 	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
-
-	g.POST("/Progress", ginx.WrapBody[progressReq](h.Progress))
+	g.POST("/progress", ginx.WrapBody[ProgressReq](h.Progress))
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
@@ -398,18 +397,18 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 	return steps
 }
 
-func (h *Handler) Progress(gCtx *gin.Context, req progressReq) (ginx.Result, error) {
-	ctx, cancel := chromedp.NewContext(gCtx, chromedp.WithLogf(log.Printf))
+func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, error) {
+	gCtx, cancel := chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
 	defer cancel()
 
 	// 设置超时时间
-	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	gCtx, cancel = context.WithTimeout(gCtx, 5*time.Second)
 	defer cancel()
 
 	// 存储截图的 buffer
 	var buf []byte
 
-	err := chromedp.Run(ctx,
+	err := chromedp.Run(gCtx,
 		chromedp.Navigate(req.TargetUrl),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {

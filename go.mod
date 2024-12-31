@@ -4,13 +4,14 @@ go 1.23.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.15
+	github.com/Duke1616/enotify v0.1.17
 	github.com/Duke1616/vuefinder-go v1.0.3
 	github.com/IBM/sarama v1.43.3
 	github.com/RediSearch/redisearch-go/v2 v2.1.1
 	github.com/casbin/casbin/v2 v2.98.0
 	github.com/casbin/gorm-adapter/v3 v3.26.0
 	github.com/casbin/redis-watcher/v2 v2.5.0
+	github.com/chromedp/chromedp v0.11.2
 	github.com/ecodeclub/ekit v0.0.9
 	github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
@@ -59,7 +60,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20241222144035-c16d098c0fb6 // indirect
-	github.com/chromedp/chromedp v0.11.2 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect

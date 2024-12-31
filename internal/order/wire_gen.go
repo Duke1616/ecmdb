@@ -42,7 +42,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	service5 := workflowModule.Svc
 	processEventConsumer := InitProcessConsumer(q, service5, serviceService)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
-	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2, service3, service4, serviceService)
+	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2, service3, service4, serviceService, service5)
 	module := &Module{
 		Hdl: handler,
 		Svc: serviceService,
@@ -89,8 +89,8 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 }
 
 func InitFeishuCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark2 *lark.Client, userSvc user.Service,
-	templateSvc template.Service, svc service.Service) *consumer.FeishuCallbackEventConsumer {
-	c, err := consumer.NewFeishuCallbackEventConsumer(q, engineSvc, svc, templateSvc, userSvc, lark2)
+	templateSvc template.Service, svc service.Service, workflowSvc workflow.Service) *consumer.FeishuCallbackEventConsumer {
+	c, err := consumer.NewFeishuCallbackEventConsumer(q, engineSvc, svc, templateSvc, userSvc, workflowSvc, lark2)
 	if err != nil {
 		return nil
 	}

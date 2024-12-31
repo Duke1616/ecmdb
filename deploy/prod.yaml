@@ -62,5 +62,8 @@ feishu:
   appId: ""
   appSecret: ""
 
+frontend:
+  logicflow_url: http://localhost:3333/logicflow-preview
+
 cronjob:
-  enabled: true
+  enabled: false

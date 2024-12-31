@@ -225,7 +225,7 @@ func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *s
 	var fields []card.Field
 	fields = append(fields, card.Field{
 		Tag:     "markdown",
-		Content: `**审批人：** <at id=a579e467></at>`,
+		Content: `**审批人：** <at id=></at>`,
 	})
 
 	fields = append(fields, card.Field{

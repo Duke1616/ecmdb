@@ -53,6 +53,7 @@ type Node struct {
 
 type EdgeProperty struct {
 	Expression string `json:"expression"`
+	IsPass     bool   `json:"is_pass"`
 }
 
 type UserProperty struct {

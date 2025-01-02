@@ -1,11 +1,16 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/chromedp/chromedp"
+	"golang.org/x/image/draw"
+	"image"
+	"image/png"
 	"io/ioutil"
 	"log"
+	"os"
 	"testing"
 	"time"
 )
@@ -31,16 +36,39 @@ func GenerateLogicFlowScreenshot(targetURL, outputFile string) error {
 			return nil
 		}),
 		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
-		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
+		chromedp.WaitVisible(".logic-flow-preview", chromedp.ByQuery),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
-		chromedp.FullScreenshot(&buf, 2000),
+		chromedp.Screenshot(".logic-flow-preview", &buf, chromedp.ByQuery),
 	)
 
 	if err != nil {
 		log.Fatalf("Error during chromedp actions: %v", err)
+	}
+
+	// 解码截图
+	img, _, err := image.Decode(bytes.NewReader(buf))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	scale := 0.5 // 缩放比例
+	dst := image.NewRGBA(image.Rect(0, 0, int(float64(img.Bounds().Dx())*scale), int(float64(img.Bounds().Dy())*scale)))
+
+	// 使用双线性插值缩放图片
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	// 保存缩放后的图片
+	outFile, err := os.Create("scaled_screenshot.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer outFile.Close()
+
+	if err := png.Encode(outFile, dst); err != nil {
+		log.Fatal(err)
 	}
 
 	// 保存截图到文件

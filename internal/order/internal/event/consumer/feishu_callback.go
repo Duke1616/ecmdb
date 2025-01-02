@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -12,16 +14,22 @@ import (
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/Duke1616/enotify/notify/feishu/card"
 	feishuMsg "github.com/Duke1616/enotify/notify/feishu/message"
 	"github.com/Duke1616/enotify/template"
 	"github.com/chromedp/chromedp"
+	"github.com/ecodeclub/ekit/slice"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"github.com/spf13/viper"
+	"golang.org/x/image/draw"
+	"image"
+	"image/jpeg"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/ecodeclub/mq-api"
@@ -183,8 +191,24 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 	// 存储截图的 buffer
 	var buf []byte
 
+	o, err := c.Svc.Detail(ctx, orderId)
+	if err != nil {
+		return err
+	}
+
+	wf, err := c.workflowSvc.Find(ctx, o.WorkflowId)
+	if err != nil {
+		return err
+	}
+
+	// 解析连接线、SRC => DST、标注为通过
+	edges, approvalUsers, err := c.parserEdges(ctx, o.Process.InstanceId, wf.ProcessId)
+	if err != nil {
+		return err
+	}
+
 	// 获取代码
-	jsCode, err := c.getJsCode(ctx, orderId)
+	jsCode, err := c.getJsCode(wf, edges)
 	if err != nil {
 		return err
 	}
@@ -199,6 +223,7 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 		}),
 		chromedp.Evaluate(jsCode, nil),
 		chromedp.WaitVisible("#LF-preview", chromedp.ByID),
+		chromedp.Sleep(1*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
@@ -209,29 +234,182 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 		return err
 	}
 
-	// 上传文件到飞书
-	imageKey, err := c.uploadImage(ctx, buf)
+	// 缩放图片
+	scaleImg, err := scaleImage(buf)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(*imageKey, "imagekey")
+	// 上传文件到飞书
+	imageKey, err := c.uploadImage(ctx, scaleImg)
+	if err != nil {
+		return err
+	}
 
 	// 发送图片消息
-	return c.sendImage(ctx, imageKey, userId)
+	return c.sendImage(ctx, imageKey, approvalUsers, userId)
 }
 
-func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, userId string) error {
+func scaleImage(buf []byte) ([]byte, error) {
+	// 解码截图
+	img, _, err := image.Decode(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	// 缩放比例
+	scale := 0.5
+	dst := image.NewRGBA(image.Rect(0, 0, int(float64(img.Bounds().Dx())*scale), int(float64(img.Bounds().Dy())*scale)))
+
+	// 使用双线性插值缩放图片
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	// 将处理后的图片编码为 []byte
+	var outBuf bytes.Buffer
+	if err = jpeg.Encode(&outBuf, dst, nil); err != nil { // 使用 jpeg 编码
+		return nil, err
+	}
+
+	// 返回处理后的字节流
+	return outBuf.Bytes(), nil
+}
+
+func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, instanceId, processId int) (map[string]string, []string, error) {
+	// 查看审批记录
+	record, _, err := c.engineSvc.TaskRecord(ctx, instanceId, 0, 20)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	users := slice.FilterMap(record, func(idx int, src model.Task) (string, bool) {
+		if src.Status == 0 && src.IsFinished == 0 {
+			return src.UserID, true
+		}
+
+		return "", false
+	})
+
+	// 查看流程定义及节点
+	define, err := engine.GetProcessDefine(processId)
+	if err != nil {
+		return nil, nil, err
+	}
+	nodesMap := slice.ToMap(define.Nodes, func(element model.Node) string {
+		return element.NodeID
+	})
+
+	filterRecord := slice.FilterMap(record, func(idx int, src model.Task) (model.Task, bool) {
+		if src.Status == 2 {
+			return model.Task{}, false
+		}
+		return src, true
+	})
+	recordMap := slice.ToMap(filterRecord, func(element model.Task) string {
+		return element.NodeID
+	})
+
+	edges := make(map[string]string)
+	visited := make(map[string]bool)
+	currentNode := record[len(record)-1].NodeID
+	processNode(currentNode, nodesMap, recordMap, edges, visited)
+
+	return edges, users, nil
+}
+
+// 定义一个递归函数来处理节点
+func processNode(nodeID string, nodesMap map[string]model.Node,
+	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) {
+	if visited[nodeID] {
+		return
+	}
+	visited[nodeID] = true
+
+	// 获取当前节点
+	node, exists := nodesMap[nodeID]
+	if !exists {
+		return
+	}
+
+	// 如果上级只有一个节点则直接处理
+	if len(node.PrevNodeIDs) == 1 {
+		prevNodeID := node.PrevNodeIDs[0]
+
+		// 将前置节点添加到 edges 中
+		edges[prevNodeID] = nodeID
+
+		// 递归处理前置节点
+		processNode(prevNodeID, nodesMap, recordMap, edges, visited)
+	}
+
+	// 处理当前节点的前置节点, 网关节点正常不会同时出现两个
+	taskNodes := make([]string, 0)
+	var gatewayNode string
+	for _, prevNodeID := range node.PrevNodeIDs {
+		n, _ := nodesMap[prevNodeID]
+
+		switch n.NodeType {
+		case model.TaskNode:
+			taskNodes = append(taskNodes, n.NodeID)
+		case model.GateWayNode:
+			gatewayNode = n.NodeID
+		}
+	}
+
+	// 优先处理任务节点
+	processTaskNodes(taskNodes, nodeID, nodesMap, recordMap, edges, visited)
+
+	// 处理网关节点
+	processGatewayNode(gatewayNode, nodeID, nodesMap, recordMap, edges, visited)
+}
+
+func processTaskNodes(taskNodes []string, nodeID string, nodesMap map[string]model.Node,
+	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) {
+	for _, prevNodeID := range taskNodes {
+		if _, ok := recordMap[prevNodeID]; !ok {
+			continue
+		}
+		edges[prevNodeID] = nodeID
+		processNode(prevNodeID, nodesMap, recordMap, edges, visited)
+	}
+}
+
+func processGatewayNode(gatewayNode string, nodeID string, nodesMap map[string]model.Node,
+	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) {
+	if gatewayNode != "" {
+		edges[gatewayNode] = nodeID
+		processNode(gatewayNode, nodesMap, recordMap, edges, visited)
+	}
+}
+
+func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {
 	var fields []card.Field
+	us, err := c.userSvc.FindByUsernames(ctx, approvalUsers)
+	if err != nil {
+		return err
+	}
+
+	approval := `**审批人：Null**`
+	status := `**状态：<font color='green'> 已完成 </font>**`
+	var atTags []string
+	if len(us) > 0 {
+		for _, u := range us {
+			atTags = append(atTags, fmt.Sprintf("<at id=%s></at>", u.FeishuInfo.UserId))
+		}
+
+		approval = fmt.Sprintf("**审批人：** %s", strings.Join(atTags, " "))
+		status = `**状态：<font color='green'> 审批中 </font>**`
+	}
+
 	fields = append(fields, card.Field{
 		Tag:     "markdown",
-		Content: `**审批人：** <at id=></at>`,
+		Content: approval,
 	})
 
 	fields = append(fields, card.Field{
 		Tag:     "markdown",
-		Content: `**状态：<font color='green'> 审批中 </font>**`,
+		Content: status,
 	})
+
 	notifyWrap := notify.WrapNotifierDynamic(c.createNc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return feishuMsg.NewCreateFeishuMessage(
 			"user_id", userId,
@@ -275,23 +453,55 @@ func (c *FeishuCallbackEventConsumer) uploadImage(ctx context.Context, buf []byt
 	return resp.Data.ImageKey, nil
 }
 
-func (c *FeishuCallbackEventConsumer) getJsCode(ctx context.Context, orderId int64) (string, error) {
-	o, err := c.Svc.Detail(ctx, orderId)
+func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string]string) (string, error) {
+	edgesJSON, err := json.Marshal(wf.FlowData.Edges)
 	if err != nil {
 		return "", err
 	}
 
-	wf, err := c.workflowSvc.Find(ctx, o.WorkflowId)
+	var edges []easyflow.Edge
+	err = json.Unmarshal(edgesJSON, &edges)
 	if err != nil {
 		return "", err
 	}
 
+	for i, edge := range edges {
+		val, ok := edgeMap[edge.SourceNodeId]
+		if !ok {
+			continue
+		}
+
+		if val != edge.TargetNodeId {
+			continue
+		}
+
+		properties, _ := easyflow.ToEdgeProperty(edge)
+		properties.IsPass = true
+		edges[i].Properties = properties // 重新赋值
+	}
+
+	var edgesMap []map[string]interface{}
+	for _, edge := range edges {
+		edgesMap = append(edgesMap, edgeToMap(edge))
+	}
+
+	wf.FlowData.Edges = edgesMap
 	easyFlowData, err := json.Marshal(wf.FlowData)
 	if err != nil {
 		return "", err
 	}
 
 	return fmt.Sprintf(`window.__DATA__ = %s;`, easyFlowData), nil
+}
+
+func edgeToMap(edge easyflow.Edge) map[string]interface{} {
+	return map[string]interface{}{
+		"type":         edge.Type,
+		"sourceNodeId": edge.SourceNodeId,
+		"targetNodeId": edge.TargetNodeId,
+		"properties":   edge.Properties,
+		"id":           edge.ID,
+	}
 }
 
 func (c *FeishuCallbackEventConsumer) withdraw(ctx context.Context, callback event.FeishuCallback, wantResult string) error {

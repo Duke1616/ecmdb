@@ -196,6 +196,8 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 		chromedp.Flag("disable-dev-shm-usage", true),
 		chromedp.Flag("single-process", true),
 		chromedp.Flag("no-zygote", true),
+		chromedp.Flag("font-render-hinting", "none"),
+		chromedp.Flag("force-color-profile", "srgb"),
 	)
 
 	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
@@ -235,6 +237,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 
 	// 进行截图
 	err = chromedp.Run(ctx,
+		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(c.logicFlowUrl),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -271,6 +274,15 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 }
 
 func scaleImage(buf []byte) ([]byte, error) {
+	_, format, err := image.DecodeConfig(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	if format != "jpeg" && format != "png" {
+		return nil, fmt.Errorf("unsupported image format: %s", format)
+	}
+
 	// 解码截图
 	img, _, err := image.Decode(bytes.NewReader(buf))
 	if err != nil {

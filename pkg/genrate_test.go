@@ -7,6 +7,7 @@ import (
 	"github.com/chromedp/chromedp"
 	"golang.org/x/image/draw"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"io/ioutil"
 	"log"
@@ -72,14 +73,44 @@ func GenerateLogicFlowScreenshot(targetURL, outputFile string) error {
 		log.Fatal(err)
 	}
 
+	scaleImg, err := scaleImage(buf)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// 保存截图到文件
-	err = ioutil.WriteFile(outputFile, buf, 0644)
+	err = ioutil.WriteFile(outputFile, scaleImg, 0644)
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("LogicFlow screenshot saved to %s\n", outputFile)
 	return nil
+}
+
+func scaleImage(buf []byte) ([]byte, error) {
+	// 解码截图
+	img, _, err := image.Decode(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	// 缩放比例
+	scale := 0.5
+	dst := image.NewRGBA(image.Rect(0, 0, int(float64(img.Bounds().Dx())*scale), int(float64(img.Bounds().Dy())*scale)))
+
+	// 使用双线性插值缩放图片
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	// 将处理后的图片编码为 []byte
+	var outBuf bytes.Buffer
+	if err = jpeg.Encode(&outBuf, dst, nil); err != nil { // 使用 jpeg 编码
+		return nil, err
+	}
+
+	// 返回处理后的字节流
+	return outBuf.Bytes(), nil
 }
 
 func TestLogicFlow(t *testing.T) {

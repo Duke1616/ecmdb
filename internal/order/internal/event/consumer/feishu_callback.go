@@ -235,7 +235,6 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 
 	// 进行截图
 	err = chromedp.Run(ctx,
-		chromedp.EmulateViewport(1920, 1080),
 		chromedp.Navigate(c.logicFlowUrl),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -243,7 +242,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 			return nil
 		}),
 		chromedp.Evaluate(jsCode, nil),
-		chromedp.WaitVisible(".logic-flow-preview", chromedp.ByQuery),
+		chromedp.WaitVisible("#LF-preview", chromedp.ByID),
 		chromedp.Sleep(1*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
@@ -256,13 +255,13 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	}
 
 	// 缩放图片
-	scaleImg, err := scaleImage(buf)
-	if err != nil {
-		return err
-	}
+	//scaleImg, err := scaleImage(buf)
+	//if err != nil {
+	//	return err
+	//}
 
 	// 上传文件到飞书
-	imageKey, err := c.uploadImage(ctx, scaleImg)
+	imageKey, err := c.uploadImage(ctx, buf)
 	if err != nil {
 		return err
 	}
@@ -492,8 +491,6 @@ func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap ma
 		return "", err
 	}
 
-	//fmt.Println("初始形态", wf.FlowData.Edges)
-
 	var edges []easyflow.Edge
 	err = json.Unmarshal(edgesJSON, &edges)
 	if err != nil {
@@ -531,7 +528,6 @@ func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap ma
 		return "", err
 	}
 
-	fmt.Println(string(easyFlowData))
 	return fmt.Sprintf(`window.__DATA__ = %s;`, easyFlowData), nil
 }
 

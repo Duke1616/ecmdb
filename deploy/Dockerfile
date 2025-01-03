@@ -7,7 +7,7 @@ COPY . .
 RUN go mod tidy
 ARG VERSION=unknown
 RUN go build -ldflags="-X main.version=${VERSION} -w -s" -a -o dist/ecmdb main.go
-FROM alpine:latest as deploy
+FROM chromedp/headless-shell:133.0.6905.0 as deploy
 ENV EGO_DEBUG=true
 WORKDIR /app
 COPY --from=build /app/dist/ecmdb .

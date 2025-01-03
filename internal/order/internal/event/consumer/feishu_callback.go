@@ -183,23 +183,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 }
 
 func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int64, userId string) error {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Headless,
-		chromedp.NoSandbox,
-		chromedp.NoFirstRun,
-		chromedp.DisableGPU,
-		chromedp.Flag("ignore-certificate-errors", true),
-		chromedp.Flag("disable-setuid-sandbox", true),
-		chromedp.Flag("disable-dev-shm-usage", true),
-		chromedp.Flag("single-process", true),
-		chromedp.Flag("no-zygote", true),
-		chromedp.Flag("force-device-scale-factor", "2"),
-	)
-
-	ctx, cancel := chromedp.NewExecAllocator(gCtx, opts...)
-	defer cancel()
-
-	ctx, cancel = chromedp.NewContext(ctx)
+	ctx, cancel := chromedp.NewContext(gCtx)
 	defer cancel()
 
 	// 设置超时时间
@@ -247,7 +231,7 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
-		chromedp.Screenshot(".logic-flow-preview", &buf, chromedp.ByQuery),
+		chromedp.FullScreenshot(&buf, 5000),
 	)
 	if err != nil {
 		return err

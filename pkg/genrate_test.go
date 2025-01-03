@@ -29,6 +29,7 @@ func GenerateLogicFlowScreenshot(targetURL, outputFile string) error {
 	var buf []byte
 
 	err := chromedp.Run(ctx,
+		chromedp.EmulateViewport(1920, 1080),
 		chromedp.Navigate(targetURL),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {

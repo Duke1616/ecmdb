@@ -249,7 +249,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
-		chromedp.FullScreenshot(&buf, 5000),
+		chromedp.FullScreenshot(&buf, 100),
 	)
 	if err != nil {
 		return err

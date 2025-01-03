@@ -167,7 +167,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
 			return err
 		}
-		err = c.progress(ctx, orderId, evt.FeishuUserId)
+		err = c.progress(orderId, evt.FeishuUserId)
 		if err != nil {
 			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
 			return err
@@ -182,8 +182,26 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 	return c.withdraw(ctx, evt, wantResult)
 }
 
-func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int64, userId string) error {
-	ctx, cancel := chromedp.NewContext(gCtx)
+func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) error {
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Headless,
+		chromedp.NoSandbox,
+		chromedp.NoFirstRun,
+		chromedp.DisableGPU,
+		chromedp.Flag("ignore-certificate-errors", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("single-process", true),
+		chromedp.Flag("no-zygote", true),
+	)
+
+	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
 	defer cancel()
 
 	// 设置超时时间
@@ -231,7 +249,7 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
-		chromedp.FullScreenshot(&buf, 100),
+		chromedp.FullScreenshot(&buf, 5000),
 	)
 	if err != nil {
 		return err

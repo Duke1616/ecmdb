@@ -43,6 +43,7 @@ require (
 	go.mongodb.org/mongo-driver v1.14.0
 	go.uber.org/mock v0.3.0
 	golang.org/x/crypto v0.28.0
+	golang.org/x/image v0.23.0
 	golang.org/x/sync v0.10.0
 	google.golang.org/protobuf v1.34.1
 	gorm.io/driver/mysql v1.5.7
@@ -160,7 +161,6 @@ require (
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/image v0.23.0 // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.25.0 // indirect

@@ -37,11 +37,15 @@ type LogicFlow struct {
 
 // Edge 定义线字段
 type Edge struct {
-	Type         string      `json:"type"`
-	SourceNodeId string      `json:"sourceNodeId"`
-	TargetNodeId string      `json:"targetNodeId"`
-	Properties   interface{} `json:"properties"`
-	ID           string      `json:"id"`
+	Type         string                   `json:"type"`
+	SourceNodeId string                   `json:"sourceNodeId"`
+	TargetNodeId string                   `json:"targetNodeId"`
+	Properties   interface{}              `json:"properties"`
+	ID           string                   `json:"id"`
+	StartPoint   map[string]interface{}   `json:"startPoint"`
+	EndPoint     map[string]interface{}   `json:"endPoint"`
+	PointsList   []map[string]interface{} `json:"pointsList"`
+	Text         map[string]interface{}   `json:"text"`
 }
 
 // Node 节点定义
@@ -52,6 +56,7 @@ type Node struct {
 }
 
 type EdgeProperty struct {
+	Name       string `json:"name"`
 	Expression string `json:"expression"`
 	IsPass     bool   `json:"is_pass"`
 }

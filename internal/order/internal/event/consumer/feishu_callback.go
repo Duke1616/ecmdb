@@ -8,6 +8,7 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
+	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -28,6 +29,7 @@ import (
 	"golang.org/x/image/draw"
 	"image"
 	"image/jpeg"
+
 	"log"
 	"strings"
 	"time"
@@ -191,18 +193,18 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 	// 存储截图的 buffer
 	var buf []byte
 
-	o, err := c.Svc.Detail(ctx, orderId)
+	orderDetail, err := c.Svc.Detail(ctx, orderId)
 	if err != nil {
 		return err
 	}
 
-	wf, err := c.workflowSvc.Find(ctx, o.WorkflowId)
+	wf, err := c.workflowSvc.Find(ctx, orderDetail.WorkflowId)
 	if err != nil {
 		return err
 	}
 
 	// 解析连接线、SRC => DST、标注为通过
-	edges, approvalUsers, err := c.parserEdges(ctx, o.Process.InstanceId, wf.ProcessId)
+	edges, approvalUsers, err := c.parserEdges(ctx, orderDetail, wf.ProcessId)
 	if err != nil {
 		return err
 	}
@@ -274,12 +276,15 @@ func scaleImage(buf []byte) ([]byte, error) {
 	return outBuf.Bytes(), nil
 }
 
-func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, instanceId, processId int) (map[string]string, []string, error) {
+func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order, processId int) (map[string]string, []string, error) {
 	// 查看审批记录
-	record, _, err := c.engineSvc.TaskRecord(ctx, instanceId, 0, 20)
+	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 20)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// 获取当前所处的节点 ID
+	currentNode := record[len(record)-1].NodeID
 
 	users := slice.FilterMap(record, func(idx int, src model.Task) (string, bool) {
 		if src.Status == 0 && src.IsFinished == 0 {
@@ -294,10 +299,20 @@ func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, instanceI
 	if err != nil {
 		return nil, nil, err
 	}
+	var endNodeId string
 	nodesMap := slice.ToMap(define.Nodes, func(element model.Node) string {
+		if element.NodeType == model.EndNode {
+			endNodeId = element.NodeID
+		}
 		return element.NodeID
 	})
 
+	// 如果工单已经结束，则以结束节点为查询起点
+	if o.Status == domain.END {
+		currentNode = endNodeId
+	}
+
+	// 过滤 record 只保留正常节点，驳回节点暂不处理
 	filterRecord := slice.FilterMap(record, func(idx int, src model.Task) (model.Task, bool) {
 		if src.Status == 2 {
 			return model.Task{}, false
@@ -310,9 +325,8 @@ func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, instanceI
 
 	edges := make(map[string]string)
 	visited := make(map[string]bool)
-	currentNode := record[len(record)-1].NodeID
-	processNode(currentNode, nodesMap, recordMap, edges, visited)
 
+	processNode(currentNode, nodesMap, recordMap, edges, visited)
 	return edges, users, nil
 }
 
@@ -389,7 +403,7 @@ func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *s
 	}
 
 	approval := `**审批人：Null**`
-	status := `**状态：<font color='green'> 已完成 </font>**`
+	status := `**状态：<font color='green'> 已结束 </font>**`
 	var atTags []string
 	if len(us) > 0 {
 		for _, u := range us {
@@ -459,6 +473,8 @@ func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap ma
 		return "", err
 	}
 
+	//fmt.Println("初始形态", wf.FlowData.Edges)
+
 	var edges []easyflow.Edge
 	err = json.Unmarshal(edgesJSON, &edges)
 	if err != nil {
@@ -466,6 +482,11 @@ func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap ma
 	}
 
 	for i, edge := range edges {
+		properties, ok := edge.Properties.(map[string]interface{})
+		if !ok {
+			properties = make(map[string]interface{})
+		}
+
 		val, ok := edgeMap[edge.SourceNodeId]
 		if !ok {
 			continue
@@ -475,9 +496,9 @@ func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap ma
 			continue
 		}
 
-		properties, _ := easyflow.ToEdgeProperty(edge)
-		properties.IsPass = true
-		edges[i].Properties = properties // 重新赋值
+		// 只更新 IsPass 字段，保留其他字段
+		properties["is_pass"] = true
+		edges[i].Properties = properties
 	}
 
 	var edgesMap []map[string]interface{}
@@ -491,6 +512,7 @@ func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap ma
 		return "", err
 	}
 
+	fmt.Println(string(easyFlowData))
 	return fmt.Sprintf(`window.__DATA__ = %s;`, easyFlowData), nil
 }
 
@@ -501,6 +523,10 @@ func edgeToMap(edge easyflow.Edge) map[string]interface{} {
 		"targetNodeId": edge.TargetNodeId,
 		"properties":   edge.Properties,
 		"id":           edge.ID,
+		"startPoint":   edge.StartPoint,
+		"endPoint":     edge.EndPoint,
+		"pointsList":   edge.PointsList,
+		"text":         edge.Text,
 	}
 }
 

@@ -183,7 +183,22 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 }
 
 func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int64, userId string) error {
-	ctx, cancel := chromedp.NewContext(gCtx, chromedp.WithLogf(log.Printf))
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Headless,
+		chromedp.NoSandbox,
+		chromedp.NoFirstRun,
+		chromedp.DisableGPU,
+		chromedp.Flag("ignore-certificate-errors", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("single-process", true),
+		chromedp.Flag("no-zygote", true),
+	)
+
+	ctx, cancel := chromedp.NewExecAllocator(gCtx, opts...)
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
 
 	// 设置超时时间

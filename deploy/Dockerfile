@@ -9,6 +9,8 @@ ARG VERSION=unknown
 RUN go build -ldflags="-X main.version=${VERSION} -w -s" -a -o dist/ecmdb main.go
 FROM chromedp/headless-shell:133.0.6905.0 as deploy
 ENV EGO_DEBUG=true
+ENV PATH /headless-shell:$PATH
 WORKDIR /app
 COPY --from=build /app/dist/ecmdb .
 EXPOSE 8000
+ENTRYPOINT ["./ecmdb", "start"]

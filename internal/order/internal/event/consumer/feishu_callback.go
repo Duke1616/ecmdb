@@ -29,7 +29,6 @@ import (
 	"golang.org/x/image/draw"
 	"image"
 	"image/jpeg"
-
 	"log"
 	"strings"
 	"time"
@@ -257,12 +256,6 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 		return err
 	}
 
-	// 缩放图片
-	//scaleImg, err := scaleImage(buf)
-	//if err != nil {
-	//	return err
-	//}
-
 	// 上传文件到飞书
 	imageKey, err := c.uploadImage(ctx, buf)
 	if err != nil {
@@ -273,40 +266,8 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	return c.sendImage(ctx, imageKey, approvalUsers, userId)
 }
 
-func scaleImage(buf []byte) ([]byte, error) {
-	_, format, err := image.DecodeConfig(bytes.NewReader(buf))
-	if err != nil {
-		return nil, err
-	}
-
-	if format != "jpeg" && format != "png" {
-		return nil, fmt.Errorf("unsupported image format: %s", format)
-	}
-
-	// 解码截图
-	img, _, err := image.Decode(bytes.NewReader(buf))
-	if err != nil {
-		return nil, err
-	}
-
-	// 缩放比例
-	scale := 0.5
-	dst := image.NewRGBA(image.Rect(0, 0, int(float64(img.Bounds().Dx())*scale), int(float64(img.Bounds().Dy())*scale)))
-
-	// 使用双线性插值缩放图片
-	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
-
-	// 将处理后的图片编码为 []byte
-	var outBuf bytes.Buffer
-	if err = jpeg.Encode(&outBuf, dst, nil); err != nil { // 使用 jpeg 编码
-		return nil, err
-	}
-
-	// 返回处理后的字节流
-	return outBuf.Bytes(), nil
-}
-
-func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order, processId int) (map[string]string, []string, error) {
+func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,
+	processId int) (map[string]string, []string, error) {
 	// 查看审批记录
 	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 20)
 	if err != nil {
@@ -400,21 +361,36 @@ func processNode(nodeID string, nodesMap map[string]model.Node,
 	}
 
 	// 优先处理任务节点
-	processTaskNodes(taskNodes, nodeID, nodesMap, recordMap, edges, visited)
+	taskNodesProcessed := processTaskNodes(taskNodes, nodeID, nodesMap, recordMap, edges, visited)
 
-	// 处理网关节点
-	processGatewayNode(gatewayNode, nodeID, nodesMap, recordMap, edges, visited)
+	// 如果任务节点处理成功，则不处理网关节点
+	if !taskNodesProcessed {
+		// 处理网关节点
+		processGatewayNode(gatewayNode, nodeID, nodesMap, recordMap, edges, visited)
+	}
 }
 
+// processTaskNodes 处理任务节点，返回是否成功处理
 func processTaskNodes(taskNodes []string, nodeID string, nodesMap map[string]model.Node,
-	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) {
-	for _, prevNodeID := range taskNodes {
-		if _, ok := recordMap[prevNodeID]; !ok {
-			continue
-		}
-		edges[prevNodeID] = nodeID
-		processNode(prevNodeID, nodesMap, recordMap, edges, visited)
+	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) bool {
+	if len(taskNodes) == 0 {
+		return false
 	}
+
+	for _, taskNodeID := range taskNodes {
+		// 处理任务节点
+		edges[taskNodeID] = nodeID
+		processNode(taskNodeID, nodesMap, recordMap, edges, visited)
+
+		// 检查任务节点是否处理成功
+		if _, exists := recordMap[taskNodeID]; exists {
+			// 只要有一个任务节点成功，就返回 true
+			return true
+		}
+	}
+
+	// 如果所有任务节点都未成功，返回 false
+	return false
 }
 
 func processGatewayNode(gatewayNode string, nodeID string, nodesMap map[string]model.Node,
@@ -626,4 +602,37 @@ func getCallbackValue(callback event.FeishuCallback) []card.Value {
 
 func (c *FeishuCallbackEventConsumer) Stop(_ context.Context) error {
 	return c.consumer.Close()
+}
+
+func scaleImage(buf []byte) ([]byte, error) {
+	_, format, err := image.DecodeConfig(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	if format != "jpeg" && format != "png" {
+		return nil, fmt.Errorf("unsupported image format: %s", format)
+	}
+
+	// 解码截图
+	img, _, err := image.Decode(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	// 缩放比例
+	scale := 0.5
+	dst := image.NewRGBA(image.Rect(0, 0, int(float64(img.Bounds().Dx())*scale), int(float64(img.Bounds().Dy())*scale)))
+
+	// 使用双线性插值缩放图片
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	// 将处理后的图片编码为 []byte
+	var outBuf bytes.Buffer
+	if err = jpeg.Encode(&outBuf, dst, nil); err != nil { // 使用 jpeg 编码
+		return nil, err
+	}
+
+	// 返回处理后的字节流
+	return outBuf.Bytes(), nil
 }

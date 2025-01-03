@@ -379,12 +379,12 @@ func processTaskNodes(taskNodes []string, nodeID string, nodesMap map[string]mod
 
 	for _, taskNodeID := range taskNodes {
 		// 处理任务节点
-		edges[taskNodeID] = nodeID
 		processNode(taskNodeID, nodesMap, recordMap, edges, visited)
 
 		// 检查任务节点是否处理成功
 		if _, exists := recordMap[taskNodeID]; exists {
 			// 只要有一个任务节点成功，就返回 true
+			edges[taskNodeID] = nodeID
 			return true
 		}
 	}

@@ -193,6 +193,7 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 		chromedp.Flag("disable-dev-shm-usage", true),
 		chromedp.Flag("single-process", true),
 		chromedp.Flag("no-zygote", true),
+		chromedp.Flag("force-device-scale-factor", "2"),
 	)
 
 	ctx, cancel := chromedp.NewExecAllocator(gCtx, opts...)
@@ -232,6 +233,7 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 
 	// 进行截图
 	err = chromedp.Run(ctx,
+		chromedp.EmulateViewport(1920, 1080),
 		chromedp.Navigate(c.logicFlowUrl),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -239,13 +241,13 @@ func (c *FeishuCallbackEventConsumer) progress(gCtx context.Context, orderId int
 			return nil
 		}),
 		chromedp.Evaluate(jsCode, nil),
-		chromedp.WaitVisible("#LF-preview", chromedp.ByID),
+		chromedp.WaitVisible(".logic-flow-preview", chromedp.ByQuery),
 		chromedp.Sleep(1*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
-		chromedp.FullScreenshot(&buf, 2000),
+		chromedp.Screenshot(".logic-flow-preview", &buf, chromedp.ByQuery),
 	)
 	if err != nil {
 		return err

@@ -384,7 +384,15 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return err
 	}
 
-	// TODO 创建一份任务到数据库中，后续执行失败，重试机制
+	// 添加工单创建人
+	args := orderResp.Data
+	userInfo, err := s.userSvc.FindByUsername(ctx, orderResp.CreateBy)
+	if err != nil {
+		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
+	}
+	args["user_info"] = userInfo
+
+	// 修改工单信息，录入相关内容
 	_, err = s.repo.UpdateTask(ctx, domain.Task{
 		// 字段可有可无
 		Id:            task.Id,
@@ -400,7 +408,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		Topic:    workerResp.Topic,
 		Language: codebookResp.Language,
 		Status:   domain.RUNNING,
-		Args:     orderResp.Data,
+		Args:     args,
 		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
 			return domain.Variables{
 				Key:    src.Key,
@@ -447,14 +455,6 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 			Secret: src.Secret,
 		}
 	})
-
-	// 添加工单创建人
-	args := orderResp.Data
-	userInfo, err := s.userSvc.FindByUsername(ctx, orderResp.CreateBy)
-	if err != nil {
-		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
-	}
-	args["user_info"] = userInfo
 
 	// 运行任务
 	vars, _ := json.Marshal(variables)

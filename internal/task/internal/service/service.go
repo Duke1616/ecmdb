@@ -453,9 +453,8 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	userInfo, err := s.userSvc.FindByUsername(ctx, orderResp.CreateBy)
 	if err != nil {
 		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
-	} else {
-		args["user_info"] = userInfo
 	}
+	args["user_info"] = userInfo
 
 	// 运行任务
 	vars, _ := json.Marshal(variables)

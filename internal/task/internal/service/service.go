@@ -443,6 +443,10 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		}
 	})
 
+	// 添加工单创建人
+	args := orderResp.Data
+	args["create_by"] = orderResp.CreateBy
+
 	// 运行任务
 	vars, _ := json.Marshal(variables)
 	return s.workerSvc.Execute(ctx, worker.Execute{
@@ -450,7 +454,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		Topic:     workerResp.Topic,
 		Code:      codebookResp.Code,
 		Language:  codebookResp.Language,
-		Args:      orderResp.Data,
+		Args:      args,
 		Variables: string(vars),
 	})
 }

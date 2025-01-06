@@ -39,14 +39,14 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service4 := runnerModule.Svc
 	service5 := workerModule.Svc
 	service6 := engineModule.Svc
-	service7 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6)
-	handler := web.NewHandler(service7)
-	service8 := userModule.Svc
-	executeResultConsumer := initConsumer(service7, q, service3, service8, lark2)
-	startTaskJob := initStartTaskJob(service7)
-	passProcessTaskJob := initPassProcessTaskJob(service7, service6)
+	service7 := userModule.Svc
+	service8 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6, service7)
+	handler := web.NewHandler(service8)
+	executeResultConsumer := initConsumer(service8, q, service3, service7, lark2)
+	startTaskJob := initStartTaskJob(service8)
+	passProcessTaskJob := initPassProcessTaskJob(service8, service6)
 	module := &Module{
-		Svc:                service7,
+		Svc:                service8,
 		Hdl:                handler,
 		c:                  executeResultConsumer,
 		StartTaskJob:       startTaskJob,

@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
@@ -48,6 +49,7 @@ type service struct {
 	aesKey      string
 	logger      *elog.Component
 	orderSvc    order.Service
+	userSvc     user.Service
 	engineSvc   engine.Service
 	workflowSvc workflow.Service
 	codebookSvc codebook.Service
@@ -121,7 +123,8 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service) Service {
+	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service,
+	userSvc user.Service) Service {
 	return &service{
 		repo:        repo,
 		aesKey:      viper.Get("crypto_aes_key").(string),
@@ -132,6 +135,7 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 		runnerSvc:   runnerSvc,
 		workerSvc:   workerSvc,
 		engineSvc:   engineSvc,
+		userSvc:     userSvc,
 	}
 }
 
@@ -286,6 +290,7 @@ func (s *service) retry(ctx context.Context, task domain.Task) error {
 		}
 	})
 
+	// 添加工单创建人
 	variables, _ := json.Marshal(vars)
 	return s.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
@@ -445,7 +450,12 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 
 	// 添加工单创建人
 	args := orderResp.Data
-	args["create_by"] = orderResp.CreateBy
+	userInfo, err := s.userSvc.FindByUsername(ctx, orderResp.CreateBy)
+	if err != nil {
+		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
+	} else {
+		args["user_info"] = userInfo
+	}
 
 	// 运行任务
 	vars, _ := json.Marshal(variables)

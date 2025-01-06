@@ -1,5 +1,5 @@
 package domain
 
 type FeishuInfo struct {
-	UserId string
+	UserId string `json:"user_id"`
 }

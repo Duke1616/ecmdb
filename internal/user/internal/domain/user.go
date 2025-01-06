@@ -27,18 +27,18 @@ const (
 )
 
 type User struct {
-	Id           int64
-	DepartmentId int64
-	Username     string
-	Password     string
-	Email        string
-	Title        string
-	DisplayName  string
-	Status       Status
-	CreateType   CreateType
-	RoleCodes    []string
-	FeishuInfo   FeishuInfo
-	WechatInfo   WechatInfo
+	Id           int64      `json:"id"`
+	DepartmentId int64      `json:"department_id"`
+	Username     string     `json:"username"`
+	Password     string     `json:"password"`
+	Email        string     `json:"email"`
+	Title        string     `json:"title"`
+	DisplayName  string     `json:"display_name"`
+	Status       Status     `json:"status"`
+	CreateType   CreateType `json:"create_type"`
+	RoleCodes    []string   `json:"role_codes"`
+	FeishuInfo   FeishuInfo `json:"feishu_info"`
+	WechatInfo   WechatInfo `json:"wechat_info"`
 }
 
 type UserCombination struct {

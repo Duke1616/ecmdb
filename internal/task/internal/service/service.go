@@ -390,7 +390,8 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	if err != nil {
 		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
 	}
-	args["user_info"] = userInfo
+	userInfoJSON, err := json.Marshal(userInfo)
+	args["user_info"] = string(userInfoJSON)
 
 	// 修改工单信息，录入相关内容
 	_, err = s.repo.UpdateTask(ctx, domain.Task{

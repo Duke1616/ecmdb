@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
@@ -47,9 +48,11 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 	}
 
 	var messages []notify.NotifierWrap
+	title := rule.GenerateTitle("你提交", nOrder.TemplateName)
+	title = fmt.Sprintf("%s自动化任务返回", title)
 	for _, integration := range n.integrations {
 		if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "automation") {
-			messages = integration.Notifier.Builder("自动化任务返回结果", []user.User{u},
+			messages = integration.Notifier.Builder(title, []user.User{u},
 				method.FeishuTemplateApprovalName, method.NotifyParams{
 					Order:      nOrder,
 					WantResult: wantResult,

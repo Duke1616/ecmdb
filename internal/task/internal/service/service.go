@@ -390,6 +390,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	if err != nil {
 		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
 	}
+	userInfo.Password = "[Mask]"
 	userInfoJSON, err := json.Marshal(userInfo)
 	args["user_info"] = string(userInfoJSON)
 

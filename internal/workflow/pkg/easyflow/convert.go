@@ -204,7 +204,8 @@ func (l *logicFlow) Condition(node Node) {
 	})
 
 	// 拼接网关
-	GwCondition := model.HybridGateway{Conditions: conditions, InevitableNodes: []string{}, WaitForAllPrevNode: 0}
+	// 如果存在两个连续的Condition网关, 会导致 easy-workflow 内部处理出现问题， WaitForAllPrevNode = 3
+	GwCondition := model.HybridGateway{Conditions: conditions, InevitableNodes: []string{}, WaitForAllPrevNode: 3}
 
 	// node 节点录入
 	property, _ := ToNodeProperty[ConditionProperty](node)

@@ -24,6 +24,8 @@ type TemplateDAO interface {
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
 	Pipeline(ctx context.Context) ([]TemplatePipeline, error)
 	Count(ctx context.Context) (int64, error)
+
+	GetByWorkflowId(ctx context.Context, workflowId int64) ([]Template, error)
 }
 
 func NewTemplateDAO(db *mongox.Mongo) TemplateDAO {
@@ -34,6 +36,30 @@ func NewTemplateDAO(db *mongox.Mongo) TemplateDAO {
 
 type templateDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *templateDAO) GetByWorkflowId(ctx context.Context, workflowId int64) ([]Template, error) {
+	col := dao.db.Collection(TemplateCollection)
+	filter := bson.M{}
+	filter["workflow_id"] = workflowId
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Template
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *templateDAO) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (Template, error) {

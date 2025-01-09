@@ -21,12 +21,17 @@ type Service interface {
 	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
 	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 
+	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
 	// 创建流程，生成传递数据的规则
 }
 
 type service struct {
 	repo    repository.TemplateRepository
 	workApp *workwx.WorkwxApp
+}
+
+func (s *service) GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error) {
+	return s.repo.GetByWorkflowId(ctx, workflowId)
 }
 
 func (s *service) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error) {

@@ -18,6 +18,8 @@ type TemplateRepository interface {
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, error)
 	Total(ctx context.Context) (int64, error)
 	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
+
+	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
 }
 
 func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
@@ -28,6 +30,13 @@ func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
 
 type templateRepository struct {
 	dao dao.TemplateDAO
+}
+
+func (repo *templateRepository) GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error) {
+	ts, err := repo.dao.GetByWorkflowId(ctx, workflowId)
+	return slice.Map(ts, func(idx int, src dao.Template) domain.Template {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *templateRepository) DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (

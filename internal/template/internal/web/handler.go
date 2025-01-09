@@ -33,6 +33,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/delete", ginx.WrapBody[DeleteTemplateReq](h.DeleteTemplate))
 	g.POST("/update", ginx.WrapBody[UpdateTemplateReq](h.UpdateTemplate))
 	g.POST("/list/pipeline", ginx.Wrap(h.Pipeline))
+
+	// 根据流程ID获取所有模版
+	g.POST("/get_by_workflow_id", ginx.WrapBody[GetTemplatesByWorkFlowIdReq](h.GetTemplatesByWorkflowId))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -59,6 +62,22 @@ func (h *Handler) DetailTemplate(ctx *gin.Context, req DetailTemplateReq) (ginx.
 
 	return ginx.Result{
 		Data: h.toTemplateVo(t),
+	}, nil
+}
+
+func (h *Handler) GetTemplatesByWorkflowId(ctx *gin.Context, req GetTemplatesByWorkFlowIdReq) (ginx.Result, error) {
+	wfs, err := h.svc.GetByWorkflowId(ctx, req.WorkFlowId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询流程绑定的模版成功",
+		Data: RetrieveTemplates{
+			Templates: slice.Map(wfs, func(idx int, src domain.Template) TemplateJson {
+				return h.toTemplateJsonVo(src)
+			}),
+		},
 	}, nil
 }
 

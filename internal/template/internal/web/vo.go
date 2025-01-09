@@ -71,6 +71,10 @@ type UpdateTemplateReq struct {
 	Options    string `json:"options"`
 }
 
+type GetTemplatesByWorkFlowIdReq struct {
+	WorkFlowId int64 `json:"workflow_id"`
+}
+
 type CreateTemplateGroupReq struct {
 	Name string `json:"name"`
 	Icon string `json:"icon"`

@@ -129,11 +129,11 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 		return ginx.Result{Msg: "连接服务器失败"}, err
 	}
 
+	// 每次连接都重新替换Session
+	h.session.SetSession(req.ResourceId, term.NewSessions(client))
+
 	// 如果传递类型是 Sftp 才进行保存
 	if req.Type == "Web Sftp" {
-		// 每次连接都重新替换Session
-		h.session.SetSession(req.ResourceId, term.NewSessions(client))
-
 		// sftp client
 		var sftpClient *sftp.Client
 		sftpClient, err = sftp.NewClient(client)

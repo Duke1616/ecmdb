@@ -47,4 +47,5 @@ func (r GuacamoleHandler) Start() {
 
 func (r GuacamoleHandler) Stop() {
 	r.cancel()
+	_ = r.tunnel.Close()
 }

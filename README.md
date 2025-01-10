@@ -165,3 +165,6 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
 
 ## 权限控制
 ![](docs/img/permission.png)
+
+## 排班管理
+![](docs/img/scheduling.png)

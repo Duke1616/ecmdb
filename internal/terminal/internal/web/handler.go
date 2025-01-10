@@ -3,13 +3,14 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/tools/web"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/term"
-	guacx2 "github.com/Duke1616/ecmdb/pkg/term/guacx"
+	"github.com/Duke1616/ecmdb/pkg/term/guacx"
 	sshx2 "github.com/Duke1616/ecmdb/pkg/term/sshx"
 	"github.com/Duke1616/vuefinder-go/pkg/finder"
 	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
@@ -66,6 +67,18 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error) {
+	if req.Type == "RDP" {
+		return ginx.Result{
+			Msg: "不支持RDP协议",
+		}, fmt.Errorf("暂不支持 RDP 协议")
+	}
+
+	if req.Type == "VNC" {
+		return ginx.Result{
+			Msg: "不支持VNC协议",
+		}, fmt.Errorf("暂不支持 VNC 协议")
+	}
+
 	// 获取指定资产关联网关数据
 	hostResource, gatewayRs, err := h.queryResource(ctx, req.ResourceId)
 	if err != nil {
@@ -116,15 +129,22 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 		return ginx.Result{Msg: "连接服务器失败"}, err
 	}
 
-	// 每次连接都重新替换Session
-	h.session.SetSession(req.ResourceId, term.NewSessions(client))
+	// 如果传递类型是 Sftp 才进行保存
+	if req.Type == "Web Sftp" {
+		// 每次连接都重新替换Session
+		h.session.SetSession(req.ResourceId, term.NewSessions(client))
 
-	// 替换 sftp finder
-	sftpClient, err := sftp.NewClient(client)
-	if err != nil {
-		return ginx.Result{}, err
+		// sftp client
+		var sftpClient *sftp.Client
+		sftpClient, err = sftp.NewClient(client)
+		if err != nil {
+			return ginx.Result{}, err
+		}
+
+		// 添加 sftp 信息
+		h.finderWeb.SetFinder(req.ResourceId, finder.NewSftpFinder(sftpClient))
 	}
-	h.finderWeb.SetFinder(req.ResourceId, finder.NewSftpFinder(sftpClient))
+
 	return ginx.Result{
 		Msg: "SSH 连接成功",
 	}, nil
@@ -234,7 +254,7 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 		}, err
 	}
 
-	cfg := guacx2.NewConfig()
+	cfg := guacx.NewConfig()
 	cfg.SetParameter("width", ctx.Query("width"))
 	cfg.SetParameter("height", ctx.Query("height"))
 	cfg.SetParameter("dpi", ctx.Query("dpi"))
@@ -246,7 +266,7 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 	cfg.SetParameter("scheme", "rdp")
 	cfg.Protocol = "rdp"
 
-	tunnel, err := guacx2.NewTunnel("", cfg)
+	tunnel, err := guacx.NewTunnel("", cfg)
 	if err != nil {
 
 	}
@@ -257,7 +277,7 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 		}, err
 	}
 
-	guacHandler := guacx2.NewGuacamoleHandler(ws, tunnel)
+	guacHandler := guacx.NewGuacamoleHandler(ws, tunnel)
 	guacHandler.Start()
 	defer guacHandler.Stop()
 

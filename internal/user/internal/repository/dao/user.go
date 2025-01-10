@@ -30,6 +30,7 @@ type UserDAO interface {
 	PipelineDepartmentId(ctx context.Context) ([]UserPipeline, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]User, error)
 	FindByWechatUser(ctx context.Context, wechatUserId string) (User, error)
+	FindByFeishuUserId(ctx context.Context, feishuUserId string) (User, error)
 }
 
 func NewUserDao(db *mongox.Mongo) UserDAO {
@@ -40,6 +41,20 @@ func NewUserDao(db *mongox.Mongo) UserDAO {
 
 type userDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *userDao) FindByFeishuUserId(ctx context.Context, feishuUserId string) (User, error) {
+	col := dao.db.Collection(UserCollection)
+	filter := bson.M{"feishu_info": bson.M{
+		"user_id": feishuUserId,
+	}}
+
+	u := User{}
+	if err := col.FindOne(ctx, filter).Decode(&u); err != nil {
+		return User{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return u, nil
 }
 
 func (dao *userDao) FindByIds(ctx context.Context, ids []int64) ([]User, error) {

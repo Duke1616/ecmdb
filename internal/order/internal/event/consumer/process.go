@@ -66,8 +66,6 @@ func (c *ProcessEventConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("启动流程引擎: %w", err)
 	}
 
-	// 消息通知，可以查看流程进度，支持撤销工单
-
 	return nil
 	// 需要特别注意：如果流程是从开始直接流向自动化节点，引擎会执行到相应自动化节点Event事件，但是Order表没有记录数据，是无法正常运行
 	// 我确实没有想到更好的办法解决，暂时的方案是，引擎事件仅创建 Tasks 任务记录数据库，启动任务由定时任务扫表执行完成

@@ -7,6 +7,7 @@ import (
 const (
 	FeishuUserMethod       = "feishu_user"
 	FeishuAutomationMethod = "feishu_automation"
+	FeishuStartMethod      = "feishu_start"
 )
 
 type NotifyIntegration struct {
@@ -36,5 +37,6 @@ func BuildReceiverIntegrations(larkC *lark.Client) ([]NotifyIntegration, error) 
 
 	add(FeishuUserMethod, func() (NotifierIntegration, error) { return NewFeishuUserNotify(larkC) })
 	add(FeishuAutomationMethod, func() (NotifierIntegration, error) { return NewFeishuAutomationNotify(larkC) })
+	add(FeishuStartMethod, func() (NotifierIntegration, error) { return NewFeishuStartNotify(larkC) })
 	return integrations, nil
 }

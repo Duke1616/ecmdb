@@ -173,7 +173,35 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		}
 
 		return nil
+	case "revoke":
+		wantResult = fmt.Sprintf("你已撤销该申请, 批注：%s", evt.Comment)
+		var orderId int64
+		orderId, err = strconv.ParseInt(evt.OrderId, 10, 64)
+		if err != nil {
+			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
+			return err
+		}
+		
+		// 获取工单详情
+		var orderResp domain.Order
+		orderResp, err = c.Svc.Detail(ctx, orderId)
+		if err != nil {
+			return err
+		}
 
+		// 查找用户详情
+		var userResp user.User
+		userResp, err = c.userSvc.FindByFeishuUserId(ctx, evt.FeishuUserId)
+		if err != nil {
+			return err
+		}
+
+		// 撤销流程
+		err = c.engineSvc.Revoke(ctx, orderResp.Process.InstanceId, userResp.Username, true)
+		if err != nil {
+			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
+			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
+		}
 	default:
 		return nil
 	}

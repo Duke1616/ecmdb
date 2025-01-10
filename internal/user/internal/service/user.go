@@ -29,11 +29,16 @@ type Service interface {
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
 	FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error)
+	FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error)
 }
 
 type service struct {
 	repo   repository.UserRepository
 	logger *elog.Component
+}
+
+func (s *service) FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error) {
+	return s.repo.FindByFeishuUserId(ctx, feishuUserId)
 }
 
 func (s *service) FindByIds(ctx context.Context, ids []int64) ([]domain.User, error) {

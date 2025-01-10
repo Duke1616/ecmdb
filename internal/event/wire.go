@@ -69,8 +69,14 @@ func InitNotification(engineSvc engine.Service, templateSvc template.Service, or
 		panic(err)
 	}
 
+	startNotify, err := node.NewStartNotification(userSvc, templateSvc, integration)
+	if err != nil {
+		panic(err)
+	}
+
 	ns["user"] = userNotify
 	ns["automation"] = automationNotify
+	ns["start"] = startNotify
 	return ns
 }
 

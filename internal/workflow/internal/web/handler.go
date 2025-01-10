@@ -2,9 +2,12 @@ package web
 
 import (
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/engine"
+
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
+
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
@@ -106,19 +109,13 @@ func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Resu
 		return ginx.Result{}, err
 	}
 
-	tasks, _, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstanceId, 0, 100)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	edgeIds, err := h.svc.FindPassEdgeIds(ctx, flow, tasks)
-	if err != nil {
-		return systemErrorResult, err
-	}
+	//tasks, _, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstanceId, 0, 100)
+	//if err != nil {
+	//	return systemErrorResult, err
+	//}
 
 	return ginx.Result{
 		Data: RetrieveOrderGraph{
-			EdgeIds:  edgeIds,
 			Workflow: h.toWorkflowVo(flow),
 		},
 	}, nil

@@ -58,14 +58,40 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
+	// 获取流程变量中记录的工单ID
 	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, ProcessInstanceID)
 	if err != nil {
 		return err
 	}
 
+	// 转换为 int64
 	id, err := strconv.ParseInt(orderId, 10, 64)
 	if err != nil {
 		return err
+	}
+
+	// 获取工单详情信息
+	nOrder, err := e.orderSvc.Detail(ctx, id)
+	if err != nil {
+		e.logger.Error("查询工单详情错误",
+			elog.FieldErr(err),
+			elog.Any("instId", ProcessInstanceID),
+			elog.Any("userIds", CurrentNode.UserIDs),
+		)
+		return nil
+	}
+
+	notify, ok := e.action["start"]
+	if !ok {
+		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
+			elog.String("不存在Notify", "user"))
+		return nil
+	}
+
+	ok, err = notify.Send(ctx, nOrder, workflow.Workflow{}, ProcessInstanceID, CurrentNode.NodeID)
+	if err != nil || !ok {
+		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		return nil
 	}
 
 	return e.orderSvc.RegisterProcessInstanceId(ctx, id, ProcessInstanceID)

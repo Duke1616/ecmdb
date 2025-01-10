@@ -24,10 +24,16 @@ type UserRepository interface {
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
 	FindByWechatUser(ctx context.Context, userId string) (domain.User, error)
+	FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error)
 }
 
 type userRepo struct {
 	dao dao.UserDAO
+}
+
+func (repo *userRepo) FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error) {
+	user, err := repo.dao.FindByFeishuUserId(ctx, feishuUserId)
+	return repo.toDomain(user), err
 }
 
 func (repo *userRepo) FindByIds(ctx context.Context, ids []int64) ([]domain.User, error) {

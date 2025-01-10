@@ -62,6 +62,7 @@ type RetrieveWorkflows struct {
 
 type OrderGraphReq struct {
 	Id                int64 `json:"id"`
+	Status            uint8 `json:"status"`
 	ProcessInstanceId int   `json:"process_instance_id"`
 }
 

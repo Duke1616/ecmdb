@@ -14,13 +14,6 @@ import (
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
-const (
-	// FeishuTemplateApprovalName 正常审批通知
-	FeishuTemplateApprovalName = "feishu-card-callback"
-	// FeishuTemplateCC 抄送通知
-	FeishuTemplateCC = "feishu-card-cc"
-)
-
 type FeishuUserNotify struct {
 	Nc       notify.Notifier[*larkim.CreateMessageReq]
 	tmpl     *template.Template

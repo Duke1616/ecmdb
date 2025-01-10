@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.17
+	github.com/Duke1616/enotify v0.1.18
 	github.com/Duke1616/vuefinder-go v1.0.3
 	github.com/IBM/sarama v1.43.3
 	github.com/RediSearch/redisearch-go/v2 v2.1.1

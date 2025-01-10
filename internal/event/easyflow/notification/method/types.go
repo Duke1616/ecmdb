@@ -8,6 +8,15 @@ import (
 	"github.com/Duke1616/enotify/notify"
 )
 
+const (
+	// FeishuTemplateApprovalName 正常审批通知
+	FeishuTemplateApprovalName = "feishu-card-callback"
+	// FeishuTemplateApprovalRevokeName 带有撤销的审批通知
+	FeishuTemplateApprovalRevokeName = "feishu-card-revoke"
+	// FeishuTemplateCC 抄送通知
+	FeishuTemplateCC = "feishu-card-cc"
+)
+
 type NotifyParams struct {
 	Rules      []rule.Rule
 	Order      order.Order

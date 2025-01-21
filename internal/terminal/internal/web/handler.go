@@ -11,7 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/term"
 	"github.com/Duke1616/ecmdb/pkg/term/guacx"
-	sshx2 "github.com/Duke1616/ecmdb/pkg/term/sshx"
+	"github.com/Duke1616/ecmdb/pkg/term/sshx"
 	"github.com/Duke1616/vuefinder-go/pkg/finder"
 	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
 	"github.com/gin-gonic/gin"
@@ -88,35 +88,35 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	}
 
 	// 组合所有网关
-	var multiGateways = make([]*sshx2.GatewayConfig, 0)
+	var multiGateways = make([]*sshx.GatewayConfig, 0)
 	for _, item := range gatewayRs {
-		gateway := &sshx2.GatewayConfig{
-			Username:   sshx2.GetStringField(item.Data, "username", ""),
-			Host:       sshx2.GetStringField(item.Data, "host", ""),
-			PrivateKey: sshx2.GetStringField(item.Data, "private_key", ""),
-			Port:       sshx2.GetIntField(item.Data, "port", 22),
-			Password:   sshx2.GetStringField(item.Data, "password", "default_password"),
-			AuthType:   sshx2.GetStringField(item.Data, "auth_type", "passwd"),
-			Passphrase: sshx2.GetStringField(item.Data, "password", "default_password"),
-			Sort:       sshx2.GetIntField(item.Data, "sort", 0),
+		gateway := &sshx.GatewayConfig{
+			Username:   sshx.GetStringField(item.Data, "username", ""),
+			Host:       sshx.GetStringField(item.Data, "host", ""),
+			PrivateKey: sshx.GetStringField(item.Data, "private_key", ""),
+			Port:       sshx.GetIntField(item.Data, "port", 22),
+			Password:   sshx.GetStringField(item.Data, "password", "default_password"),
+			AuthType:   sshx.GetStringField(item.Data, "auth_type", "passwd"),
+			Passphrase: sshx.GetStringField(item.Data, "password", "default_password"),
+			Sort:       sshx.GetIntField(item.Data, "sort", 0),
 		}
 		multiGateways = append(multiGateways, gateway)
 	}
 
 	// 组合真实的目标节点
-	multiGateways = append(multiGateways, &sshx2.GatewayConfig{
-		AuthType:   sshx2.GetStringField(hostResource.Data, "auth_type", ""),
-		Host:       sshx2.GetStringField(hostResource.Data, "ip", ""),
-		Port:       sshx2.GetIntField(hostResource.Data, "port", 22),
-		Username:   sshx2.GetStringField(hostResource.Data, "username", ""),
-		Password:   sshx2.GetStringField(hostResource.Data, "password", ""),
-		PrivateKey: sshx2.GetStringField(hostResource.Data, "private_key", ""),
-		Passphrase: sshx2.GetStringField(hostResource.Data, "password", "passwd"),
+	multiGateways = append(multiGateways, &sshx.GatewayConfig{
+		AuthType:   sshx.GetStringField(hostResource.Data, "auth_type", ""),
+		Host:       sshx.GetStringField(hostResource.Data, "ip", ""),
+		Port:       sshx.GetIntField(hostResource.Data, "port", 22),
+		Username:   sshx.GetStringField(hostResource.Data, "username", ""),
+		Password:   sshx.GetStringField(hostResource.Data, "password", ""),
+		PrivateKey: sshx.GetStringField(hostResource.Data, "private_key", ""),
+		Passphrase: sshx.GetStringField(hostResource.Data, "password", "passwd"),
 		Sort:       len(multiGateways) + 1,
 	})
 
 	// 连接网关和目标节点
-	manager := sshx2.NewMultiGatewayManager(multiGateways)
+	manager := sshx.NewMultiGatewayManager(multiGateways)
 	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
@@ -177,7 +177,7 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 	var (
 		err     error
 		conn    *websocket.Conn
-		sshConn *sshx2.SSHConnect
+		sshConn *sshx.SSHConnect
 	)
 
 	// 升级 WebSocket 连接
@@ -195,7 +195,7 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 	}
 
 	// 创建Session
-	if sshConn, err = sshx2.NewSSHConnect(sess.SshClient, conn, rowsInt, colsInt); err != nil {
+	if sshConn, err = sshx.NewSSHConnect(sess.SshClient, conn, rowsInt, colsInt); err != nil {
 		return err
 	}
 
@@ -219,7 +219,7 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 				return err
 			}
 
-			msg, er := sshx2.ParseTerminalMessage(message)
+			msg, er := sshx.ParseTerminalMessage(message)
 			if er != nil {
 				continue
 			}

@@ -67,7 +67,7 @@ func newSshConfig(username string, authMethod ssh.AuthMethod) *ssh.ClientConfig 
 		User:            username,
 		Auth:            []ssh.AuthMethod{authMethod},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         60 * time.Second,
+		Timeout:         20 * time.Second,
 	}
 }
 

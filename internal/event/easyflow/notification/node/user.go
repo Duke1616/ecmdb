@@ -320,6 +320,8 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 	currentNode *model.Node) error {
 	switch userProperty.Rule {
 	case easyflow.LEADER:
+		defaultUserIds := currentNode.UserIDs
+		currentNode.UserIDs = []string{}
 		depart, err := n.resolveDepartment(ctx, instanceId, startUser)
 		if err != nil {
 			return err
@@ -330,10 +332,18 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 			return err
 		}
 
+		if len(users) == 0 {
+			currentNode.UserIDs = append(currentNode.UserIDs, defaultUserIds...)
+			return nil
+		}
+
 		for _, u := range users {
 			currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
 		}
 	case easyflow.MAIN_LEADER:
+		defaultUserIds := currentNode.UserIDs
+		currentNode.UserIDs = []string{}
+
 		depart, err := n.resolveDepartment(ctx, instanceId, startUser)
 		if err != nil {
 			return err
@@ -342,6 +352,11 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 		u, err := n.userSvc.FindById(ctx, depart.MainLeader)
 		if err != nil {
 			return err
+		}
+
+		if u.Id == 0 {
+			currentNode.UserIDs = append(currentNode.UserIDs, defaultUserIds...)
+			return nil
 		}
 
 		currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
@@ -377,7 +392,6 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 		}
 
 		return fmt.Errorf("未匹配任何模版成功")
-
 	case easyflow.FOUNDER:
 		currentNode.UserIDs = append(currentNode.UserIDs, startUser.Username)
 	case easyflow.APPOINT:

@@ -8,6 +8,7 @@ package event
 
 import (
 	engine2 "github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
@@ -28,7 +29,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, lark2 *lark.Client) (*Module, error) {
+func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, departmentModule *department.Module, lark2 *lark.Client) (*Module, error) {
 	service := engineModule.Svc
 	orderStatusModifyEventProducer, err := producer.NewOrderStatusModifyEventProducer(q)
 	if err != nil {
@@ -39,8 +40,9 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 	service3 := workflowModule.Svc
 	service4 := templateModule.Svc
 	service5 := userModule.Svc
+	service6 := departmentModule.Svc
 	v := InitNotifyIntegration(lark2)
-	v2 := InitNotification(service, service4, service2, service5, serviceService, v)
+	v2 := InitNotification(service, service4, service2, service5, serviceService, service6, v)
 	processEvent := InitWorkflowEngineOnce(db, service, orderStatusModifyEventProducer, serviceService, service2, service3, v2)
 	module := &Module{
 		Event: processEvent,
@@ -63,10 +65,12 @@ func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
 }
 
 func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.SendAction {
+	userSvc user.Service, taskSvc task.Service, departMentSvc department.Service,
+	integration []method.NotifyIntegration) map[string]notification.SendAction {
 
 	ns := make(map[string]notification.SendAction)
-	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
+	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc,
+		departMentSvc, integration)
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +94,6 @@ func InitNotification(engineSvc engine.Service, templateSvc template.Service, or
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 producer.OrderStatusModifyEventProducer,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
 	ns map[string]notification.SendAction) *easyflow.ProcessEvent {
-
 	event, err := easyflow.NewProcessEvent(producer2, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
 	if err != nil {
 		panic(err)

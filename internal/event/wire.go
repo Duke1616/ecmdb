@@ -4,6 +4,7 @@ package event
 
 import (
 	easyEngine "github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
@@ -26,13 +27,14 @@ import (
 
 func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module,
 	templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module,
-	lark *lark.Client) (*Module, error) {
+	departmentModule *department.Module, lark *lark.Client) (*Module, error) {
 	wire.Build(
 		producer.NewOrderStatusModifyEventProducer,
 		InitNotifyIntegration,
 		InitNotification,
 		InitWorkflowEngineOnce,
 		wire.FieldsOf(new(*engine.Module), "Svc"),
+		wire.FieldsOf(new(*department.Module), "Svc"),
 		wire.FieldsOf(new(*task.Module), "Svc"),
 		wire.FieldsOf(new(*template.Module), "Svc"),
 		wire.FieldsOf(new(*order.Module), "Svc"),
@@ -56,10 +58,12 @@ func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
 }
 
 func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, integration []method.NotifyIntegration) map[string]notification.SendAction {
+	userSvc user.Service, taskSvc task.Service, departMentSvc department.Service,
+	integration []method.NotifyIntegration) map[string]notification.SendAction {
 
 	ns := make(map[string]notification.SendAction)
-	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc, integration)
+	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc,
+		departMentSvc, integration)
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +87,6 @@ func InitNotification(engineSvc engine.Service, templateSvc template.Service, or
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
 	ns map[string]notification.SendAction) *easyflow.ProcessEvent {
-	// 注册event
 	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
 	if err != nil {
 		panic(err)

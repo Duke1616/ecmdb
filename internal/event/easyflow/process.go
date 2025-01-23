@@ -2,7 +2,6 @@ package easyflow
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -11,7 +10,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/workflow"
-	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/gotomicro/ego/core/elog"
 	"strconv"
 	"time"
@@ -88,7 +86,7 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 		return nil
 	}
 
-	ok, err = notify.Send(ctx, nOrder, workflow.Workflow{}, ProcessInstanceID, CurrentNode.NodeID)
+	ok, err = notify.Send(ctx, nOrder, workflow.Workflow{}, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil
@@ -163,20 +161,6 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 	return nil
 }
 
-func Unmarshal(wf workflow.Workflow) ([]easyflow.Node, error) {
-	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
-	if err != nil {
-		return nil, err
-	}
-	var nodes []easyflow.Node
-	err = json.Unmarshal(nodesJSON, &nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	return nodes, nil
-}
-
 // EventNotify 通知 中间有 Error 通过日志记录，保证不影响主体程序运行
 func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
@@ -225,7 +209,8 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		return nil
 	}
 
-	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode.NodeID)
+	// 消息通知
+	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil

@@ -8,19 +8,23 @@ type ProcessEngineConvert interface {
 	GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error)
 }
 
-type UserPropertyType string
+type Rule string
 
-func (s UserPropertyType) ToString() string {
+func (s Rule) ToString() string {
 	return string(s)
 }
 
 const (
 	// APPOINT 指定内部人员
-	APPOINT UserPropertyType = "appoint"
+	APPOINT Rule = "appoint"
 	// FOUNDER 工单创建人
-	FOUNDER UserPropertyType = "founder"
+	FOUNDER Rule = "founder"
 	// TEMPLATE 根据模版字段提取用户
-	TEMPLATE UserPropertyType = "template"
+	TEMPLATE Rule = "template"
+	// LEADER 部门领导
+	LEADER Rule = "leaders"
+	// MAIN_LEADER 分管领导
+	MAIN_LEADER Rule = "main_leader"
 )
 
 type Workflow struct {
@@ -64,7 +68,7 @@ type EdgeProperty struct {
 type UserProperty struct {
 	Name          string   `json:"name"`
 	Approved      []string `json:"approved"`
-	Type          string   `json:"type"`
+	Rule          Rule     `json:"rule"`
 	TemplateField string   `json:"template_field"`
 	IsCosigned    bool     `json:"is_cosigned"`
 	IsCC          bool     `json:"is_cc"`

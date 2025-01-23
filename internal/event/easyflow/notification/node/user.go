@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/Duke1616/ecmdb/internal/department"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -23,12 +24,13 @@ import (
 )
 
 type UserNotification struct {
-	integrations []method.NotifyIntegration
-	engineSvc    engineSvc.Service
-	taskSvc      task.Service
-	userSvc      user.Service
-	templateSvc  templateSvc.Service
-	orderSvc     order.Service
+	integrations  []method.NotifyIntegration
+	engineSvc     engineSvc.Service
+	taskSvc       task.Service
+	userSvc       user.Service
+	departMentSvc department.Service
+	templateSvc   templateSvc.Service
+	orderSvc      order.Service
 
 	initialInterval time.Duration
 	maxInterval     time.Duration
@@ -37,13 +39,15 @@ type UserNotification struct {
 }
 
 func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, integrations []method.NotifyIntegration) (*UserNotification, error) {
+	userSvc user.Service, taskSvc task.Service, departMentSvc department.Service,
+	integrations []method.NotifyIntegration) (*UserNotification, error) {
 
 	return &UserNotification{
 		engineSvc:       engineSvc,
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
 		userSvc:         userSvc,
+		departMentSvc:   departMentSvc,
 		taskSvc:         taskSvc,
 		logger:          elog.DefaultLogger,
 		integrations:    integrations,
@@ -79,7 +83,7 @@ func (n *UserNotification) Unmarshal(wf workflow.Workflow) ([]easyflow.Node, err
 }
 
 func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
-	instanceId int, nodeId string) (bool, error) {
+	instanceId int, currentNode *model.Node) (bool, error) {
 	// 判断是否开启
 	if ok := n.isNotify(wf, instanceId); !ok {
 		return false, nil
@@ -92,7 +96,7 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 	}
 
 	// 获取当前节点信息
-	property, err := n.getProperty(nodes, nodeId)
+	property, err := n.getUserProperty(nodes, currentNode.NodeID)
 	if err != nil {
 		return false, err
 	}
@@ -119,6 +123,14 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 		return false, err
 	}
 
+	// 根据规则生成审批用户
+	err = n.resolveRule(ctx, instanceId, property, startUser, nOrder, currentNode)
+	if err != nil {
+		n.logger.Error("根据模版信息解析规则失败", elog.FieldErr(err),
+			elog.Int("instanceId", instanceId), elog.String("rule", property.Rule.ToString()))
+		return false, err
+	}
+
 	// 只有当 Event 结束才能正确获取到 TaskId 信息，放到 Go Routine 异步运行, 通过重试机制获取到数据
 	go func() {
 		strategy, er := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
@@ -138,7 +150,7 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 			}
 
 			// 获取当前任务流转到的用户
-			tasks, err = n.engineSvc.GetTasksByCurrentNodeId(context.Background(), instanceId, nodeId)
+			tasks, err = n.engineSvc.GetTasksByCurrentNodeId(context.Background(), instanceId, currentNode.NodeID)
 			if err != nil || len(tasks) == 0 {
 				time.Sleep(d)
 				continue
@@ -250,7 +262,7 @@ func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]r
 	return rules, nil
 }
 
-func (n *UserNotification) getProperty(nodes []easyflow.Node, currentNodeId string) (easyflow.UserProperty, error) {
+func (n *UserNotification) getUserProperty(nodes []easyflow.Node, currentNodeId string) (easyflow.UserProperty, error) {
 	for _, node := range nodes {
 		if node.ID == currentNodeId {
 			return easyflow.ToNodeProperty[easyflow.UserProperty](node)
@@ -301,4 +313,81 @@ func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, no
 	}
 
 	return mergedResult, nil
+}
+
+func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, userProperty easyflow.UserProperty,
+	startUser user.User, nOrder order.Order,
+	currentNode *model.Node) error {
+	switch userProperty.Rule {
+	case easyflow.LEADER:
+		depart, err := n.resolveDepartment(ctx, instanceId, startUser)
+		if err != nil {
+			return err
+		}
+
+		users, err := n.userSvc.FindByIds(ctx, depart.Leaders)
+		if err != nil {
+			return err
+		}
+
+		for _, u := range users {
+			currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+		}
+	case easyflow.MAIN_LEADER:
+		depart, err := n.resolveDepartment(ctx, instanceId, startUser)
+		if err != nil {
+			return err
+		}
+
+		u, err := n.userSvc.FindById(ctx, depart.MainLeader)
+		if err != nil {
+			return err
+		}
+
+		currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+	case easyflow.TEMPLATE:
+		_, ok := nOrder.Data[userProperty.TemplateField]
+		if !ok {
+			return nil
+		}
+		//
+		//varStr, err := value.(string)
+		//
+		//u, err := n.userSvc.FindById(ctx, value.(string))
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+
+	case easyflow.FOUNDER:
+		variables, err := engine.ResolveVariables(instanceId, []string{"$starter"})
+		if err != nil {
+			return nil
+		}
+
+		currentNode.UserIDs = append(currentNode.UserIDs, variables["$starter"])
+	case easyflow.APPOINT:
+		if currentNode.UserIDs == nil || len(currentNode.UserIDs) == 0 {
+			// TODO 后续处理、如果触发这条线路，应该做错误消息提醒
+			n.logger.Error("没有指定的审批人，系统将自动插入流程管理员用户，防止流程中断报错")
+		}
+	}
+
+	return nil
+}
+
+func (n *UserNotification) resolveDepartment(ctx context.Context, instanceId int, user user.User) (
+	department.Department, error) {
+	// 判断如果所属组不为空
+	if user.DepartmentId == 0 {
+		return department.Department{}, fmt.Errorf("用户所属组为空")
+	}
+
+	depart, err := n.departMentSvc.FindById(ctx, user.DepartmentId)
+	if err != nil {
+		return department.Department{}, err
+	}
+
+	return depart, nil
 }

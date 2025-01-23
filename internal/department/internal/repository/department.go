@@ -10,6 +10,7 @@ import (
 type DepartmentRepository interface {
 	CreateDepartment(ctx context.Context, req domain.Department) (int64, error)
 	UpdateDepartment(ctx context.Context, req domain.Department) (int64, error)
+	FindById(ctx context.Context, id int64) (domain.Department, error)
 	DeleteDepartment(ctx context.Context, id int64) (int64, error)
 	ListDepartment(ctx context.Context) ([]domain.Department, error)
 	ListDepartmentByIds(ctx context.Context, ids []int64) ([]domain.Department, error)
@@ -23,6 +24,11 @@ func NewDepartmentRepository(dao dao.DepartmentDAO) DepartmentRepository {
 
 type departmentRepository struct {
 	dao dao.DepartmentDAO
+}
+
+func (repo *departmentRepository) FindById(ctx context.Context, id int64) (domain.Department, error) {
+	department, err := repo.dao.FindByid(ctx, id)
+	return repo.toDomain(department), err
 }
 
 func (repo *departmentRepository) ListDepartmentByIds(ctx context.Context, ids []int64) ([]domain.Department, error) {

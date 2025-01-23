@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -32,8 +33,8 @@ func NewAutomationNotification(taskSvc task.Service, userSvc user.Service, integ
 }
 
 func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
-	instanceId int, nodeId string) (bool, error) {
-	wantResult, err := n.wantResult(ctx, wf, instanceId, nodeId)
+	instanceId int, currentNode *model.Node) (bool, error) {
+	wantResult, err := n.wantResult(ctx, wf, instanceId, currentNode.NodeID)
 	if err != nil {
 		n.logger.Warn("执行错误或未开启消息通知",
 			elog.FieldErr(err),

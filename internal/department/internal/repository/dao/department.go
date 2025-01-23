@@ -18,6 +18,7 @@ type DepartmentDAO interface {
 	UpdateDepartment(ctx context.Context, req Department) (int64, error)
 	DeleteDepartment(ctx context.Context, id int64) (int64, error)
 	ListDepartment(ctx context.Context) ([]Department, error)
+	FindByid(ctx context.Context, id int64) (Department, error)
 	ListDepartmentByIds(ctx context.Context, ids []int64) ([]Department, error)
 }
 
@@ -29,6 +30,18 @@ func NewDepartmentDAO(db *mongox.Mongo) DepartmentDAO {
 
 type departmentDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *departmentDAO) FindByid(ctx context.Context, id int64) (Department, error) {
+	col := dao.db.Collection(DepartmentCollection)
+	var department Department
+	filter := bson.M{"id": id}
+
+	if err := col.FindOne(ctx, filter).Decode(&department); err != nil {
+		return Department{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return department, nil
 }
 
 func (dao *departmentDAO) ListDepartmentByIds(ctx context.Context, ids []int64) ([]Department, error) {

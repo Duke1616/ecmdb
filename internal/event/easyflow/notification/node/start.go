@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -31,7 +32,7 @@ func NewStartNotification(userSvc user.Service, templateSvc template.Service, in
 }
 
 func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
-	instanceId int, nodeId string) (bool, error) {
+	instanceId int, currentNode *model.Node) (bool, error) {
 	// 解析配置
 	rules, err := s.getRules(ctx, nOrder)
 	if err != nil {
@@ -47,7 +48,7 @@ func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf wor
 	if err != nil {
 		return false, err
 	}
-	
+
 	var messages []notify.NotifierWrap
 	title := rule.GenerateTitle("你提交的", nOrder.TemplateName)
 	for _, integration := range s.integrations {

@@ -346,27 +346,40 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 
 		currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
 	case easyflow.TEMPLATE:
-		_, ok := nOrder.Data[userProperty.TemplateField]
+		value, ok := nOrder.Data[userProperty.TemplateField]
 		if !ok {
+			return fmt.Errorf("根据模版字段查询失败，不存在")
+		}
+		// 处理字符串情况
+		if str, isString := value.(string); isString {
+			u, err := n.userSvc.FindByUsername(ctx, str)
+			if err != nil {
+				return err // 处理错误
+			}
+			currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+
 			return nil
 		}
-		//
-		//varStr, err := value.(string)
-		//
-		//u, err := n.userSvc.FindById(ctx, value.(string))
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+
+		// 处理数据情况
+		if arr, isArray := value.([]interface{}); isArray {
+			for _, item := range arr {
+				if str, isString := item.(string); isString {
+					u, err := n.userSvc.FindByUsername(ctx, str)
+					if err != nil {
+						return err // 处理错误
+					}
+					currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+				}
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("未匹配任何模版成功")
 
 	case easyflow.FOUNDER:
-		variables, err := engine.ResolveVariables(instanceId, []string{"$starter"})
-		if err != nil {
-			return nil
-		}
-
-		currentNode.UserIDs = append(currentNode.UserIDs, variables["$starter"])
+		currentNode.UserIDs = append(currentNode.UserIDs, startUser.Username)
 	case easyflow.APPOINT:
 		if currentNode.UserIDs == nil || len(currentNode.UserIDs) == 0 {
 			// TODO 后续处理、如果触发这条线路，应该做错误消息提醒

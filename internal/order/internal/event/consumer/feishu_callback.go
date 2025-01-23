@@ -181,7 +181,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
 			return err
 		}
-		
+
 		// 获取工单详情
 		var orderResp domain.Order
 		orderResp, err = c.Svc.Detail(ctx, orderId)
@@ -201,6 +201,11 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		if err != nil {
 			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
+		}
+
+		err = c.Svc.UpdateStatusByInstanceId(ctx, orderResp.Process.InstanceId, domain.WITHDRAW.ToUint8())
+		if err != nil {
+			c.logger.Error("撤销变更流程状态失败", elog.FieldErr(err))
 		}
 	default:
 		return nil

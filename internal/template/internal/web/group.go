@@ -22,6 +22,7 @@ func (h *GroupHandler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/template/group")
 	g.POST("/create", ginx.WrapBody[CreateTemplateGroupReq](h.CreateTemplateGroup))
 	g.POST("/list", ginx.WrapBody[Page](h.ListTemplateGroup))
+	g.POST("/by_ids", ginx.WrapBody[FindTemplateGroupsByIdsReq](h.FindByIds))
 }
 
 func (h *GroupHandler) CreateTemplateGroup(ctx *gin.Context, req CreateTemplateGroupReq) (ginx.Result, error) {
@@ -35,6 +36,22 @@ func (h *GroupHandler) CreateTemplateGroup(ctx *gin.Context, req CreateTemplateG
 	}, nil
 }
 
+func (h *GroupHandler) FindByIds(ctx *gin.Context, req FindTemplateGroupsByIdsReq) (ginx.Result, error) {
+	rts, err := h.svc.ListByIds(ctx, req.Ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "根据 IDS 查询工单模版组成功",
+		Data: RetrieveTemplateGroup{
+			TemplateGroups: slice.Map(rts, func(idx int, src domain.TemplateGroup) TemplateGroup {
+				return h.toVo(src)
+			}),
+		},
+	}, nil
+}
+
 func (h *GroupHandler) ListTemplateGroup(ctx *gin.Context, req Page) (ginx.Result, error) {
 	rts, total, err := h.svc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
@@ -42,7 +59,7 @@ func (h *GroupHandler) ListTemplateGroup(ctx *gin.Context, req Page) (ginx.Resul
 	}
 
 	return ginx.Result{
-		Msg: "查询工单模版列表成功",
+		Msg: "查询工单模版组列表成功",
 		Data: RetrieveTemplateGroup{
 			Total: total,
 			TemplateGroups: slice.Map(rts, func(idx int, src domain.TemplateGroup) TemplateGroup {

@@ -103,3 +103,7 @@ type TemplateCombination struct {
 type RetrieveTemplateCombination struct {
 	TemplateCombinations []TemplateCombination `json:"template_combinations"`
 }
+
+type FindTemplateGroupsByIdsReq struct {
+	Ids []int64 `json:"ids"`
+}

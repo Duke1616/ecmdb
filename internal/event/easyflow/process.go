@@ -83,13 +83,11 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	if !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
 			elog.String("不存在Notify", "user"))
-		return nil
 	}
 
 	ok, err = notify.Send(ctx, nOrder, workflow.Workflow{}, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
-		return nil
 	}
 
 	return e.orderSvc.RegisterProcessInstanceId(ctx, id, ProcessInstanceID)

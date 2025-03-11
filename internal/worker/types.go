@@ -12,6 +12,8 @@ type Service = service.Service
 
 type Execute = domain.Execute
 
+type Worker = domain.Worker
+
 const (
 	RUNNING  = domain.RUNNING
 	STOPPING = domain.STOPPING

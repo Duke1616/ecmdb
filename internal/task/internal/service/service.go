@@ -305,32 +305,146 @@ func (s *service) retry(ctx context.Context, task domain.Task) error {
 }
 
 func (s *service) process(ctx context.Context, task domain.Task) error {
-	// 获取工单信息
+	// 1. 获取工单信息
 	orderResp, err := s.orderSvc.DetailByProcessInstId(ctx, task.ProcessInstId)
 	if err != nil {
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "获取工单失败",
-			Status:          domain.FAILED,
-			Result:          err.Error(),
-		})
-		return err
+		return s.handleTaskError(ctx, task.Id, "获取工单失败", domain.FAILED, err)
 	}
 
-	// TODO 后期引用[实时] OR [定时]执行逻辑  目前都是立即执行
+	// 2. 获取流程信息
 	flow, err := s.workflowSvc.Find(ctx, orderResp.WorkflowId)
 	if err != nil {
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "获取流程信息失败",
-			Status:          domain.FAILED,
-			Result:          err.Error(),
-		})
+		return s.handleTaskError(ctx, task.Id, "获取流程信息失败", domain.FAILED, err)
+	}
+
+	// 3. 获取自动化配置
+	automation, err := s.getAutomationProperties(ctx, flow, task)
+	if err != nil {
+		return s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)
+	}
+
+	// 4. 获取调度节点
+	runnerResp, err := s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
+	if err != nil {
+		return s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.PENDING, err)
+	}
+
+	// 5. 获取工作节点
+	workerResp, err := s.workerSvc.FindByName(ctx, runnerResp.WorkerName)
+	if err != nil {
+		return s.handleTaskError(ctx, task.Id, "获取工作节点失败", domain.FAILED, err)
+	}
+
+	// 6. 获取代码模板
+	codebookResp, err := s.codebookSvc.FindByUid(ctx, runnerResp.CodebookUid)
+	if err != nil {
+		return s.handleTaskError(ctx, task.Id, "获取任务模版失败", domain.FAILED, err)
+	}
+
+	// 7. 准备用户参数
+	args, err := s.prepareUserArgs(ctx, orderResp)
+	if err != nil {
 		return err
 	}
 
-	// 获取自动化提交信息
-	automation, err := s.workflowSvc.GetAutomationProperty(easyflow.Workflow{
+	// 8. 确定任务状态和定时配置
+	status, timing := s.determineTaskStatus(automation, orderResp.Data)
+
+	// 9. 构建任务更新数据
+	taskUpdate := s.prepareTaskUpdate(orderResp, task, flow, workerResp, codebookResp,
+		runnerResp, args, status, timing, automation)
+
+	// 10. 更新任务
+	_, err = s.repo.UpdateTask(ctx, taskUpdate)
+	if err != nil {
+		return err
+	}
+
+	// 11. 处理定时任务
+	if automation.IsTiming {
+		return nil
+	}
+
+	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
+	// TODO 暂时不考虑离线情况
+	//switch workerResp.Status {
+	//case worker.STOPPING:
+	//case worker.OFFLINE:
+	//	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+	//		Id:              task.Id,
+	//		TriggerPosition: "调度任务节点失败, 工作节点离线",
+	//		Status:          domain.FAILED,
+	//		Result:          "调度任务节点失败, 工作节点离线",
+	//	})
+	//	return err
+	//}
+
+	return s.executeWorkerTask(ctx, workerResp, codebookResp, runnerResp, task, args)
+}
+
+func (s *service) executeWorkerTask(ctx context.Context, workerResp worker.Worker, codebookResp codebook.Codebook,
+	runnerResp runner.Runner, task domain.Task, args map[string]interface{}) error {
+	return s.workerSvc.Execute(ctx, worker.Execute{
+		TaskId:    task.Id,
+		Topic:     workerResp.Topic,
+		Code:      codebookResp.Code,
+		Language:  codebookResp.Language,
+		Args:      args,
+		Variables: s.decryptVariables(runnerResp),
+	})
+}
+
+func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,
+	workerResp worker.Worker, codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
+	status domain.Status, timing domain.Timing, automation easyflow.AutomationProperty) domain.Task {
+
+	return domain.Task{
+		// 可选字段
+		Id:            task.Id,
+		ProcessInstId: task.ProcessInstId,
+		WorkerName:    workerResp.Name,
+		WorkflowId:    flow.Id,
+		CodebookUid:   codebookResp.Identifier,
+		CodebookName:  codebookResp.Name,
+
+		// 必填字段
+		OrderId:  orderResp.Id,
+		Code:     codebookResp.Code,
+		Topic:    workerResp.Topic,
+		Language: codebookResp.Language,
+		Status:   status,
+		Args:     args,
+		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
+			return domain.Variables{
+				Key:    src.Key,
+				Value:  src.Value,
+				Secret: src.Secret,
+			}
+		}),
+
+		// 定时任务
+		IsTiming: automation.IsTiming,
+		Timing:   timing,
+	}
+}
+
+func (s *service) prepareUserArgs(ctx context.Context, orderResp order.Order) (map[string]interface{}, error) {
+	args := orderResp.Data
+	userInfo, err := s.userSvc.FindByUsername(ctx, orderResp.CreateBy)
+	if err != nil {
+		s.logger.Error("获取用户信息失败", elog.FieldErr(err))
+		return args, nil
+	}
+
+	userInfo.Password = "[Mask]"
+	userInfoJSON, _ := json.Marshal(userInfo)
+	args["user_info"] = string(userInfoJSON)
+	return args, nil
+}
+
+func (s *service) getAutomationProperties(ctx context.Context, flow workflow.Workflow, task domain.Task) (
+	easyflow.AutomationProperty, error) {
+	return s.workflowSvc.GetAutomationProperty(easyflow.Workflow{
 		Id:    flow.Id,
 		Name:  flow.Name,
 		Owner: flow.Owner,
@@ -339,72 +453,43 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 			Nodes: flow.FlowData.Nodes,
 		},
 	}, task.CurrentNodeId)
+}
 
-	if err != nil {
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "提取自动化信息失败",
-			Status:          domain.FAILED,
-			Result:          err.Error(),
-		})
-		return err
+func (s *service) handleTaskError(ctx context.Context, taskID int64, triggerPosition string, status domain.Status, err error) error {
+	if updateErr := s.updateTaskStatus(ctx, taskID, triggerPosition, status, err.Error()); updateErr != nil {
+		s.logger.Error("更新任务状态失败", elog.FieldErr(updateErr))
 	}
+	return err
+}
 
-	// 查看调度工作节点
-	runnerResp, err := s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
-	if err != nil {
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "获取调度节点失败",
-			Status:          domain.PENDING,
-			Result:          err.Error(),
-		})
-		return err
-	}
+func (s *service) updateTaskStatus(ctx context.Context, taskID int64, triggerPosition string, status domain.Status, result string) error {
+	_, err := s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+		Id:              taskID,
+		TriggerPosition: triggerPosition,
+		Status:          status,
+		Result:          result,
+	})
+	return err
+}
 
-	// 查看工作节点Topic
-	workerResp, err := s.workerSvc.FindByName(ctx, runnerResp.WorkerName)
-	if err != nil {
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "获取工作节点失败",
-			Status:          domain.FAILED,
-			Result:          err.Error(),
-		})
-		return err
-	}
-
-	// 查询执行代码
-	codebookResp, err := s.codebookSvc.FindByUid(ctx, runnerResp.CodebookUid)
-	if err != nil {
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "获取任务模版失败",
-			Status:          domain.FAILED,
-			Result:          err.Error(),
-		})
-		return err
-	}
-
-	// 添加工单创建人
-	args := orderResp.Data
-	userInfo, err := s.userSvc.FindByUsername(ctx, orderResp.CreateBy)
-	if err != nil {
-		s.logger.Error("获取用户信息失败，可能系统中不存在", elog.FieldErr(err))
-	}
-	userInfo.Password = "[Mask]"
-	userInfoJSON, err := json.Marshal(userInfo)
-	args["user_info"] = string(userInfoJSON)
-
-	// 根据条件设置状态
+func (s *service) determineTaskStatus(automation easyflow.AutomationProperty, data map[string]interface{}) (domain.Status, domain.Timing) {
 	status := domain.RUNNING
 	timing := domain.Timing{Stime: time.Now().UnixMilli()}
+
 	if automation.IsTiming {
 		status = domain.TIMING
+		timing = s.calculateTiming(automation, data)
+	}
+	return status, timing
+}
+
+func (s *service) calculateTiming(automation easyflow.AutomationProperty, data map[string]interface{}) domain.Timing {
+	timing := domain.Timing{Stime: time.Now().UnixMilli()}
+	if automation.IsTiming {
 		switch automation.ExecMethod {
 		case "template":
 			timing.Unit = domain.HOUR
-			quantity, exist := orderResp.Data[automation.TemplateField]
+			quantity, exist := data[automation.TemplateField]
 			if !exist {
 				s.logger.Warn("字段不存在, 赋值默认值 2 H")
 				timing.Quantity = 2
@@ -442,63 +527,12 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		}
 	}
 
-	// 初始化任务更新数据
-	taskUpdate := domain.Task{
-		// 可选字段
-		Id:            task.Id,
-		ProcessInstId: task.ProcessInstId,
-		WorkerName:    workerResp.Name,
-		WorkflowId:    flow.Id,
-		CodebookUid:   codebookResp.Identifier,
-		CodebookName:  codebookResp.Name,
+	return timing
+}
 
-		// 必填字段
-		OrderId:  orderResp.Id,
-		Code:     codebookResp.Code,
-		Topic:    workerResp.Topic,
-		Language: codebookResp.Language,
-		Status:   status,
-		Args:     args,
-		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
-			return domain.Variables{
-				Key:    src.Key,
-				Value:  src.Value,
-				Secret: src.Secret,
-			}
-		}),
-
-		// 定时任务
-		IsTiming: automation.IsTiming,
-		Timing:   timing,
-	}
-
-	// 更新任务
-	_, err = s.repo.UpdateTask(ctx, taskUpdate)
-	if err != nil {
-		return err
-	}
-
-	// 如果是定时任务，直接返回
-	if automation.IsTiming {
-		s.logger.Info("定时执行， 退出当前步骤")
-		return nil
-	}
-
-	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
-	switch workerResp.Status {
-	case worker.STOPPING:
-	case worker.OFFLINE:
-		_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			TriggerPosition: "调度任务节点失败, 工作节点离线",
-			Status:          domain.FAILED,
-			Result:          "调度任务节点失败, 工作节点离线",
-		})
-		return err
-	}
-
-	// 变量数据梳理
-	variables := slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
+// decryptVariables 处理变量，进行解密
+func (s *service) decryptVariables(req runner.Runner) string {
+	variables := slice.Map(req.Variables, func(idx int, src runner.Variables) domain.Variables {
 		if src.Secret {
 			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
 			if er != nil {
@@ -519,14 +553,6 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		}
 	})
 
-	// 运行任务
-	vars, _ := json.Marshal(variables)
-	return s.workerSvc.Execute(ctx, worker.Execute{
-		TaskId:    task.Id,
-		Topic:     workerResp.Topic,
-		Code:      codebookResp.Code,
-		Language:  codebookResp.Language,
-		Args:      args,
-		Variables: string(vars),
-	})
+	jsonVar, _ := json.Marshal(variables)
+	return string(jsonVar)
 }

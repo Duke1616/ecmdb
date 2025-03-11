@@ -87,9 +87,15 @@ type ConditionProperty struct {
 }
 
 type AutomationProperty struct {
-	Name         string `json:"name"`
-	CodebookUid  string `json:"codebook_uid"`
-	Tag          string `json:"tag"`
-	IsNotify     bool   `json:"is_notify"`
-	NotifyMethod int64  `json:"notify_method"`
+	Name          string `json:"name"`
+	CodebookUid   string `json:"codebook_uid"`
+	Tag           string `json:"tag"`
+	IsNotify      bool   `json:"is_notify"`
+	Unit          uint8  `json:"unit"`
+	Quantity      int64  `json:"quantity"`
+	ExecMethod    string `json:"exec_method"`
+	TemplateId    int64  `json:"template_id"`
+	TemplateField string `json:"template_field"`
+	IsTiming      bool   `json:"is_timing"`
+	NotifyMethod  int64  `json:"notify_method"`
 }

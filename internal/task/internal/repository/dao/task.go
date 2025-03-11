@@ -199,7 +199,13 @@ func (dao *taskDAO) UpdateTask(ctx context.Context, t Task) (int64, error) {
 			"status":           t.Status,
 			"result":           t.Result,
 			"trigger_position": t.TriggerPosition,
-			"utime":            time.Now().UnixMilli(),
+			"is_timing":        t.IsTiming,
+			"timing": bson.M{
+				"stime":    t.Timing.Stime,
+				"unit":     t.Timing.Unit,
+				"quantity": t.Timing.Quantity,
+			},
+			"utime": time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": t.Id}
@@ -309,6 +315,14 @@ type Task struct {
 	CurrentNodeId   string                 `bson:"current_node_id"`
 	Ctime           int64                  `bson:"ctime"`
 	Utime           int64                  `bson:"utime"`
+	IsTiming        bool                   `bson:"is_timing"`
+	Timing          Timing                 `bson:"timing"`
+}
+
+type Timing struct {
+	Stime    int64 `bson:"stime"`
+	Unit     uint8 `bson:"unit"`
+	Quantity int64 `bson:"quantity"`
 }
 
 type Variables struct {

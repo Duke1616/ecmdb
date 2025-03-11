@@ -2,11 +2,13 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"time"
 )
 
 type Handler struct {
@@ -104,6 +106,29 @@ func (h *Handler) Retry(ctx *gin.Context, req RetryReq) (ginx.Result, error) {
 
 func (h *Handler) toTaskVo(req domain.Task) Task {
 	args, _ := json.Marshal(req.Args)
+
+	// 计算执行时间
+	startTime := time.UnixMilli(req.Utime).Format("2006-01-02 15:04:05")
+	if req.IsTiming == true {
+		// 解析 stime（Unix 时间戳，单位：毫秒）
+		stime := time.Unix(0, req.Timing.Stime*int64(time.Millisecond))
+		// 计算时间差
+		var duration time.Duration
+		switch req.Timing.Unit {
+		case domain.MINUTE: // 分钟
+			duration = time.Duration(req.Timing.Quantity) * time.Minute
+		case domain.HOUR: // 小时
+			duration = time.Duration(req.Timing.Quantity) * time.Hour
+		case domain.DAY: // 天
+			duration = time.Duration(req.Timing.Quantity) * 24 * time.Hour
+		default:
+			fmt.Println("未知的时间单位")
+		}
+
+		// 计算开始执行的时间
+		startTime = stime.Add(duration).Format("2006-01-02 15:04:05")
+	}
+
 	return Task{
 		Id:           req.Id,
 		OrderId:      req.OrderId,
@@ -115,7 +140,14 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		Status:       Status(req.Status),
 		Result:       req.Result,
 		Args:         string(args),
-		Variables:    desensitization(req.Variables),
+		IsTiming:     req.IsTiming,
+		StartTime:    startTime,
+		Timing: Timing{
+			Unit:     req.Timing.Unit.ToUint8(),
+			Quantity: req.Timing.Quantity,
+			Stime:    req.Timing.Stime,
+		},
+		Variables: desensitization(req.Variables),
 	}
 }
 

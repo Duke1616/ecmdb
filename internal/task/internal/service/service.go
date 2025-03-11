@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
+	"strconv"
+	"time"
 )
 
 type Service interface {
@@ -394,9 +396,55 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	userInfoJSON, err := json.Marshal(userInfo)
 	args["user_info"] = string(userInfoJSON)
 
-	// 修改工单信息，录入相关内容
-	_, err = s.repo.UpdateTask(ctx, domain.Task{
-		// 字段可有可无
+	// 根据条件设置状态
+	status := domain.RUNNING
+	timing := domain.Timing{Stime: time.Now().UnixMilli()}
+	if automation.IsTiming {
+		status = domain.TIMING
+		switch automation.ExecMethod {
+		case "template":
+			timing.Unit = domain.HOUR
+			quantity, exist := orderResp.Data[automation.TemplateField]
+			if !exist {
+				s.logger.Warn("字段不存在, 赋值默认值 2 H")
+				timing.Quantity = 2
+				break
+			}
+
+			switch v := quantity.(type) {
+			case int64:
+				timing.Quantity = v
+			case int:
+				timing.Quantity = int64(v)
+			case float64:
+				timing.Quantity = int64(v)
+			case string:
+				parsedQuantity, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					s.logger.Error("解析失败, 赋值默认值 2 H",
+						elog.FieldErr(err),
+						elog.Any("value", v),
+					)
+					timing.Quantity = 2
+				} else {
+					timing.Quantity = parsedQuantity
+				}
+			default:
+				s.logger.Warn("类型未知, 赋值默认值 2 H",
+					elog.Any("type", v),
+					elog.Any("value", quantity),
+				)
+				timing.Quantity = 2
+			}
+		case "hand":
+			timing.Unit = domain.Unit(automation.Unit)
+			timing.Quantity = automation.Quantity
+		}
+	}
+
+	// 初始化任务更新数据
+	taskUpdate := domain.Task{
+		// 可选字段
 		Id:            task.Id,
 		ProcessInstId: task.ProcessInstId,
 		WorkerName:    workerResp.Name,
@@ -404,12 +452,12 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		CodebookUid:   codebookResp.Identifier,
 		CodebookName:  codebookResp.Name,
 
-		// 必传字段
+		// 必填字段
 		OrderId:  orderResp.Id,
 		Code:     codebookResp.Code,
 		Topic:    workerResp.Topic,
 		Language: codebookResp.Language,
-		Status:   domain.RUNNING,
+		Status:   status,
 		Args:     args,
 		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
 			return domain.Variables{
@@ -418,9 +466,22 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 				Secret: src.Secret,
 			}
 		}),
-	})
+
+		// 定时任务
+		IsTiming: automation.IsTiming,
+		Timing:   timing,
+	}
+
+	// 更新任务
+	_, err = s.repo.UpdateTask(ctx, taskUpdate)
 	if err != nil {
 		return err
+	}
+
+	// 如果是定时任务，直接返回
+	if automation.IsTiming {
+		s.logger.Info("定时执行， 退出当前步骤")
+		return nil
 	}
 
 	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中

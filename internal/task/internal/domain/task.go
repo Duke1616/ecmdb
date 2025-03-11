@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type Status uint8
 
 func (s Status) ToUint8() uint8 {
@@ -22,6 +24,8 @@ const (
 	SCHEDULE Status = 6
 	//RETRY 重试
 	RETRY Status = 7
+	// TIMING 定时任务
+	TIMING Status = 8
 )
 
 type Task struct {
@@ -41,8 +45,33 @@ type Task struct {
 	Result          string
 	WantResult      string
 	Status          Status
+	IsTiming        bool
+	Utime           int64
+	Timing          Timing
 	Variables       []Variables
 	Args            map[string]interface{}
+}
+
+type Unit uint8
+
+func (s Unit) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// MINUTE 分钟
+	MINUTE Unit = 1
+	// HOUR 小时
+	HOUR Unit = 2
+	// DAY 天
+	DAY Unit = 3
+)
+
+// Timing 定时执行
+type Timing struct {
+	Stime    int64
+	Unit     Unit
+	Quantity int64
 }
 
 type TaskResult struct {
@@ -51,6 +80,7 @@ type TaskResult struct {
 	WantResult      string `json:"want_result"`
 	Result          string `json:"result"`
 	Status          Status `json:"status"`
+	time            time.Time
 }
 
 type Variables struct {

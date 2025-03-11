@@ -39,11 +39,20 @@ type Task struct {
 	CodebookUid  string `json:"codebook_uid"`
 	CodebookName string `json:"codebook_name"`
 	Status       Status `json:"status"`
+	IsTiming     bool   `json:"is_timing"`
+	Timing       Timing `json:"timing"`
+	StartTime    string `json:"start_time"`
 	Code         string `json:"code"`
 	Language     string `json:"language"`
 	Args         string `json:"args"`
 	Variables    string `json:"variables"`
 	Result       string `json:"result"`
+}
+
+type Timing struct {
+	Stime    int64 `json:"stime"`
+	Unit     uint8 `json:"unit"`
+	Quantity int64 `json:"quantity"`
 }
 
 type RetryReq struct {

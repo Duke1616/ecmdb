@@ -1,4 +1,4 @@
-FROM golang:1.23.0-alpine as build
+FROM golang:1.24.1-alpine as build
 MAINTAINER luankz
 WORKDIR /app
 COPY . .

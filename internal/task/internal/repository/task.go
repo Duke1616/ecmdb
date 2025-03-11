@@ -148,6 +148,12 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		Topic:           req.Topic,
 		Language:        req.Language,
 		Args:            req.Args,
+		IsTiming:        req.IsTiming,
+		Timing: dao.Timing{
+			Stime:    req.Timing.Stime,
+			Unit:     req.Timing.Unit.ToUint8(),
+			Quantity: req.Timing.Quantity,
+		},
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
 			return dao.Variables{
 				Key:    src.Key,
@@ -172,6 +178,12 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		Code:          req.Code,
 		Topic:         req.Topic,
 		Args:          req.Args,
+		IsTiming:      req.IsTiming,
+		Timing: domain.Timing{
+			Stime:    req.Timing.Stime,
+			Unit:     domain.Unit(req.Timing.Unit),
+			Quantity: req.Timing.Quantity,
+		},
 		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
 			return domain.Variables{
 				Key:    src.Key,
@@ -180,6 +192,7 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 			}
 		}),
 		Language:   req.Language,
+		Utime:      req.Utime,
 		Result:     req.Result,
 		WantResult: req.WantResult,
 		Status:     domain.Status(req.Status),

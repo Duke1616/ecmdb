@@ -90,6 +90,7 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 	}
 
+	// 这个必须成功，不然会导致后续任务无法进行
 	return e.orderSvc.RegisterProcessInstanceId(ctx, id, ProcessInstanceID)
 }
 

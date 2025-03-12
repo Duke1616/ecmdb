@@ -14,10 +14,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 	"strconv"
@@ -48,7 +46,6 @@ type Service interface {
 
 type service struct {
 	repo        repository.TaskRepository
-	aesKey      string
 	logger      *elog.Component
 	orderSvc    order.Service
 	userSvc     user.Service
@@ -56,7 +53,7 @@ type service struct {
 	workflowSvc workflow.Service
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
-	workerSvc   worker.Service
+	execSvc     ExecService
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Task, error) {
@@ -126,18 +123,17 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
 	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service,
-	userSvc user.Service) Service {
+	userSvc user.Service, execSvc ExecService) Service {
 	return &service{
 		repo:        repo,
-		aesKey:      viper.Get("crypto_aes_key").(string),
 		logger:      elog.DefaultLogger,
 		orderSvc:    orderSvc,
 		workflowSvc: workflowSvc,
 		codebookSvc: codebookSvc,
 		runnerSvc:   runnerSvc,
-		workerSvc:   workerSvc,
 		engineSvc:   engineSvc,
 		userSvc:     userSvc,
+		execSvc:     execSvc,
 	}
 }
 
@@ -270,38 +266,7 @@ func (s *service) retry(ctx context.Context, task domain.Task) error {
 		Status:          domain.RETRY,
 	})
 
-	// 变量数据梳理
-	vars := slice.Map(task.Variables, func(idx int, src domain.Variables) domain.Variables {
-		if src.Secret {
-			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
-			if er != nil {
-				return domain.Variables{}
-			}
-
-			return domain.Variables{
-				Key:    src.Key,
-				Value:  val,
-				Secret: src.Secret,
-			}
-		}
-
-		return domain.Variables{
-			Key:    src.Key,
-			Value:  src.Value,
-			Secret: src.Secret,
-		}
-	})
-
-	// 添加工单创建人
-	variables, _ := json.Marshal(vars)
-	return s.workerSvc.Execute(ctx, worker.Execute{
-		TaskId:    task.Id,
-		Topic:     task.Topic,
-		Code:      task.Code,
-		Language:  task.Language,
-		Args:      task.Args,
-		Variables: string(variables),
-	})
+	return s.execSvc.Execute(ctx, task)
 }
 
 func (s *service) process(ctx context.Context, task domain.Task) error {
@@ -329,39 +294,35 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.PENDING, err)
 	}
 
-	// 5. 获取工作节点
-	workerResp, err := s.workerSvc.FindByName(ctx, runnerResp.WorkerName)
-	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "获取工作节点失败", domain.FAILED, err)
-	}
-
-	// 6. 获取代码模板
+	// 5. 获取代码模板
 	codebookResp, err := s.codebookSvc.FindByUid(ctx, runnerResp.CodebookUid)
 	if err != nil {
 		return s.handleTaskError(ctx, task.Id, "获取任务模版失败", domain.FAILED, err)
 	}
 
-	// 7. 准备用户参数
+	// 6. 准备用户参数
 	args, err := s.prepareUserArgs(ctx, orderResp)
 	if err != nil {
 		return err
 	}
 
-	// 8. 确定任务状态和定时配置
+	// 7. 确定任务状态和定时配置
 	status, timing := s.determineTaskStatus(automation, orderResp.Data)
 
-	// 9. 构建任务更新数据
-	taskUpdate := s.prepareTaskUpdate(orderResp, task, flow, workerResp, codebookResp,
-		runnerResp, args, status, timing, automation)
+	// 8. 构建任务更新数据
+	taskUpdate := s.prepareTaskUpdate(orderResp, task, flow, codebookResp, runnerResp, args,
+		status, timing, automation)
 
-	// 10. 更新任务
+	// 9. 更新任务
 	_, err = s.repo.UpdateTask(ctx, taskUpdate)
 	if err != nil {
 		return err
 	}
 
-	// 11. 处理定时任务
+	// 10. 处理定时任务
 	if automation.IsTiming {
+		job := NewCronjob(s.execSvc)
+		go job.Add(ctx, taskUpdate)
 		return nil
 	}
 
@@ -379,30 +340,18 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	//	return err
 	//}
 
-	return s.executeWorkerTask(ctx, workerResp, codebookResp, runnerResp, task, args)
-}
-
-func (s *service) executeWorkerTask(ctx context.Context, workerResp worker.Worker, codebookResp codebook.Codebook,
-	runnerResp runner.Runner, task domain.Task, args map[string]interface{}) error {
-	return s.workerSvc.Execute(ctx, worker.Execute{
-		TaskId:    task.Id,
-		Topic:     workerResp.Topic,
-		Code:      codebookResp.Code,
-		Language:  codebookResp.Language,
-		Args:      args,
-		Variables: s.decryptVariables(runnerResp),
-	})
+	return s.execSvc.Execute(ctx, task)
 }
 
 func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,
-	workerResp worker.Worker, codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
+	codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
 	status domain.Status, timing domain.Timing, automation easyflow.AutomationProperty) domain.Task {
 
 	return domain.Task{
 		// 可选字段
 		Id:            task.Id,
 		ProcessInstId: task.ProcessInstId,
-		WorkerName:    workerResp.Name,
+		WorkerName:    runnerResp.WorkerName,
 		WorkflowId:    flow.Id,
 		CodebookUid:   codebookResp.Identifier,
 		CodebookName:  codebookResp.Name,
@@ -410,7 +359,7 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 		// 必填字段
 		OrderId:  orderResp.Id,
 		Code:     codebookResp.Code,
-		Topic:    workerResp.Topic,
+		Topic:    runnerResp.Topic,
 		Language: codebookResp.Language,
 		Status:   status,
 		Args:     args,
@@ -484,7 +433,7 @@ func (s *service) determineTaskStatus(automation easyflow.AutomationProperty, da
 }
 
 func (s *service) calculateTiming(automation easyflow.AutomationProperty, data map[string]interface{}) domain.Timing {
-	timing := domain.Timing{Stime: time.Now().UnixMilli()}
+	timing := domain.Timing{}
 	if automation.IsTiming {
 		switch automation.ExecMethod {
 		case "template":
@@ -527,32 +476,25 @@ func (s *service) calculateTiming(automation easyflow.AutomationProperty, data m
 		}
 	}
 
+	// 解析 stime（Unix 时间戳，单位：毫秒）
+	stime := time.UnixMilli(time.Now().UnixMilli())
+
+	// 计算时间差
+	var duration time.Duration
+	switch timing.Unit {
+	case domain.MINUTE: // 分钟
+		duration = time.Duration(timing.Quantity) * time.Minute
+	case domain.HOUR: // 小时
+		duration = time.Duration(timing.Quantity) * time.Hour
+	case domain.DAY: // 天
+		duration = time.Duration(timing.Quantity) * 24 * time.Hour
+	default:
+		duration = time.Duration(timing.Quantity) * time.Hour
+		s.logger.Warn("未知的时间单位，按照小时进行计算")
+	}
+
+	// 计算开始执行的时间
+	timing.Stime = stime.Add(duration).UnixMilli()
+
 	return timing
-}
-
-// decryptVariables 处理变量，进行解密
-func (s *service) decryptVariables(req runner.Runner) string {
-	variables := slice.Map(req.Variables, func(idx int, src runner.Variables) domain.Variables {
-		if src.Secret {
-			val, er := cryptox.DecryptAES[any](s.aesKey, src.Value.(string))
-			if er != nil {
-				return domain.Variables{}
-			}
-
-			return domain.Variables{
-				Key:    src.Key,
-				Value:  val,
-				Secret: src.Secret,
-			}
-		}
-
-		return domain.Variables{
-			Key:    src.Key,
-			Value:  src.Value,
-			Secret: src.Secret,
-		}
-	})
-
-	jsonVar, _ := json.Marshal(variables)
-	return string(jsonVar)
 }

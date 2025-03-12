@@ -26,6 +26,7 @@ import (
 
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
+	service.NewExecService,
 	service.NewService,
 	repository.NewTaskRepository,
 	dao.NewTaskDAO,

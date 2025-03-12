@@ -19,6 +19,7 @@ type Runner struct {
 	CodebookUid    string
 	CodebookSecret string
 	WorkerName     string
+	Topic          string
 	Tags           []string
 	Desc           string
 	Action         Action

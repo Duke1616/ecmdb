@@ -69,6 +69,7 @@ func (dao *runnerDAO) Update(ctx context.Context, req Runner) (int64, error) {
 			"name":            req.Name,
 			"codebook_secret": req.CodebookSecret,
 			"worker_name":     req.WorkerName,
+			"topic":           req.Topic,
 			"tags":            req.Tags,
 			"desc":            req.Desc,
 			"variables":       req.Variables,

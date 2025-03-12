@@ -40,7 +40,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service5 := workerModule.Svc
 	service6 := engineModule.Svc
 	service7 := userModule.Svc
-	service8 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6, service7)
+	execService := service.NewExecService(service5)
+	service8 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6, service7, execService)
 	handler := web.NewHandler(service8)
 	executeResultConsumer := initConsumer(service8, q, service3, service7, lark2)
 	startTaskJob := initStartTaskJob(service8)
@@ -57,7 +58,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewExecService, service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
 
 func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
 	userSvc user.Service, lark2 *lark.Client) *event.ExecuteResultConsumer {

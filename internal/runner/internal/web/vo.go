@@ -18,6 +18,7 @@ type RegisterRunnerReq struct {
 	CodebookUid    string      `json:"codebook_uid"`
 	CodebookSecret string      `json:"codebook_secret"`
 	WorkerName     string      `json:"worker_name"`
+	Topic          string      `json:"topic"`
 	Tags           []string    `json:"tags"`
 	Desc           string      `json:"desc"`
 	Variables      []Variables `json:"variables"`
@@ -29,6 +30,7 @@ type UpdateRunnerReq struct {
 	CodebookUid    string      `json:"codebook_uid"`
 	CodebookSecret string      `json:"codebook_secret"`
 	WorkerName     string      `json:"worker_name"`
+	Topic          string      `json:"topic"`
 	Tags           []string    `json:"tags"`
 	Desc           string      `json:"desc"`
 	Variables      []Variables `json:"variables"`

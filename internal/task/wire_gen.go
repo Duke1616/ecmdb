@@ -94,7 +94,7 @@ func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSv
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {
-	minutes := int64(30)
+	minutes := int64(400)
 	seconds := int64(10)
 	limit := int64(100)
 	return job.NewPassProcessTaskJob(svc, engineSvc, minutes, seconds, limit)

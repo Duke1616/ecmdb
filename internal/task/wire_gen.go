@@ -38,27 +38,30 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service3 := codebookModule.Svc
 	service4 := runnerModule.Svc
 	service5 := workerModule.Svc
+	execService := service.NewExecService(service5)
+	cronjob := service.NewCronjob(execService)
 	service6 := engineModule.Svc
 	service7 := userModule.Svc
-	execService := service.NewExecService(service5)
-	service8 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6, service7, execService)
+	service8 := service.NewService(taskRepository, serviceService, service2, service3, service4, cronjob, service6, service7, execService)
 	handler := web.NewHandler(service8)
 	executeResultConsumer := initConsumer(service8, q, service3, service7, lark2)
 	startTaskJob := initStartTaskJob(service8)
 	passProcessTaskJob := initPassProcessTaskJob(service8, service6)
+	recoveryTaskJob := initRecoveryTaskJob(service8, execService, cronjob)
 	module := &Module{
 		Svc:                service8,
 		Hdl:                handler,
 		c:                  executeResultConsumer,
 		StartTaskJob:       startTaskJob,
 		PassProcessTaskJob: passProcessTaskJob,
+		RecoveryTaskJob:    recoveryTaskJob,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewExecService, service.NewService, repository.NewTaskRepository, dao.NewTaskDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewExecService, service.NewService, service.NewCronjob, repository.NewTaskRepository, dao.NewTaskDAO)
 
 func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
 	userSvc user.Service, lark2 *lark.Client) *event.ExecuteResultConsumer {
@@ -77,6 +80,17 @@ func initStartTaskJob(svc service.Service) *StartTaskJob {
 	maxInterval := 30 * time.Second
 	maxRetries := int32(3)
 	return job.NewStartTaskJob(svc, limit, initialInterval, maxInterval, maxRetries)
+}
+
+func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSvc service.Cronjob) *RecoveryTaskJob {
+	limit := int64(100)
+	recovery := job.NewRecoveryTaskJob(svc, execSvc, jobSvc, limit)
+
+	go func() {
+		_ = recovery.Run(context.Background())
+	}()
+
+	return recovery
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {

@@ -28,6 +28,7 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewExecService,
 	service.NewService,
+	service.NewCronjob,
 	repository.NewTaskRepository,
 	dao.NewTaskDAO,
 )
@@ -39,6 +40,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 		ProviderSet,
 		initStartTaskJob,
 		initPassProcessTaskJob,
+		initRecoveryTaskJob,
 		initConsumer,
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
@@ -69,6 +71,17 @@ func initStartTaskJob(svc service.Service) *StartTaskJob {
 	maxInterval := 30 * time.Second
 	maxRetries := int32(3)
 	return job.NewStartTaskJob(svc, limit, initialInterval, maxInterval, maxRetries)
+}
+
+func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSvc service.Cronjob) *RecoveryTaskJob {
+	limit := int64(100)
+	recovery := job.NewRecoveryTaskJob(svc, execSvc, jobSvc, limit)
+
+	go func() {
+		_ = recovery.Run(context.Background())
+	}()
+
+	return recovery
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {

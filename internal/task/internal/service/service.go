@@ -11,7 +11,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/ecodeclub/ekit/slice"
@@ -54,6 +53,7 @@ type service struct {
 	codebookSvc codebook.Service
 	runnerSvc   runner.Service
 	execSvc     ExecService
+	cronjobSvc  Cronjob
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Task, error) {
@@ -122,7 +122,7 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service, runnerSvc runner.Service, workerSvc worker.Service, engineSvc engine.Service,
+	codebookSvc codebook.Service, runnerSvc runner.Service, cronjobSvc Cronjob, engineSvc engine.Service,
 	userSvc user.Service, execSvc ExecService) Service {
 	return &service{
 		repo:        repo,
@@ -134,6 +134,7 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 		engineSvc:   engineSvc,
 		userSvc:     userSvc,
 		execSvc:     execSvc,
+		cronjobSvc:  cronjobSvc,
 	}
 }
 
@@ -321,8 +322,9 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 
 	// 10. 处理定时任务
 	if automation.IsTiming {
-		job := NewCronjob(s.execSvc)
-		go job.Add(ctx, taskUpdate)
+		go func() {
+			_ = s.cronjobSvc.Add(ctx, taskUpdate)
+		}()
 		return nil
 	}
 

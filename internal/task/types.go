@@ -13,3 +13,5 @@ type Handler = web.Handler
 type StartTaskJob = job.StartTaskJob
 
 type PassProcessTaskJob = job.PassProcessTaskJob
+
+type RecoveryTaskJob = job.RecoveryTaskJob

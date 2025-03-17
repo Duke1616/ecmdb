@@ -8,6 +8,7 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -25,6 +26,7 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"github.com/larksuite/oapi-sdk-go/v3"
+	"github.com/spf13/viper"
 	"time"
 )
 
@@ -86,15 +88,28 @@ func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSv
 	limit := int64(100)
 	recovery := job.NewRecoveryTaskJob(svc, execSvc, jobSvc, limit)
 
+	type Config struct {
+		Enabled bool `mapstructure:"enabled"`
+	}
+
+	var cfg Config
+	if err := viper.UnmarshalKey("cronjob", &cfg); err != nil {
+		panic(fmt.Errorf("unable to decode into struct: %v", err))
+	}
+
+	if !cfg.Enabled {
+		return recovery
+	}
+
 	go func() {
 		_ = recovery.Run(context.Background())
 	}()
 
-	return recovery
+	return nil
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {
-	minutes := int64(400)
+	minutes := int64(60)
 	seconds := int64(10)
 	limit := int64(100)
 	return job.NewPassProcessTaskJob(svc, engineSvc, minutes, seconds, limit)

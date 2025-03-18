@@ -23,6 +23,7 @@ func NewHandler(svc service.Service) *Handler {
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/task")
 	g.POST("/list", ginx.WrapBody[ListTaskReq](h.ListTask))
+	g.POST("/list/by_instance_id", ginx.WrapBody[ListTaskByInstanceIdReq](h.ListTaskByInstanceId))
 	g.POST("/update/args", ginx.WrapBody[UpdateArgsReq](h.UpdateArgs))
 	g.POST("/update/variables", ginx.WrapBody[UpdateVariablesReq](h.UpdateVariableReq))
 	g.POST("/retry", ginx.WrapBody[RetryReq](h.Retry))
@@ -31,6 +32,22 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, error) {
 	ws, total, err := h.svc.ListTask(ctx, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "查询 task 列表成功",
+		Data: RetrieveTasks{
+			Total: total,
+			Tasks: slice.Map(ws, func(idx int, src domain.Task) Task {
+				return h.toTaskVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) ListTaskByInstanceId(ctx *gin.Context, req ListTaskByInstanceIdReq) (ginx.Result, error) {
+	ws, total, err := h.svc.ListTaskByInstanceId(ctx, req.Offset, req.Limit, req.InstanceId)
 	if err != nil {
 		return systemErrorResult, err
 	}

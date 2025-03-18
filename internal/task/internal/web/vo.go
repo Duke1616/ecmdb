@@ -32,6 +32,11 @@ type ListTaskReq struct {
 	Page
 }
 
+type ListTaskByInstanceIdReq struct {
+	InstanceId int `json:"instance_id"`
+	Page
+}
+
 type Task struct {
 	Id           int64  `json:"id"`
 	OrderId      int64  `json:"order_id"`

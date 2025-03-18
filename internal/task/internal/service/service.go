@@ -33,6 +33,7 @@ type Service interface {
 	// ListTaskByStatus 列表任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
+	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error)
 
 	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error)
 
@@ -54,6 +55,29 @@ type service struct {
 	runnerSvc   runner.Service
 	execSvc     ExecService
 	cronjobSvc  Cronjob
+}
+
+func (s *service) ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Task
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListTaskByInstanceId(ctx, offset, limit, instanceId)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalByInstanceId(ctx, instanceId)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Task, error) {

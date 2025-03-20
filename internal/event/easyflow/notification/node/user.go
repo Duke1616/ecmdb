@@ -180,6 +180,19 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 			// 处理自动通过
 			go n.ccPass(ctx, tasks)
 		}
+
+		// TODO 临时解决插入返回消息
+		if len(wantResult) != 0 {
+			for field, value := range wantResult {
+				rules = append(rules, rule.Rule{
+					Type:  "input",
+					Field: field,
+					Title: value.(string),
+					Style: make(map[string]interface{}),
+				})
+			}
+		}
+
 		for _, integration := range n.integrations {
 			if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "user") {
 				messages = integration.Notifier.Builder(title, users, template, method.NotifyParams{

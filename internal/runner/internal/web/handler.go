@@ -142,9 +142,9 @@ func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
 			RunnerTags: slice.Map(tags, func(idx int, src domain.RunnerTags) RunnerTags {
 				codeName, _ := codeMaps[src.CodebookUid]
 				return RunnerTags{
-					CodebookUid:  src.CodebookUid,
-					CodebookName: codeName,
-					Tags:         src.Tags,
+					TagsMappingTopic: src.TagsMappingTopic,
+					CodebookUid:      src.CodebookUid,
+					CodebookName:     codeName,
 				}
 			}),
 		},

@@ -43,19 +43,26 @@ func (repo *runnerRepository) Update(ctx context.Context, req domain.Runner) (in
 
 func (repo *runnerRepository) ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error) {
 	pipeline, err := repo.dao.ListTagsPipelineByCodebookUid(ctx)
-	return slice.Map(pipeline, func(idx int, src dao.RunnerPipeline) domain.RunnerTags {
-		var tags []string
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.RunnerTags, len(pipeline))
+	for i, src := range pipeline {
+		tagSet := make(map[string]string)
 		for _, runner := range src.RunnerTags {
-			if runner.CodebookUid == src.CodebookUid {
-				tags = append(tags, runner.Tags...)
+			for _, tag := range runner.Tags {
+				tagSet[tag] = runner.Topic
 			}
 		}
 
-		return domain.RunnerTags{
-			CodebookUid: src.CodebookUid,
-			Tags:        tags,
+		result[i] = domain.RunnerTags{
+			CodebookUid:      src.CodebookUid,
+			TagsMappingTopic: tagSet,
 		}
-	}), err
+	}
+
+	return result, nil
 }
 
 func (repo *runnerRepository) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error) {

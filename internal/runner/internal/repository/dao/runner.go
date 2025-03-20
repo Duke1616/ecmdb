@@ -160,7 +160,7 @@ func (dao *runnerDAO) ListTagsPipelineByCodebookUid(ctx context.Context) ([]Runn
 			// 使用 $push 累加器将选择的字段添加到 runners 数组中
 			{"runner_tags", bson.D{{"$push", bson.D{
 				{"tags", "$tags"},
-				{"codebook_uid", "$codebook_uid"},
+				{"topic", "$topic"},
 			}}}},
 		}}},
 	}
@@ -209,6 +209,6 @@ type RunnerPipeline struct {
 }
 
 type RunnerTags struct {
-	CodebookUid string   `bson:"codebook_uid"`
-	Tags        []string `json:"tags"`
+	Topic string   `bson:"topic"`
+	Tags  []string `json:"tags"`
 }

@@ -33,6 +33,6 @@ type Variables struct {
 }
 
 type RunnerTags struct {
-	CodebookUid string
-	Tags        []string
+	CodebookUid      string
+	TagsMappingTopic map[string]string
 }

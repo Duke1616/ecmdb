@@ -71,9 +71,9 @@ type RetrieveWorkers struct {
 }
 
 type RunnerTags struct {
-	CodebookName string   `json:"codebook_name"`
-	CodebookUid  string   `json:"codebook_uid"`
-	Tags         []string `json:"tags"`
+	CodebookName     string            `json:"codebook_name"`
+	CodebookUid      string            `json:"codebook_uid"`
+	TagsMappingTopic map[string]string `json:"tags_topic"`
 }
 
 type RetrieveRunnerTags struct {

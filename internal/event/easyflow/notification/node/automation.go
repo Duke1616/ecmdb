@@ -2,13 +2,12 @@ package node
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/result"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
-	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
@@ -18,15 +17,15 @@ import (
 
 type AutomationNotification struct {
 	integrations []method.NotifyIntegration
-	taskSvc      task.Service
+	resultSvc    result.FetcherResult
 	userSvc      user.Service
 	logger       *elog.Component
 }
 
-func NewAutomationNotification(taskSvc task.Service, userSvc user.Service, integrations []method.NotifyIntegration) (*AutomationNotification, error) {
+func NewAutomationNotification(resultSvc result.FetcherResult, userSvc user.Service, integrations []method.NotifyIntegration) (*AutomationNotification, error) {
 	return &AutomationNotification{
 		integrations: integrations,
-		taskSvc:      taskSvc,
+		resultSvc:    resultSvc,
 		userSvc:      userSvc,
 		logger:       elog.DefaultLogger,
 	}, nil
@@ -42,15 +41,16 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 
 	// 判断是否开启消息发送，以及是否为立即发送
 	if !property.IsNotify {
-		return false, fmt.Errorf("【自动化任务】全局未配置消息通知")
+		return false, fmt.Errorf("【自动化节点】未配置消息通知")
 	}
 
+	// 判断模式如果不是理解发送则退出
 	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return false, fmt.Errorf("【自动化任务】节点未开启消息通知")
+		return false, fmt.Errorf("【自动化节点】节点未开启消息通知")
 	}
 
 	// 查看返回的消息
-	wantResult, err := n.wantResult(ctx, instanceId, currentNode.NodeID)
+	wantResult, err := n.resultSvc.FetchResult(ctx, instanceId, currentNode.NodeID)
 	if err != nil {
 		n.logger.Warn("执行错误或未开启消息通知",
 			elog.FieldErr(err),
@@ -87,24 +87,4 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 	}
 
 	return true, nil
-}
-
-func (n *AutomationNotification) wantResult(ctx context.Context, instanceId int,
-	nodeId string) (map[string]interface{}, error) {
-	result, err := n.taskSvc.FindTaskResult(ctx, instanceId, nodeId)
-	if err != nil {
-		return nil, err
-	}
-
-	if result.WantResult == "" {
-		return nil, fmt.Errorf("返回值为空, 不做任何数据处理")
-	}
-
-	var wantResult map[string]interface{}
-	err = json.Unmarshal([]byte(result.WantResult), &wantResult)
-	if err != nil {
-		return nil, err
-	}
-
-	return wantResult, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/node"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/result"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
@@ -60,15 +61,16 @@ func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
 func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
 	userSvc user.Service, taskSvc task.Service, departMentSvc department.Service,
 	integration []method.NotifyIntegration) map[string]notification.SendAction {
-
+	resultSvc := result.NewResult(taskSvc)
+	
 	ns := make(map[string]notification.SendAction)
-	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, taskSvc,
+	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, resultSvc,
 		departMentSvc, integration)
 	if err != nil {
 		panic(err)
 	}
 
-	automationNotify, err := node.NewAutomationNotification(taskSvc, userSvc, integration)
+	automationNotify, err := node.NewAutomationNotification(resultSvc, userSvc, integration)
 	if err != nil {
 		panic(err)
 	}

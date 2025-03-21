@@ -2,15 +2,14 @@ package node
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/department"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
+	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/result"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
-	"github.com/Duke1616/ecmdb/internal/task"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
@@ -25,7 +24,7 @@ import (
 type UserNotification struct {
 	integrations  []method.NotifyIntegration
 	engineSvc     engineSvc.Service
-	taskSvc       task.Service
+	resultSvc     result.FetcherResult
 	userSvc       user.Service
 	departMentSvc department.Service
 	templateSvc   templateSvc.Service
@@ -38,7 +37,7 @@ type UserNotification struct {
 }
 
 func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, departMentSvc department.Service,
+	userSvc user.Service, resultSvc result.FetcherResult, departMentSvc department.Service,
 	integrations []method.NotifyIntegration) (*UserNotification, error) {
 
 	return &UserNotification{
@@ -47,7 +46,7 @@ func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Se
 		orderSvc:        orderSvc,
 		userSvc:         userSvc,
 		departMentSvc:   departMentSvc,
-		taskSvc:         taskSvc,
+		resultSvc:       resultSvc,
 		logger:          elog.DefaultLogger,
 		integrations:    integrations,
 		initialInterval: 5 * time.Second,
@@ -257,23 +256,13 @@ func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, no
 				return nil, fmt.Errorf("【用户节点】自动化节点未开启消息通知")
 			}
 
+			// 判断模式
 			if !containsAutoNotifyMethod(property.NotifyMethod, ProcessEndSend) {
 				return nil, fmt.Errorf("【用户节点】自动化节点未匹配消息通知规则")
 			}
 
-			// 查找自动化任务返回
-			result, err := n.taskSvc.FindTaskResult(ctx, instanceId, node.ID)
-			if err != nil {
-				return nil, err
-			}
-
-			// 返回为空则不处理
-			if result.WantResult == "" {
-				continue
-			}
-
-			var wantResult map[string]interface{}
-			err = json.Unmarshal([]byte(result.WantResult), &wantResult)
+			// 获取返回值
+			wantResult, err := n.resultSvc.FetchResult(ctx, instanceId, node.ID)
 			if err != nil {
 				return nil, err
 			}

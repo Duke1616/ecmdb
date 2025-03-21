@@ -18,3 +18,8 @@ func GenerateCCTitle(displayName string, templateName string) string {
 	}
 	return fmt.Sprintf("%s抄送了%s申请给你", displayName, templateName)
 }
+
+func GenerateAutoTitle(displayName string, templateName string) string {
+	title := GenerateTitle(displayName, templateName)
+	return fmt.Sprintf("%s自动化任务结果", title)
+}

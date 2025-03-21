@@ -113,11 +113,13 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 		return false, err
 	}
 
+	// 查找工单提交人
 	variables, err := engine.ResolveVariables(instanceId, []string{"$starter"})
 	if err != nil {
 		return false, err
 	}
 
+	// 获取用户信息
 	startUser, err := n.userSvc.FindByUsername(ctx, variables["$starter"])
 	if err != nil {
 		return false, err
@@ -181,26 +183,14 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 			go n.ccPass(ctx, tasks)
 		}
 
-		// TODO 临时解决插入返回消息
-		if len(wantResult) != 0 {
-			for field, value := range wantResult {
-				rules = append(rules, rule.Rule{
-					Type:  "input",
-					Field: field,
-					Title: value.(string),
-					Style: make(map[string]interface{}),
-				})
-			}
-		}
-
 		for _, integration := range n.integrations {
 			if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "user") {
-				messages = integration.Notifier.Builder(title, users, template, method.NotifyParams{
-					Order:      nOrder,
-					WantResult: wantResult,
-					Tasks:      tasks,
-					Rules:      rules,
-				})
+				messages = integration.Notifier.Builder(title, users, template, method.NewNotifyParamsBuilder().
+					SetRules(rules).
+					SetOrder(nOrder).
+					SetTasks(tasks).
+					SetWantResult(wantResult).
+					Build())
 				break
 			}
 		}
@@ -294,7 +284,7 @@ func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, no
 		case "automation":
 			property, _ := easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
 			// 判断是否进行通知
-			if !property.IsNotify || property.NotifyMethod != ProcessEndSend {
+			if !property.IsNotify || containsNotifyMethod(property.NotifyMethod, ProcessEndSend) {
 				continue
 			}
 
@@ -319,10 +309,6 @@ func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, no
 				mergedResult[key] = value
 			}
 		}
-	}
-
-	if len(mergedResult) == 0 {
-		return nil, nil
 	}
 
 	return mergedResult, nil

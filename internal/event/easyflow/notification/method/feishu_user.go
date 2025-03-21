@@ -1,6 +1,7 @@
 package method
 
 import (
+	"fmt"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -57,6 +58,15 @@ func (n *FeishuUserNotify) generate(userId string, title string, fields []card.F
 func (n *FeishuUserNotify) Builder(title string, users []user.User, template string, params NotifyParams) []notify.NotifierWrap {
 	// 获取自定义字段
 	fields := rule.GetFields(params.Rules, params.Order.Provide.ToUint8(), params.Order.Data)
+
+	// 组合返回数据
+	for field, value := range params.WantResult {
+		fields = append(fields, card.Field{
+			IsShort: true,
+			Tag:     "lark_md",
+			Content: fmt.Sprintf(`**%s:**\n%v`, field, value),
+		})
+	}
 
 	// 解析飞书用户信息
 	userMap := n.analyzeUsers(users)

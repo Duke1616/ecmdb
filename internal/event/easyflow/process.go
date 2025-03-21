@@ -79,13 +79,24 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 		return nil
 	}
 
+	// 判断是否需要消息提示
+	wf, err := e.workflowSvc.Find(ctx, nOrder.WorkflowId)
+	if err != nil {
+		e.logger.Error("查询流程信息错误",
+			elog.FieldErr(err),
+			elog.Any("instId", ProcessInstanceID),
+			elog.Any("userIds", CurrentNode.UserIDs),
+		)
+		return nil
+	}
+	
 	notify, ok := e.action["start"]
 	if !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
 			elog.String("不存在Notify", "user"))
 	}
 
-	ok, err = notify.Send(ctx, nOrder, workflow.Workflow{}, ProcessInstanceID, CurrentNode)
+	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 	}

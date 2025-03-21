@@ -8,8 +8,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/ecodeclub/mq-api"
+	"github.com/gotomicro/ego/core/elog"
 	"golang.org/x/sync/errgroup"
-	"log/slog"
 )
 
 type Service interface {
@@ -27,6 +27,7 @@ type Service interface {
 
 type service struct {
 	repo     repository.WorkerRepository
+	logger   *elog.Component
 	producer event.TaskWorkerEventProducer
 	mq       mq.MQ
 }
@@ -46,9 +47,9 @@ func (s *service) Execute(ctx context.Context, req domain.Execute) error {
 
 	err := s.producer.Produce(ctx, req.Topic, evt)
 	if err != nil {
-		slog.Error("工作节点发送指令失败",
-			slog.Any("error", err),
-			slog.Any("event", evt),
+		s.logger.Debug("工作节点发送指令失败",
+			elog.FieldErr(err),
+			elog.Any("event", evt),
 		)
 	}
 
@@ -59,6 +60,7 @@ func NewService(mq mq.MQ, repo repository.WorkerRepository, producer event.TaskW
 	return &service{
 		mq:       mq,
 		repo:     repo,
+		logger:   elog.DefaultLogger,
 		producer: producer,
 	}
 }

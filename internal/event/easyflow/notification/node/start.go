@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
@@ -10,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/enotify/notify"
 	"github.com/gotomicro/ego/core/elog"
 )
@@ -33,6 +35,23 @@ func NewStartNotification(userSvc user.Service, templateSvc template.Service, in
 
 func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
 	instanceId int, currentNode *model.Node) (bool, error) {
+	// 获取流程节点 nodes 信息
+	nodes, err := s.Unmarshal(wf)
+	if err != nil {
+		return false, err
+	}
+
+	// 获取当前节点信息
+	property, err := s.getStartProperty(nodes, currentNode.NodeID)
+	if err != nil {
+		return false, err
+	}
+
+	// 判断开始节点是否需要发送消息通知
+	if ok := s.isNotify(property, instanceId); !ok {
+		return false, nil
+	}
+
 	// 解析配置
 	rules, err := s.getRules(ctx, nOrder)
 	if err != nil {
@@ -54,10 +73,10 @@ func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf wor
 	for _, integration := range s.integrations {
 		if integration.Name == "feishu_start" {
 			messages = integration.Notifier.Builder(title, []user.User{startUser},
-				method.FeishuTemplateApprovalRevokeName, method.NotifyParams{
-					Order: nOrder,
-					Rules: rules,
-				})
+				method.FeishuTemplateApprovalRevokeName, method.NewNotifyParamsBuilder().
+					SetRules(rules).
+					SetOrder(nOrder).
+					Build())
 			break
 		}
 	}
@@ -71,6 +90,41 @@ func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf wor
 	}
 
 	return true, nil
+}
+
+func (s *StartNotification) isNotify(sp easyflow.StartProperty, instanceId int) bool {
+	if !sp.IsNotify {
+		s.logger.Warn("流程控制【开始节点】未开启消息通知能力",
+			elog.Any("instId", instanceId),
+		)
+		return false
+	}
+
+	return true
+}
+
+func (s *StartNotification) Unmarshal(wf workflow.Workflow) ([]easyflow.Node, error) {
+	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
+	if err != nil {
+		return nil, err
+	}
+	var nodes []easyflow.Node
+	err = json.Unmarshal(nodesJSON, &nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
+}
+
+func (s *StartNotification) getStartProperty(nodes []easyflow.Node, currentNodeId string) (easyflow.StartProperty, error) {
+	for _, node := range nodes {
+		if node.ID == currentNodeId {
+			return easyflow.ToNodeProperty[easyflow.StartProperty](node)
+		}
+	}
+
+	return easyflow.StartProperty{}, nil
 }
 
 // isNotify 获取模版的字段信息

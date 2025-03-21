@@ -49,15 +49,14 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 	}
 
 	var messages []notify.NotifierWrap
-	title := rule.GenerateTitle("你提交", nOrder.TemplateName)
-	title = fmt.Sprintf("%s自动化任务返回", title)
+	title := rule.GenerateAutoTitle("你提交", nOrder.TemplateName)
 	for _, integration := range n.integrations {
 		if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "automation") {
 			messages = integration.Notifier.Builder(title, []user.User{u},
-				method.FeishuTemplateApprovalName, method.NotifyParams{
-					Order:      nOrder,
-					WantResult: wantResult,
-				})
+				method.FeishuTemplateApprovalName, method.NewNotifyParamsBuilder().
+					SetOrder(nOrder).
+					SetWantResult(wantResult).
+					Build())
 			break
 		}
 	}
@@ -93,7 +92,7 @@ func (n *AutomationNotification) wantResult(ctx context.Context, wf workflow.Wor
 	}
 
 	// 判断是否开启消息发送，以及是否为立即发送
-	if !property.IsNotify || property.NotifyMethod != ProcessNowSend {
+	if !property.IsNotify || containsNotifyMethod(property.NotifyMethod, ProcessNowSend) {
 		return nil, fmt.Errorf("未配置消息通知")
 	}
 
@@ -113,4 +112,23 @@ func (n *AutomationNotification) wantResult(ctx context.Context, wf workflow.Wor
 	}
 
 	return wantResult, nil
+}
+
+func containsNotifyMethod(notifyMethod interface{}, target int64) bool {
+	switch v := notifyMethod.(type) {
+	case []int64:
+		// 如果是数组，遍历检查
+		for _, item := range v {
+			if item == target {
+				return true
+			}
+		}
+		return false
+	case int64:
+		// 如果是单个值，直接比较
+		return v == target
+	default:
+		// 其他类型（如 nil），返回 false
+		return false
+	}
 }

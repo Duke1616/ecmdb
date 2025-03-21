@@ -34,7 +34,23 @@ func NewAutomationNotification(taskSvc task.Service, userSvc user.Service, integ
 
 func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
 	instanceId int, currentNode *model.Node) (bool, error) {
-	wantResult, err := n.wantResult(ctx, wf, instanceId, currentNode.NodeID)
+	// 获取当前节点信息
+	property, err := getNodeProperty[easyflow.AutomationProperty](wf, currentNode.NodeID)
+	if err != nil {
+		return false, err
+	}
+
+	// 判断是否开启消息发送，以及是否为立即发送
+	if !property.IsNotify {
+		return false, fmt.Errorf("【自动化任务】全局未配置消息通知")
+	}
+
+	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
+		return false, fmt.Errorf("【自动化任务】节点未开启消息通知")
+	}
+
+	// 查看返回的消息
+	wantResult, err := n.wantResult(ctx, instanceId, currentNode.NodeID)
 	if err != nil {
 		n.logger.Warn("执行错误或未开启消息通知",
 			elog.FieldErr(err),
@@ -43,7 +59,8 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 		return false, err
 	}
 
-	u, err := n.userSvc.FindByUsername(ctx, nOrder.CreateBy)
+	// 获取工单创建用户
+	startUser, err := n.userSvc.FindByUsername(ctx, nOrder.CreateBy)
 	if err != nil {
 		return false, err
 	}
@@ -52,7 +69,7 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 	title := rule.GenerateAutoTitle("你提交", nOrder.TemplateName)
 	for _, integration := range n.integrations {
 		if integration.Name == fmt.Sprintf("%s_%s", workflow.NotifyMethodToString(wf.NotifyMethod), "automation") {
-			messages = integration.Notifier.Builder(title, []user.User{u},
+			messages = integration.Notifier.Builder(title, []user.User{startUser},
 				method.FeishuTemplateApprovalName, method.NewNotifyParamsBuilder().
 					SetOrder(nOrder).
 					SetWantResult(wantResult).
@@ -65,41 +82,15 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 	if ok, err = send(context.Background(), messages); err != nil || !ok {
 		n.logger.Warn("发送消息失败",
 			elog.Any("error", err),
-			elog.Any("user", u.DisplayName),
+			elog.Any("user", startUser.DisplayName),
 		)
 	}
 
 	return true, nil
 }
 
-func (n *AutomationNotification) wantResult(ctx context.Context, wf workflow.Workflow, instanceId int,
+func (n *AutomationNotification) wantResult(ctx context.Context, instanceId int,
 	nodeId string) (map[string]interface{}, error) {
-	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
-	if err != nil {
-		return nil, err
-	}
-	var nodes []easyflow.Node
-	err = json.Unmarshal(nodesJSON, &nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	property := easyflow.AutomationProperty{}
-	for _, node := range nodes {
-		if node.ID == nodeId {
-			property, _ = easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
-		}
-	}
-
-	// 判断是否开启消息发送，以及是否为立即发送
-	if !property.IsNotify {
-		return nil, fmt.Errorf("【自动化任务】全局未配置消息通知")
-	}
-
-	if !containsNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return nil, fmt.Errorf("【自动化任务】节点未开启消息通知")
-	}
-
 	result, err := n.taskSvc.FindTaskResult(ctx, instanceId, nodeId)
 	if err != nil {
 		return nil, err
@@ -116,14 +107,4 @@ func (n *AutomationNotification) wantResult(ctx context.Context, wf workflow.Wor
 	}
 
 	return wantResult, nil
-}
-
-func containsNotifyMethod(notifyMethod []int64, target int64) bool {
-	for _, item := range notifyMethod {
-		if item == target {
-			return true
-		}
-	}
-	return false
-
 }

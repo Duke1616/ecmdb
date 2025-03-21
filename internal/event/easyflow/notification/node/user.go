@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/department"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -59,27 +58,13 @@ func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Se
 
 func (n *UserNotification) isNotify(wf workflow.Workflow, instanceId int) bool {
 	if !wf.IsNotify {
-		n.logger.Warn("流程控制未开启消息通知能力",
+		n.logger.Warn("【用户节点】全局流程控制未开启消息通知能力",
 			elog.Any("instId", instanceId),
 		)
 		return false
 	}
 
 	return true
-}
-
-func (n *UserNotification) Unmarshal(wf workflow.Workflow) ([]easyflow.Node, error) {
-	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
-	if err != nil {
-		return nil, err
-	}
-	var nodes []easyflow.Node
-	err = json.Unmarshal(nodesJSON, &nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	return nodes, nil
 }
 
 func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
@@ -90,13 +75,13 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 	}
 
 	// 获取流程节点 nodes 信息
-	nodes, err := n.Unmarshal(wf)
+	nodes, err := unmarshal(wf)
 	if err != nil {
 		return false, err
 	}
 
 	// 获取当前节点信息
-	property, err := n.getUserProperty(nodes, currentNode.NodeID)
+	property, err := getProperty[easyflow.UserProperty](nodes, currentNode.NodeID)
 	if err != nil {
 		return false, err
 	}
@@ -113,14 +98,8 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 		return false, err
 	}
 
-	// 查找工单提交人
-	variables, err := engine.ResolveVariables(instanceId, []string{"$starter"})
-	if err != nil {
-		return false, err
-	}
-
-	// 获取用户信息
-	startUser, err := n.userSvc.FindByUsername(ctx, variables["$starter"])
+	// 获取工单创建用户
+	startUser, err := n.userSvc.FindByUsername(ctx, nOrder.CreateBy)
 	if err != nil {
 		return false, err
 	}
@@ -265,16 +244,6 @@ func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]r
 	return rules, nil
 }
 
-func (n *UserNotification) getUserProperty(nodes []easyflow.Node, currentNodeId string) (easyflow.UserProperty, error) {
-	for _, node := range nodes {
-		if node.ID == currentNodeId {
-			return easyflow.ToNodeProperty[easyflow.UserProperty](node)
-		}
-	}
-
-	return easyflow.UserProperty{}, nil
-}
-
 // 当自动化节点返回信息在流程结束后通知用户，组合所有自动化节点返回的数据，进行消息通知
 // 但是全局消息通知关闭的情况下，不会运行此部分
 func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, nodes []easyflow.Node) (map[string]interface{}, error) {
@@ -288,7 +257,7 @@ func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, no
 				return nil, fmt.Errorf("【用户节点】自动化节点未开启消息通知")
 			}
 
-			if !containsNotifyMethod(property.NotifyMethod, ProcessEndSend) {
+			if !containsAutoNotifyMethod(property.NotifyMethod, ProcessEndSend) {
 				return nil, fmt.Errorf("【用户节点】自动化节点未匹配消息通知规则")
 			}
 

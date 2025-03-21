@@ -56,45 +56,14 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	// 获取流程变量中记录的工单ID
-	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, ProcessInstanceID)
-	if err != nil {
-		return err
-	}
-
-	// 转换为 int64
-	id, err := strconv.ParseInt(orderId, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	// 获取工单详情信息
-	nOrder, err := e.orderSvc.Detail(ctx, id)
-	if err != nil {
-		e.logger.Error("查询工单详情错误",
-			elog.FieldErr(err),
-			elog.Any("instId", ProcessInstanceID),
-			elog.Any("userIds", CurrentNode.UserIDs),
-		)
-		return nil
-	}
-
-	// 判断是否需要消息提示
-	wf, err := e.workflowSvc.Find(ctx, nOrder.WorkflowId)
-	if err != nil {
-		e.logger.Error("查询流程信息错误",
-			elog.FieldErr(err),
-			elog.Any("instId", ProcessInstanceID),
-			elog.Any("userIds", CurrentNode.UserIDs),
-		)
-		return nil
-	}
-	
+	// 获取开始节点的 action
 	notify, ok := e.action["start"]
 	if !ok {
-		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
+		e.logger.Error("EventStart 消息发送失败：", elog.Int("流程ID", ProcessInstanceID),
 			elog.String("不存在Notify", "user"))
 	}
+
+	nOrder, wf, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
 
 	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
@@ -102,7 +71,7 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	}
 
 	// 这个必须成功，不然会导致后续任务无法进行
-	return e.orderSvc.RegisterProcessInstanceId(ctx, id, ProcessInstanceID)
+	return e.orderSvc.RegisterProcessInstanceId(ctx, nOrder.Id, ProcessInstanceID)
 }
 
 // EventAutomation 自动化任务处理（创建任务）
@@ -180,7 +149,9 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		// 关闭工单
 		err := e.orderSvc.UpdateStatusByInstanceId(ctx, ProcessInstanceID, order.EndProcess.ToUint8())
 		if err != nil {
-			e.logger.Error("EventNotify 关闭工单失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+			e.logger.Error("EventNotify 关闭工单失败：",
+				elog.FieldErr(err),
+				elog.Int("流程ID", ProcessInstanceID))
 		}
 	}
 
@@ -192,32 +163,13 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 
 	notify, ok := e.action[nodeMethod]
 	if !ok {
-		e.logger.Error("EventNotify 消息发送失败：", elog.Any("流程ID", ProcessInstanceID),
+		e.logger.Error("EventNotify 消息发送失败：",
+			elog.Int("流程ID", ProcessInstanceID),
 			elog.String("不存在Notify", "user"))
 		return nil
 	}
 
-	// 获取工单详情信息
-	nOrder, err := e.orderSvc.DetailByProcessInstId(ctx, ProcessInstanceID)
-	if err != nil {
-		e.logger.Error("查询工单详情错误",
-			elog.FieldErr(err),
-			elog.Any("instId", ProcessInstanceID),
-			elog.Any("userIds", CurrentNode.UserIDs),
-		)
-		return nil
-	}
-
-	// 判断是否需要消息提示
-	wf, err := e.workflowSvc.Find(ctx, nOrder.WorkflowId)
-	if err != nil {
-		e.logger.Error("查询流程信息错误",
-			elog.FieldErr(err),
-			elog.Any("instId", ProcessInstanceID),
-			elog.Any("userIds", CurrentNode.UserIDs),
-		)
-		return nil
-	}
+	nOrder, wf, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
 
 	// 消息通知
 	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
@@ -226,29 +178,6 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		return nil
 	}
 
-	return nil
-}
-
-// EventNotifyV1 通知
-func (e *ProcessEvent) EventNotifyV1(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
-	if err != nil {
-		return err
-	}
-	log.Printf("--------流程[%s]节点[%s]，通知节点中对应人员--------", processName, CurrentNode.NodeName)
-	if CurrentNode.NodeType == model.EndNode {
-		log.Printf("============================== 流程[%s]结束 ==============================", processName)
-		variables, err := engine.ResolveVariables(ProcessInstanceID, []string{"$starter"})
-		if err != nil {
-			return err
-		}
-		log.Printf("通知流程创建人%s,流程[%s]已完成", variables["$starter"], processName)
-
-	} else {
-		for _, user := range CurrentNode.UserIDs {
-			log.Printf("通知用户[%s],抓紧去处理", user)
-		}
-	}
 	return nil
 }
 
@@ -326,4 +255,41 @@ func (e *ProcessEvent) EventRevoke(ProcessInstanceID int, RevokeUserID string) e
 	log.Printf("--------流程[%s],由[%s]发起撤销--------", processName, RevokeUserID)
 
 	return nil
+}
+
+func (e *ProcessEvent) fetchOrderAndWorkflow(ctx context.Context, processInstanceID int) (
+	order.Order, workflow.Workflow, error) {
+	// 获取流程变量中记录的工单ID
+	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, processInstanceID)
+	if err != nil {
+		return order.Order{}, workflow.Workflow{}, err
+	}
+
+	// 转换为 int64
+	id, err := strconv.ParseInt(orderId, 10, 64)
+	if err != nil {
+		return order.Order{}, workflow.Workflow{}, err
+	}
+
+	// 获取工单详情
+	nOrder, err := e.orderSvc.Detail(ctx, id)
+	if err != nil {
+		e.logger.Error("查询工单详情错误",
+			elog.FieldErr(err),
+			elog.Any("instId", processInstanceID),
+		)
+		return order.Order{}, workflow.Workflow{}, err
+	}
+
+	// 获取流程信息
+	wf, err := e.workflowSvc.Find(ctx, nOrder.WorkflowId)
+	if err != nil {
+		e.logger.Error("查询流程信息错误",
+			elog.FieldErr(err),
+			elog.Any("instId", processInstanceID),
+		)
+		return order.Order{}, workflow.Workflow{}, err
+	}
+
+	return nOrder, wf, nil
 }

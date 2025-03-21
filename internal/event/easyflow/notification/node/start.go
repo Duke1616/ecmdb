@@ -2,8 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/json"
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -35,14 +33,8 @@ func NewStartNotification(userSvc user.Service, templateSvc template.Service, in
 
 func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
 	instanceId int, currentNode *model.Node) (bool, error) {
-	// 获取流程节点 nodes 信息
-	nodes, err := s.Unmarshal(wf)
-	if err != nil {
-		return false, err
-	}
-
 	// 获取当前节点信息
-	property, err := s.getStartProperty(nodes, currentNode.NodeID)
+	property, err := getNodeProperty[easyflow.StartProperty](wf, currentNode.NodeID)
 	if err != nil {
 		return false, err
 	}
@@ -58,12 +50,8 @@ func (s *StartNotification) Send(ctx context.Context, nOrder order.Order, wf wor
 		return false, err
 	}
 
-	variables, err := engine.ResolveVariables(instanceId, []string{"$starter"})
-	if err != nil {
-		return false, err
-	}
-
-	startUser, err := s.userSvc.FindByUsername(ctx, variables["$starter"])
+	// 获取工单创建用户
+	startUser, err := s.userSvc.FindByUsername(ctx, nOrder.CreateBy)
 	if err != nil {
 		return false, err
 	}
@@ -101,30 +89,6 @@ func (s *StartNotification) isNotify(sp easyflow.StartProperty, instanceId int) 
 	}
 
 	return true
-}
-
-func (s *StartNotification) Unmarshal(wf workflow.Workflow) ([]easyflow.Node, error) {
-	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
-	if err != nil {
-		return nil, err
-	}
-	var nodes []easyflow.Node
-	err = json.Unmarshal(nodesJSON, &nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	return nodes, nil
-}
-
-func (s *StartNotification) getStartProperty(nodes []easyflow.Node, currentNodeId string) (easyflow.StartProperty, error) {
-	for _, node := range nodes {
-		if node.ID == currentNodeId {
-			return easyflow.ToNodeProperty[easyflow.StartProperty](node)
-		}
-	}
-
-	return easyflow.StartProperty{}, nil
 }
 
 // isNotify 获取模版的字段信息

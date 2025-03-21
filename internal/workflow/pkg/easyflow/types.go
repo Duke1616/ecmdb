@@ -27,6 +27,19 @@ const (
 	MAIN_LEADER Rule = "main_leader"
 )
 
+type ExecMethod string
+
+func (s ExecMethod) ToString() string {
+	return string(s)
+}
+
+const (
+	// EXEC_TEMPLATE 根据模版
+	EXEC_TEMPLATE ExecMethod = "template"
+	// HAND 手动方式
+	HAND ExecMethod = "hand"
+)
+
 type Workflow struct {
 	Id       int64
 	Name     string
@@ -61,22 +74,22 @@ type Node struct {
 
 type EdgeProperty struct {
 	Name       string `json:"name"`
-	Expression string `json:"expression"`
-	IsPass     bool   `json:"is_pass"`
+	Expression string `json:"expression"` // 表达式
+	IsPass     bool   `json:"is_pass"`    // 连线是否通过、为了绘制流程图走向使用
 }
 
 type UserProperty struct {
-	Name          string   `json:"name"`
-	Approved      []string `json:"approved"`
-	Rule          Rule     `json:"rule"`
-	TemplateField string   `json:"template_field"`
-	IsCosigned    bool     `json:"is_cosigned"`
-	IsCC          bool     `json:"is_cc"`
+	Name          string   `json:"name"`           // 节点名称
+	Approved      []string `json:"approved"`       // 审批人、抄送人
+	Rule          Rule     `json:"rule"`           // 匹配策略
+	TemplateField string   `json:"template_field"` // 模版字段
+	IsCosigned    bool     `json:"is_cosigned"`    // 是否会签
+	IsCC          bool     `json:"is_cc"`          // 是否抄送
 }
 
 type StartProperty struct {
 	Name     string `json:"name"`
-	IsNotify bool   `json:"is_notify"`
+	IsNotify bool   `json:"is_notify"` // 是否开启开始节点消息通知
 }
 
 type EndProperty struct {
@@ -89,14 +102,14 @@ type ConditionProperty struct {
 
 type AutomationProperty struct {
 	Name          string  `json:"name"`
-	CodebookUid   string  `json:"codebook_uid"`
-	Tag           string  `json:"tag"`
-	IsNotify      bool    `json:"is_notify"`
-	Unit          uint8   `json:"unit"`
-	Quantity      int64   `json:"quantity"`
-	ExecMethod    string  `json:"exec_method"`
-	TemplateId    int64   `json:"template_id"`
-	TemplateField string  `json:"template_field"`
-	IsTiming      bool    `json:"is_timing"`
-	NotifyMethod  []int64 `json:"notify_method"`
+	CodebookUid   string  `json:"codebook_uid"`   // 代码库UID
+	Tag           string  `json:"tag"`            // runner tags
+	IsNotify      bool    `json:"is_notify"`      // 是否开始消息通知
+	Unit          uint8   `json:"unit"`           // 定时执行：单位
+	Quantity      int64   `json:"quantity"`       // 定时执行：数量
+	ExecMethod    string  `json:"exec_method"`    // 执行方式, template 模版获取，hand 手动指定
+	TemplateId    int64   `json:"template_id"`    // 模版ID
+	TemplateField string  `json:"template_field"` // 模版字段
+	IsTiming      bool    `json:"is_timing"`      // 是否开始定时执行
+	NotifyMethod  []int64 `json:"notify_method"`  // 消息通知模式
 }

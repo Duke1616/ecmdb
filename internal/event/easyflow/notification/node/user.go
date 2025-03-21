@@ -283,9 +283,13 @@ func (n *UserNotification) wantAllResult(ctx context.Context, instanceId int, no
 		switch node.Type {
 		case "automation":
 			property, _ := easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
-			// 判断是否进行通知
-			if !property.IsNotify || containsNotifyMethod(property.NotifyMethod, ProcessEndSend) {
-				continue
+			// 判断是否开启消息发送，以及是否为立即发送
+			if !property.IsNotify {
+				return nil, fmt.Errorf("【用户节点】自动化节点未开启消息通知")
+			}
+
+			if !containsNotifyMethod(property.NotifyMethod, ProcessEndSend) {
+				return nil, fmt.Errorf("【用户节点】自动化节点未匹配消息通知规则")
 			}
 
 			// 查找自动化任务返回

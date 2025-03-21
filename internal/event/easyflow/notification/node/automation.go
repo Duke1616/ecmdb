@@ -92,8 +92,12 @@ func (n *AutomationNotification) wantResult(ctx context.Context, wf workflow.Wor
 	}
 
 	// 判断是否开启消息发送，以及是否为立即发送
-	if !property.IsNotify || containsNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return nil, fmt.Errorf("未配置消息通知")
+	if !property.IsNotify {
+		return nil, fmt.Errorf("【自动化任务】全局未配置消息通知")
+	}
+
+	if !containsNotifyMethod(property.NotifyMethod, ProcessNowSend) {
+		return nil, fmt.Errorf("【自动化任务】节点未开启消息通知")
 	}
 
 	result, err := n.taskSvc.FindTaskResult(ctx, instanceId, nodeId)
@@ -114,21 +118,12 @@ func (n *AutomationNotification) wantResult(ctx context.Context, wf workflow.Wor
 	return wantResult, nil
 }
 
-func containsNotifyMethod(notifyMethod interface{}, target int64) bool {
-	switch v := notifyMethod.(type) {
-	case []int64:
-		// 如果是数组，遍历检查
-		for _, item := range v {
-			if item == target {
-				return true
-			}
+func containsNotifyMethod(notifyMethod []int64, target int64) bool {
+	for _, item := range notifyMethod {
+		if item == target {
+			return true
 		}
-		return false
-	case int64:
-		// 如果是单个值，直接比较
-		return v == target
-	default:
-		// 其他类型（如 nil），返回 false
-		return false
 	}
+	return false
+
 }

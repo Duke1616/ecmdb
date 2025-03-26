@@ -1,0 +1,142 @@
+[
+  {
+    "$required": true,
+    "_fc_drag_tag": "select",
+    "_fc_id": "id_Fl6om8nx52x8acc",
+    "display": true,
+    "effect": {
+      "fetch": ""
+    },
+    "field": "environment",
+    "hidden": false,
+    "info": "",
+    "name": "ref_F7jtm8nx52x8adc",
+    "options": [
+      {
+        "label": "企业内网环境",
+        "value": "internal"
+      }
+    ],
+    "props": {
+      "multiple": false
+    },
+    "title": "项目环境",
+    "type": "select",
+    "value": ""
+  },
+  {
+    "$required": true,
+    "_fc_drag_tag": "select",
+    "_fc_id": "id_F3rfm8nx9ipcatc",
+    "display": true,
+    "field": "assets",
+    "hidden": false,
+    "info": "",
+    "name": "ref_F6hom8nx9ipcauc",
+    "options": [
+      {
+        "label": "MySQL",
+        "value": "72a0f236-d1c5-497c-b890-013b35b4368e"
+      },
+      {
+        "label": "MongoDB",
+        "value": "7601628b-3567-472e-af13-4f2c6ad631c4"
+      },
+      {
+        "label": "Redis",
+        "value": "b6d7171f-84b1-4778-9f9c-0960cb7b1d42"
+      }
+    ],
+    "props": {
+      "_optionType": 2,
+      "multiple": true
+    },
+    "title": "资产选择",
+    "type": "select"
+  },
+  {
+    "$required": true,
+    "_fc_drag_tag": "input",
+    "_fc_id": "id_Fnuvm8pi7zcfacc",
+    "display": true,
+    "field": "purpose",
+    "hidden": false,
+    "info": "",
+    "name": "ref_Ftgqm8pi7zcfadc",
+    "title": "用途",
+    "type": "input"
+  },
+  {
+    "_fc_drag_tag": "fcRow",
+    "_fc_id": "id_Ffbhm8pi9qdaahc",
+    "children": [
+      {
+        "_fc_drag_tag": "col",
+        "_fc_id": "id_Fqtkm8pi9qdaajc",
+        "children": [
+          {
+            "$required": true,
+            "_fc_drag_tag": "radio",
+            "_fc_id": "id_Fjc6m8phzzu3acc",
+            "display": true,
+            "effect": {
+              "fetch": ""
+            },
+            "field": "role",
+            "hidden": false,
+            "info": "",
+            "name": "ref_Fjb1m8nx78y7aic",
+            "options": [
+              {
+                "label": "只读",
+                "value": 1
+              },
+              {
+                "label": "可写",
+                "value": 2
+              }
+            ],
+            "title": "权限类型",
+            "type": "radio"
+          }
+        ],
+        "display": true,
+        "hidden": false,
+        "name": "ref_Fq77m8pi9qdaakc",
+        "props": {
+          "span": 12
+        },
+        "type": "col"
+      },
+      {
+        "_fc_drag_tag": "col",
+        "_fc_id": "id_Fzt6m8pi9qdaalc",
+        "children": [
+          {
+            "$required": true,
+            "_fc_drag_tag": "inputNumber",
+            "_fc_id": "id_Fj4cm8pi8th4afc",
+            "display": true,
+            "field": "quantity",
+            "hidden": false,
+            "info": "",
+            "name": "ref_F1jnm8pi8th4agc",
+            "title": "授权时长（小时）",
+            "type": "inputNumber"
+          }
+        ],
+        "display": true,
+        "hidden": false,
+        "name": "ref_Fxmwm8pi9qdaamc",
+        "props": {
+          "span": 12
+        },
+        "type": "col"
+      }
+    ],
+    "display": true,
+    "hidden": false,
+    "name": "ref_Fg4hm8pi9qdaaic",
+    "type": "fcRow"
+  }
+]

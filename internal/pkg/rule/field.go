@@ -2,129 +2,221 @@ package rule
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
+
 	"github.com/Duke1616/ecmdb/internal/pkg/wechat"
 	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/xen0n/go-workwx"
-	"sort"
 )
 
+type FieldProcessor struct {
+	rules      []Rule
+	provide    uint8
+	data       map[string]interface{}
+	ruleMap    map[string]Rule
+	optionsMap map[string]map[interface{}]string
+}
+
 func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []card.Field {
-	// 排除不使用的字段
-	for _, rule := range rules {
-		if _, ok := rule.Style["notify_display"]; ok {
-			// 如果匹配成功，则从 data 中删除该字段
-			if _, exists := data[rule.Field]; exists {
-				delete(data, rule.Field)
-			}
-		}
+	fp := &FieldProcessor{
+		rules:   rules,
+		provide: provide,
+		data:    data,
 	}
 
-	// 构建排序值映射
+	fp.initialize()
+	fp.filterHiddenFields()
 
-	ruleMap := slice.ToMap(rules, func(element Rule) string {
+	switch provide {
+	case SystemProvide:
+		return fp.processSystemFields()
+	case WechatProvide:
+		return fp.processWechatFields()
+	default:
+		return nil
+	}
+}
+
+func (fp *FieldProcessor) initialize() {
+	fp.ruleMap = slice.ToMap(fp.rules, func(element Rule) string {
 		return element.Field
 	})
 
-	// 进行统一排序
-	keys := make([]string, 0, len(data))
-	for key := range data {
-		keys = append(keys, key)
+	fp.optionsMap = make(map[string]map[interface{}]string)
+	for _, rule := range fp.rules {
+		if len(rule.Options) > 0 {
+			fieldOptions := make(map[interface{}]string)
+			for _, opt := range rule.Options {
+				fieldOptions[opt.Value] = opt.Label
+			}
+			fp.optionsMap[rule.Field] = fieldOptions
+		}
 	}
-	sort.Strings(keys)
+}
 
-	// 拼接消息体
-	num := 1
+func (fp *FieldProcessor) filterHiddenFields() {
+	for _, rule := range fp.rules {
+		if _, ok := rule.Style["notify_display"]; ok {
+			delete(fp.data, rule.Field)
+		}
+	}
+}
+
+func (fp *FieldProcessor) processSystemFields() []card.Field {
 	var fields []card.Field
+	keys := fp.getSortedKeys()
 
-	// 判断不同平台的消息来源，进行处理
-	switch provide {
-	case SystemProvide:
-		for _, field := range keys {
-			value := data[field]
-			title := field
-			val, ok := ruleMap[field]
-			if ok {
-				title = val.Title
-			}
+	for i, field := range keys {
+		value := fp.data[field]
+		title := fp.getFieldTitle(field)
+		displayValue := fp.getDisplayValue(field, value)
 
+		fields = append(fields, card.Field{
+			IsShort: true,
+			Tag:     "lark_md",
+			Content: fmt.Sprintf(`**%s:**\n%v`, title, displayValue),
+		})
+
+		if (i+1)%2 == 0 {
 			fields = append(fields, card.Field{
-				IsShort: true,
+				IsShort: false,
 				Tag:     "lark_md",
-				Content: fmt.Sprintf(`**%s:**\n%v`, title, value),
+				Content: "",
 			})
-
-			if num%2 == 0 {
-				fields = append(fields, card.Field{
-					IsShort: false,
-					Tag:     "lark_md",
-					Content: "",
-				})
-			}
-
-			num++
-		}
-	case WechatProvide:
-		oaData, err := wechat.Unmarshal(data)
-		if err != nil {
-			return nil
-		}
-
-		for _, contents := range oaData.ApplyData.Contents {
-			key := contents.Title[0].Text
-
-			switch contents.Control {
-			case "Selector":
-				switch contents.Value.Selector.Type {
-				case "single":
-					fields = append(fields, card.Field{
-						IsShort: true,
-						Tag:     "lark_md",
-						Content: fmt.Sprintf(`**%s:**\n%v`, key, contents.Value.Selector.Options[0].Value[0].Text),
-					})
-				case "multi":
-					value := slice.Map(contents.Value.Selector.Options, func(idx int,
-						src workwx.OAContentSelectorOption) string {
-						return src.Value[0].Text
-					})
-
-					fields = append(fields, card.Field{
-						IsShort: true,
-						Tag:     "lark_md",
-						Content: fmt.Sprintf(`**%s:**\n%v`, key, value),
-					})
-				}
-			case "Textarea":
-				fields = append(fields, card.Field{
-					IsShort: true,
-					Tag:     "lark_md",
-					Content: fmt.Sprintf(`**%s:**\n%v`, key, contents.Value.Text),
-				})
-			case "default":
-				fmt.Println("不符合筛选规则")
-			}
-
-			if num%2 == 0 {
-				fields = append(fields, card.Field{
-					IsShort: false,
-					Tag:     "lark_md",
-					Content: "",
-				})
-			}
-
-			num++
 		}
 	}
 
 	return fields
 }
 
-func getSortMap(rule Rule) int {
-	if sortValue, ok := rule.Style["sort"]; ok {
-		if sortInt, okk := sortValue.(int); okk {
-			return sortInt
+func (fp *FieldProcessor) processWechatFields() []card.Field {
+	oaData, err := wechat.Unmarshal(fp.data)
+	if err != nil {
+		return nil
+	}
+
+	var fields []card.Field
+
+	for i, contents := range oaData.ApplyData.Contents {
+		key := contents.Title[0].Text
+		content := fp.processWechatContent(contents)
+
+		if content != "" {
+			fields = append(fields, card.Field{
+				IsShort: true,
+				Tag:     "lark_md",
+				Content: fmt.Sprintf(`**%s:**\n%v`, key, content),
+			})
+
+			if (i+1)%2 == 0 {
+				fields = append(fields, card.Field{
+					IsShort: false,
+					Tag:     "lark_md",
+					Content: "",
+				})
+			}
 		}
 	}
 
-	return 1<<31 - 1
+	return fields
+}
+
+func (fp *FieldProcessor) processWechatContent(contents workwx.OAContent) string {
+	switch contents.Control {
+	case "Selector":
+		switch contents.Value.Selector.Type {
+		case "single":
+			return contents.Value.Selector.Options[0].Value[0].Text
+		case "multi":
+			values := slice.Map(contents.Value.Selector.Options, func(_ int, opt workwx.OAContentSelectorOption) string {
+				return opt.Value[0].Text
+			})
+			return strings.Join(values, ", ")
+		}
+	case "Textarea":
+		return contents.Value.Text
+	default:
+		return ""
+	}
+	return ""
+}
+
+func (fp *FieldProcessor) getSortedKeys() []string {
+	keys := make([]string, 0, len(fp.data))
+	for key := range fp.data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func (fp *FieldProcessor) getFieldTitle(field string) string {
+	if rule, ok := fp.ruleMap[field]; ok {
+		return rule.Title
+	}
+	return field
+}
+
+func (fp *FieldProcessor) getDisplayValue(field string, value interface{}) string {
+	if value == nil {
+		return ""
+	}
+
+	if reflect.TypeOf(value).Kind() == reflect.Slice {
+		return fp.processSliceValue(field, value)
+	}
+	return fp.processSingleValue(field, value)
+}
+
+func (fp *FieldProcessor) processSliceValue(field string, value interface{}) string {
+	sli := reflect.ValueOf(value)
+	var results []string
+
+	for i := 0; i < sli.Len(); i++ {
+		elem := sli.Index(i).Interface()
+		results = append(results, fp.getOptionLabel(field, elem))
+	}
+
+	return strings.Join(results, ", ")
+}
+
+func (fp *FieldProcessor) processSingleValue(field string, value interface{}) string {
+	if label := fp.getOptionLabel(field, value); label != "" {
+		return label
+	}
+	return fmt.Sprintf("%v", value)
+}
+
+func (fp *FieldProcessor) getOptionLabel(field string, value interface{}) string {
+	options, ok := fp.optionsMap[field]
+	if !ok {
+		return ""
+	}
+
+	valueStr := fmt.Sprintf("%v", value)
+	if label, exists := options[valueStr]; exists {
+		return label
+	}
+
+	if num, err := convertToNumber(value); err == nil {
+		if label, exists := options[num]; exists {
+			return label
+		}
+	}
+
+	return ""
+}
+
+func convertToNumber(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return reflect.ValueOf(v).Convert(reflect.TypeOf(float64(0))).Float(), nil
+	default:
+		return 0, fmt.Errorf("not a number")
+	}
 }

@@ -41,12 +41,14 @@ func (n *AutomationNotification) Send(ctx context.Context, nOrder order.Order, w
 
 	// 判断是否开启消息发送，以及是否为立即发送
 	if !property.IsNotify {
-		return false, fmt.Errorf("【自动化节点】未配置消息通知")
+		n.logger.Warn("【自动化节点】未配置消息通知")
+		return false, nil
 	}
 
 	// 判断模式如果不是理解发送则退出
 	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return false, fmt.Errorf("【自动化节点】节点未开启消息通知")
+		n.logger.Warn("【自动化节点】节点未开启消息通知")
+		return false, nil
 	}
 
 	// 查看返回的消息

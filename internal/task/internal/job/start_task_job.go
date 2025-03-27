@@ -45,8 +45,14 @@ func (c *StartTaskJob) Run(ctx context.Context) error {
 			return fmt.Errorf("获取任务列表失败: %w", err)
 		}
 
+		// 并行启动任务
 		for _, task := range tasks {
-			return c.start(ctx, task.ProcessInstId, task.CurrentNodeId)
+			go func(t domain.Task) {
+				err = c.start(ctx, t.ProcessInstId, t.CurrentNodeId) // 重新声明局部 err
+				if err != nil {
+					c.logger.Error("自动化任务启动失败", elog.FieldErr(err), elog.Int64("task_id", t.Id))
+				}
+			}(task)
 		}
 
 		if len(tasks) < int(c.limit) {

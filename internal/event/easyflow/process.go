@@ -174,7 +174,7 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	// 消息通知
 	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
-		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		e.logger.Warn("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil
 	}
 

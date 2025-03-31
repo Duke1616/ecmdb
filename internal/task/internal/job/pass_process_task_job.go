@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
 	"gorm.io/gorm"
 	"time"
@@ -14,6 +16,7 @@ import (
 var _ ecron.NamedJob = (*PassProcessTaskJob)(nil)
 
 type PassProcessTaskJob struct {
+	logger    *elog.Component
 	svc       service.Service
 	engineSvc engine.Service
 	minutes   int64
@@ -25,6 +28,7 @@ type PassProcessTaskJob struct {
 func NewPassProcessTaskJob(svc service.Service, engineSvc engine.Service, minutes, seconds int64,
 	limit int64) *PassProcessTaskJob {
 	return &PassProcessTaskJob{
+		logger:    elog.DefaultLogger,
 		svc:       svc,
 		engineSvc: engineSvc,
 		minutes:   minutes,
@@ -51,14 +55,19 @@ func (c *PassProcessTaskJob) Run(ctx context.Context) error {
 		// 遍历
 		for _, task := range tasks {
 			// 获取自动化步骤
-			exist, er := c.engineSvc.GetAutomationTask(ctx, task.CurrentNodeId, task.ProcessInstId)
-			if errors.Is(er, gorm.ErrRecordNotFound) {
+			mt := model.Task{}
+			mt, err = c.engineSvc.GetAutomationTask(ctx, task.CurrentNodeId, task.ProcessInstId)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			}
 
+			if err != nil {
+				c.logger.Error("获取自动化任务失败", elog.FieldErr(err))
+			}
+
 			// 如果返回有值，则通过
-			if exist.TaskID != 0 {
-				err = c.engineSvc.Pass(ctx, exist.TaskID, "任务执行完成")
+			if mt.TaskID != 0 {
+				err = c.engineSvc.Pass(ctx, mt.TaskID, "任务执行完成")
 				if err != nil {
 					return fmt.Errorf("通过自动化节点失败: %w", err)
 				}

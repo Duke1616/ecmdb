@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -34,8 +35,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/update", ginx.WrapBody[UpdateTemplateReq](h.UpdateTemplate))
 	g.POST("/list/pipeline", ginx.Wrap(h.Pipeline))
 
-	// 根据流程ID获取所有模版
+	// 根据流程ID，获取所有已经被模版，主要为了处理模版
 	g.POST("/get_by_workflow_id", ginx.WrapBody[GetTemplatesByWorkFlowIdReq](h.GetTemplatesByWorkflowId))
+
+	g.POST("/rules/by_workflow_id", ginx.WrapBody[GetRulesByWorkFlowIdReq](h.GetRulesByWorkFlowId))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -62,6 +65,35 @@ func (h *Handler) DetailTemplate(ctx *gin.Context, req DetailTemplateReq) (ginx.
 
 	return ginx.Result{
 		Data: h.toTemplateVo(t),
+	}, nil
+}
+
+func (h *Handler) GetRulesByWorkFlowId(ctx *gin.Context, req GetRulesByWorkFlowIdReq) (ginx.Result, error) {
+	wfs, err := h.svc.GetByWorkflowId(ctx, req.WorkFlowId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询流程绑定的模版成功",
+		Data: RetrieveTemplateRules{
+			TemplateRules: slice.Map(wfs, func(idx int, src domain.Template) TemplateRules {
+				rs, _ := rule.ParseRules(src.Rules)
+				r := slice.Map(rs, func(idx int, src rule.Rule) Rule {
+					return Rule{
+						Type:  src.Type,
+						Field: src.Field,
+						Title: src.Title,
+					}
+				})
+
+				return TemplateRules{
+					Rules: r,
+					Id:    src.Id,
+					Name:  src.Name,
+				}
+			}),
+		},
 	}, nil
 }
 

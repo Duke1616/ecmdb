@@ -60,6 +60,26 @@ type RetrieveTemplates struct {
 	Templates []TemplateJson `json:"templates"`
 }
 
+type GetRulesByWorkFlowIdReq struct {
+	WorkFlowId int64 `json:"workflow_id"`
+}
+
+type Rule struct {
+	Type  string `json:"type"`
+	Field string `json:"field"`
+	Title string `json:"title"`
+}
+
+type TemplateRules struct {
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Rules []Rule `json:"rules"`
+}
+
+type RetrieveTemplateRules struct {
+	TemplateRules []TemplateRules `json:"template_rules"`
+}
+
 type UpdateTemplateReq struct {
 	Id         int64  `json:"id"`
 	GroupId    int64  `json:"group_id"`

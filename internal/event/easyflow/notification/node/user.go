@@ -55,7 +55,7 @@ func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Se
 	}, nil
 }
 
-func (n *UserNotification) isNotify(wf workflow.Workflow, instanceId int) bool {
+func (n *UserNotification) isGlobalNotify(wf workflow.Workflow, instanceId int) bool {
 	if !wf.IsNotify {
 		n.logger.Warn("【用户节点】全局流程控制未开启消息通知能力",
 			elog.Any("instId", instanceId),
@@ -68,11 +68,6 @@ func (n *UserNotification) isNotify(wf workflow.Workflow, instanceId int) bool {
 
 func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf workflow.Workflow,
 	instanceId int, currentNode *model.Node) (bool, error) {
-	// 判断是否开启
-	if ok := n.isNotify(wf, instanceId); !ok {
-		return false, nil
-	}
-
 	// 获取流程节点 nodes 信息
 	nodes, err := unmarshal(wf)
 	if err != nil {
@@ -159,6 +154,13 @@ func (n *UserNotification) Send(ctx context.Context, nOrder order.Order, wf work
 
 			// 处理自动通过
 			go n.ccPass(ctx, tasks)
+		}
+
+		// TODO 全局消息通知，如果没开启则全局不发送消息通知
+		// 因为用户是通过规则匹配的，需要动态生成，用户抄送节点需要自动通过
+		// 假如这个步骤前置执行，会提前退出，导致流程出现不可逆的严重错误
+		if ok := n.isGlobalNotify(wf, instanceId); !ok {
+			return
 		}
 
 		for _, integration := range n.integrations {

@@ -54,6 +54,7 @@ func (c *PassProcessTaskJob) Run(ctx context.Context) error {
 
 		// 遍历
 		for _, task := range tasks {
+			c.logger.Info("任务开启自动通过逻辑", elog.Int64("id", task.Id))
 			// 获取自动化步骤
 			mt := model.Task{}
 			mt, err = c.engineSvc.GetAutomationTask(ctx, task.CurrentNodeId, task.ProcessInstId)

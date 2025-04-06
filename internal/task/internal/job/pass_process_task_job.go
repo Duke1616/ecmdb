@@ -18,6 +18,7 @@ var _ ecron.NamedJob = (*PassProcessTaskJob)(nil)
 type PassProcessTaskJob struct {
 	logger    *elog.Component
 	svc       service.Service
+	taskIds   []string
 	engineSvc engine.Service
 	minutes   int64
 	seconds   int64
@@ -28,6 +29,7 @@ type PassProcessTaskJob struct {
 func NewPassProcessTaskJob(svc service.Service, engineSvc engine.Service, minutes, seconds int64,
 	limit int64) *PassProcessTaskJob {
 	return &PassProcessTaskJob{
+		taskIds:   make([]string, 0),
 		logger:    elog.DefaultLogger,
 		svc:       svc,
 		engineSvc: engineSvc,

@@ -39,10 +39,16 @@ type Service interface {
 	Revoke(ctx context.Context, instanceId int, userId string, force bool) error
 	// Upstream 获取所有上游节点
 	Upstream(ctx context.Context, taskId int) ([]model.Node, error)
+	// TaskInfo 获取任务详情
+	TaskInfo(ctx context.Context, taskId int) (model.Task, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) TaskInfo(ctx context.Context, taskId int) (model.Task, error) {
+	return engine.GetTaskInfo(taskId)
 }
 
 func (s *service) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {

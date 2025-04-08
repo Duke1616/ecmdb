@@ -211,11 +211,12 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 }
 
 func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) {
-	// TODO 超级管理员 任意通过 （ 可选 ）
+	err := h.verifyUser(ctx, req.TaskId)
+	if err != nil {
+		return systemErrorResult, err
+	}
 
-	// TODO 校验是否为自己的任务，排除部分类型情况
-
-	err := h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
+	err = h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -227,7 +228,12 @@ func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) 
 }
 
 func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, error) {
-	err := h.engineSvc.Reject(ctx, req.TaskId, req.Comment)
+	err := h.verifyUser(ctx, req.TaskId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	err = h.engineSvc.Reject(ctx, req.TaskId, req.Comment)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -528,6 +534,38 @@ func (h *Handler) getSessUser(ctx *gin.Context) (user.User, error) {
 
 	// 查询用户信息 - 为了统一存储为 username
 	return h.userSvc.FindById(ctx, sess.Claims().Uid)
+}
+
+func (h *Handler) verifyUser(ctx *gin.Context, taskId int) error {
+	userInfo, err := h.getSessUser(ctx)
+	if err != nil {
+		return err
+	}
+
+	// 如果不是管理员用户，需要进行验证
+	if !isAdmin(userInfo.RoleCodes) {
+		tInfo := model.Task{}
+		tInfo, err = h.engineSvc.TaskInfo(ctx, taskId)
+		if err != nil {
+			return err
+		}
+
+		if tInfo.UserID != userInfo.Username {
+			return fmt.Errorf("无法操作，任务审批用户不一致")
+		}
+	}
+
+	return nil
+}
+
+func isAdmin(roleCodes []string) bool {
+	for _, code := range roleCodes {
+		if code != "admin" {
+			return true
+		}
+	}
+
+	return false
 }
 
 // 获取用户Map映射

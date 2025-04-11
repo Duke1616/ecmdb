@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/department"
+	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
@@ -84,6 +85,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*permission.Module), "Hdl"),
 		rota.InitModule,
 		wire.FieldsOf(new(*rota.Module), "Hdl"),
+		discovery.InitModule,
+		wire.FieldsOf(new(*discovery.Module), "Hdl"),
 		tools.InitModule,
 		terminal.InitModule,
 		middleware.NewCheckPolicyMiddlewareBuilder,

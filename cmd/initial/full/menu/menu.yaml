@@ -1,0 +1,30 @@
+name: 模型管理
+role:
+children:
+  - name: 模型资产
+    endpoints:
+      - method:
+        path:
+        desc:
+      - method:
+        path:
+        desc:
+  - name: 模型列表
+    endpoints:
+      - method:
+        path:
+        desc:
+      - method:
+        path:
+        desc:
+  - name: 关联关系
+    endpoints:
+      - method:
+        path:
+        desc:
+      - method:
+        path:
+        desc:
+  - name: 关联类型
+
+

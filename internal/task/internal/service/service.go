@@ -313,6 +313,9 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)
 	}
 
+	// TODO 自动发现 - 根据 automation 流程控制内 tags 记录为 auto 时
+	// TODO 根据工单模版字段信息判断匹配所对应的 tags 应该是什么，进行传递
+
 	// 4. 获取调度节点
 	runnerResp, err := s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
 	if err != nil {

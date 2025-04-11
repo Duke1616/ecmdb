@@ -111,11 +111,6 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler7 := codebookModule.Hdl
-	runnerModule, err := runner.InitModule(mongo, mq, workerModule, codebookModule)
-	if err != nil {
-		return nil, err
-	}
-	handler8 := runnerModule.Hdl
 	engineModule, err := engine.InitModule(db)
 	if err != nil {
 		return nil, err
@@ -124,6 +119,11 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	runnerModule, err := runner.InitModule(mongo, mq, workerModule, workflowModule, codebookModule)
+	if err != nil {
+		return nil, err
+	}
+	handler8 := runnerModule.Hdl
 	larkClient := InitFeishu()
 	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient)
 	if err != nil {

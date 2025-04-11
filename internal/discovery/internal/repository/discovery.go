@@ -24,7 +24,7 @@ func (repo *discoveryRepository) Delete(ctx context.Context, id int64) (int64, e
 }
 
 func (repo *discoveryRepository) Create(ctx context.Context, req domain.Discovery) (int64, error) {
-	return repo.dao.Update(ctx, repo.toEntity(req))
+	return repo.dao.Create(ctx, repo.toEntity(req))
 }
 
 func (repo *discoveryRepository) Update(ctx context.Context, req domain.Discovery) (int64, error) {
@@ -53,8 +53,6 @@ func (repo *discoveryRepository) toDomain(src dao.Discovery) domain.Discovery {
 		Id:         src.Id,
 		TemplateId: src.TemplateId,
 		RunnerId:   src.RunnerId,
-		RunnerName: src.RunnerName,
-		Title:      src.Title,
 		Field:      src.Field,
 		Value:      src.Value,
 	}
@@ -65,8 +63,6 @@ func (repo *discoveryRepository) toEntity(src domain.Discovery) dao.Discovery {
 		Id:         src.Id,
 		TemplateId: src.TemplateId,
 		RunnerId:   src.RunnerId,
-		RunnerName: src.RunnerName,
-		Title:      src.Title,
 		Field:      src.Field,
 		Value:      src.Value,
 	}

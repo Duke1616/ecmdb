@@ -36,10 +36,17 @@ type UpdateRunnerReq struct {
 	Variables      []Variables `json:"variables"`
 }
 
+type ListByWorkflowIdReq struct {
+	WorkflowId int64 `json:"workflow_id"`
+}
+
 type DeleteRunnerReq struct {
 	Id int64 `json:"id"`
 }
 
+type ListRunnerByIds struct {
+	Ids []int64 `json:"ids"`
+}
 type Variables struct {
 	Key    string `json:"key"`
 	Value  any    `json:"value"`

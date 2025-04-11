@@ -25,6 +25,8 @@ type RunnerDAO interface {
 	ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error)
 	Count(ctx context.Context) (int64, error)
 	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error)
+	ListByCodebookUids(ctx context.Context, codebookUids []string) ([]Runner, error)
+	ListByIds(ctx context.Context, ids []int64) ([]Runner, error)
 	ListTagsPipelineByCodebookUid(ctx context.Context) ([]RunnerPipeline, error)
 }
 
@@ -36,6 +38,36 @@ func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
 
 type runnerDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *runnerDAO) ListByIds(ctx context.Context, ids []int64) ([]Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []Runner
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *runnerDAO) ListByCodebookUids(ctx context.Context, codebookUids []string) ([]Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"codebook_uid": bson.M{"$in": codebookUids}}
+
+	cursor, err := col.Find(ctx, filter)
+	var result []Runner
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *runnerDAO) Detail(ctx context.Context, id int64) (Runner, error) {

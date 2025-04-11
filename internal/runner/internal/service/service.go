@@ -14,11 +14,21 @@ type Service interface {
 	Delete(ctx context.Context, id int64) (int64, error)
 	ListRunner(ctx context.Context, offset, limit int64) ([]domain.Runner, int64, error)
 	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (domain.Runner, error)
+	ListByCodebookUids(ctx context.Context, codebookUids []string) ([]domain.Runner, error)
+	ListByIds(ctx context.Context, ids []int64) ([]domain.Runner, error)
 	ListTagsPipelineByCodebookUid(ctx context.Context) ([]domain.RunnerTags, error)
 }
 
 type service struct {
 	repo repository.RunnerRepository
+}
+
+func (s *service) ListByIds(ctx context.Context, ids []int64) ([]domain.Runner, error) {
+	return s.repo.ListByIds(ctx, ids)
+}
+
+func (s *service) ListByCodebookUids(ctx context.Context, codebookUids []string) ([]domain.Runner, error) {
+	return s.repo.ListByCodebookUids(ctx, codebookUids)
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Runner, error) {

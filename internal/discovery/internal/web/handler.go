@@ -83,21 +83,17 @@ func (h *Handler) toDomain(src CreateDiscoveryReq) domain.Discovery {
 	return domain.Discovery{
 		Field:      src.Field,
 		RunnerId:   src.RunnerId,
-		RunnerName: src.RunnerName,
 		TemplateId: src.TemplateId,
 		Value:      src.Value,
-		Title:      src.Title,
 	}
 }
 
 func (h *Handler) toUpdateDomain(src UpdateDiscoveryReq) domain.Discovery {
 	return domain.Discovery{
-		Id:         src.Id,
-		Field:      src.Field,
-		RunnerId:   src.RunnerId,
-		RunnerName: src.RunnerName,
-		Value:      src.Value,
-		Title:      src.Title,
+		Id:       src.Id,
+		Field:    src.Field,
+		RunnerId: src.RunnerId,
+		Value:    src.Value,
 	}
 }
 
@@ -106,9 +102,7 @@ func (h *Handler) toDiscoveryVo(src domain.Discovery) Discovery {
 		Id:         src.Id,
 		Field:      src.Field,
 		RunnerId:   src.RunnerId,
-		RunnerName: src.RunnerName,
 		TemplateId: src.TemplateId,
 		Value:      src.Value,
-		Title:      src.Title,
 	}
 }

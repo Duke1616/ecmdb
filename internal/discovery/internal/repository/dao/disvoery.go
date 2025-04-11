@@ -59,12 +59,10 @@ func (dao *discoveryDao) Update(ctx context.Context, req Discovery) (int64, erro
 	col := dao.db.Collection(DiscoveryCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
-			"runner_id":   req.RunnerId,
-			"runner_name": req.RunnerName,
-			"field":       req.Field,
-			"title":       req.Title,
-			"value":       req.Value,
-			"utime":       time.Now().UnixMilli(),
+			"runner_id": req.RunnerId,
+			"field":     req.Field,
+			"value":     req.Value,
+			"utime":     time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": req.Id}
@@ -126,9 +124,7 @@ type Discovery struct {
 	Id         int64  `bson:"id"`
 	TemplateId int64  `bson:"template_id"`
 	RunnerId   int64  `bson:"runner_id"`
-	RunnerName string `bson:"runner_name"`
 	Field      string `bson:"field"`
-	Title      string `bson:"title"`
 	Value      string `bson:"value"`
 	Ctime      int64  `bson:"ctime"`
 	Utime      int64  `bson:"utime"`

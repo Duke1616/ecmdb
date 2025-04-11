@@ -2,10 +2,14 @@ package web
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
 	"github.com/Duke1616/ecmdb/internal/worker"
+	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
@@ -16,14 +20,17 @@ import (
 type Handler struct {
 	svc         service.Service
 	workerSvc   worker.Service
+	workflowSvc workflow.Service
 	codebookSvc codebook.Service
 	aesKey      string
 }
 
-func NewHandler(svc service.Service, workerSvc worker.Service, codebookSvc codebook.Service) *Handler {
+func NewHandler(svc service.Service, workerSvc worker.Service, workflowSvc workflow.Service,
+	codebookSvc codebook.Service) *Handler {
 	return &Handler{
 		svc:         svc,
 		workerSvc:   workerSvc,
+		workflowSvc: workflowSvc,
 		codebookSvc: codebookSvc,
 		aesKey:      viper.Get("crypto_aes_key").(string),
 	}
@@ -36,6 +43,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list/tags", ginx.Wrap(h.ListTags))
 	g.POST("/update", ginx.WrapBody[UpdateRunnerReq](h.UpdateRunner))
 	g.POST("/delete", ginx.WrapBody[DeleteRunnerReq](h.DeleteRunner))
+	g.POST("/list/by_workflow_id", ginx.WrapBody[ListByWorkflowIdReq](h.ListByWorkflowId))
+	g.POST("/list/by_ids", ginx.WrapBody[ListRunnerByIds](h.ListByIds))
 }
 
 func (h *Handler) Register(ctx *gin.Context, req RegisterRunnerReq) (ginx.Result, error) {
@@ -52,6 +61,64 @@ func (h *Handler) Register(ctx *gin.Context, req RegisterRunnerReq) (ginx.Result
 	}
 	return ginx.Result{
 		Msg: "注册成功",
+	}, nil
+}
+
+func (h *Handler) ListByIds(ctx *gin.Context, req ListRunnerByIds) (ginx.Result, error) {
+	rs, err := h.svc.ListByIds(ctx, req.Ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询 runner 列表成功",
+		Data: RetrieveWorkers{
+			Total: int64(len(rs)),
+			Runners: slice.Map(rs, func(idx int, src domain.Runner) Runner {
+				return h.toRunnerVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) ListByWorkflowId(ctx *gin.Context, req ListByWorkflowIdReq) (ginx.Result, error) {
+	wf, err := h.workflowSvc.Find(ctx, req.WorkflowId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	nodesJSON, err := json.Marshal(wf.FlowData.Nodes)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	var nodes []easyflow.Node
+	err = json.Unmarshal(nodesJSON, &nodes)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	codebookUids := make([]string, 0)
+	for _, node := range nodes {
+		if node.Type == "automation" {
+			property, _ := easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
+			codebookUids = append(codebookUids, property.CodebookUid)
+		}
+	}
+
+	if len(codebookUids) == 0 {
+		return systemErrorResult, nil
+	}
+
+	rs, err := h.svc.ListByCodebookUids(ctx, codebookUids)
+	fmt.Println(rs)
+	return ginx.Result{
+		Msg: "查询 runner 列表成功",
+		Data: RetrieveWorkers{
+			Total: int64(len(rs)),
+			Runners: slice.Map(rs, func(idx int, src domain.Runner) Runner {
+				return h.toRunnerVo(src)
+			}),
+		},
 	}, nil
 }
 

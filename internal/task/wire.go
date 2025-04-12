@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
@@ -37,7 +38,8 @@ var ProviderSet = wire.NewSet(
 
 func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module,
 	engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module,
-	runnerModule *runner.Module, userModule *user.Module, lark *lark.Client) (*Module, error) {
+	runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module,
+	lark *lark.Client) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initStartTaskJob,
@@ -49,6 +51,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 		wire.FieldsOf(new(*codebook.Module), "Svc"),
 		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.FieldsOf(new(*worker.Module), "Svc"),
+		wire.FieldsOf(new(*discovery.Module), "Svc"),
 		wire.FieldsOf(new(*runner.Module), "Svc"),
 		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.Struct(new(Module), "*"),

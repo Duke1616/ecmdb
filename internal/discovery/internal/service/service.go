@@ -18,6 +18,11 @@ type service struct {
 	repo repository.DiscoveryRepository
 }
 
+func (s *service) List(ctx context.Context) ([]domain.Discovery, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
 	return s.repo.Delete(ctx, id)
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
@@ -45,16 +47,17 @@ type Service interface {
 }
 
 type service struct {
-	repo        repository.TaskRepository
-	logger      *elog.Component
-	orderSvc    order.Service
-	userSvc     user.Service
-	engineSvc   engine.Service
-	workflowSvc workflow.Service
-	codebookSvc codebook.Service
-	runnerSvc   runner.Service
-	execSvc     ExecService
-	cronjobSvc  Cronjob
+	repo         repository.TaskRepository
+	logger       *elog.Component
+	orderSvc     order.Service
+	userSvc      user.Service
+	discoverySvc discovery.Service
+	engineSvc    engine.Service
+	workflowSvc  workflow.Service
+	codebookSvc  codebook.Service
+	runnerSvc    runner.Service
+	execSvc      ExecService
+	cronjobSvc   Cronjob
 }
 
 func (s *service) ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error) {
@@ -147,18 +150,19 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
 	codebookSvc codebook.Service, runnerSvc runner.Service, cronjobSvc Cronjob, engineSvc engine.Service,
-	userSvc user.Service, execSvc ExecService) Service {
+	userSvc user.Service, execSvc ExecService, discoverySvc discovery.Service) Service {
 	return &service{
-		repo:        repo,
-		logger:      elog.DefaultLogger,
-		orderSvc:    orderSvc,
-		workflowSvc: workflowSvc,
-		codebookSvc: codebookSvc,
-		runnerSvc:   runnerSvc,
-		engineSvc:   engineSvc,
-		userSvc:     userSvc,
-		execSvc:     execSvc,
-		cronjobSvc:  cronjobSvc,
+		repo:         repo,
+		logger:       elog.DefaultLogger,
+		orderSvc:     orderSvc,
+		workflowSvc:  workflowSvc,
+		codebookSvc:  codebookSvc,
+		runnerSvc:    runnerSvc,
+		engineSvc:    engineSvc,
+		userSvc:      userSvc,
+		execSvc:      execSvc,
+		cronjobSvc:   cronjobSvc,
+		discoverySvc: discoverySvc,
 	}
 }
 
@@ -313,11 +317,8 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)
 	}
 
-	// TODO 自动发现 - 根据 automation 流程控制内 tags 记录为 auto 时
-	// TODO 根据工单模版字段信息判断匹配所对应的 tags 应该是什么，进行传递
-
 	// 4. 获取调度节点
-	runnerResp, err := s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
+	runnerResp, err := s.getScheduleRunner(ctx, automation, orderResp)
 	if err != nil {
 		return s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.PENDING, err)
 	}
@@ -370,6 +371,50 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	//}
 
 	return s.execSvc.Execute(ctx, task)
+}
+
+func (s *service) getScheduleRunner(ctx context.Context, automation easyflow.AutomationProperty,
+	orderResp order.Order) (runner.Runner, error) {
+	// 如果配置自动发现、将自动寻找匹配的调度节点
+	if automation.Tag == "auto" {
+		ds, total, err := s.discoverySvc.ListByTemplateId(ctx, 0, 100, orderResp.TemplateId)
+		if err != nil {
+			return runner.Runner{}, err
+		}
+
+		if total == 0 {
+			return runner.Runner{}, fmt.Errorf("没有自动发现的规则")
+		}
+
+		ids := make([]int64, 0)
+		for _, d := range ds {
+			val, ok := orderResp.Data[d.Field]
+			if !ok {
+				continue
+			}
+
+			if val == d.Value {
+				ids = append(ids, d.RunnerId)
+			}
+		}
+
+		if len(ids) == 0 {
+			return runner.Runner{}, fmt.Errorf("没有匹配自动发现规则")
+		}
+
+		rs, err := s.runnerSvc.ListByIds(ctx, ids)
+		if err != nil {
+			return runner.Runner{}, err
+		}
+
+		for _, r := range rs {
+			if r.CodebookUid == automation.CodebookUid {
+				return r, nil
+			}
+		}
+	}
+
+	return s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
 }
 
 func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,

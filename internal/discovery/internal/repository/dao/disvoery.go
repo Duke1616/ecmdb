@@ -41,6 +41,7 @@ func (dao *discoveryDao) Sync(ctx context.Context, templateId int64, docs []Disc
 		return &mongo.UpdateOneModel{
 			Filter: bson.D{
 				{"template_id", templateId},
+				{"runner_id", src.RunnerId},
 				{"field", src.Field},
 				{"value", src.Value},
 			},

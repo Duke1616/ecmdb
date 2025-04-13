@@ -37,6 +37,12 @@ type RetrieveDiscoveries struct {
 	Discoveries []Discovery `json:"discoveries"`
 }
 
+type SyncDiscoveryReq struct {
+	TemplateId      int64 `json:"template_id"`
+	TemplateGroupId int64 `json:"template_group_id"`
+	SyncTemplateId  int64 `json:"sync_template_id"`
+}
+
 type DeleteDiscoveryReq struct {
 	Id int64 `json:"id"`
 }

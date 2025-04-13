@@ -23,6 +23,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/create", ginx.WrapBody[CreateDiscoveryReq](h.Create))
 	g.POST("/update", ginx.WrapBody[UpdateDiscoveryReq](h.Update))
 	g.POST("/delete", ginx.WrapBody[DeleteDiscoveryReq](h.Delete))
+	g.POST("/sync", ginx.WrapBody[SyncDiscoveryReq](h.Sync))
 	g.POST("/list/by_template_id", ginx.WrapBody[ListByTemplateId](h.ListByTemplateId))
 }
 
@@ -64,6 +65,28 @@ func (h *Handler) ListByTemplateId(ctx *gin.Context, req ListByTemplateId) (ginx
 				return h.toDiscoveryVo(src)
 			}),
 		},
+	}, nil
+}
+
+func (h *Handler) Sync(ctx *gin.Context, req SyncDiscoveryReq) (ginx.Result, error) {
+	ds, total, err := h.svc.ListByTemplateId(ctx, 0, 100, req.SyncTemplateId)
+	if total == 0 {
+		return ginx.Result{
+			Msg: "没有可同步数据",
+		}, nil
+	}
+	
+	if err != nil {
+		return systemErrorResult, err
+	}
+	count, err := h.svc.Sync(ctx, req.TemplateId, ds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "同步成功",
+		Data: count,
 	}, nil
 }
 

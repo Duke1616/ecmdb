@@ -133,7 +133,11 @@ func InitApp() (*App, error) {
 	handler10 := workflowModule.Hdl
 	groupHandler := templateModule.GroupHdl
 	handler11 := engineModule.Hdl
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, larkClient)
+	discoveryModule, err := discovery.InitModule(mongo)
+	if err != nil {
+		return nil, err
+	}
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient)
 	if err != nil {
 		return nil, err
 	}
@@ -174,10 +178,6 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler21 := rotaModule.Hdl
-	discoveryModule, err := discovery.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
 	handler22 := discoveryModule.Hdl
 	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, departmentModule, larkClient)

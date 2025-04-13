@@ -13,10 +13,17 @@ type DiscoveryRepository interface {
 	Delete(ctx context.Context, id int64) (int64, error)
 	ListByTemplateId(ctx context.Context, offset, limit int64, templateId int64) ([]domain.Discovery, error)
 	CountByTemplateId(ctx context.Context, templateId int64) (int64, error)
+	Sync(ctx context.Context, templateId int64, ds []domain.Discovery) (int64, error)
 }
 
 type discoveryRepository struct {
 	dao dao.DiscoveryDAO
+}
+
+func (repo *discoveryRepository) Sync(ctx context.Context, templateId int64, ds []domain.Discovery) (int64, error) {
+	return repo.dao.Sync(ctx, templateId, slice.Map(ds, func(idx int, src domain.Discovery) dao.Discovery {
+		return repo.toEntity(src)
+	}))
 }
 
 func (repo *discoveryRepository) Delete(ctx context.Context, id int64) (int64, error) {

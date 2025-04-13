@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/ekit/slice"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -23,10 +24,48 @@ type DiscoveryDAO interface {
 	Delete(ctx context.Context, id int64) (int64, error)
 	ListByTemplateId(ctx context.Context, offset, limit int64, templateId int64) ([]Discovery, error)
 	CountByTemplateId(ctx context.Context, templateId int64) (int64, error)
+	Sync(ctx context.Context, templateId int64, docs []Discovery) (int64, error)
 }
 
 type discoveryDao struct {
 	db *mongox.Mongo
+}
+
+func (dao *discoveryDao) Sync(ctx context.Context, templateId int64, docs []Discovery) (int64, error) {
+	col := dao.db.Collection(DiscoveryCollection)
+	upsert := true
+	now := time.Now().UnixMilli()
+
+	operations := make([]mongo.WriteModel, len(docs))
+	operations = slice.Map(docs, func(idx int, src Discovery) mongo.WriteModel {
+		return &mongo.UpdateOneModel{
+			Filter: bson.D{
+				{"template_id", templateId},
+				{"field", src.Field},
+				{"value", src.Value},
+			},
+			Update: bson.D{
+				{"$setOnInsert", bson.D{
+					{"id", dao.db.GetIdGenerator(DiscoveryCollection)},
+					{"ctime", now},
+				}},
+				{"$set", bson.D{
+					{"runner_id", src.RunnerId},
+					{"field", src.Field},
+					{"value", src.Value},
+					{"utime", now},
+				}},
+			},
+			Upsert: &upsert,
+		}
+	})
+
+	result, err := col.BulkWrite(ctx, operations)
+	if err != nil {
+		return 0, fmt.Errorf("BulkFindOrInsert failed: %w", err)
+	}
+
+	return result.UpsertedCount, nil // 返回插入的文档数
 }
 
 func (dao *discoveryDao) Delete(ctx context.Context, id int64) (int64, error) {

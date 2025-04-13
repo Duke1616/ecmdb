@@ -44,13 +44,13 @@ func (dao *discoveryDao) Sync(ctx context.Context, templateId int64, docs []Disc
 				{"field", src.Field},
 				{"value", src.Value},
 			},
+			// 可以仅使用 $setOnInsert
 			Update: bson.D{
 				{"$setOnInsert", bson.D{
 					{"id", dao.db.GetIdGenerator(DiscoveryCollection)},
 					{"ctime", now},
 				}},
 				{"$set", bson.D{
-					{"runner_id", src.RunnerId},
 					{"field", src.Field},
 					{"value", src.Value},
 					{"utime", now},

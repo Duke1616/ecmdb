@@ -45,7 +45,7 @@ func (c *PassProcessTaskJob) Name() string {
 }
 
 func (c *PassProcessTaskJob) Run(ctx context.Context) error {
-	// 10 分钟延迟、自动结束自动化任务节点
+	// 10 分钟前置延迟、自动结束自动化任务节点
 	utime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 	for {
 		// 获取执行任务
@@ -74,6 +74,12 @@ func (c *PassProcessTaskJob) Run(ctx context.Context) error {
 				if err != nil {
 					return fmt.Errorf("通过自动化节点失败: %w", err)
 				}
+			}
+
+			// 标记数据已经成功
+			err = c.svc.MarkTaskAsAutoPassed(ctx, task.Id)
+			if err != nil {
+				c.logger.Error("数据标记失败", elog.FieldErr(err))
 			}
 		}
 

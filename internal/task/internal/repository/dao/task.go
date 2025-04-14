@@ -28,6 +28,7 @@ type TaskDAO interface {
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error)
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]Task, error)
 	TotalByInstanceId(ctx context.Context, instanceId int) (int64, error)
+	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
 }
 
 type taskDAO struct {
@@ -93,6 +94,7 @@ func (dao *taskDAO) ListSuccessTasksByUtime(ctx context.Context, offset, limit i
 	filter := bson.M{}
 	filter["status"] = bson.M{"$eq": domain.SUCCESS}
 	filter["utime"] = bson.M{"$gte": utime}
+	filter["mark_passed"] = bson.M{"$eq": false}
 
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
@@ -119,7 +121,9 @@ func (dao *taskDAO) ListSuccessTasksByUtime(ctx context.Context, offset, limit i
 func (dao *taskDAO) TotalByUtime(ctx context.Context, utime int64) (int64, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
+	filter["status"] = bson.M{"$eq": domain.SUCCESS}
 	filter["utime"] = bson.M{"$lte": utime}
+	filter["mark_passed"] = bson.M{"$eq": false}
 
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
@@ -127,6 +131,22 @@ func (dao *taskDAO) TotalByUtime(ctx context.Context, utime int64) (int64, error
 	}
 
 	return count, nil
+}
+
+func (dao *taskDAO) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
+	col := dao.db.Collection(TaskCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"mark_passed": true,
+		},
+	}
+	filter := bson.M{"id": id}
+	_, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return nil
 }
 
 func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, error) {
@@ -282,6 +302,7 @@ func (dao *taskDAO) UpdateTaskStatus(ctx context.Context, t Task) (int64, error)
 func (dao *taskDAO) CreateTask(ctx context.Context, t Task) (int64, error) {
 	now := time.Now()
 	t.Ctime, t.Utime = now.UnixMilli(), now.UnixMilli()
+	t.MarkPassed = false
 	t.Id = dao.db.GetIdGenerator(TaskCollection)
 	col := dao.db.Collection(TaskCollection)
 
@@ -355,6 +376,7 @@ type Task struct {
 	WantResult      string                 `bson:"want_result"`
 	TriggerPosition string                 `bson:"trigger_position"`
 	CurrentNodeId   string                 `bson:"current_node_id"`
+	MarkPassed      bool                   `bson:"mark_passed"`
 	Ctime           int64                  `bson:"ctime"`
 	Utime           int64                  `bson:"utime"`
 	IsTiming        bool                   `bson:"is_timing"`

@@ -44,6 +44,9 @@ type Service interface {
 
 	// Detail 查看任务信息
 	Detail(ctx context.Context, id int64) (domain.Task, error)
+
+	// MarkTaskAsAutoPassed 自动化通过处理成功标记
+	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
 }
 
 type service struct {
@@ -89,6 +92,10 @@ func (s *service) Detail(ctx context.Context, id int64) (domain.Task, error) {
 
 func (s *service) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {
 	return s.repo.FindTaskResult(ctx, instanceId, nodeId)
+}
+
+func (s *service) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
+	return s.repo.MarkTaskAsAutoPassed(ctx, id)
 }
 
 func (s *service) ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, int64, error) {

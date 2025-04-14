@@ -26,6 +26,7 @@ type TaskRepository interface {
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, error)
 	TotalByInstanceId(ctx context.Context, instanceId int) (int64, error)
+	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
 }
 
 type taskRepository struct {
@@ -42,6 +43,10 @@ func (repo *taskRepository) ListTaskByInstanceId(ctx context.Context, offset, li
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
 	}), err
+}
+
+func (repo *taskRepository) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
+	return repo.dao.MarkTaskAsAutoPassed(ctx, id)
 }
 
 func (repo *taskRepository) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {

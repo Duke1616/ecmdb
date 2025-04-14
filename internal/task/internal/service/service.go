@@ -37,7 +37,7 @@ type Service interface {
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error)
 
-	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error)
+	ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, int64, error)
 
 	// FindTaskResult 查找自动化任务
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
@@ -91,7 +91,7 @@ func (s *service) FindTaskResult(ctx context.Context, instanceId int, nodeId str
 	return s.repo.FindTaskResult(ctx, instanceId, nodeId)
 }
 
-func (s *service) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, int64, error) {
+func (s *service) ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, int64, error) {
 	var (
 		eg    errgroup.Group
 		ts    []domain.Task
@@ -99,13 +99,13 @@ func (s *service) ListSuccessTasksByCtime(ctx context.Context, offset, limit int
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListSuccessTasksByCtime(ctx, offset, limit, ctime)
+		ts, err = s.repo.ListSuccessTasksByUtime(ctx, offset, limit, utime)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalByCtime(ctx, ctime)
+		total, err = s.repo.TotalByUtime(ctx, utime)
 		return err
 	})
 	if err := eg.Wait(); err != nil {

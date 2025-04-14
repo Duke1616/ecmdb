@@ -45,11 +45,11 @@ func (c *PassProcessTaskJob) Name() string {
 }
 
 func (c *PassProcessTaskJob) Run(ctx context.Context) error {
-	// 我只处理近一个小时的数据，进行比对
-	ctime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
+	// 10 分钟延迟、自动结束自动化任务节点
+	utime := time.Now().Add(time.Duration(-c.minutes)*time.Minute + time.Duration(-c.seconds)*time.Second).UnixMilli()
 	for {
 		// 获取执行任务
-		tasks, total, err := c.svc.ListSuccessTasksByCtime(ctx, c.offset, c.limit, ctime)
+		tasks, total, err := c.svc.ListSuccessTasksByUtime(ctx, c.offset, c.limit, utime)
 		if err != nil {
 			return fmt.Errorf("查询执行任务失败: %w", err)
 		}

@@ -23,8 +23,8 @@ type TaskDAO interface {
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
 	Count(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error)
-	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
+	ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]Task, error)
+	TotalByUtime(ctx context.Context, utime int64) (int64, error)
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error)
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]Task, error)
 	TotalByInstanceId(ctx context.Context, instanceId int) (int64, error)
@@ -88,11 +88,11 @@ func (dao *taskDAO) FindTaskResult(ctx context.Context, instanceId int, nodeId s
 	return result, nil
 }
 
-func (dao *taskDAO) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]Task, error) {
+func (dao *taskDAO) ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]Task, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
 	filter["status"] = bson.M{"$eq": domain.SUCCESS}
-	filter["ctime"] = bson.M{"$gte": ctime}
+	filter["utime"] = bson.M{"$gte": utime}
 
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
@@ -116,10 +116,10 @@ func (dao *taskDAO) ListSuccessTasksByCtime(ctx context.Context, offset, limit i
 	return result, nil
 }
 
-func (dao *taskDAO) TotalByCtime(ctx context.Context, ctime int64) (int64, error) {
+func (dao *taskDAO) TotalByUtime(ctx context.Context, utime int64) (int64, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
-	filter["ctime"] = bson.M{"$lte": ctime}
+	filter["utime"] = bson.M{"$lte": utime}
 
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {

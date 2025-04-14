@@ -21,8 +21,8 @@ type TaskRepository interface {
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 	Total(ctx context.Context, status uint8) (int64, error)
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
-	ListSuccessTasksByCtime(ctx context.Context, offset, limit int64, ctime int64) ([]domain.Task, error)
-	TotalByCtime(ctx context.Context, ctime int64) (int64, error)
+	ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, error)
+	TotalByUtime(ctx context.Context, utime int64) (int64, error)
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, error)
 	TotalByInstanceId(ctx context.Context, instanceId int) (int64, error)
@@ -49,16 +49,16 @@ func (repo *taskRepository) FindTaskResult(ctx context.Context, instanceId int, 
 	return repo.toDomain(task), err
 }
 
-func (repo *taskRepository) ListSuccessTasksByCtime(ctx context.Context, offset, limit int64,
-	ctime int64) ([]domain.Task, error) {
-	ts, err := repo.dao.ListSuccessTasksByCtime(ctx, offset, limit, ctime)
+func (repo *taskRepository) ListSuccessTasksByUtime(ctx context.Context, offset, limit int64,
+	utime int64) ([]domain.Task, error) {
+	ts, err := repo.dao.ListSuccessTasksByUtime(ctx, offset, limit, utime)
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *taskRepository) TotalByCtime(ctx context.Context, ctime int64) (int64, error) {
-	return repo.dao.TotalByCtime(ctx, ctime)
+func (repo *taskRepository) TotalByUtime(ctx context.Context, utime int64) (int64, error) {
+	return repo.dao.TotalByUtime(ctx, utime)
 }
 
 func (repo *taskRepository) ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error) {

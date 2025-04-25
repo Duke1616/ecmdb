@@ -6,12 +6,15 @@ import (
 	easyEngine "github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/method"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/node"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification/result"
+	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
+	"github.com/Duke1616/ecmdb/internal/event/service/channel"
+	"github.com/Duke1616/ecmdb/internal/event/service/easyflow"
+	"github.com/Duke1616/ecmdb/internal/event/service/provider"
+	"github.com/Duke1616/ecmdb/internal/event/service/provider/feishu"
+	"github.com/Duke1616/ecmdb/internal/event/service/provider/sequential"
+	"github.com/Duke1616/ecmdb/internal/event/service/sender"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
@@ -26,13 +29,27 @@ import (
 	"sync"
 )
 
+var InitStrategySet = wire.NewSet(
+	strategy.NewResult,
+	strategy.NewUserNotification,
+	strategy.NewAutomationNotification,
+	strategy.NewStartNotification,
+	strategy.NewDispatcher,
+)
+
+var InitSender = wire.NewSet(
+	newSelectorBuilder,
+	newChannel,
+	sender.NewSender,
+)
+
 func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module,
 	templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module,
 	departmentModule *department.Module, lark *lark.Client) (*Module, error) {
 	wire.Build(
 		producer.NewOrderStatusModifyEventProducer,
-		InitNotifyIntegration,
-		InitNotification,
+		InitStrategySet,
+		InitSender,
 		InitWorkflowEngineOnce,
 		wire.FieldsOf(new(*engine.Module), "Svc"),
 		wire.FieldsOf(new(*department.Module), "Svc"),
@@ -48,48 +65,10 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 
 var engineOnce = sync.Once{}
 
-func InitNotifyIntegration(larkC *lark.Client) []method.NotifyIntegration {
-	integrations, err := method.BuildReceiverIntegrations(larkC)
-	if err != nil {
-		// TODO 记录日志
-		return nil
-	}
-
-	return integrations
-}
-
-func InitNotification(engineSvc engine.Service, templateSvc template.Service, orderSvc order.Service,
-	userSvc user.Service, taskSvc task.Service, departMentSvc department.Service,
-	integration []method.NotifyIntegration) map[string]notification.SendAction {
-	resultSvc := result.NewResult(taskSvc)
-	
-	ns := make(map[string]notification.SendAction)
-	userNotify, err := node.NewUserNotification(engineSvc, templateSvc, orderSvc, userSvc, resultSvc,
-		departMentSvc, integration)
-	if err != nil {
-		panic(err)
-	}
-
-	automationNotify, err := node.NewAutomationNotification(resultSvc, userSvc, integration)
-	if err != nil {
-		panic(err)
-	}
-
-	startNotify, err := node.NewStartNotification(userSvc, templateSvc, integration)
-	if err != nil {
-		panic(err)
-	}
-
-	ns["user"] = userNotify
-	ns["automation"] = automationNotify
-	ns["start"] = startNotify
-	return ns
-}
-
 func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer producer.OrderStatusModifyEventProducer,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
-	ns map[string]notification.SendAction) *easyflow.ProcessEvent {
-	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, orderSvc, workflowSvc, ns)
+	strategy strategy.SendStrategy) *easyflow.ProcessEvent {
+	event, err := easyflow.NewProcessEvent(producer, engineSvc, taskSvc, orderSvc, workflowSvc, strategy)
 	if err != nil {
 		panic(err)
 	}
@@ -104,4 +83,25 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer prod
 	})
 
 	return event
+}
+
+func newChannel(builder *sequential.SelectorBuilder) channel.Channel {
+	return channel.NewDispatcher(map[domain.Channel]channel.Channel{
+		domain.ChannelFeishuCard: channel.NewFeishuCardChannel(builder),
+	})
+}
+
+func newSelectorBuilder(
+	lark *lark.Client,
+) *sequential.SelectorBuilder {
+	// 构建SMS供应商
+	providers := make([]provider.Provider, 0)
+
+	cardProvider, err := feishu.NewFeishuCardProvider(lark)
+	if err != nil {
+		return nil
+	}
+
+	providers = append(providers, cardProvider)
+	return sequential.NewSelectorBuilder(providers)
 }

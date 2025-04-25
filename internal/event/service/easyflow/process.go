@@ -5,8 +5,9 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow/notification"
+	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/workflow"
@@ -25,8 +26,9 @@ const (
 	SystemRejectComment = "其余节点进行驳回，系统判定无法继续审批"
 )
 
+// ProcessEvent easy-workflow 流程引擎事件处理
 type ProcessEvent struct {
-	action      map[string]notification.SendAction
+	strategy    strategy.SendStrategy
 	producer    producer.OrderStatusModifyEventProducer
 	taskSvc     task.Service
 	orderSvc    order.Service
@@ -37,7 +39,7 @@ type ProcessEvent struct {
 
 func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc engineSvc.Service,
 	taskSvc task.Service, orderSvc order.Service, workflowSvc workflow.Service,
-	action map[string]notification.SendAction) (*ProcessEvent, error) {
+	strategy strategy.SendStrategy) (*ProcessEvent, error) {
 
 	return &ProcessEvent{
 		logger:      elog.DefaultLogger,
@@ -45,7 +47,7 @@ func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc
 		engineSvc:   engineSvc,
 		taskSvc:     taskSvc,
 		producer:    producer,
-		action:      action,
+		strategy:    strategy,
 		orderSvc:    orderSvc,
 	}, nil
 }
@@ -56,22 +58,24 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	// 获取开始节点的 action
-	notify, ok := e.action["start"]
-	if !ok {
-		e.logger.Error("EventStart 消息发送失败：", elog.Int("流程ID", ProcessInstanceID),
-			elog.String("不存在Notify", "user"))
-	}
+	// 查看工单关联
+	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
 
-	nOrder, wf, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
+	var ok bool
+	ok, err = e.strategy.Send(ctx, domain.StrategyInfo{
+		NodeName:    domain.Start,
+		OrderInfo:   orderInfo,
+		WfInfo:      wfInfo,
+		InstanceId:  ProcessInstanceID,
+		CurrentNode: CurrentNode,
+	})
 
-	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
 		e.logger.Error("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 	}
 
 	// 这个必须成功，不然会导致后续任务无法进行
-	return e.orderSvc.RegisterProcessInstanceId(ctx, nOrder.Id, ProcessInstanceID)
+	return e.orderSvc.RegisterProcessInstanceId(ctx, orderInfo.Id, ProcessInstanceID)
 }
 
 // EventAutomation 自动化任务处理（创建任务）
@@ -155,24 +159,23 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		}
 	}
 
+	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
+
 	// 判断消息的来源，处理不同的消息通知模式
-	nodeMethod := "user"
+	nodeMethod := domain.User
 	if len(CurrentNode.UserIDs) == 1 && CurrentNode.UserIDs[0] == "automation" {
-		nodeMethod = "automation"
+		nodeMethod = domain.Automation
 	}
 
-	notify, ok := e.action[nodeMethod]
-	if !ok {
-		e.logger.Error("EventNotify 消息发送失败：",
-			elog.Int("流程ID", ProcessInstanceID),
-			elog.String("不存在Notify", "user"))
-		return nil
-	}
+	var ok bool
+	ok, err = e.strategy.Send(ctx, domain.StrategyInfo{
+		NodeName:    nodeMethod,
+		OrderInfo:   orderInfo,
+		WfInfo:      wfInfo,
+		InstanceId:  ProcessInstanceID,
+		CurrentNode: CurrentNode,
+	})
 
-	nOrder, wf, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
-
-	// 消息通知
-	ok, err = notify.Send(ctx, nOrder, wf, ProcessInstanceID, CurrentNode)
 	if err != nil || !ok {
 		e.logger.Warn("EventNotify 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 		return nil

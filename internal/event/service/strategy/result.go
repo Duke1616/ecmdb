@@ -1,4 +1,4 @@
-package result
+package strategy
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type TaskResult struct {
 	taskSvc task.Service
 }
 
-func NewResult(taskSvc task.Service) *TaskResult {
+func NewResult(taskSvc task.Service) FetcherResult {
 	return &TaskResult{
 		taskSvc: taskSvc,
 	}

@@ -1,10 +1,12 @@
-package node
+package strategy
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/ecodeclub/ekit/slice"
 )
 
 // 比对自动化任务节点消息发送模式，如果存在则为 True， 不存在则返回 False
@@ -50,4 +52,10 @@ func getProperty[T any](nodes []easyflow.Node, currentNodeId string) (T, error) 
 		}
 	}
 	return property, fmt.Errorf("未找到节点 %s 的属性", currentNodeId)
+}
+
+func analyzeUsers(users []user.User) map[string]string {
+	return slice.ToMapV(users, func(element user.User) (string, string) {
+		return element.Username, element.FeishuInfo.UserId
+	})
 }

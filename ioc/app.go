@@ -2,7 +2,7 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/internal/endpoint"
-	"github.com/Duke1616/ecmdb/internal/event/easyflow"
+	"github.com/Duke1616/ecmdb/internal/event/service/easyflow"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/task/ecron"
 )

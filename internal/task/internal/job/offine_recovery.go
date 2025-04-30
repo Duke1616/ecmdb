@@ -47,7 +47,7 @@ func (c *RecoveryTaskJob) Run(ctx context.Context) error {
 				if time.UnixMilli(task.Timing.Stime).Before(now) || time.UnixMilli(task.Timing.Stime).Equal(now) {
 					_ = c.execSvc.Execute(ctx, task)
 				} else {
-					_ = c.cronSvc.Add(ctx, task)
+					_ = c.cronSvc.Create(ctx, task)
 				}
 			}(task)
 		}

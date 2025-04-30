@@ -358,7 +358,7 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	// 10. 处理定时任务
 	if automation.IsTiming {
 		go func() {
-			_ = s.cronjobSvc.Add(ctx, taskUpdate)
+			_ = s.cronjobSvc.Create(ctx, taskUpdate)
 		}()
 		return nil
 	}

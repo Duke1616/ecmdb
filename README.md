@@ -38,8 +38,8 @@ docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:270
 docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --gzip  --collection c_role --archive=/mnt/role.tar.gz
 
 # 修正 ID 自增值
-docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("5") })'
-docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_menu", next_id:  NumberLong("163") })'
+docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("6") })'
+docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_menu", next_id:  NumberLong("171") })'
 
 # 导入 Casbin 权限数据
 docker exec -i ecmdb-mysql mysql -uecmdb -p123456 ecmdb < ./init/casbin_rule.sql
@@ -75,6 +75,7 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
   - 自动化任务支持变量篡改、输入篡改及任务重试机制，以满足更灵活的任务控制与异常处理需求
   - 集成飞书消息通知、消息回调 `pass` `reject` `progress` `cc` 相应业务处理
   - 定时自动化任务 如：申请权限定时回收
+  - 支持根据模版字段匹配自动发现执行节点
 - 用户权限
   - 支持LDAP、账号密码登录方式
   - 支持前端动态菜单、按钮、后端API鉴权

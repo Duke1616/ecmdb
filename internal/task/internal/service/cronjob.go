@@ -9,7 +9,7 @@ import (
 )
 
 type Cronjob interface {
-	Add(ctx context.Context, task domain.Task) error
+	Create(ctx context.Context, task domain.Task) error
 }
 
 type cronjob struct {
@@ -26,7 +26,7 @@ func NewCronjob(execService ExecService) Cronjob {
 	}
 }
 
-func (c *cronjob) Add(ctx context.Context, task domain.Task) error {
+func (c *cronjob) Create(ctx context.Context, task domain.Task) error {
 	// jobTime 秒、分、时、日、月
 	jobTime := time.UnixMilli(task.Timing.Stime).Format("05 04 15 02 01 *")
 	_, err := c.cron.AddFunc(jobTime, func() {

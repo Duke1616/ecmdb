@@ -149,8 +149,8 @@ install_backend(){
     docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --gzip  --collection c_role --archive=/mnt/role.tar.gz
 
     # 修正 ID 自增值
-    docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("5") })'
-    docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --eval 'db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("161") } )'
+    docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("6") })'
+    docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb" --eval 'db.c_id_generator.insertOne( { name: "c_menu", next_id:  NumberLong("171") } )'
 
     wait_for_mysql
     # 导入 Casbin 权限数据

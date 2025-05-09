@@ -21,6 +21,7 @@ import (
 type MockRelationModelService struct {
 	ctrl     *gomock.Controller
 	recorder *MockRelationModelServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockRelationModelServiceMockRecorder is the mock recorder for MockRelationModelService.
@@ -38,6 +39,45 @@ func NewMockRelationModelService(ctrl *gomock.Controller) *MockRelationModelServ
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRelationModelService) EXPECT() *MockRelationModelServiceMockRecorder {
 	return m.recorder
+}
+
+// CountByModelUid mocks base method.
+func (m *MockRelationModelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountByModelUid", ctx, modelUid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountByModelUid indicates an expected call of CountByModelUid.
+func (mr *MockRelationModelServiceMockRecorder) CountByModelUid(ctx, modelUid any) *MockRelationModelServiceCountByModelUidCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByModelUid", reflect.TypeOf((*MockRelationModelService)(nil).CountByModelUid), ctx, modelUid)
+	return &MockRelationModelServiceCountByModelUidCall{Call: call}
+}
+
+// MockRelationModelServiceCountByModelUidCall wrap *gomock.Call
+type MockRelationModelServiceCountByModelUidCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceCountByModelUidCall) Return(arg0 int64, arg1 error) *MockRelationModelServiceCountByModelUidCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceCountByModelUidCall) Do(f func(context.Context, string) (int64, error)) *MockRelationModelServiceCountByModelUidCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceCountByModelUidCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockRelationModelServiceCountByModelUidCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
 }
 
 // CreateModelRelation mocks base method.

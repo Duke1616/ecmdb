@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./service.go -destination=../../mocks/resource.mock.go -package=resourcemocks -typed Service
 type Service interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)

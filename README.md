@@ -106,15 +106,17 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
 │   ├── attribute  # CMDB - 字段属性
 │   ├── resource   # CMDB - 资产数据
 │   ├── relation   # CMDB - 关联关系
-│   ├── runner     # 工单 - 执行器
+│   ├── runner     # 工单 - 执行单元
 │   ├── task       # 工单 - 自动化任务
-│   ├── template   # 工单 - 模版
+│   ├── template   # 工单 - 工单模版
 │   ├── worker     # 工单 - 工作节点
-│   └── workflow   # 工单 - 流程绑定
+│   └── workflow   # 工单 - 流程图
 │   ├── codebook   # 工单 - 代码库
 │   ├── engine     # 工单 - easyflow engine
 │   ├── event      # 工单 - easyflow event 
 │   ├── order      # 工单 - 工单信息
+│   ├── rota       # 工单 - 排班模块
+│   ├── discovery  # 工单 - 自动发现
 │   ├── user       # 权限 - 用户模块
 │   ├── role       # 权限 - 角色管理
 │   ├── endpoint   # 权限 - API接口管理
@@ -128,9 +130,11 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
 │   ├── casbin.go
 │   ├── db.go
 │   ├── etcd.go
+│   ├── feishu.go
 │   ├── gin.go
 │   ├── job.go
 │   ├── ldap.go
+│   ├── minio.go
 │   ├── mq.go
 │   ├── mysql.go
 │   ├── redis.go
@@ -148,6 +152,7 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml down
 │   ├── mongox
 │   ├── mqx
 │   ├── registry
+│   ├── term
 │   └── tools
 ├── README.md
 └── Taskfile.yaml # 类似于makeflie

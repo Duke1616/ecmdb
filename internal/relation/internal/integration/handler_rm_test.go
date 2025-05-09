@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	"testing"
+
 	"github.com/Duke1616/ecmdb/internal/relation/internal/integration/startup"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/web"
@@ -11,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"testing"
 )
 
 type HandlerRMTestSuite struct {
@@ -40,7 +41,7 @@ func (s *HandlerRMTestSuite) SetupSuite() {
 	handler, err := startup.InitRMHandler()
 	require.NoError(s.T(), err)
 	server := gin.Default()
-	handler.RegisterRoute(server)
+	handler.PrivateRoute(server)
 
 	s.db = startup.InitMongoDB()
 	s.dao = dao.NewRelationModelDAO(s.db)

@@ -1,4 +1,4 @@
-package startup
+package ioc
 
 import (
 	"context"
@@ -14,7 +14,7 @@ func InitMongoDB() *mongox.Mongo {
 	defer cancel()
 
 	opts := options.Client().
-		ApplyURI("mongodb://cmdb:123456@10.31.0.200:47017/cmdb")
+		ApplyURI("mongodb://root:123456@127.0.0.1:27017/admin")
 	client, err := mongo.Connect(ctx, opts)
 
 	if err != nil {

@@ -34,8 +34,8 @@ curl -L 'http://127.0.0.1:8666/api/user/register' \
 # 同步权限数据
 docker cp ./init/menu.tar.gz ecmdb-mongo:/mnt
 docker cp ./init/role.tar.gz ecmdb-mongo:/mnt
-docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --gzip  --collection c_menu --archive=/mnt/menu.tar.gz
-docker exec ecmdb-mongo mongorestore --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --gzip  --collection c_role --archive=/mnt/role.tar.gz
+docker exec ecmdb-mongo mongorestore  --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin"  --gzip  --archive=/mnt/menu.tar.gz  --nsFrom="cmdb.*"  --nsTo="ecmdb.*" --nsInclude="cmdb.c_menu"
+docker exec ecmdb-mongo mongorestore  --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin"  --gzip  --archive=/mnt/role.tar.gz  --nsFrom="cmdb.*"  --nsTo="ecmdb.*" --nsInclude="cmdb.c_role"
 
 # 修正 ID 自增值
 docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("6") })'

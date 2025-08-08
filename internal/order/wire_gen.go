@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"
+	"github.com/Duke1616/ecmdb/internal/order/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -37,6 +38,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	service2 := engineModule.Svc
 	service3 := userModule.Svc
 	handler := web.NewHandler(serviceService, service2, service3)
+	workOrderServer := grpc.NewWorkOrderServer(serviceService)
 	service4 := templateModule.Svc
 	wechatOrderConsumer := initWechatConsumer(serviceService, service4, service3, q)
 	service5 := workflowModule.Svc
@@ -44,19 +46,20 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
 	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2, service3, service4, serviceService, service5)
 	module := &Module{
-		Hdl: handler,
-		Svc: serviceService,
-		cw:  wechatOrderConsumer,
-		cs:  processEventConsumer,
-		cms: orderStatusModifyEventConsumer,
-		cf:  feishuCallbackEventConsumer,
+		Hdl:       handler,
+		RpcServer: workOrderServer,
+		Svc:       serviceService,
+		cw:        wechatOrderConsumer,
+		cs:        processEventConsumer,
+		cms:       orderStatusModifyEventConsumer,
+		cf:        feishuCallbackEventConsumer,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO, grpc.NewWorkOrderServer)
 
 func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
 	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)

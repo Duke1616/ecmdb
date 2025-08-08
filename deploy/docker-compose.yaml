@@ -4,7 +4,7 @@ services:
     container_name: ecmdb-mysql
     image: registry.cn-qingdao.aliyuncs.com/duke1616/mysql:8.0.37
     ports:
-      - 3306:3306
+      - "3306:3306"
     environment:
       - TZ=Asia/Shanghai
       - MYSQL_ROOT_PASSWORD=123456
@@ -22,7 +22,7 @@ services:
     container_name: ecmdb-mongo
     image: registry.cn-qingdao.aliyuncs.com/duke1616/percona-server-mongodb:7.0.15
     ports:
-      - 27017:27017
+      - "27017:27017"
     environment:
       - TZ=Asia/Shanghai
       - MONGO_INITDB_ROOT_USERNAME=ecmdb
@@ -34,8 +34,8 @@ services:
     container_name: ecmdb-etcd
     image: registry.cn-qingdao.aliyuncs.com/duke1616/etcd:3.5.14
     ports:
-      - 2379:2379
-      - 2380:2380
+      - "2379:2379"
+      - "2380:2380"
     volumes:
       - etcd:/var/lib/etcd
     environment:
@@ -56,7 +56,7 @@ services:
     image: registry.cn-qingdao.aliyuncs.com/duke1616/redis-stack:7.2.0-v13-x86_64
     container_name: ecmdb-redis
     ports:
-      - 6379:6379
+      - "6379:6379"
     environment:
       - TZ=Asia/Shanghai
       - REDIS_ARGS=--requirepass 1234567890
@@ -68,8 +68,8 @@ services:
     user: 0:0
     restart: always
     ports:
-      - 9092:9092
-      - 9094:9094
+      - "9092:9092"
+      - "9094:9094"
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
@@ -87,8 +87,8 @@ services:
     user: root
     container_name: ecmdb-minio
     ports:
-      - 9000:9000
-      - 9001:9001
+      - "9000:9000"
+      - "9001:9001"
     environment:
       - TZ=Asia/Shanghai
       - MINIO_ROOT_USER=minio
@@ -102,7 +102,7 @@ services:
     image: registry.cn-qingdao.aliyuncs.com/duke1616/ecmdb:main
     command: ./ecmdb start
     ports:
-      - 8666:8000
+      - "8666:8000"
     environment:
       - TZ=Asia/Shanghai
     volumes:

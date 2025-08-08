@@ -32,6 +32,8 @@ const (
 	SYSTEM Provide = 1
 	// WECHAT 企业微信
 	WECHAT Provide = 2
+	// ALERT 告警信息
+	ALERT Provide = 3
 )
 
 type Order struct {

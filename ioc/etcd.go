@@ -36,6 +36,4 @@ func InitEtcdClient() *clientv3.Client {
 	}
 
 	return client
-
-	return client
 }

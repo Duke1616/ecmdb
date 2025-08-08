@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package order.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/Duke1616/ecmdb/api/gen/v1;order";
+
+message CreateOrderRequest {
+  Order order = 1;
+}
+
+// 工单类型来源
+enum Provider {
+  // SYSTEM 本系统
+  SYSTEM = 0;
+  // WECHAT 企业微信
+  WECHAT = 1;
+  // ALERT 告警平台
+  ALERT = 2;
+}
+
+message Order {
+  // 模版ID
+  int64 template_id = 1;
+  // 模板名称
+  string template_name = 2;
+  // 流程ID
+  int64 workflow_id  = 3;
+  // 工单参数
+  map<string, google.protobuf.Any> data = 4;
+  // 工单来源
+  Provider Provider = 5;
+  // 创建人
+  string CreateBy = 6;
+}
+
+message Response {}
+
+service WorkOrderService {
+  // 创建工单
+  rpc CreateWorkOrder(CreateOrderRequest) returns (Response);
+}

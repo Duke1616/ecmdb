@@ -7,6 +7,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"
+	"github.com/Duke1616/ecmdb/internal/order/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -25,6 +26,7 @@ var ProviderSet = wire.NewSet(
 	service.NewService,
 	repository.NewOrderRepository,
 	dao.NewOrderDAO,
+	grpc.NewWorkOrderServer,
 )
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module,

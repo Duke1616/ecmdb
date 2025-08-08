@@ -22,7 +22,13 @@ var Cmd = &cobra.Command{
 		initCronjob(app.Jobs)
 		engine.RegisterEvents(app.Event)
 
-		err = app.Web.Run(":8000")
+		go func() {
+			if err = app.Web.Run(":8000"); err != nil {
+				panic(err)
+			}
+		}()
+
+		err = app.Grpc.Serve()
 		panic(err)
 	},
 }

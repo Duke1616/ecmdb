@@ -60,7 +60,7 @@ func InitApp() (*App, error) {
 		runner.InitModule,
 		wire.FieldsOf(new(*runner.Module), "Hdl"),
 		order.InitModule,
-		wire.FieldsOf(new(*order.Module), "Hdl"),
+		wire.FieldsOf(new(*order.Module), "Hdl", "RpcServer"),
 		strategy.InitModule,
 		wire.FieldsOf(new(*strategy.Module), "Hdl"),
 		workflow.InitModule,
@@ -92,6 +92,7 @@ func InitApp() (*App, error) {
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,
+		InitGrpcServer,
 		InitGinMiddlewares)
 	return new(App), nil
 }

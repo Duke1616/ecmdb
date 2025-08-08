@@ -6,10 +6,11 @@ import (
 )
 
 type Module struct {
-	Hdl *web.Handler
-	Svc Service
-	cw  *consumer.WechatOrderConsumer
-	cs  *consumer.ProcessEventConsumer
-	cms *consumer.OrderStatusModifyEventConsumer
-	cf  *consumer.FeishuCallbackEventConsumer
+	Hdl       *web.Handler
+	RpcServer *RpcServer
+	Svc       Service
+	cw        *consumer.WechatOrderConsumer
+	cs        *consumer.ProcessEventConsumer
+	cms       *consumer.OrderStatusModifyEventConsumer
+	cf        *consumer.FeishuCallbackEventConsumer
 }

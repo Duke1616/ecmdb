@@ -67,3 +67,10 @@ frontend:
 
 cronjob:
   enabled: false
+
+grpc:
+  server:
+    name: "ecmdb"
+    port: 8097
+    etcd_ttl: 60
+    key: "1234567890"

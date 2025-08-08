@@ -37,6 +37,17 @@ etcd:
   endpoints:
     - 127.0.0.1:2379
 
+minio:
+  endpoint: 127.0.0.1:9000
+  accessKeyID: minio
+  secretAccessKey: minio123
+  useSSL: false
+
+
+feishu:
+  appId: ""
+  appSecret: ""
+
 wechat:
   corpId: ""
   corpSecret: ""
@@ -44,3 +55,13 @@ wechat:
 
 cronjob:
   enabled: true
+
+frontend:
+  logicflow_url: http://localhost:3333/logicflow-preview
+
+grpc:
+  server:
+    name: "ecmdb"
+    port: 8097
+    etcdTTL: 60
+    key: "1234567890"

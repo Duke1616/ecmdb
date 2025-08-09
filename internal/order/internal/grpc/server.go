@@ -5,6 +5,7 @@ import (
 	orderv1 "github.com/Duke1616/ecmdb/api/proto/gen/order/v1"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+
 	"google.golang.org/grpc"
 )
 

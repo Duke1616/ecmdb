@@ -1,5 +1,10 @@
 package domain
 
+import (
+	"fmt"
+	"github.com/Duke1616/ecmdb/internal/order/internal/errs"
+)
+
 type Status uint8
 
 func (s Status) ToUint8() uint8 {
@@ -48,6 +53,14 @@ type Order struct {
 	Process      Process
 	Ctime        int64
 	Wtime        int64
+}
+
+func (o *Order) Validate() error {
+	if o.TemplateId <= 0 {
+		return fmt.Errorf("%w: Template.ID = %d", errs.ErrInvalidParameter, o.TemplateId)
+	}
+
+	return nil
 }
 
 type Process struct {

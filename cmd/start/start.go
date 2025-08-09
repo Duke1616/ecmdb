@@ -18,7 +18,6 @@ var Cmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-
 		initCronjob(app.Jobs)
 		engine.RegisterEvents(app.Event)
 
@@ -27,7 +26,7 @@ var Cmd = &cobra.Command{
 				panic(err)
 			}
 		}()
-
+		
 		err = app.Grpc.Serve()
 		panic(err)
 	},

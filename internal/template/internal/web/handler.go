@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
@@ -35,6 +36,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/update", ginx.WrapBody[UpdateTemplateReq](h.UpdateTemplate))
 	g.POST("/list/pipeline", ginx.Wrap(h.Pipeline))
 
+	g.POST("/by_ids", ginx.WrapBody[FindByTemplateIds](h.FindByTemplateIds))
+
 	// 根据流程ID，获取所有已经被模版，主要为了处理模版
 	g.POST("/get_by_workflow_id", ginx.WrapBody[GetTemplatesByWorkFlowIdReq](h.GetTemplatesByWorkflowId))
 
@@ -54,6 +57,27 @@ func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.
 
 	return ginx.Result{
 		Data: t,
+	}, nil
+}
+
+func (h *Handler) FindByTemplateIds(ctx *gin.Context, req FindByTemplateIds) (ginx.Result, error) {
+	if len(req.Ids) < 0 {
+		return systemErrorResult, fmt.Errorf("输入为空，不符合要求")
+	}
+
+	ts, err := h.svc.FindByTemplateIds(ctx, req.Ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "获取多个用户信息成功",
+		Data: RetrieveTemplates{
+			Total: int64(len(ts)),
+			Templates: slice.Map(ts, func(idx int, src domain.Template) TemplateJson {
+				return h.toTemplateJsonVo(src)
+			}),
+		},
 	}, nil
 }
 

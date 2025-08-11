@@ -19,6 +19,8 @@ type TemplateRepository interface {
 	Total(ctx context.Context) (int64, error)
 	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 
+	FindByTemplateIds(ctx context.Context, ids []int64) ([]domain.Template, error)
+
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
 }
 
@@ -30,6 +32,13 @@ func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
 
 type templateRepository struct {
 	dao dao.TemplateDAO
+}
+
+func (repo *templateRepository) FindByTemplateIds(ctx context.Context, ids []int64) ([]domain.Template, error) {
+	us, err := repo.dao.FindByTemplateIds(ctx, ids)
+	return slice.Map(us, func(idx int, src dao.Template) domain.Template {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *templateRepository) GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error) {

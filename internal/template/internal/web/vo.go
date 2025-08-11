@@ -23,6 +23,10 @@ type ListTemplateReq struct {
 	Page
 }
 
+type FindByTemplateIds struct {
+	Ids []int64 `json:"ids"`
+}
+
 type DeleteTemplateReq struct {
 	Id int64 `json:"id"`
 }

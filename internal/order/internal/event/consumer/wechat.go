@@ -85,13 +85,12 @@ func (c *WechatOrderConsumer) Consume(ctx context.Context) error {
 
 	// 创建工单
 	err = c.svc.CreateOrder(ctx, domain.Order{
-		CreateBy:     wUser.Username,
-		TemplateName: t.Name,
-		TemplateId:   t.Id,
-		WorkflowId:   t.WorkflowId,
-		Data:         data,
-		Status:       domain.START,
-		Provide:      domain.WECHAT,
+		CreateBy:   wUser.Username,
+		TemplateId: t.Id,
+		WorkflowId: t.WorkflowId,
+		Data:       data,
+		Status:     domain.START,
+		Provide:    domain.WECHAT,
 	})
 	if err != nil {
 		return err

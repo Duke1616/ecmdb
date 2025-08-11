@@ -53,7 +53,7 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 		return nil, err
 	}
 	fetcherResult := strategy.NewResult(serviceService)
-	automationNotification, err := strategy.NewAutomationNotification(fetcherResult, service4, notificationSender)
+	automationNotification, err := strategy.NewAutomationNotification(fetcherResult, service4, service5, notificationSender)
 	if err != nil {
 		return nil, err
 	}

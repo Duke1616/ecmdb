@@ -26,10 +26,9 @@ func (f *WorkOrderServer) Register(server grpc.ServiceRegistrar) {
 func (f *WorkOrderServer) CreateWorkOrder(ctx context.Context, request *orderv1.CreateOrderRequest) (
 	*orderv1.Response, error) {
 	err := f.orderSvc.CreateOrder(ctx, domain.Order{
-		Provide:      domain.Provide(request.Order.Provider),
-		TemplateId:   request.Order.TemplateId,
-		TemplateName: request.Order.TemplateName,
-		WorkflowId:   request.Order.WorkflowId,
+		Provide:    domain.Provide(request.Order.Provider),
+		TemplateId: request.Order.TemplateId,
+		WorkflowId: request.Order.WorkflowId,
 	})
 
 	return &orderv1.Response{}, err

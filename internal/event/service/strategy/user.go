@@ -86,6 +86,7 @@ func (n *UserNotification) Send(ctx context.Context, notification domain.Strateg
 		wantResult map[string]interface{}
 		rules      []rule.Rule
 		startUser  user.User
+		tName      string
 	)
 	// 获取自动化任务执行结果
 	errGroup.Go(func() error {
@@ -95,7 +96,7 @@ func (n *UserNotification) Send(ctx context.Context, notification domain.Strateg
 
 	// 解析配置
 	errGroup.Go(func() error {
-		rules, err = n.getRules(ctx, notification.OrderInfo)
+		rules, tName, err = n.getRules(ctx, notification.OrderInfo)
 		return err
 	})
 
@@ -158,13 +159,13 @@ func (n *UserNotification) Send(ctx context.Context, notification domain.Strateg
 
 		// 生成消息数据
 		//var messages []notify.NotifierWrap
-		title := rule.GenerateTitle(startUser.DisplayName, notification.OrderInfo.TemplateName)
+		title := rule.GenerateTitle(startUser.DisplayName, tName)
 		template := FeishuTemplateApprovalName
 
 		// 判断如果是抄送情况
 		if property.IsCC {
 			template = FeishuTemplateCC
-			title = rule.GenerateCCTitle(startUser.DisplayName, notification.OrderInfo.TemplateName)
+			title = rule.GenerateCCTitle(startUser.DisplayName, tName)
 
 			// 处理自动通过
 			go n.ccPass(ctx, tasks)
@@ -266,20 +267,20 @@ func (n *UserNotification) getUsers(ctx context.Context, tasks []model.Task) ([]
 }
 
 // isNotify 获取模版的字段信息
-func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
+func (n *UserNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, string, error) {
 	// 获取模版详情信息
 	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	rules, err := rule.ParseRules(t.Rules)
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return rules, nil
+	return rules, t.Name, nil
 }
 
 // 当自动化节点返回信息在流程结束后通知用户，组合所有自动化节点返回的数据，进行消息通知

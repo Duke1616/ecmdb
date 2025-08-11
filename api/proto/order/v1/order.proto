@@ -24,16 +24,14 @@ enum Provider {
 message Order {
   // 模版ID
   int64 template_id = 1;
-  // 模板名称
-  string template_name = 2;
   // 流程ID
-  int64 workflow_id  = 3;
+  int64 workflow_id  = 2;
   // 工单参数
-  map<string, google.protobuf.Any> data = 4;
+  map<string, google.protobuf.Any> data = 3;
   // 工单来源
-  Provider Provider = 5;
+  Provider Provider = 4;
   // 创建人
-  string CreateBy = 6;
+  string CreateBy = 5;
 }
 
 message Response {}

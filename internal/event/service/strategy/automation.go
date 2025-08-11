@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/service/sender"
+	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
+	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/enotify/notify/feishu/card"
@@ -13,18 +15,21 @@ import (
 )
 
 type AutomationNotification struct {
-	sender    sender.NotificationSender
-	resultSvc FetcherResult
-	userSvc   user.Service
-	logger    *elog.Component
+	sender      sender.NotificationSender
+	templateSvc template.Service
+	resultSvc   FetcherResult
+	userSvc     user.Service
+	logger      *elog.Component
 }
 
-func NewAutomationNotification(resultSvc FetcherResult, userSvc user.Service, sender sender.NotificationSender) (*AutomationNotification, error) {
+func NewAutomationNotification(resultSvc FetcherResult, userSvc user.Service, templateSvc template.Service,
+	sender sender.NotificationSender) (*AutomationNotification, error) {
 	return &AutomationNotification{
-		sender:    sender,
-		resultSvc: resultSvc,
-		userSvc:   userSvc,
-		logger:    elog.DefaultLogger,
+		sender:      sender,
+		resultSvc:   resultSvc,
+		templateSvc: templateSvc,
+		userSvc:     userSvc,
+		logger:      elog.DefaultLogger,
 	}, nil
 }
 
@@ -63,17 +68,33 @@ func (n *AutomationNotification) Send(ctx context.Context, notification domain.S
 		return false, err
 	}
 
+	// 获取模版名称
+	tName, err := n.getTemplateName(ctx, notification.OrderInfo)
+	if err != nil {
+		return false, err
+	}
+
 	return n.sender.Send(ctx, domain.Notification{
 		Channel:  domain.ChannelFeishuCard,
 		Receiver: startUser.FeishuInfo.UserId,
 		Template: domain.Template{
 			Name:     FeishuTemplateApprovalName,
-			Title:    rule.GenerateAutoTitle("你提交", notification.OrderInfo.TemplateName),
+			Title:    rule.GenerateAutoTitle("你提交", tName),
 			Fields:   n.getFields(wantResult),
 			Values:   []card.Value{},
 			HideForm: true,
 		},
 	})
+}
+
+func (n *AutomationNotification) getTemplateName(ctx context.Context, order order.Order) (string, error) {
+	// 获取模版详情信息
+	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
+	if err != nil {
+		return t.Name, err
+	}
+
+	return "", nil
 }
 
 func (n *AutomationNotification) getFields(wantResult map[string]interface{}) []card.Field {

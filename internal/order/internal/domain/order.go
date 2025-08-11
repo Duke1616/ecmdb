@@ -41,23 +41,38 @@ const (
 	ALERT Provide = 3
 )
 
+func (s Provide) IsValid() bool {
+	return s == SYSTEM || s == WECHAT || s == ALERT
+}
+
 type Order struct {
-	Id           int64
-	TemplateId   int64
-	TemplateName string
-	WorkflowId   int64
-	Data         map[string]interface{}
-	Status       Status
-	Provide      Provide
-	CreateBy     string
-	Process      Process
-	Ctime        int64
-	Wtime        int64
+	Id         int64
+	TemplateId int64
+	WorkflowId int64
+	Data       map[string]interface{}
+	Status     Status
+	Provide    Provide
+	CreateBy   string
+	Process    Process
+	Ctime      int64
+	Wtime      int64
 }
 
 func (o *Order) Validate() error {
 	if o.TemplateId <= 0 {
 		return fmt.Errorf("%w: Template.ID = %d", errs.ErrInvalidParameter, o.TemplateId)
+	}
+
+	if o.WorkflowId <= 0 {
+		return fmt.Errorf("%w: WorkFlow.ID = %d", errs.ErrInvalidParameter, o.WorkflowId)
+	}
+
+	if !o.Provide.IsValid() {
+		return fmt.Errorf("%w: 不支持的来源提供商", errs.ErrInvalidParameter)
+	}
+
+	if o.CreateBy == "" {
+		return fmt.Errorf("%w: 工单创建人不能为空", errs.ErrInvalidParameter)
 	}
 
 	return nil

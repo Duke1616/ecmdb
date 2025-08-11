@@ -7,6 +7,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/xen0n/go-workwx"
@@ -34,9 +35,10 @@ type Service interface {
 }
 
 type service struct {
-	repo     repository.OrderRepository
-	producer event.CreateProcessEventProducer
-	l        *elog.Component
+	repo        repository.OrderRepository
+	templateSvc template.Service
+	producer    event.CreateProcessEventProducer
+	l           *elog.Component
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Order, error) {
@@ -74,11 +76,12 @@ func (s *service) RegisterProcessInstanceId(ctx context.Context, id int64, insta
 	return s.repo.RegisterProcessInstanceId(ctx, id, instanceId, domain.PROCESS.ToUint8())
 }
 
-func NewService(repo repository.OrderRepository, producer event.CreateProcessEventProducer) Service {
+func NewService(repo repository.OrderRepository, templateSvc template.Service, producer event.CreateProcessEventProducer) Service {
 	return &service{
-		repo:     repo,
-		producer: producer,
-		l:        elog.DefaultLogger,
+		repo:        repo,
+		producer:    producer,
+		templateSvc: templateSvc,
+		l:           elog.DefaultLogger,
 	}
 }
 
@@ -86,13 +89,28 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
 	if err := req.Validate(); err != nil {
 		return err
 	}
-	
-	orderId, err := s.repo.CreateOrder(ctx, req)
-	if err != nil {
+
+	var (
+		eg      errgroup.Group
+		orderId int64
+		dTm     template.Template
+	)
+	eg.Go(func() error {
+		var err error
+		orderId, err = s.repo.CreateOrder(ctx, req)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		dTm, err = s.templateSvc.DetailTemplate(ctx, req.TemplateId)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
 		return err
 	}
 
-	return s.sendGenerateFlowEvent(ctx, req, orderId)
+	return s.sendGenerateFlowEvent(ctx, req, orderId, dTm.Name)
 }
 
 func (s *service) ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error) {
@@ -128,7 +146,7 @@ func (s *service) ListHistoryOrder(ctx context.Context, userId string, offset, l
 }
 
 func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order,
-	orderId int64) error {
+	orderId int64, tName string) error {
 	if req.Data == nil {
 		req.Data = make(map[string]interface{})
 	}
@@ -146,7 +164,7 @@ func (s *service) sendGenerateFlowEvent(ctx context.Context, req domain.Order,
 
 	variables = append(variables, event.Variables{
 		Key:   "template_name",
-		Value: req.TemplateName,
+		Value: tName,
 	})
 
 	data, err := json.Marshal(variables)

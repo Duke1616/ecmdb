@@ -43,7 +43,7 @@ func (s *StartNotification) Send(ctx context.Context, notification domain.Strate
 	}
 
 	// 解析配置
-	rules, err := s.getRules(ctx, notification.OrderInfo)
+	rules, tName, err := s.getRules(ctx, notification.OrderInfo)
 	if err != nil {
 		return false, err
 	}
@@ -59,7 +59,7 @@ func (s *StartNotification) Send(ctx context.Context, notification domain.Strate
 		Receiver: startUser.FeishuInfo.UserId,
 		Template: domain.Template{
 			Name:   FeishuTemplateApprovalRevokeName,
-			Title:  rule.GenerateTitle("你提交的", notification.OrderInfo.TemplateName),
+			Title:  rule.GenerateTitle("你提交的", tName),
 			Fields: rule.GetFields(rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data),
 			Values: []card.Value{
 				{
@@ -88,18 +88,18 @@ func (s *StartNotification) isNotify(sp easyflow.StartProperty, instanceId int) 
 }
 
 // isNotify 获取模版的字段信息
-func (s *StartNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, error) {
+func (s *StartNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, string, error) {
 	// 获取模版详情信息
 	t, err := s.templateSvc.DetailTemplate(ctx, order.TemplateId)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	rules, err := rule.ParseRules(t.Rules)
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return rules, nil
+	return rules, t.Name, nil
 }

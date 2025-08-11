@@ -195,7 +195,6 @@ func (h *Handler) History(ctx *gin.Context, req HistoryReq) (ginx.Result, error)
 				return Order{
 					Id:                src.Id,
 					TemplateId:        src.TemplateId,
-					TemplateName:      src.TemplateName,
 					Starter:           starter,
 					Status:            src.Status.ToUint8(),
 					Provide:           src.Provide.ToUint8(),
@@ -340,20 +339,18 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 
 func (h *Handler) toDomain(req CreateOrderReq) domain.Order {
 	return domain.Order{
-		CreateBy:     req.CreateBy,
-		TemplateName: req.TemplateName,
-		TemplateId:   req.TemplateId,
-		WorkflowId:   req.WorkflowId,
-		Data:         req.Data,
-		Status:       domain.START,
-		Provide:      domain.SYSTEM,
+		CreateBy:   req.CreateBy,
+		TemplateId: req.TemplateId,
+		WorkflowId: req.WorkflowId,
+		Data:       req.Data,
+		Status:     domain.START,
+		Provide:    domain.SYSTEM,
 	}
 }
 
 func (h *Handler) toVoOrder(req domain.Order) Order {
 	return Order{
 		TemplateId:        req.TemplateId,
-		TemplateName:      req.TemplateName,
 		Starter:           req.CreateBy,
 		ProcessInstanceId: req.Process.InstanceId,
 		Provide:           req.Provide.ToUint8(),
@@ -490,7 +487,6 @@ func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instan
 			Provide:            val.Provide.ToUint8(),
 			Status:             val.Status.ToUint8(),
 			TemplateId:         val.TemplateId,
-			TemplateName:       val.TemplateName,
 			WorkflowId:         val.WorkflowId,
 			Ctime:              time.Unix(val.Ctime/1000, 0).Format("2006-01-02 15:04:05"),
 		}

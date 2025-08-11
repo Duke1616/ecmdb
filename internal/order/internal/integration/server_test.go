@@ -57,6 +57,7 @@ func (s *GRPCServerTestSuite) TestCreateWorkOrder() {
 					TemplateName: "",
 				},
 			},
+			before:        func(t *testing.T) { return },
 			setupContext:  s.contextWithJWT,
 			errAssertFunc: assert.Error,
 		},
@@ -71,7 +72,7 @@ func (s *GRPCServerTestSuite) TestCreateWorkOrder() {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
 			},
 			setupContext:  s.contextWithJWT,
-			errAssertFunc: assert.Error,
+			errAssertFunc: assert.NoError,
 		},
 	}
 
@@ -111,14 +112,7 @@ type BaseGRPCServerTestSuite struct {
 
 func (s *BaseGRPCServerTestSuite) SetupTestSuite() {
 	// 加载配置
-	dir, err := os.Getwd()
-	s.Require().NoError(err)
-	f, err := os.Open(dir + "/../../../../config/prod.yaml")
-	s.Require().NoError(err)
-	viper.SetConfigFile(f.Name())
-	viper.WatchConfig()
-	err = viper.ReadInConfig()
-	s.Require().NoError(err)
+	s.loadConfig()
 
 	// 初始化数据库
 	s.db = startup.InitMongoDB()
@@ -140,7 +134,7 @@ func (s *BaseGRPCServerTestSuite) SetupTestSuite() {
 	setupCtx, setupCancelFunc := context.WithCancel(context.Background())
 	go func() {
 		setupCancelFunc()
-		err = s.clientGRPCServer.Serve()
+		err := s.clientGRPCServer.Serve()
 		s.NoError(err)
 	}()
 	// 等待服务启动
@@ -183,4 +177,15 @@ func (s *BaseGRPCServerTestSuite) contextWithJWT(ctx context.Context) context.Co
 		"Authorization": "Bearer " + tokenString,
 	})
 	return metadata.NewOutgoingContext(ctx, md)
+}
+
+func (s *BaseGRPCServerTestSuite) loadConfig() {
+	dir, err := os.Getwd()
+	s.Require().NoError(err)
+	f, err := os.Open(dir + "/../../../../config/prod.yaml")
+	s.Require().NoError(err)
+	viper.SetConfigFile(f.Name())
+	viper.WatchConfig()
+	err = viper.ReadInConfig()
+	s.Require().NoError(err)
 }

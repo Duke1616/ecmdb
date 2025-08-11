@@ -30,25 +30,25 @@ import (
 func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module, userModule *user.Module, lark2 *lark.Client) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO)
+	serviceService := templateModule.Svc
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(orderRepository, createProcessEventProducer)
-	service2 := engineModule.Svc
-	service3 := userModule.Svc
-	handler := web.NewHandler(serviceService, service2, service3)
-	workOrderServer := grpc.NewWorkOrderServer(serviceService)
-	service4 := templateModule.Svc
-	wechatOrderConsumer := initWechatConsumer(serviceService, service4, service3, q)
+	service2 := service.NewService(orderRepository, serviceService, createProcessEventProducer)
+	service3 := engineModule.Svc
+	service4 := userModule.Svc
+	handler := web.NewHandler(service2, service3, service4)
+	workOrderServer := grpc.NewWorkOrderServer(service2)
+	wechatOrderConsumer := initWechatConsumer(service2, serviceService, service4, q)
 	service5 := workflowModule.Svc
-	processEventConsumer := InitProcessConsumer(q, service5, serviceService)
-	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
-	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service2, lark2, service3, service4, serviceService, service5)
+	processEventConsumer := InitProcessConsumer(q, service5, service2)
+	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, service2)
+	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service3, lark2, service4, serviceService, service2, service5)
 	module := &Module{
 		Hdl:       handler,
 		RpcServer: workOrderServer,
-		Svc:       serviceService,
+		Svc:       service2,
 		cw:        wechatOrderConsumer,
 		cs:        processEventConsumer,
 		cms:       orderStatusModifyEventConsumer,

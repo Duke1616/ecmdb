@@ -27,25 +27,29 @@ const (
 type Provider int32
 
 const (
+	// 未指定
+	Provider_PROVIDER_UNSPECIFIED Provider = 0
 	// SYSTEM 本系统
-	Provider_SYSTEM Provider = 0
+	Provider_SYSTEM Provider = 1
 	// WECHAT 企业微信
-	Provider_WECHAT Provider = 1
+	Provider_WECHAT Provider = 2
 	// ALERT 告警平台
-	Provider_ALERT Provider = 2
+	Provider_ALERT Provider = 3
 )
 
 // Enum value maps for Provider.
 var (
 	Provider_name = map[int32]string{
-		0: "SYSTEM",
-		1: "WECHAT",
-		2: "ALERT",
+		0: "PROVIDER_UNSPECIFIED",
+		1: "SYSTEM",
+		2: "WECHAT",
+		3: "ALERT",
 	}
 	Provider_value = map[string]int32{
-		"SYSTEM": 0,
-		"WECHAT": 1,
-		"ALERT":  2,
+		"PROVIDER_UNSPECIFIED": 0,
+		"SYSTEM":               1,
+		"WECHAT":               2,
+		"ALERT":                3,
 	}
 )
 
@@ -191,7 +195,7 @@ func (x *Order) GetProvider() Provider {
 	if x != nil {
 		return x.Provider
 	}
-	return Provider_SYSTEM
+	return Provider_PROVIDER_UNSPECIFIED
 }
 
 func (x *Order) GetCreateBy() string {
@@ -256,13 +260,14 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12*\n" +
 	"\x05value\x18\x02 \x01(\v2\x14.google.protobuf.AnyR\x05value:\x028\x01\"\n" +
 	"\n" +
-	"\bResponse*-\n" +
-	"\bProvider\x12\n" +
+	"\bResponse*G\n" +
+	"\bProvider\x12\x18\n" +
+	"\x14PROVIDER_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
-	"\x06SYSTEM\x10\x00\x12\n" +
+	"\x06SYSTEM\x10\x01\x12\n" +
 	"\n" +
-	"\x06WECHAT\x10\x01\x12\t\n" +
-	"\x05ALERT\x10\x022W\n" +
+	"\x06WECHAT\x10\x02\x12\t\n" +
+	"\x05ALERT\x10\x032W\n" +
 	"\x10WorkOrderService\x12C\n" +
 	"\x0fCreateWorkOrder\x12\x1c.order.v1.CreateOrderRequest\x1a\x12.order.v1.ResponseB\x95\x01\n" +
 	"\fcom.order.v1B\n" +

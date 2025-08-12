@@ -46,16 +46,24 @@ func (s Provide) IsValid() bool {
 }
 
 type Order struct {
-	Id         int64
-	TemplateId int64
-	WorkflowId int64
-	Data       map[string]interface{}
-	Status     Status
-	Provide    Provide
-	CreateBy   string
-	Process    Process
-	Ctime      int64
-	Wtime      int64
+	Id               int64
+	TemplateId       int64
+	WorkflowId       int64
+	Data             map[string]interface{}
+	Status           Status
+	Provide          Provide
+	CreateBy         string
+	Process          Process
+	Ctime            int64
+	Wtime            int64
+	NotificationConf NotificationConf // 为了引入告警转工单，引入外部消息通知
+}
+
+// NotificationConf 消息通知配置
+type NotificationConf struct {
+	TemplateID     int64                  // 模版ID
+	TemplateParams map[string]interface{} // 传递参数
+	Channel        string                 // 通知渠道
 }
 
 func (o *Order) Validate() error {

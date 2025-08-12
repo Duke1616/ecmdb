@@ -13,12 +13,14 @@ message CreateOrderRequest {
 
 // 工单类型来源
 enum Provider {
+  // 未指定
+  PROVIDER_UNSPECIFIED = 0;
   // SYSTEM 本系统
-  SYSTEM = 0;
+  SYSTEM = 1;
   // WECHAT 企业微信
-  WECHAT = 1;
+  WECHAT = 2;
   // ALERT 告警平台
-  ALERT = 2;
+  ALERT = 3;
 }
 
 message Order {

@@ -4,6 +4,7 @@ package order
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event/consumer"

@@ -4,12 +4,17 @@ package order.v1;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/Duke1616/ecmdb/api/gen/v1;order";
 
 message CreateOrderRequest {
+  // 提交工单信息
   Order order = 1;
+  // 消息通知配置
+  NotificationConf notification_conf = 2;
 }
+
 
 // 工单类型来源
 enum Provider {
@@ -23,17 +28,38 @@ enum Provider {
   ALERT = 3;
 }
 
+// 渠道类型枚举
+enum Channel {
+  // 未指定渠道
+  CHANNEL_UNSPECIFIED = 0;
+  // 飞书卡片
+  FEISHU_CARD = 1;
+  // 邮件
+  EMAIL = 2;
+  // 站内信
+  IN_APP = 3;
+}
+
 message Order {
   // 模版ID
   int64 template_id = 1;
   // 流程ID
   int64 workflow_id  = 2;
   // 工单参数
-  map<string, google.protobuf.Any> data = 3;
+  google.protobuf.Struct data = 3;
   // 工单来源
   Provider Provider = 4;
   // 创建人
   string CreateBy = 5;
+}
+
+message NotificationConf {
+  // 消息通知模版
+  int64 template_id = 1;
+  // 模版传递参数
+  google.protobuf.Struct template_params = 2;
+  // 消息通知渠道
+  Channel channel  = 3;
 }
 
 message Response {}

@@ -3,14 +3,15 @@ package startup
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"strings"
-	"time"
 )
 
 func InitMongoDB() *mongox.Mongo {

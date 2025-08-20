@@ -8,6 +8,7 @@ package event
 
 import (
 	engine2 "github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/domain"
@@ -34,7 +35,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, departmentModule *department.Module, lark2 *lark.Client) (*Module, error) {
+func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, departmentModule *department.Module, lark2 *lark.Client, notificationSvc notificationv1.NotificationServiceClient) (*Module, error) {
 	service := engineModule.Svc
 	orderStatusModifyEventProducer, err := producer.NewOrderStatusModifyEventProducer(q)
 	if err != nil {
@@ -58,7 +59,7 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 		return nil, err
 	}
 	service6 := departmentModule.Svc
-	userNotification, err := strategy.NewUserNotification(service, service5, service2, service4, fetcherResult, service6, notificationSender)
+	userNotification, err := strategy.NewUserNotification(service, service5, service2, service4, fetcherResult, service6, notificationSender, notificationSvc)
 	if err != nil {
 		return nil, err
 	}

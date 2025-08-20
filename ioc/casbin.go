@@ -1,19 +1,18 @@
 package ioc
 
 import (
-	"fmt"
-	"github.com/casbin/casbin/v2"
-	gormAdapter "github.com/casbin/gorm-adapter/v3"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/spf13/viper"
-)
-
-import (
-	"github.com/casbin/casbin/v2/model"
-	redisWatcher "github.com/casbin/redis-watcher/v2"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 	"time"
+
+	"fmt"
+
+	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/model"
+	gormAdapter "github.com/casbin/gorm-adapter/v3"
+	redisWatcher "github.com/casbin/redis-watcher/v2"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
+	"gorm.io/gorm"
 )
 
 const (

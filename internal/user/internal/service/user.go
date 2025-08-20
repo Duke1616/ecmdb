@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
@@ -89,6 +90,10 @@ func (s *service) FindByDepartmentId(ctx context.Context, offset, limit int64, d
 }
 
 func (s *service) FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error) {
+	if len(uns) == 0 {
+		return []domain.User{}, fmt.Errorf("传入参数为空")
+	}
+
 	return s.repo.FindByUsernames(ctx, uns)
 }
 

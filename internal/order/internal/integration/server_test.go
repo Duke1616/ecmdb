@@ -2,6 +2,11 @@ package integration
 
 import (
 	"context"
+	"log"
+	"os"
+	"testing"
+	"time"
+
 	clientv1 "github.com/Duke1616/ecmdb/api/proto/gen/order/v1"
 	evtmocks "github.com/Duke1616/ecmdb/internal/order/internal/event/mocks"
 	grpc2 "github.com/Duke1616/ecmdb/internal/order/internal/grpc"
@@ -9,6 +14,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+	"github.com/Duke1616/ecmdb/internal/template"
+	templatemocks "github.com/Duke1616/ecmdb/internal/template/mocks"
 	"github.com/Duke1616/ecmdb/pkg/grpcx"
 	jwtpkg "github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
@@ -18,10 +25,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/metadata"
-	"log"
-	"os"
-	"testing"
-	"time"
 )
 
 type GRPCServerTestSuite struct {
@@ -54,7 +57,12 @@ func (s *GRPCServerTestSuite) TestCreateWorkOrder() {
 			name: "参数传递错误",
 			req: &clientv1.CreateOrderRequest{
 				Order: &clientv1.Order{
-					TemplateName: "",
+					TemplateId: 1,
+					Data:       nil,
+				},
+				NotificationConf: &clientv1.NotificationConf{
+					TemplateId:     1,
+					TemplateParams: nil,
 				},
 			},
 			before:        func(t *testing.T) { return },
@@ -65,7 +73,7 @@ func (s *GRPCServerTestSuite) TestCreateWorkOrder() {
 			name: "创建工单成功",
 			req: &clientv1.CreateOrderRequest{
 				Order: &clientv1.Order{
-					TemplateName: "",
+					TemplateId: 1,
 				},
 			},
 			before: func(t *testing.T) {
@@ -122,12 +130,21 @@ func (s *BaseGRPCServerTestSuite) SetupTestSuite() {
 	s.ctrl = gomock.NewController(s.T())
 	s.producer = evtmocks.NewMockCreateProcessEventProducer(s.ctrl)
 
+	// 模版Service
+	templateSvc := templatemocks.NewMockService(s.ctrl)
+	templateSvc.EXPECT().DetailTemplate(gomock.Any(), gomock.Any()).
+		AnyTimes().DoAndReturn(func(ctx context.Context) (template.Template, error) {
+		tm := template.Template{
+			Name: "模版名称",
+		}
+		return tm, nil
+	})
+
 	// 初始化注册中心
 	etcdClient := startup.InitEtcdClient()
-
 	orderDao := dao.NewOrderDAO(s.db)
 	orderRepository := repository.NewOrderRepository(orderDao)
-	orderServer := grpc2.NewWorkOrderServer(service.NewService(orderRepository, s.producer))
+	orderServer := grpc2.NewWorkOrderServer(service.NewService(orderRepository, templateSvc, s.producer))
 	s.clientGRPCServer = startup.InitGrpcServer(orderServer, etcdClient)
 
 	// 创建服务器

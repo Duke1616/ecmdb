@@ -17,12 +17,13 @@ func InitGrpcServer(orderRpc *order.RpcServer, ecli *clientv3.Client) *grpcx.Ser
 		EtcdTTL int64  `mapstructure:"etcd_ttl"`
 		Key     string `mapstructure:"key"`
 	}
+
 	var cfg Config
 	err := viper.UnmarshalKey("grpc.server", &cfg)
 	if err != nil {
 		panic(err)
 	}
-
+	
 	jwtInterceptor := jwt.NewJwtAuth(cfg.Key)
 	server := grpc.NewServer(grpc.UnaryInterceptor(
 		jwtInterceptor.JwtAuthInterceptor(),

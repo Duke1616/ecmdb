@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
@@ -76,6 +77,11 @@ func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 		WorkflowId: req.WorkflowId,
 		CreateBy:   req.CreateBy,
 		Data:       req.Data,
+		NotificationConf: dao.NotificationConf{
+			TemplateID:     req.NotificationConf.TemplateID,
+			TemplateParams: req.NotificationConf.TemplateParams,
+			Channel:        req.NotificationConf.Channel.String(),
+		},
 	}
 }
 
@@ -91,5 +97,10 @@ func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 		Data:       req.Data,
 		Ctime:      req.Ctime,
 		Wtime:      req.Wtime,
+		NotificationConf: domain.NotificationConf{
+			TemplateID:     req.NotificationConf.TemplateID,
+			TemplateParams: req.NotificationConf.TemplateParams,
+			Channel:        domain.Channel(req.NotificationConf.Channel),
+		},
 	}
 }

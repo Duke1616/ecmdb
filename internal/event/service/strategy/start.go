@@ -2,6 +2,8 @@ package strategy
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -34,12 +36,12 @@ func (s *StartNotification) Send(ctx context.Context, notification domain.Strate
 	// 获取当前节点信息
 	property, err := getNodeProperty[easyflow.StartProperty](notification.WfInfo, notification.CurrentNode.NodeID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("【开始节点】未配置消息通知")
 	}
 
 	// 判断开始节点是否需要发送消息通知
 	if ok := s.isNotify(property, notification.InstanceId); !ok {
-		return false, nil
+		return false, fmt.Errorf("【开始节点】未配置消息通知")
 	}
 
 	// 解析配置

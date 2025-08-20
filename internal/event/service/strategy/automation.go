@@ -3,6 +3,7 @@ package strategy
 import (
 	"context"
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -42,14 +43,12 @@ func (n *AutomationNotification) Send(ctx context.Context, notification domain.S
 
 	// 判断是否开启消息发送，以及是否为立即发送
 	if !property.IsNotify {
-		n.logger.Warn("【自动化节点】未配置消息通知")
-		return false, nil
+		return false, fmt.Errorf("【自动化节点】未配置消息通知")
 	}
 
 	// 判断模式如果不是理解发送则退出
 	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		n.logger.Warn("【自动化节点】节点未开启消息通知")
-		return false, nil
+		return false, fmt.Errorf("【自动化节点】节点未开启消息通知")
 	}
 
 	// 查看返回的消息

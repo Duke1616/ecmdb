@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/hash"
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./service.go -package=templatemocks -destination=../../mocks/template.mock.go -typed Service
 type Service interface {
 	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)

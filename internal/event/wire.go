@@ -4,6 +4,7 @@ package event
 
 import (
 	easyEngine "github.com/Bunny3th/easy-workflow/workflow/engine"
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/domain"
@@ -21,12 +22,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 
+	"log"
+	"sync"
+
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"gorm.io/gorm"
-	"log"
-	"sync"
 )
 
 var InitStrategySet = wire.NewSet(
@@ -45,7 +47,7 @@ var InitSender = wire.NewSet(
 
 func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module,
 	templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module,
-	departmentModule *department.Module, lark *lark.Client) (*Module, error) {
+	departmentModule *department.Module, lark *lark.Client, notificationSvc notificationv1.NotificationServiceClient) (*Module, error) {
 	wire.Build(
 		producer.NewOrderStatusModifyEventProducer,
 		InitStrategySet,

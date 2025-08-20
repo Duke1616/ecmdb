@@ -2,7 +2,20 @@ package domain
 
 import (
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/order/internal/errs"
+)
+
+type Channel string
+
+func (c Channel) String() string {
+	return string(c)
+}
+
+const (
+	ChannelFeishuCard Channel = "FEISHU_CARD" // 短信
+	ChannelEmail      Channel = "EMAIL"       // 邮件
+	ChannelInApp      Channel = "IN_APP"      // 站内信
 )
 
 type Status uint8
@@ -45,6 +58,10 @@ func (s Provide) IsValid() bool {
 	return s == SYSTEM || s == WECHAT || s == ALERT
 }
 
+func (s Provide) IsAlert() bool {
+	return s == ALERT
+}
+
 type Order struct {
 	Id               int64
 	TemplateId       int64
@@ -63,7 +80,7 @@ type Order struct {
 type NotificationConf struct {
 	TemplateID     int64                  // 模版ID
 	TemplateParams map[string]interface{} // 传递参数
-	Channel        string                 // 通知渠道
+	Channel        Channel                // 通知渠道
 }
 
 func (o *Order) Validate() error {

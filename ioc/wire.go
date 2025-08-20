@@ -3,6 +3,7 @@
 package ioc
 
 import (
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/department"
@@ -30,6 +31,11 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/google/wire"
+	"github.com/spf13/viper"
+	etcdv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/naming/resolver"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
@@ -41,6 +47,7 @@ func InitApp() (*App, error) {
 		InitSession,
 		InitCasbin,
 		InitLdapConfig,
+		InitNotificationServiceClient,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
 		attribute.InitModule,
@@ -95,4 +102,33 @@ func InitApp() (*App, error) {
 		InitGrpcServer,
 		InitGinMiddlewares)
 	return new(App), nil
+}
+
+func InitNotificationServiceClient(etcdClient *etcdv3.Client) notificationv1.NotificationServiceClient {
+	type Config struct {
+		Target string `mapstructure:"target"`
+		Secure bool   `mapstructure:"secure"`
+	}
+	var cfg Config
+	err := viper.UnmarshalKey("grpc.client.ealert", &cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	rs, err := resolver.NewBuilder(etcdClient)
+	if err != nil {
+		panic(err)
+	}
+
+	opts := []grpc.DialOption{grpc.WithResolvers(rs)}
+	if !cfg.Secure {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	cc, err := grpc.NewClient(cfg.Target, opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	return notificationv1.NewNotificationServiceClient(cc)
 }

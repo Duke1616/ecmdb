@@ -2,8 +2,12 @@ package strategy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/Bunny3th/easy-workflow/workflow/model"
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/department"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/domain"
@@ -14,22 +18,26 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/errgroup"
-	"time"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type UserNotification struct {
-	sender        sender.NotificationSender
-	engineSvc     engineSvc.Service
-	resultSvc     FetcherResult
-	userSvc       user.Service
-	departMentSvc department.Service
-	templateSvc   templateSvc.Service
-	orderSvc      order.Service
+	sender          sender.NotificationSender
+	engineSvc       engineSvc.Service
+	resultSvc       FetcherResult
+	userSvc         user.Service
+	departMentSvc   department.Service
+	templateSvc     templateSvc.Service
+	orderSvc        order.Service
+	notificationSvc notificationv1.NotificationServiceClient
 
 	initialInterval time.Duration
 	maxInterval     time.Duration
@@ -39,7 +47,7 @@ type UserNotification struct {
 
 func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
 	userSvc user.Service, resultSvc FetcherResult, departMentSvc department.Service,
-	sender sender.NotificationSender) (*UserNotification, error) {
+	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient) (*UserNotification, error) {
 
 	return &UserNotification{
 		sender:          sender,
@@ -49,6 +57,7 @@ func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Se
 		userSvc:         userSvc,
 		departMentSvc:   departMentSvc,
 		resultSvc:       resultSvc,
+		notificationSvc: notificationSvc,
 		logger:          elog.DefaultLogger,
 		initialInterval: 5 * time.Second,
 		maxRetries:      int32(3),
@@ -68,161 +77,261 @@ func (n *UserNotification) isGlobalNotify(wf workflow.Workflow, instanceId int) 
 }
 
 func (n *UserNotification) Send(ctx context.Context, notification domain.StrategyInfo) (bool, error) {
-	// 获取流程节点 nodes 信息
+	// 获取流程节点信息
 	nodes, err := unmarshal(notification.WfInfo)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("解析流程信息失败: %w", err)
 	}
 
-	// 获取当前节点信息
+	// 获取当前节点属性
 	property, err := getProperty[easyflow.UserProperty](nodes, notification.CurrentNode.NodeID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("获取节点属性失败: %w", err)
 	}
 
-	// 组合获取数据
+	// 并行获取所需数据
+	data, err := n.fetchRequiredData(ctx, notification, nodes)
+	if err != nil {
+		return false, fmt.Errorf("获取组合数据失败: %w", err)
+	}
+
+	// 为异步发送设置一个独立的超时 ctx，避免无限挂起
+	sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+
+	// 根据规则生成审批用户
+	if err = n.resolveRule(sendCtx, notification.InstanceId, property, data.startUser,
+		notification.OrderInfo, notification.CurrentNode); err != nil {
+		cancel() // 立即取消，因为发生了错误
+		n.logger.Error("解析规则失败",
+			elog.FieldErr(err),
+			elog.Int("instanceId", notification.InstanceId),
+			elog.String("rule", property.Rule.ToString()))
+		return false, fmt.Errorf("根据规则解析用户失败：%w", err)
+	}
+
+	// 异步发送通知，将 cancel 函数传给异步任务
+	// 只有当 Event 结束才能正确获取到 TaskId 信息，放到 Go Routine 异步运行, 通过重试机制获取到数据
+	go func() {
+		defer func() {
+			cancel()
+			if r := recover(); r != nil {
+				n.logger.Error("异步发送通知发生panic", elog.Any("recover", r))
+			}
+		}()
+		n.asyncSendNotification(sendCtx, notification, property, data)
+	}()
+
+	return true, nil
+}
+
+func (n *UserNotification) asyncSendNotification(ctx context.Context, notification domain.StrategyInfo,
+	property easyflow.UserProperty, data *notificationData) {
+	// 1. 获取任务信息（带重试）
+	tasks, err := n.fetchTasksWithRetry(ctx, notification)
+	if err != nil {
+		n.logger.Error("获取任务信息失败",
+			elog.FieldErr(err),
+			elog.Int("instanceId", notification.InstanceId))
+		return
+	}
+
+	// 2. 生成消息数据（先生成默认的）
+	title := rule.GenerateTitle(data.startUser.DisplayName, data.tName)
+	template := FeishuTemplateApprovalName
+
+	// 3. 判断是否是抄送情况，如果是，则修改模板和标题，且先执行自动通过
+	if property.IsCC {
+		template = FeishuTemplateCC
+		title = rule.GenerateCCTitle(data.startUser.DisplayName, data.tName)
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					n.logger.Error("ccPass协程异常恢复", elog.Any("panic", r))
+				}
+			}()
+			n.ccPass(ctx, tasks)
+		}()
+	}
+
+	// 4. 判断是否全局允许通知，若不允许则返回（确保自动通过已执行）
+	// 如果节点是抄送节点需要自动结束该节点，如果这块代码放到抄送逻辑前，会影响代码处理
+	if ok := n.isGlobalNotify(notification.WfInfo, notification.InstanceId); !ok {
+		return
+	}
+
+	// 5. 获取用户详情信息
+	users, err := n.getUsers(ctx, tasks)
+	if err != nil {
+		n.logger.Error("用户查询失败", elog.FieldErr(err))
+	}
+	userMap := analyzeUsers(users)
+
+	// 6、如果消息来源是告警转工单，则通过告警模版发送消息
+	if notification.OrderInfo.Provide.IsAlert() {
+		if err = n.send(ctx, tasks, notification.OrderInfo, userMap); err != nil {
+			n.logger.Error("告警转工单，消息发送失败", elog.FieldErr(err))
+		}
+
+		return
+	}
+
+	// 7、. 获取需要传递的信息字段
+	fields := rule.GetFields(data.rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
+	for field, value := range data.wantResult {
+		fields = append(fields, card.Field{
+			IsShort: true,
+			Tag:     "lark_md",
+			Content: fmt.Sprintf(`**%s:**\n%v`, field, value),
+		})
+	}
+
+	ns := slice.Map(tasks, func(idx int, src model.Task) domain.Notification {
+		receiver, _ := userMap[src.UserID]
+		return domain.Notification{
+			Channel:  domain.ChannelFeishuCard,
+			Receiver: receiver,
+			Template: domain.Template{
+				Name:   template,
+				Title:  title,
+				Fields: fields,
+				Values: []card.Value{
+					{
+						Key:   "order_id",
+						Value: notification.OrderInfo.Id,
+					},
+					{
+						Key:   "task_id",
+						Value: src.TaskID,
+					},
+				},
+				HideForm: false,
+			},
+		}
+	})
+
+	if _, err = n.sender.BatchSend(ctx, ns); err != nil {
+		n.logger.Warn("发送消息失败",
+			elog.FieldErr(err),
+		)
+		return
+	}
+}
+
+func (n *UserNotification) send(ctx context.Context, tasks []model.Task,
+	oInfo order.Order, userMap map[string]string) error {
+	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
+		receiver, _ := userMap[src.UserID]
+		return receiver
+	})
+
+	// 组合消息
+	var tParams map[string]any
+	tParams, err := toPureGoType(oInfo.NotificationConf.TemplateParams)
+	if err != nil {
+		return fmt.Errorf("解析模版数据失败: %w", err)
+	}
+
+	params, err := structpb.NewStruct(tParams)
+	if err != nil {
+		return fmt.Errorf("解析模版数据失败: %w", err)
+	}
+
+	// 发送消息
+	jwtKey := viper.Get("grpc.client.ealert.key")
+	jwtCtx := jwt.ContextWithJWT(ctx, jwtKey.(string))
+	_, err = n.notificationSvc.SendNotification(jwtCtx, &notificationv1.SendNotificationRequest{
+		Notification: &notificationv1.Notification{
+			Key:            "ecmdb",
+			Receivers:      userIds,
+			Channel:        order.ChannelToDomainProto(oInfo.NotificationConf.Channel),
+			TemplateParams: params,
+			TemplateId:     oInfo.NotificationConf.TemplateID,
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("发送消息失败: %w", err)
+	}
+
+	return nil
+}
+
+// 分解出的辅助方法
+func (n *UserNotification) fetchTasksWithRetry(ctx context.Context, notification domain.StrategyInfo) ([]model.Task, error) {
+	strategy, err := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
+	if err != nil {
+		return nil, err
+	}
+
+	var tasks []model.Task
+	for {
+		d, ok := strategy.Next()
+		if !ok {
+			return nil, fmt.Errorf("处理执行任务超过最大重试次数")
+		}
+
+		tasks, err = n.engineSvc.GetTasksByCurrentNodeId(ctx, notification.InstanceId, notification.CurrentNode.NodeID)
+		if err == nil && len(tasks) > 0 {
+			return tasks, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(d):
+			continue
+		}
+	}
+}
+
+// 提取的数据获取逻辑
+func (n *UserNotification) fetchRequiredData(ctx context.Context, notification domain.StrategyInfo,
+	nodes []easyflow.Node) (*notificationData, error) {
+	var data notificationData
 	errGroup, ctx := errgroup.WithContext(ctx)
-	var (
-		wantResult map[string]interface{}
-		rules      []rule.Rule
-		startUser  user.User
-		tName      string
-	)
+
 	// 获取自动化任务执行结果
 	errGroup.Go(func() error {
-		wantResult, err = n.wantAllResult(ctx, notification.InstanceId, nodes)
+		var err error
+		data.wantResult, err = n.wantAllResult(ctx, notification.InstanceId, nodes)
 		return err
 	})
 
 	// 解析配置
 	errGroup.Go(func() error {
-		rules, tName, err = n.getRules(ctx, notification.OrderInfo)
+		var err error
+		data.rules, data.tName, err = n.getRules(ctx, notification.OrderInfo)
 		return err
 	})
 
 	// 获取工单创建用户
 	errGroup.Go(func() error {
-		startUser, err = n.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
+		var err error
+		data.startUser, err = n.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
 		return err
 	})
 
-	if err = errGroup.Wait(); err != nil {
-		return false, fmt.Errorf("获取组合数据失败: %w", err)
+	if err := errGroup.Wait(); err != nil {
+		return nil, err
 	}
 
-	// 根据规则生成审批用户
-	err = n.resolveRule(ctx, notification.InstanceId, property, startUser, notification.OrderInfo,
-		notification.CurrentNode)
+	return &data, nil
+}
+
+func toPureGoType(input map[string]any) (map[string]any, error) {
+	b, err := json.Marshal(input)
 	if err != nil {
-		n.logger.Error("根据模版信息解析规则失败", elog.FieldErr(err),
-			elog.Int("instanceId", notification.InstanceId), elog.String("rule", property.Rule.ToString()))
-		return false, err
+		return nil, err
 	}
 
-	// 只有当 Event 结束才能正确获取到 TaskId 信息，放到 Go Routine 异步运行, 通过重试机制获取到数据
-	//go n.asyncSendNotification(ctx, instanceId, currentNode, property, startUser, nOrder, rules, wantResult, wf)
-	go func() {
-		strategy, err := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
-		if err != nil {
-			return
-		}
+	var pureMap map[string]interface{}
+	err = json.Unmarshal(b, &pureMap)
+	if err != nil {
+		return nil, err
+	}
 
-		var tasks []model.Task
-		for {
-			d, ok := strategy.Next()
-			if !ok {
-				n.logger.Error("处理执行任务超过最大重试次数",
-					elog.Any("error", err),
-					elog.Any("instId", notification.InstanceId),
-				)
-				break
-			}
-
-			// 获取当前任务流转到的用户
-			tasks, err = n.engineSvc.GetTasksByCurrentNodeId(context.Background(), notification.InstanceId,
-				notification.CurrentNode.NodeID)
-			if err != nil || len(tasks) == 0 {
-				time.Sleep(d)
-				continue
-			}
-
-			break
-		}
-
-		// 获取用户的详情信息
-		users, err := n.getUsers(context.Background(), tasks)
-		if err != nil {
-			n.logger.Error("用户查询失败",
-				elog.FieldErr(err),
-			)
-		}
-
-		// 生成消息数据
-		//var messages []notify.NotifierWrap
-		title := rule.GenerateTitle(startUser.DisplayName, tName)
-		template := FeishuTemplateApprovalName
-
-		// 判断如果是抄送情况
-		if property.IsCC {
-			template = FeishuTemplateCC
-			title = rule.GenerateCCTitle(startUser.DisplayName, tName)
-
-			// 处理自动通过
-			go n.ccPass(ctx, tasks)
-		}
-
-		// TODO 全局消息通知，如果没开启则全局不发送消息通知
-		// 因为用户是通过规则匹配的，需要动态生成，用户抄送节点需要自动通过
-		// 假如这个步骤前置执行，会提前退出，导致流程出现不可逆的严重错误
-		if ok := n.isGlobalNotify(notification.WfInfo, notification.InstanceId); !ok {
-			return
-		}
-
-		// 获取需要传递信息
-		userMap := analyzeUsers(users)
-		fields := rule.GetFields(rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
-		for field, value := range wantResult {
-			fields = append(fields, card.Field{
-				IsShort: true,
-				Tag:     "lark_md",
-				Content: fmt.Sprintf(`**%s:**\n%v`, field, value),
-			})
-		}
-
-		ns := slice.Map(tasks, func(idx int, src model.Task) domain.Notification {
-			receiver, _ := userMap[src.UserID]
-			fmt.Println(receiver, "用户ID")
-			return domain.Notification{
-				Channel:  domain.ChannelFeishuCard,
-				Receiver: receiver,
-				Template: domain.Template{
-					Name:   template,
-					Title:  title,
-					Fields: fields,
-					Values: []card.Value{
-						{
-							Key:   "order_id",
-							Value: notification.OrderInfo.Id,
-						},
-						{
-							Key:   "task_id",
-							Value: src.TaskID,
-						},
-					},
-					HideForm: false,
-				},
-			}
-		})
-
-		_, err = n.sender.BatchSend(context.Background(), ns)
-		if err != nil {
-			n.logger.Warn("发送消息失败",
-				elog.FieldErr(err),
-			)
-		}
-	}()
-
-	return true, nil
+	return pureMap, nil
 }
 
 func (n *UserNotification) ccPass(ctx context.Context, tasks []model.Task) {
@@ -368,33 +477,24 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 		if !ok {
 			return fmt.Errorf("根据模版字段查询失败，不存在")
 		}
+		switch v := value.(type) {
 		// 处理字符串情况
-		if str, isString := value.(string); isString {
-			u, err := n.userSvc.FindByUsername(ctx, str)
+		case string:
+			u, err := n.userSvc.FindByUsername(ctx, v)
 			if err != nil {
-				return err // 处理错误
+				return fmt.Errorf("failed to find user '%s': %w", v, err)
 			}
 			currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
-
 			return nil
+		// 处理数组情况
+		case []interface{}:
+			return n.processUserArray(ctx, v, currentNode)
+		// 处理 MongoDB 的 BSON 数组类型
+		case primitive.A:
+			return n.processUserArray(ctx, v, currentNode)
+		default:
+			return fmt.Errorf("unexpected type %T for template field, expected string or []string", value)
 		}
-
-		// 处理数据情况
-		if arr, isArray := value.([]interface{}); isArray {
-			for _, item := range arr {
-				if str, isString := item.(string); isString {
-					u, err := n.userSvc.FindByUsername(ctx, str)
-					if err != nil {
-						return err // 处理错误
-					}
-					currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
-				}
-			}
-
-			return nil
-		}
-
-		return fmt.Errorf("未匹配任何模版成功")
 	case easyflow.FOUNDER:
 		currentNode.UserIDs = append(currentNode.UserIDs, startUser.Username)
 	case easyflow.APPOINT:
@@ -404,6 +504,19 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 		}
 	}
 
+	return nil
+}
+
+func (n *UserNotification) processUserArray(ctx context.Context, arr []interface{}, currentNode *model.Node) error {
+	for _, item := range arr {
+		if str, ok := item.(string); ok {
+			u, err := n.userSvc.FindByUsername(ctx, str)
+			if err != nil {
+				return fmt.Errorf("failed to find user '%s': %w", str, err)
+			}
+			currentNode.UserIDs = append(currentNode.UserIDs, u.Username)
+		}
+	}
 	return nil
 }
 
@@ -420,4 +533,12 @@ func (n *UserNotification) resolveDepartment(ctx context.Context, instanceId int
 	}
 
 	return depart, nil
+}
+
+// 辅助结构体
+type notificationData struct {
+	wantResult map[string]interface{}
+	rules      []rule.Rule
+	startUser  user.User
+	tName      string
 }

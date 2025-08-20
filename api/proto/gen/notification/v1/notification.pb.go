@@ -9,7 +9,8 @@ package notificationv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	anypb "google.golang.org/protobuf/types/known/anypb"
+	_ "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	_ "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -30,7 +31,7 @@ const (
 	// 未指定渠道
 	Channel_CHANNEL_UNSPECIFIED Channel = 0
 	// 短信
-	Channel_SMS Channel = 1
+	Channel_FEISHU_CARD Channel = 1
 	// 邮件
 	Channel_EMAIL Channel = 2
 	// 站内信
@@ -41,13 +42,13 @@ const (
 var (
 	Channel_name = map[int32]string{
 		0: "CHANNEL_UNSPECIFIED",
-		1: "SMS",
+		1: "FEISHU_CARD",
 		2: "EMAIL",
 		3: "IN_APP",
 	}
 	Channel_value = map[string]int32{
 		"CHANNEL_UNSPECIFIED": 0,
-		"SMS":                 1,
+		"FEISHU_CARD":         1,
 		"EMAIL":               2,
 		"IN_APP":              3,
 	}
@@ -266,7 +267,7 @@ type Notification struct {
 	// 模板ID
 	TemplateId int64 `protobuf:"varint,4,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
 	// 模板参数
-	TemplateParams map[string]*anypb.Any `protobuf:"bytes,5,rep,name=template_params,json=templateParams,proto3" json:"template_params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	TemplateParams *structpb.Struct `protobuf:"bytes,5,opt,name=template_params,json=templateParams,proto3" json:"template_params,omitempty"`
 	// 通知人
 	Receiver      string `protobuf:"bytes,6,opt,name=receiver,proto3" json:"receiver,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -331,7 +332,7 @@ func (x *Notification) GetTemplateId() int64 {
 	return 0
 }
 
-func (x *Notification) GetTemplateParams() map[string]*anypb.Any {
+func (x *Notification) GetTemplateParams() *structpb.Struct {
 	if x != nil {
 		return x.TemplateParams
 	}
@@ -576,18 +577,15 @@ var File_notification_v1_notification_proto protoreflect.FileDescriptor
 
 const file_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
-	"\"notification/v1/notification.proto\x12\x0fnotification.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19google/protobuf/any.proto\"\xe4\x02\n" +
+	"\"notification/v1/notification.proto\x12\x0fnotification.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19google/protobuf/any.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xf1\x01\n" +
 	"\fNotification\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1c\n" +
 	"\treceivers\x18\x02 \x03(\tR\treceivers\x122\n" +
 	"\achannel\x18\x03 \x01(\x0e2\x18.notification.v1.ChannelR\achannel\x12\x1f\n" +
 	"\vtemplate_id\x18\x04 \x01(\x03R\n" +
-	"templateId\x12Z\n" +
-	"\x0ftemplate_params\x18\x05 \x03(\v21.notification.v1.Notification.TemplateParamsEntryR\x0etemplateParams\x12\x1a\n" +
-	"\breceiver\x18\x06 \x01(\tR\breceiver\x1aW\n" +
-	"\x13TemplateParamsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12*\n" +
-	"\x05value\x18\x02 \x01(\v2\x14.google.protobuf.AnyR\x05value:\x028\x01\"\\\n" +
+	"templateId\x12@\n" +
+	"\x0ftemplate_params\x18\x05 \x01(\v2\x17.google.protobuf.StructR\x0etemplateParams\x12\x1a\n" +
+	"\breceiver\x18\x06 \x01(\tR\breceiver\"\\\n" +
 	"\x17SendNotificationRequest\x12A\n" +
 	"\fnotification\x18\x01 \x01(\v2\x1d.notification.v1.NotificationR\fnotification\"\xd8\x01\n" +
 	"\x18SendNotificationResponse\x12'\n" +
@@ -602,10 +600,10 @@ const file_notification_v1_notification_proto_rawDesc = "" +
 	"\aresults\x18\x01 \x03(\v2).notification.v1.SendNotificationResponseR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\x12#\n" +
-	"\rsuccess_count\x18\x03 \x01(\x05R\fsuccessCount*B\n" +
+	"\rsuccess_count\x18\x03 \x01(\x05R\fsuccessCount*J\n" +
 	"\aChannel\x12\x17\n" +
-	"\x13CHANNEL_UNSPECIFIED\x10\x00\x12\a\n" +
-	"\x03SMS\x10\x01\x12\t\n" +
+	"\x13CHANNEL_UNSPECIFIED\x10\x00\x12\x0f\n" +
+	"\vFEISHU_CARD\x10\x01\x12\t\n" +
 	"\x05EMAIL\x10\x02\x12\n" +
 	"\n" +
 	"\x06IN_APP\x10\x03*l\n" +
@@ -654,7 +652,7 @@ func file_notification_v1_notification_proto_rawDescGZIP() []byte {
 }
 
 var file_notification_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_notification_v1_notification_proto_goTypes = []any{
 	(Channel)(0),                           // 0: notification.v1.Channel
 	(SendStatus)(0),                        // 1: notification.v1.SendStatus
@@ -664,25 +662,23 @@ var file_notification_v1_notification_proto_goTypes = []any{
 	(*SendNotificationResponse)(nil),       // 5: notification.v1.SendNotificationResponse
 	(*BatchSendNotificationsRequest)(nil),  // 6: notification.v1.BatchSendNotificationsRequest
 	(*BatchSendNotificationsResponse)(nil), // 7: notification.v1.BatchSendNotificationsResponse
-	nil,                                    // 8: notification.v1.Notification.TemplateParamsEntry
-	(*anypb.Any)(nil),                      // 9: google.protobuf.Any
+	(*structpb.Struct)(nil),                // 8: google.protobuf.Struct
 }
 var file_notification_v1_notification_proto_depIdxs = []int32{
 	0, // 0: notification.v1.Notification.channel:type_name -> notification.v1.Channel
-	8, // 1: notification.v1.Notification.template_params:type_name -> notification.v1.Notification.TemplateParamsEntry
+	8, // 1: notification.v1.Notification.template_params:type_name -> google.protobuf.Struct
 	3, // 2: notification.v1.SendNotificationRequest.notification:type_name -> notification.v1.Notification
 	1, // 3: notification.v1.SendNotificationResponse.status:type_name -> notification.v1.SendStatus
 	2, // 4: notification.v1.SendNotificationResponse.error_code:type_name -> notification.v1.ErrorCode
 	3, // 5: notification.v1.BatchSendNotificationsRequest.notifications:type_name -> notification.v1.Notification
 	5, // 6: notification.v1.BatchSendNotificationsResponse.results:type_name -> notification.v1.SendNotificationResponse
-	9, // 7: notification.v1.Notification.TemplateParamsEntry.value:type_name -> google.protobuf.Any
-	4, // 8: notification.v1.NotificationService.SendNotification:input_type -> notification.v1.SendNotificationRequest
-	5, // 9: notification.v1.NotificationService.SendNotification:output_type -> notification.v1.SendNotificationResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	4, // 7: notification.v1.NotificationService.SendNotification:input_type -> notification.v1.SendNotificationRequest
+	5, // 8: notification.v1.NotificationService.SendNotification:output_type -> notification.v1.SendNotificationResponse
+	8, // [8:9] is the sub-list for method output_type
+	7, // [7:8] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_notification_v1_notification_proto_init() }
@@ -696,7 +692,7 @@ func file_notification_v1_notification_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_notification_v1_notification_proto_rawDesc), len(file_notification_v1_notification_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   6,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

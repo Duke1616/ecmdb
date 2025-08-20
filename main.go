@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/cmd"
 	"github.com/fatih/color"
 	git "github.com/purpleclay/gitz"

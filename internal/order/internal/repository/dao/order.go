@@ -3,10 +3,11 @@ package dao
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 const (
@@ -175,10 +176,17 @@ type Order struct {
 	WorkflowId        int64                  `bson:"workflow_id"`
 	ProcessInstanceId int                    `bson:"process_instance_id"`
 	CreateBy          string                 `bson:"create_by"`
-	Provide           uint8                  `json:"provide"`
+	Provide           uint8                  `bson:"provide"`
 	Data              map[string]interface{} `bson:"data"`
 	Status            uint8                  `bson:"status"`
 	Ctime             int64                  `bson:"ctime"`
-	Wtime             int64                  `json:"wtime"`
+	Wtime             int64                  `bson:"wtime"`
 	Utime             int64                  `bson:"utime"`
+	NotificationConf  NotificationConf       `bson:"notification_conf"`
+}
+
+type NotificationConf struct {
+	TemplateID     int64                  `bson:"template_id"`     // 模版ID
+	TemplateParams map[string]interface{} `bson:"template_params"` // 传递参数
+	Channel        string                 `bson:"channel"`         // 通知渠道
 }

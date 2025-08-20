@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	"github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/department"
@@ -34,6 +35,11 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/google/wire"
+	"github.com/spf13/viper"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/naming/resolver"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 import (
@@ -182,7 +188,8 @@ func InitApp() (*App, error) {
 	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22)
 	workOrderServer := orderModule.RpcServer
 	server := InitGrpcServer(workOrderServer, client)
-	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, departmentModule, larkClient)
+	notificationServiceClient := InitNotificationServiceClient(client)
+	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, departmentModule, larkClient, notificationServiceClient)
 	if err != nil {
 		return nil, err
 	}
@@ -205,3 +212,32 @@ func InitApp() (*App, error) {
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
 	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu)
+
+func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.NotificationServiceClient {
+	type Config struct {
+		Target string `mapstructure:"target"`
+		Secure bool   `mapstructure:"secure"`
+	}
+	var cfg Config
+	err := viper.UnmarshalKey("grpc.client.ealert", &cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	rs, err := resolver.NewBuilder(etcdClient)
+	if err != nil {
+		panic(err)
+	}
+
+	opts := []grpc.DialOption{grpc.WithResolvers(rs)}
+	if !cfg.Secure {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	cc, err := grpc.NewClient(cfg.Target, opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	return notificationv1.NewNotificationServiceClient(cc)
+}

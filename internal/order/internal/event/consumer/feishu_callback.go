@@ -5,6 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
@@ -27,16 +33,12 @@ import (
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"github.com/spf13/viper"
 	"golang.org/x/image/draw"
-	"image"
-	"image/jpeg"
-	"log"
-	"strings"
-	"time"
+
+	"strconv"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/larksuite/oapi-sdk-go/v3"
-	"strconv"
 )
 
 const (

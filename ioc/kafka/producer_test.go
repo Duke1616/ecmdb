@@ -2,11 +2,12 @@ package kafka
 
 import (
 	"fmt"
-	"github.com/IBM/sarama"
-	"github.com/stretchr/testify/require"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAsyncProducer(t *testing.T) {

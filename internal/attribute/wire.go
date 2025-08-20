@@ -3,13 +3,14 @@
 package attribute
 
 import (
+	"sync"
+
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"sync"
 )
 
 var ProviderSet = wire.NewSet(

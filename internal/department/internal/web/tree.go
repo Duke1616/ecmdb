@@ -1,8 +1,9 @@
 package web
 
 import (
-	"github.com/Duke1616/ecmdb/internal/department/internal/domain"
 	"sort"
+
+	"github.com/Duke1616/ecmdb/internal/department/internal/domain"
 )
 
 func GetDepartmentsTree(ms []domain.Department) []*Department {

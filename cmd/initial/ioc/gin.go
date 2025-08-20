@@ -1,6 +1,9 @@
 package ioc
 
 import (
+	"strings"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
@@ -24,8 +27,6 @@ import (
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"strings"
-	"time"
 )
 
 func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,

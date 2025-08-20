@@ -3,8 +3,9 @@ package strategy
 import (
 	"context"
 	"fmt"
-	"github.com/Duke1616/enotify/notify"
 	"sync"
+
+	"github.com/Duke1616/enotify/notify"
 )
 
 const (

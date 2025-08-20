@@ -2,14 +2,15 @@ package web
 
 import (
 	"fmt"
-	"github.com/Duke1616/ecmdb/internal/tools/service"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/Duke1616/ecmdb/internal/tools/service"
+	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {

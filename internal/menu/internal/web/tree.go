@@ -1,9 +1,10 @@
 package web
 
 import (
+	"sort"
+
 	"github.com/Duke1616/ecmdb/internal/menu/internal/domain"
 	"github.com/ecodeclub/ekit/slice"
-	"sort"
 )
 
 func GetMenusTree(ms []domain.Menu) []*Menu {

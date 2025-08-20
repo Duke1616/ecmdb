@@ -2,10 +2,11 @@ package sender
 
 import (
 	"context"
+	"sync"
+
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/service/channel"
 	"github.com/gotomicro/ego/core/elog"
-	"sync"
 )
 
 type NotificationSender interface {

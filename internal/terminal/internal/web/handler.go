@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -18,10 +23,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/sftp"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 type Handler struct {

@@ -5,6 +5,8 @@ package task
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
@@ -24,7 +26,6 @@ import (
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/spf13/viper"
-	"time"
 )
 
 var ProviderSet = wire.NewSet(

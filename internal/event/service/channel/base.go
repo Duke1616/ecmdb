@@ -3,6 +3,7 @@ package channel
 import (
 	"context"
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/service/provider"
 )

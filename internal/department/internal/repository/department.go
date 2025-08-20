@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/department/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/department/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"

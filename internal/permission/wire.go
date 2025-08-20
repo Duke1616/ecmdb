@@ -4,6 +4,7 @@ package permission
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/permission/internal/event"
 	"github.com/Duke1616/ecmdb/internal/permission/internal/service"

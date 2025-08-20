@@ -4,6 +4,8 @@ package worker
 
 import (
 	"context"
+	"sync"
+
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event/watch"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
@@ -11,7 +13,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker/internal/service"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/web"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"sync"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"

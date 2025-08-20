@@ -3,14 +3,15 @@ package watch
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/worker/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/registry"
 	"github.com/Duke1616/ecmdb/pkg/registry/etcd"
 	"github.com/ecodeclub/ekit/slice"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"log/slog"
-	"time"
 )
 
 const SUBSCRIBE = "worker"

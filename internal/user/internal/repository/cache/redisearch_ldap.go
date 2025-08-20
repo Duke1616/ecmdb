@@ -3,10 +3,11 @@ package cache
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/gotomicro/ego/core/elog"
-	"time"
 )
 
 const KeyPrefix = "ecmdb:user:ldap:"

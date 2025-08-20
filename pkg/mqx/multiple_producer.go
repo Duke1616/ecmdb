@@ -3,8 +3,9 @@ package mqx
 import (
 	"context"
 	"fmt"
-	"github.com/ecodeclub/mq-api"
 	"sync"
+
+	"github.com/ecodeclub/mq-api"
 )
 
 // MultipleProducer 管理多个 GeneralProducer

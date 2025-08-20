@@ -2,6 +2,7 @@ package initial
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/cmd/initial/full"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"

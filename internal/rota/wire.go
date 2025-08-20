@@ -4,6 +4,8 @@ package rota
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/rota/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/service"
@@ -11,7 +13,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/rota/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"time"
 )
 
 var ProviderSet = wire.NewSet(

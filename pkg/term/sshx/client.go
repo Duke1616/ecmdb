@@ -3,9 +3,10 @@ package sshx
 import (
 	"context"
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"net"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 func ConnectToNextJumpHost(ctx context.Context, currentClient *ssh.Client, user string, host string, port int, method ssh.AuthMethod) (*ssh.Client, error) {

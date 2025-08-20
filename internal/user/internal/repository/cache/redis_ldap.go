@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 type LdapUserCache interface {

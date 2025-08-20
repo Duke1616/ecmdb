@@ -144,8 +144,8 @@ func (t *Tunnel) Close() error {
 	return t.conn.Close()
 }
 
-func (opt *Tunnel) Read() (p []byte, err error) {
-	data, err := opt.reader.ReadBytes(delimiter)
+func (t *Tunnel) Read() (p []byte, err error) {
+	data, err := t.reader.ReadBytes(delimiter)
 	if err != nil {
 		return
 	}

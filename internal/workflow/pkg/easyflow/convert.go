@@ -2,10 +2,11 @@ package easyflow
 
 import (
 	"encoding/json"
+	"sync"
+
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/ecodeclub/ekit/slice"
-	"sync"
 )
 
 const AutomationApproval = "automation"

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/chromedp/chromedp"
-	"golang.org/x/image/draw"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -14,6 +12,9 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/chromedp/chromedp"
+	"golang.org/x/image/draw"
 )
 
 // GenerateLogicFlowScreenshot 生成 LogicFlow 流程图的截图

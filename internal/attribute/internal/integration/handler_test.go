@@ -5,6 +5,10 @@ package integration
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/integration/startup"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
@@ -17,9 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"net/http"
-	"testing"
-	"time"
 )
 
 type HandlerTestSuite struct {

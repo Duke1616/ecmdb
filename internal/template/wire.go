@@ -4,6 +4,7 @@ package template
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/template/internal/event"
 	"github.com/Duke1616/ecmdb/internal/template/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/template/internal/repository/dao"

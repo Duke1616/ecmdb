@@ -2,9 +2,10 @@ package rota
 
 import (
 	"fmt"
-	"github.com/teambition/rrule-go"
 	"testing"
 	"time"
+
+	"github.com/teambition/rrule-go"
 )
 
 func printTimeSlice(ts []time.Time) {

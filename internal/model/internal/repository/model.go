@@ -2,10 +2,11 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
-	"time"
 )
 
 type ModelRepository interface {

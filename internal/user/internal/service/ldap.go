@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/cache"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"

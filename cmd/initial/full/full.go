@@ -3,9 +3,10 @@ package full
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/role"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 func (i *fullInitial) InitUser() error {

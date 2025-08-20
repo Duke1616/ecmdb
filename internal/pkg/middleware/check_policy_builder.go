@@ -1,13 +1,14 @@
 package middleware
 
 import (
+	"net/http"
+	"strconv"
+
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/ecodeclub/ginx"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
-	"net/http"
-	"strconv"
 )
 
 type CheckPolicyMiddlewareBuilder struct {

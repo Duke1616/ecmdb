@@ -3,6 +3,8 @@
 package resource
 
 import (
+	"sync"
+
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository"
@@ -11,7 +13,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"sync"
 )
 
 var ProviderSet = wire.NewSet(

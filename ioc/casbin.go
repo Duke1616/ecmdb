@@ -1,9 +1,8 @@
 package ioc
 
 import (
-	"time"
-
 	"fmt"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"

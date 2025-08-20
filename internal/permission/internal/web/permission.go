@@ -2,11 +2,12 @@ package web
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/ecodeclub/ekit/slice"
 	"golang.org/x/sync/errgroup"
-	"sort"
 )
 
 func getPermission(menus []menu.Menu, pMap map[string]policy.Policy) ([]*Menu, []int64, error) {

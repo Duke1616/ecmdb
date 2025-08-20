@@ -3,9 +3,10 @@ package startup
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/spf13/viper"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"time"
 )
 
 func InitEtcdClient() *clientv3.Client {

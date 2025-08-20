@@ -3,6 +3,7 @@ package wechat
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/xen0n/go-workwx"
 )
 

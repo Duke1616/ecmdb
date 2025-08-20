@@ -2,6 +2,9 @@ package web
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
@@ -9,8 +12,6 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
-	"strconv"
-	"strings"
 )
 
 type Handler struct {

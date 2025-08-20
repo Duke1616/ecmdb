@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
-	"github.com/minio/minio-go/v7"
 	"net/url"
 	"time"
+
+	"github.com/minio/minio-go/v7"
 )
 
 type Service interface {

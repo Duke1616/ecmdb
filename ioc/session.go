@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"fmt"
+
 	"github.com/ecodeclub/ginx/session"
 	ginRedis "github.com/ecodeclub/ginx/session/redis"
 	"github.com/redis/go-redis/v9"

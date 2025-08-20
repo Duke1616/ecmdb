@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/gorilla/websocket"
-	"golang.org/x/crypto/ssh"
 	"io"
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/gorilla/websocket"
+	"golang.org/x/crypto/ssh"
 )
 
 type SSHConnect struct {

@@ -2,12 +2,13 @@ package incr
 
 import (
 	"fmt"
-	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
-	"github.com/spf13/cobra"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
+	"github.com/spf13/cobra"
 )
 
 // ErrDuplicateVersion 表示版本重复的错误

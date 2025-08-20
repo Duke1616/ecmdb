@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 )
 

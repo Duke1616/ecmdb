@@ -2,6 +2,8 @@ package web
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
@@ -10,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
 	"github.com/gotomicro/ego/core/elog"
-	"sort"
 )
 
 type Handler struct {

@@ -2,8 +2,9 @@ package term
 
 import (
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"sync"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type Sessions struct {

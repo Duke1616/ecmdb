@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"sync"
+
 	"github.com/Duke1616/ecmdb/pkg/registry"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"log/slog"
-	"sync"
 )
 
 var typesMap = map[mvccpb.Event_EventType]registry.EventType{

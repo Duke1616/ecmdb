@@ -3,13 +3,14 @@
 package role
 
 import (
+	"sync"
+
 	"github.com/Duke1616/ecmdb/internal/role/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/role/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/role/internal/service"
 	"github.com/Duke1616/ecmdb/internal/role/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
-	"sync"
 )
 
 var ProviderSet = wire.NewSet(

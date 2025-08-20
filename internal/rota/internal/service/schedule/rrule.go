@@ -2,10 +2,11 @@ package schedule
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/rota/internal/domain"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/teambition/rrule-go"
-	"time"
 )
 
 const TITLE = "调班组"
@@ -154,7 +155,7 @@ func (r *rruleSchedule) generate(finalTimes []time.Time, adjustmentRules []domai
 	}
 
 	// 如果没有计算
-	if currentSchedule == nil && nextSchedule == nil {
+	if currentSchedule == nil || nextSchedule == nil {
 		return domain.ShiftRostered{
 			FinalSchedule: finalSchedule,
 		}, nil

@@ -3,11 +3,12 @@ package job
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/gotomicro/ego/core/elog"
-	"sync"
-	"time"
 )
 
 type RecoveryTaskJob struct {

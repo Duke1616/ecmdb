@@ -2,10 +2,11 @@ package ioc
 
 import (
 	"context"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
-	"time"
 )
 
 func initCronJobs(tJob *task.StartTaskJob, pJob *task.PassProcessTaskJob) []*ecron.Component {

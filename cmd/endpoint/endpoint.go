@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/ioc"
 	"github.com/gin-gonic/gin"

@@ -2,11 +2,12 @@ package startup
 
 import (
 	"context"
+	"log"
+	"time"
+
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"time"
 )
 
 func InitMongoDB() *mongox.Mongo {

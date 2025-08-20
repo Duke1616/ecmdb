@@ -5,6 +5,10 @@ package integration
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	attributemocks "github.com/Duke1616/ecmdb/internal/attribute/mocks"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
@@ -20,9 +24,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/mock/gomock"
-	"net/http"
-	"testing"
-	"time"
 )
 
 type HandlerTestSuite struct {

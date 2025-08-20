@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"fmt"
+
 	"github.com/spf13/viper"
 	"github.com/xen0n/go-workwx"
 )

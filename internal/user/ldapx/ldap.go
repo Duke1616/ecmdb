@@ -3,12 +3,13 @@ package ldapx
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/go-ldap/ldap/v3"
 	"log/slog"
 	"net/url"
 	"strings"
+
+	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
+	"github.com/ecodeclub/ekit/slice"
+	"github.com/go-ldap/ldap/v3"
 )
 
 const specialLDAPRunes = ",#+<>;\"="

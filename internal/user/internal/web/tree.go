@@ -1,10 +1,11 @@
 package web
 
 import (
+	"sort"
+
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/ecodeclub/ekit/slice"
-	"sort"
 )
 
 func GenerateDepartmentUserTree(pipeline []domain.UserCombination, departments []department.Department) ([]*UserDepartmentCombination, error) {

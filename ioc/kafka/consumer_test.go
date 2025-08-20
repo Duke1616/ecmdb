@@ -2,12 +2,13 @@ package kafka
 
 import (
 	"context"
-	"github.com/IBM/sarama"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 	"log"
 	"testing"
 	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestConsumer(t *testing.T) {

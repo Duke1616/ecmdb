@@ -2,12 +2,13 @@ package ioc
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/mq-api"
 	"github.com/ecodeclub/mq-api/kafka"
 	"github.com/spf13/viper"
-	"sync"
-	"time"
 )
 
 var (

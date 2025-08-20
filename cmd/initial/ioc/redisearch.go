@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"fmt"
+
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/gomodule/redigo/redis"
 	"github.com/spf13/viper"

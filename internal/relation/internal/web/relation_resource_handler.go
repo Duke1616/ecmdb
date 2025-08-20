@@ -1,14 +1,15 @@
 package web
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
-	"sort"
-	"strings"
 )
 
 type RelationResourceHandler struct {

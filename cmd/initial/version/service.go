@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"errors"
+
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

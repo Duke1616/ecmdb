@@ -2,6 +2,7 @@ package guacx
 
 import (
 	"context"
+
 	"github.com/gorilla/websocket"
 )
 

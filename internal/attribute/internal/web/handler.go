@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"

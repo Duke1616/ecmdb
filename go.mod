@@ -13,7 +13,7 @@ require (
 	github.com/casbin/redis-watcher/v2 v2.5.0
 	github.com/chromedp/chromedp v0.11.2
 	github.com/ecodeclub/ekit v0.0.9
-	github.com/ecodeclub/ginx v0.0.0-20240407090958-53f744f58112
+	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
 	github.com/fatih/color v1.14.1
 	github.com/gin-contrib/cors v1.7.2

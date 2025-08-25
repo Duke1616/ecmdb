@@ -14,7 +14,10 @@ ldap:
   group_filter: "(|(member={dn}))"
 
 session:
-  session_encrypted_key: "1234567890"
+  session_encrypted_key: "1234567890Key"
+  cookie:
+    domain: ".example.com"
+    name: "ecmdb-token-key"
 
 redis:
   addr: "ecmdb-redis:6379"

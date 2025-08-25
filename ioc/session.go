@@ -31,6 +31,7 @@ func InitSession(cmd redis.Cmdable) session.Provider {
 		SessionEncryptedKey string `yaml:"session_encrypted_key"`
 		Cookie              struct {
 			Domain string `yaml:"domain"`
+			Name   string `yaml:"name"`
 		} `yaml:"cookie"`
 	}
 	var cfg Config
@@ -43,7 +44,7 @@ func InitSession(cmd redis.Cmdable) session.Provider {
 	sp := ginRedis.NewSessionProvider(cmd, cfg.SessionEncryptedKey, day)
 	cookieC := &cookie.TokenCarrier{
 		MaxAge:   int(day.Seconds()),
-		Name:     "ssid",
+		Name:     cfg.Cookie.Name,
 		Secure:   true,
 		HttpOnly: true,
 		Domain:   cfg.Cookie.Domain,

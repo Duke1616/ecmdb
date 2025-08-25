@@ -97,6 +97,7 @@ func InitApp() (*App, error) {
 		tools.InitModule,
 		terminal.InitModule,
 		middleware.NewCheckPolicyMiddlewareBuilder,
+		middleware.NewCheckLoginMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,
 		InitGrpcServer,

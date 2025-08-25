@@ -185,7 +185,8 @@ func InitApp() (*App, error) {
 	}
 	handler21 := rotaModule.Hdl
 	handler22 := discoveryModule.Hdl
-	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22)
+	checkLoginMiddlewareBuilder := middleware.NewCheckLoginMiddlewareBuilder()
+	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22, checkLoginMiddlewareBuilder)
 	workOrderServer := orderModule.RpcServer
 	server := InitGrpcServer(workOrderServer, client)
 	notificationServiceClient := InitNotificationServiceClient(client)

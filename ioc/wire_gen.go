@@ -58,7 +58,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	service := module.Svc
-	checkPolicyMiddlewareBuilder := middleware.NewCheckPolicyMiddlewareBuilder(service)
+	checkPolicyMiddlewareBuilder := middleware.NewCheckPolicyMiddlewareBuilder(service, provider)
 	v := InitGinMiddlewares()
 	mongo := InitMongoDB()
 	relationModule, err := relation.InitModule(mongo)
@@ -96,7 +96,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule)
+	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule, provider)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func InitApp() (*App, error) {
 	}
 	handler21 := rotaModule.Hdl
 	handler22 := discoveryModule.Hdl
-	checkLoginMiddlewareBuilder := middleware.NewCheckLoginMiddlewareBuilder()
+	checkLoginMiddlewareBuilder := middleware.NewCheckLoginMiddlewareBuilder(provider)
 	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22, checkLoginMiddlewareBuilder)
 	workOrderServer := orderModule.RpcServer
 	server := InitGrpcServer(workOrderServer, client)

@@ -17,6 +17,7 @@ func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
 		BaseSet,
 		InitCasbin,
+		InitSession,
 		user.InitModule,
 		version.NewService,
 		version.NewDao,

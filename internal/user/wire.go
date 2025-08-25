@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/google/wire"
 )
 
@@ -29,7 +30,7 @@ func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
 }
 
 func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module,
-	departmentModule *department.Module) (*Module, error) {
+	departmentModule *department.Module, sp session.Provider) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		InitLdapUserCache,

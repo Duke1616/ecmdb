@@ -18,16 +18,18 @@ type Handler struct {
 	svc           service.Service
 	ldapSvc       service.LdapService
 	policySvc     policy.Service
+	sp            session.Provider
 	departmentSvc department.Service
 }
 
 func NewHandler(svc service.Service, ldapSvc service.LdapService,
-	policySvc policy.Service, departmentSvc department.Service) *Handler {
+	policySvc policy.Service, departmentSvc department.Service, sp session.Provider) *Handler {
 	return &Handler{
 		svc:           svc,
 		ldapSvc:       ldapSvc,
 		policySvc:     policySvc,
 		departmentSvc: departmentSvc,
+		sp:            sp,
 	}
 }
 
@@ -52,11 +54,24 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/find/id", ginx.WrapBody[FindByIdReq](h.FindById))
 	g.POST("/find/by_ids", ginx.WrapBody[FindByIdsReq](h.FindByIds))
 	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
+	g.POST("/logout", ginx.Wrap(h.Logout))
 
 	// 查询 LDAP 用户
 	g.POST("/ldap/search", ginx.WrapBody[SearchLdapUser](h.SearchLdapUser))
 	g.POST("/ldap/sync", ginx.WrapBody[SyncLdapUserReq](h.SyncLdapUser))
 	g.POST("/ldap/refresh_cache", ginx.Wrap(h.LdapRefreshCache))
+}
+
+func (h *Handler) Logout(ctx *gin.Context) (ginx.Result, error) {
+	err := h.sp.Destroy(&gctx.Context{
+		Context: ctx,
+	})
+	if err != nil {
+		return systemErrorResult, nil
+	}
+	return ginx.Result{
+		Msg: "OK",
+	}, nil
 }
 
 func (h *Handler) SyncLdapUser(ctx *gin.Context, req SyncLdapUserReq) (ginx.Result, error) {
@@ -187,7 +202,7 @@ func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result
 func (h *Handler) FindByUsername(ctx *gin.Context, req FindByUserNameReq) (ginx.Result, error) {
 	var u User
 	if req.Username == "" {
-		sess, err := session.Get(&gctx.Context{Context: ctx})
+		sess, err := h.sp.Get(&gctx.Context{Context: ctx})
 		if err != nil {
 			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 		}
@@ -269,7 +284,7 @@ func (h *Handler) UpdateUser(ctx *gin.Context, req UpdateUserReq) (ginx.Result, 
 func (h *Handler) FindById(ctx *gin.Context, req FindByIdReq) (ginx.Result, error) {
 	var u User
 	if req.Id == 0 {
-		sess, err := session.Get(&gctx.Context{Context: ctx})
+		sess, err := h.sp.Get(&gctx.Context{Context: ctx})
 		if err != nil {
 			return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 		}
@@ -375,7 +390,7 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 }
 
 func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
-	err := session.RenewAccessToken(&gctx.Context{Context: ctx})
+	err := h.sp.RenewAccessToken(&gctx.Context{Context: ctx})
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -418,7 +433,7 @@ func (h *Handler) UserRoleBind(ctx *gin.Context, req UserBindRoleReq) (ginx.Resu
 
 func (h *Handler) GetUserInfo(ctx *gin.Context) (ginx.Result, error) {
 	// 获取登录用户 sess 获取ID
-	sess, err := session.Get(&gctx.Context{Context: ctx})
+	sess, err := h.sp.Get(&gctx.Context{Context: ctx})
 	if err != nil {
 		return systemErrorResult, fmt.Errorf("获取 Session 失败, %w", err)
 	}

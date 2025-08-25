@@ -17,17 +17,15 @@ type CheckPolicyMiddlewareBuilder struct {
 	sp     session.Provider
 }
 
-func NewCheckPolicyMiddlewareBuilder(svc policy.Service) *CheckPolicyMiddlewareBuilder {
+func NewCheckPolicyMiddlewareBuilder(svc policy.Service, sp session.Provider) *CheckPolicyMiddlewareBuilder {
 	return &CheckPolicyMiddlewareBuilder{
 		svc:    svc,
 		logger: elog.DefaultLogger,
+		sp:     sp,
 	}
 }
 
 func (c *CheckPolicyMiddlewareBuilder) Build() gin.HandlerFunc {
-	if c.sp == nil {
-		c.sp = session.DefaultProvider()
-	}
 	return func(ctx *gin.Context) {
 		gCtx := &ginx.Context{Context: ctx}
 		sess, err := c.sp.Get(gCtx)

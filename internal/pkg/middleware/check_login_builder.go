@@ -16,18 +16,15 @@ type CheckLoginMiddlewareBuilder struct {
 	sp        session.Provider
 }
 
-func NewCheckLoginMiddlewareBuilder() *CheckLoginMiddlewareBuilder {
+func NewCheckLoginMiddlewareBuilder(sp session.Provider) *CheckLoginMiddlewareBuilder {
 	return &CheckLoginMiddlewareBuilder{
 		logger:    elog.DefaultLogger,
-		threshold: time.Minute * 30,
+		threshold: time.Minute * 60,
+		sp:        sp,
 	}
 }
 
 func (b *CheckLoginMiddlewareBuilder) Build() gin.HandlerFunc {
-	if b.sp == nil {
-		b.sp = session.DefaultProvider()
-	}
-
 	threshold := b.threshold.Milliseconds()
 	return func(ctx *gin.Context) {
 		gCtx := &gctx.Context{Context: ctx}

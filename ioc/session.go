@@ -40,7 +40,7 @@ func InitSession(cmd redis.Cmdable) session.Provider {
 		panic(err)
 	}
 
-	const day = time.Minute * 24 * 30
+	const day = time.Hour * 24 * 30
 	sp := ginRedis.NewSessionProvider(cmd, cfg.SessionEncryptedKey, day)
 	cookieC := &cookie.TokenCarrier{
 		MaxAge:   int(day.Seconds()),

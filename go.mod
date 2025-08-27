@@ -182,5 +182,3 @@ require (
 	modernc.org/sqlite v1.20.3 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )
-
-replace github.com/ecodeclub/ginx => /Users/draken/Desktop/ginx

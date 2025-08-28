@@ -16,6 +16,8 @@ type Service interface {
 	CreateMenu(ctx context.Context, req domain.Menu) (int64, error)
 	UpdateMenu(ctx context.Context, req domain.Menu) (int64, error)
 	ListMenu(ctx context.Context) ([]domain.Menu, error)
+	// ListByPlatform 根据平台获取菜单列表
+	ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error)
 	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
@@ -26,6 +28,10 @@ type service struct {
 	producer event.MenuChangeEventProducer
 	repo     repository.MenuRepository
 	logger   *elog.Component
+}
+
+func (s *service) ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error) {
+	return s.repo.ListByPlatform(ctx, platform)
 }
 
 func (s *service) FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error) {

@@ -45,8 +45,12 @@ type Meta struct {
 	IsAffix     bool   `json:"is_affix"`     // 是否固定
 	IsKeepAlive bool   `json:"is_keepalive"` // 是否缓存
 	Icon        string `json:"icon"`         // Icon图标
+	Platform    string `json:"platform"`     // 作用平台
 }
 
+type ListByPlatformReq struct {
+	Platform string `json:"platform"`
+}
 type Menu struct {
 	Id        int64      `json:"id"`
 	Pid       int64      `json:"pid"`

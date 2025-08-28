@@ -11,6 +11,8 @@ import (
 type MenuRepository interface {
 	CreateMenu(ctx context.Context, req domain.Menu) (int64, error)
 	ListMenu(ctx context.Context) ([]domain.Menu, error)
+	// ListByPlatform 根据平台获取菜单列表
+	ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error)
 	UpdateMenu(ctx context.Context, req domain.Menu) (int64, error)
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
@@ -20,6 +22,13 @@ type MenuRepository interface {
 
 type menuRepository struct {
 	dao dao.MenuDAO
+}
+
+func (repo *menuRepository) ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error) {
+	menus, err := repo.dao.ListByPlatform(ctx, platform)
+	return slice.Map(menus, func(idx int, src dao.Menu) domain.Menu {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *menuRepository) DeleteMenu(ctx context.Context, id int64) (int64, error) {
@@ -82,6 +91,7 @@ func (repo *menuRepository) toEntity(req domain.Menu) dao.Menu {
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
+			Platform:    req.Meta.Platform,
 			Icon:        req.Meta.Icon,
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src domain.Endpoint) dao.Endpoint {
@@ -109,6 +119,7 @@ func (repo *menuRepository) toDomain(req dao.Menu) domain.Menu {
 			Title:       req.Meta.Title,
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
+			Platform:    req.Meta.Platform,
 			IsKeepAlive: req.Meta.IsKeepAlive,
 			Icon:        req.Meta.Icon,
 		},

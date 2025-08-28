@@ -54,4 +54,5 @@ type Meta struct {
 	IsAffix     bool   // 是否固定
 	IsKeepAlive bool   // 是否缓存
 	Icon        string // Icon图标
+	Platform    string // 作用平台
 }

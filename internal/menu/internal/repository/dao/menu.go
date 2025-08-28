@@ -16,6 +16,8 @@ type MenuDAO interface {
 	CreateMenu(ctx context.Context, t Menu) (int64, error)
 	UpdateMenu(ctx context.Context, t Menu) (int64, error)
 	ListMenu(ctx context.Context) ([]Menu, error)
+	// ListByPlatform 根据平台获取菜单列表
+	ListByPlatform(ctx context.Context, platform string) ([]Menu, error)
 	FindByIds(ctx context.Context, ids []int64) ([]Menu, error)
 	GetAllMenu(ctx context.Context) ([]Menu, error)
 	FindById(ctx context.Context, id int64) (Menu, error)
@@ -24,6 +26,23 @@ type MenuDAO interface {
 
 type menuDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *menuDAO) ListByPlatform(ctx context.Context, platform string) ([]Menu, error) {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{}
+	if platform != "" {
+		filter["meta.platform"] = platform
+	}
+	cursor, err := col.Find(ctx, filter)
+	var result []Menu
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *menuDAO) DeleteMenu(ctx context.Context, id int64) (int64, error) {
@@ -170,6 +189,7 @@ type Meta struct {
 	Title       string `bson:"title"`        // 展示名称
 	IsHidden    bool   `bson:"is_hidden"`    // 是否展示
 	IsAffix     bool   `bson:"is_affix"`     // 是否固定
+	Platform    string `bson:"platform"`     // 作用平台
 	IsKeepAlive bool   `bson:"is_keepalive"` // 是否缓存
 	Icon        string `bson:"icon"`         // Icon图标
 }

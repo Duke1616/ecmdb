@@ -24,6 +24,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/update", ginx.WrapBody[UpdateMenuReq](h.UpdateMenu))
 	g.POST("/delete", ginx.WrapBody[DeleteMenuReq](h.DeleteMenu))
 	g.POST("/list/tree", ginx.Wrap(h.ListMenuTree))
+	g.POST("/list/tree/by_platform", ginx.WrapBody[ListByPlatformReq](h.ListByPlatform))
 }
 
 func (h *Handler) CreateMenu(ctx *gin.Context, req CreateMenuReq) (ginx.Result, error) {
@@ -34,6 +35,18 @@ func (h *Handler) CreateMenu(ctx *gin.Context, req CreateMenuReq) (ginx.Result, 
 
 	return ginx.Result{
 		Data: eId,
+	}, nil
+}
+
+func (h *Handler) ListByPlatform(ctx *gin.Context, req ListByPlatformReq) (ginx.Result, error) {
+	ms, err := h.svc.ListByPlatform(ctx, req.Platform)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{
+		Msg:  "OK",
+		Data: GetMenusTree(ms),
 	}, nil
 }
 
@@ -54,8 +67,7 @@ func (h *Handler) ListMenuTree(ctx *gin.Context) (ginx.Result, error) {
 	}
 
 	return ginx.Result{
-		Code: 0,
-		Msg:  "",
+		Msg:  "OK",
 		Data: GetMenusTree(ms),
 	}, nil
 }
@@ -90,6 +102,7 @@ func (h *Handler) toDomain(req CreateMenuReq) domain.Menu {
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
+			Platform:    req.Meta.Platform,
 			Icon:        req.Meta.Icon,
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src Endpoint) domain.Endpoint {
@@ -116,6 +129,7 @@ func (h *Handler) toDomainUpdate(req UpdateMenuReq) domain.Menu {
 		Meta: domain.Meta{
 			Title:       req.Meta.Title,
 			IsHidden:    req.Meta.IsHidden,
+			Platform:    req.Meta.Platform,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
 			Icon:        req.Meta.Icon,

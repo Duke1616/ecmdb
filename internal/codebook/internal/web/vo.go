@@ -2,7 +2,7 @@ package web
 
 type CreateCodebookReq struct {
 	Name       string `json:"name"`
-	Owner      int64  `json:"owner"`
+	Owner      string `json:"owner"`
 	Code       string `json:"code"`
 	Language   string `json:"language"`
 	Identifier string `json:"identifier"`
@@ -15,7 +15,7 @@ type DetailCodebookReq struct {
 type UpdateCodebookReq struct {
 	Id       int64  `json:"id"`
 	Name     string `json:"name"`
-	Owner    int64  `json:"owner"`
+	Owner    string `json:"owner"`
 	Code     string `json:"code"`
 	Language string `json:"language"`
 }
@@ -36,7 +36,7 @@ type ListCodebookReq struct {
 type Codebook struct {
 	Id         int64  `json:"id"`
 	Name       string `json:"name"`
-	Owner      int64  `json:"owner"`
+	Owner      string `json:"owner"`
 	Identifier string `json:"identifier"`
 	Code       string `json:"code"`
 	Language   string `json:"language"`

@@ -177,7 +177,7 @@ func (dao *codebookDAO) FindBySecret(ctx context.Context, identifier string, sec
 type Codebook struct {
 	Id         int64  `bson:"id"`
 	Name       string `bson:"name"`
-	Owner      int64  `bson:"owner"`
+	Owner      string `bson:"owner"`
 	Identifier string `bson:"identifier"` // 唯一标识
 	Code       string `bson:"code"`
 	Language   string `bson:"language"`

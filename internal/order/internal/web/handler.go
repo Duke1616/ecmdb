@@ -411,29 +411,27 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 
 func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, error) {
 	// 顶层 context，不设超时
-	cCtx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(log.Printf))
-	defer cancel()
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Headless,
+		chromedp.NoSandbox,
+		chromedp.NoFirstRun,
+		chromedp.DisableGPU,
+		chromedp.Flag("ignore-certificate-errors", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		//chromedp.Flag("single-process", true),
+		chromedp.Flag("no-zygote", true),
+		chromedp.Flag("font-render-hinting", "none"),
+		chromedp.Flag("force-color-profile", "srgb"),
+	)
 
-	//opts := append(chromedp.DefaultExecAllocatorOptions[:],
-	//	chromedp.Headless,
-	//	chromedp.NoSandbox,
-	//	chromedp.NoFirstRun,
-	//	chromedp.DisableGPU,
-	//	chromedp.Flag("ignore-certificate-errors", true),
-	//	chromedp.Flag("disable-setuid-sandbox", true),
-	//	chromedp.Flag("disable-dev-shm-usage", true),
-	//	chromedp.Flag("single-process", true),
-	//	chromedp.Flag("no-zygote", true),
-	//	chromedp.Flag("font-render-hinting", "none"),
-	//	chromedp.Flag("force-color-profile", "srgb"),
-	//)
-	//
-	//// 带 allocator 的 context
-	//allocCtx, cancelAlloc := chromedp.NewExecAllocator(cCtx, opts...)
-	//defer cancelAlloc()
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancelAlloc()
 
-	// 任务级超时
-	taskCtx, cancelTask := context.WithTimeout(cCtx, 30*time.Second)
+	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
+	defer cancelBrowser()
+
+	taskCtx, cancelTask := context.WithTimeout(browserCtx, 30*time.Second)
 	defer cancelTask()
 
 	// 存储截图的 buffer
@@ -441,7 +439,6 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 
 	// 进行截图
 	err := chromedp.Run(taskCtx,
-		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(req.TargetUrl),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -450,7 +447,6 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 		}),
 		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
 		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
-		chromedp.Sleep(1*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil

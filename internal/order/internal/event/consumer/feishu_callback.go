@@ -217,9 +217,6 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 }
 
 func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) error {
-	ctx, cancel := chromedp.NewContext(context.Background())
-	defer cancel()
-
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Headless,
 		chromedp.NoSandbox,
@@ -234,31 +231,29 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 		chromedp.Flag("force-color-profile", "srgb"),
 	)
 
-	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
-	defer cancel()
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancelAlloc()
 
-	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
-	defer cancel()
+	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
+	defer cancelBrowser()
 
-	// 设置超时时间
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
+	taskCtx, cancelTask := context.WithTimeout(browserCtx, 30*time.Second)
+	defer cancelTask()
 	// 存储截图的 buffer
 	var buf []byte
 
-	orderDetail, err := c.Svc.Detail(ctx, orderId)
+	orderDetail, err := c.Svc.Detail(taskCtx, orderId)
 	if err != nil {
 		return err
 	}
 
-	wf, err := c.workflowSvc.Find(ctx, orderDetail.WorkflowId)
+	wf, err := c.workflowSvc.Find(taskCtx, orderDetail.WorkflowId)
 	if err != nil {
 		return err
 	}
 
 	// 解析连接线、SRC => DST、标注为通过
-	edges, approvalUsers, err := c.parserEdges(ctx, orderDetail, wf.ProcessId)
+	edges, approvalUsers, err := c.parserEdges(taskCtx, orderDetail, wf.ProcessId)
 	if err != nil {
 		return err
 	}
@@ -270,7 +265,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	}
 
 	// 进行截图
-	err = chromedp.Run(ctx,
+	err = chromedp.Run(taskCtx,
 		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(c.logicFlowUrl),
 		chromedp.WaitReady("body"),
@@ -292,13 +287,13 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	}
 
 	// 上传文件到飞书
-	imageKey, err := c.uploadImage(ctx, buf)
+	imageKey, err := c.uploadImage(taskCtx, buf)
 	if err != nil {
 		return err
 	}
 
 	//发送图片消息
-	return c.sendImage(ctx, imageKey, approvalUsers, userId)
+	return c.sendImage(taskCtx, imageKey, approvalUsers, userId)
 }
 
 func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,

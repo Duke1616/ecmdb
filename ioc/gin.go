@@ -54,6 +54,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	userHdl.PublicRoutes(server)
 	strategyHdl.PublicRoutes(server)
 	toolsHdl.PublicRoutes(server)
+	orderHdl.PublicRoute(server)
 
 	termHdl.PrivateRoutes(server)
 

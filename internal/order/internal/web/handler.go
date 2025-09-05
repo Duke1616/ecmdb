@@ -12,6 +12,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
@@ -22,17 +23,24 @@ import (
 )
 
 type Handler struct {
-	svc       service.Service
-	userSvc   user.Service
-	engineSvc engine.Service
+	svc         service.Service
+	userSvc     user.Service
+	engineSvc   engine.Service
+	workflowSvc workflow.Service
 }
 
-func NewHandler(svc service.Service, engineSvc engine.Service, userSvc user.Service) *Handler {
+func NewHandler(svc service.Service, engineSvc engine.Service, userSvc user.Service, workflowSvc workflow.Service) *Handler {
 	return &Handler{
-		svc:       svc,
-		userSvc:   userSvc,
-		engineSvc: engineSvc,
+		svc:         svc,
+		userSvc:     userSvc,
+		engineSvc:   engineSvc,
+		workflowSvc: workflowSvc,
 	}
+}
+
+func (h *Handler) PublicRoute(server *gin.Engine) {
+	g := server.Group("/api/order")
+	g.POST("/progress", ginx.WrapBody[ProgressReq](h.Progress))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -48,7 +56,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
 	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
-	g.POST("/progress", ginx.WrapBody[ProgressReq](h.Progress))
+
 }
 
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
@@ -402,17 +410,38 @@ func (h *Handler) toSteps(instances []engine.Instance) []Steps {
 }
 
 func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, error) {
-	gCtx, cancel := chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
+	// 顶层 context，不设超时
+	cCtx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(log.Printf))
 	defer cancel()
 
-	// 设置超时时间
-	gCtx, cancel = context.WithTimeout(gCtx, 5*time.Second)
-	defer cancel()
+	//opts := append(chromedp.DefaultExecAllocatorOptions[:],
+	//	chromedp.Headless,
+	//	chromedp.NoSandbox,
+	//	chromedp.NoFirstRun,
+	//	chromedp.DisableGPU,
+	//	chromedp.Flag("ignore-certificate-errors", true),
+	//	chromedp.Flag("disable-setuid-sandbox", true),
+	//	chromedp.Flag("disable-dev-shm-usage", true),
+	//	chromedp.Flag("single-process", true),
+	//	chromedp.Flag("no-zygote", true),
+	//	chromedp.Flag("font-render-hinting", "none"),
+	//	chromedp.Flag("force-color-profile", "srgb"),
+	//)
+	//
+	//// 带 allocator 的 context
+	//allocCtx, cancelAlloc := chromedp.NewExecAllocator(cCtx, opts...)
+	//defer cancelAlloc()
+
+	// 任务级超时
+	taskCtx, cancelTask := context.WithTimeout(cCtx, 30*time.Second)
+	defer cancelTask()
 
 	// 存储截图的 buffer
 	var buf []byte
 
-	err := chromedp.Run(gCtx,
+	// 进行截图
+	err := chromedp.Run(taskCtx,
+		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(req.TargetUrl),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -421,13 +450,13 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 		}),
 		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
 		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
+		chromedp.Sleep(1*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
 		chromedp.FullScreenshot(&buf, 2000),
 	)
-
 	if err != nil {
 		return ginx.Result{}, err
 	}
@@ -440,6 +469,47 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 
 	return ginx.Result{}, nil
 }
+
+//func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, error) {
+//	gCtx, cancel := chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
+//	defer cancel()
+//
+//	// 设置超时时间
+//	gCtx, cancel = context.WithTimeout(gCtx, 5*time.Second)
+//	defer cancel()
+//
+//	// 存储截图的 buffer
+//	var buf []byte
+//
+//	err := chromedp.Run(gCtx,
+//		chromedp.Navigate(req.TargetUrl),
+//		chromedp.WaitReady("body"),
+//		chromedp.ActionFunc(func(ctx context.Context) error {
+//			log.Println("Page loaded, waiting for LF-preview...")
+//			return nil
+//		}),
+//		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
+//		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
+//		chromedp.ActionFunc(func(ctx context.Context) error {
+//			log.Println("LF-preview is visible, capturing screenshot...")
+//			return nil
+//		}),
+//		chromedp.FullScreenshot(&buf, 2000),
+//	)
+//
+//	if err != nil {
+//		return ginx.Result{}, err
+//	}
+//
+//	// 保存截图到文件
+//	err = ioutil.WriteFile("logicflow.png", buf, 0644)
+//	if err != nil {
+//		return ginx.Result{}, err
+//	}
+//
+//	return ginx.Result{}, nil
+//}
+
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
 	if len(instances) == 0 {
 		// 没有工单信息

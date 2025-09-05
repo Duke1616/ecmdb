@@ -17,6 +17,7 @@ type DetailProcessInstIdReq struct {
 }
 
 type ProgressReq struct {
+	OrderId   int64  `json:"order_id"`
 	TargetUrl string `json:"target_url"`
 }
 

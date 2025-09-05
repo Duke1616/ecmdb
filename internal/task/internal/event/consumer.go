@@ -98,7 +98,7 @@ func (c *ExecuteResultConsumer) failedNotify(ctx context.Context, id int64) erro
 		return err
 	}
 
-	u, err := c.userSvc.FindById(ctx, code.Owner)
+	u, err := c.userSvc.FindByUsername(ctx, code.Owner)
 	if err != nil {
 		return err
 	}

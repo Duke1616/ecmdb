@@ -90,8 +90,10 @@ func (s *service) FindByDepartmentId(ctx context.Context, offset, limit int64, d
 }
 
 func (s *service) FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error) {
+	// TODO 不能返回错误，会导致部分地方逻辑处理异常
 	if len(uns) == 0 {
-		return []domain.User{}, fmt.Errorf("传入参数为空")
+		s.logger.Warn("用户传入参数为空")
+		return []domain.User{}, nil
 	}
 
 	return s.repo.FindByUsernames(ctx, uns)

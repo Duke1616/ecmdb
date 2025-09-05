@@ -180,7 +180,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		var orderId int64
 		orderId, err = strconv.ParseInt(evt.OrderId, 10, 64)
 		if err != nil {
-			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
+			c.logger.Error("撤销失败", elog.FieldErr(err))
 			return err
 		}
 
@@ -217,7 +217,8 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 }
 
 func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) error {
-	ctx, cancel := chromedp.NewContext(context.Background())
+	// 顶层 context，不设超时
+	ctx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(log.Printf))
 	defer cancel()
 
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -234,31 +235,29 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 		chromedp.Flag("force-color-profile", "srgb"),
 	)
 
-	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
-	defer cancel()
+	// 带 allocator 的 context
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, opts...)
+	defer cancelAlloc()
 
-	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
-	defer cancel()
-
-	// 设置超时时间
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
+	// 任务级超时
+	taskCtx, cancelTask := context.WithTimeout(allocCtx, 30*time.Second)
+	defer cancelTask()
 
 	// 存储截图的 buffer
 	var buf []byte
 
-	orderDetail, err := c.Svc.Detail(ctx, orderId)
+	orderDetail, err := c.Svc.Detail(taskCtx, orderId)
 	if err != nil {
 		return err
 	}
 
-	wf, err := c.workflowSvc.Find(ctx, orderDetail.WorkflowId)
+	wf, err := c.workflowSvc.Find(taskCtx, orderDetail.WorkflowId)
 	if err != nil {
 		return err
 	}
 
 	// 解析连接线、SRC => DST、标注为通过
-	edges, approvalUsers, err := c.parserEdges(ctx, orderDetail, wf.ProcessId)
+	edges, approvalUsers, err := c.parserEdges(taskCtx, orderDetail, wf.ProcessId)
 	if err != nil {
 		return err
 	}
@@ -270,7 +269,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	}
 
 	// 进行截图
-	err = chromedp.Run(ctx,
+	err = chromedp.Run(taskCtx,
 		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(c.logicFlowUrl),
 		chromedp.WaitReady("body"),
@@ -292,13 +291,13 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	}
 
 	// 上传文件到飞书
-	imageKey, err := c.uploadImage(ctx, buf)
+	imageKey, err := c.uploadImage(taskCtx, buf)
 	if err != nil {
 		return err
 	}
 
-	// 发送图片消息
-	return c.sendImage(ctx, imageKey, approvalUsers, userId)
+	//发送图片消息
+	return c.sendImage(taskCtx, imageKey, approvalUsers, userId)
 }
 
 func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,

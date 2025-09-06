@@ -9,24 +9,23 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/cmd/initial/version"
 	"github.com/Duke1616/ecmdb/internal/department"
+	"github.com/Duke1616/ecmdb/internal/menu"
+	"github.com/Duke1616/ecmdb/internal/permission"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/ioc"
 	"github.com/google/wire"
-)
-
-import (
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // Injectors from wire.go:
 
 func InitApp() (*App, error) {
-	mongo := InitMongoDB()
-	client := InitRediSearch()
-	config := InitLdapConfig()
-	db := InitMySQLDB()
-	syncedEnforcer := InitCasbin(db)
+	mongo := ioc.InitMongoDB()
+	client := ioc.InitRediSearch()
+	config := ioc.InitLdapConfig()
+	db := ioc.InitMySQLDB()
+	syncedEnforcer := ioc.InitCasbin(db)
 	module, err := policy.InitModule(syncedEnforcer)
 	if err != nil {
 		return nil, err
@@ -35,8 +34,8 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmdable := InitRedis()
-	provider := InitSession(cmdable)
+	cmdable := ioc.InitRedis()
+	provider := ioc.InitSession(cmdable)
 	userModule, err := user.InitModule(mongo, client, config, module, departmentModule, provider)
 	if err != nil {
 		return nil, err
@@ -47,16 +46,31 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	serviceService := roleModule.Svc
+	mq := ioc.InitMQ()
+	menuModule, err := menu.InitModule(mq, mongo)
+	if err != nil {
+		return nil, err
+	}
+	service2 := menuModule.Svc
+	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, module)
+	if err != nil {
+		return nil, err
+	}
+	service3 := permissionModule.Svc
+	service4 := module.Svc
 	dao := version.NewDao(mongo)
 	versionService := version.NewService(dao)
 	app := &App{
-		UserSvc: service,
-		RoleSvc: serviceService,
-		VerSvc:  versionService,
+		UserSvc:       service,
+		RoleSvc:       serviceService,
+		MenuSvc:       service2,
+		PermissionSvc: service3,
+		policySvc:     service4,
+		VerSvc:        versionService,
 	}
 	return app, nil
 }
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitRediSearch, InitMQ, InitEtcdClient, InitLdapConfig)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRediSearch, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig)

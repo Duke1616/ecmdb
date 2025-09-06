@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/ekit/slice"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -22,6 +24,9 @@ type MenuDAO interface {
 	GetAllMenu(ctx context.Context) ([]Menu, error)
 	FindById(ctx context.Context, id int64) (Menu, error)
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
+
+	// InjectMenu 注入菜单数据
+	InjectMenu(ctx context.Context, ms []Menu) error
 }
 
 type menuDAO struct {
@@ -115,6 +120,52 @@ func (dao *menuDAO) ListMenu(ctx context.Context) ([]Menu, error) {
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *menuDAO) InjectMenu(ctx context.Context, ms []Menu) error {
+	col := dao.db.Collection(MenuCollection)
+	now := time.Now()
+	
+	operations := slice.Map(ms, func(idx int, menu Menu) mongo.WriteModel {
+		// 设置时间戳
+		menu.Ctime = now.UnixMilli()
+		menu.Utime = now.UnixMilli()
+		
+		// 使用 upsert 操作：根据 id 查找，存在则更新，不存在则插入
+		filter := bson.M{"id": menu.Id}
+		updateDoc := bson.M{
+			"$set": bson.M{
+				"pid":       menu.Pid,
+				"path":      menu.Path,
+				"name":      menu.Name,
+				"sort":      menu.Sort,
+				"component": menu.Component,
+				"redirect":  menu.Redirect,
+				"status":    menu.Status,
+				"type":      menu.Type,
+				"meta":      menu.Meta,
+				"endpoints": menu.Endpoints,
+				"utime":     menu.Utime,
+			},
+			"$setOnInsert": bson.M{
+				"ctime": menu.Ctime,
+			},
+		}
+		
+		return &mongo.UpdateOneModel{
+			Filter: filter,
+			Update: updateDoc,
+			Upsert: &[]bool{true}[0],
+		}
+	})
+	
+	// 执行批量写入
+	_, err := col.BulkWrite(ctx, operations)
+	if err != nil {
+		return fmt.Errorf("批量注入菜单数据失败: %w", err)
+	}
+	
+	return nil
 }
 
 func (dao *menuDAO) UpdateMenu(ctx context.Context, t Menu) (int64, error) {

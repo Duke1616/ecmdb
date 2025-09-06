@@ -437,22 +437,27 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 	// 存储截图的 buffer
 	var buf []byte
 
-	// 进行截图
 	err := chromedp.Run(taskCtx,
+		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(req.TargetUrl),
 		chromedp.WaitReady("body"),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			log.Println("Page loaded, waiting for LF-preview...")
-			return nil
-		}),
-		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
-		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			log.Println("LF-preview is visible, capturing screenshot...")
-			return nil
-		}),
-		chromedp.FullScreenshot(&buf, 2000),
+
+		// 注入数据
+		chromedp.Evaluate(`window.__DATA__ = {
+            nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}],
+            edges: []
+        };`, nil),
+
+		// 等待 LogicFlow 容器
+		chromedp.WaitVisible("#LF-preview", chromedp.ByID),
+
+		// 额外等待确保完全渲染
+		chromedp.Sleep(3*time.Second),
+
+		// 截图
+		chromedp.FullScreenshot(&buf, 100),
 	)
+
 	if err != nil {
 		return ginx.Result{}, err
 	}
@@ -465,46 +470,6 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 
 	return ginx.Result{}, nil
 }
-
-//func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, error) {
-//	gCtx, cancel := chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
-//	defer cancel()
-//
-//	// 设置超时时间
-//	gCtx, cancel = context.WithTimeout(gCtx, 5*time.Second)
-//	defer cancel()
-//
-//	// 存储截图的 buffer
-//	var buf []byte
-//
-//	err := chromedp.Run(gCtx,
-//		chromedp.Navigate(req.TargetUrl),
-//		chromedp.WaitReady("body"),
-//		chromedp.ActionFunc(func(ctx context.Context) error {
-//			log.Println("Page loaded, waiting for LF-preview...")
-//			return nil
-//		}),
-//		chromedp.Evaluate(`window.__DATA__ = {nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}], edges: []};`, nil),
-//		chromedp.WaitVisible("#LF-preview", chromedp.ByID), // 使用 ID 确保精准选择
-//		chromedp.ActionFunc(func(ctx context.Context) error {
-//			log.Println("LF-preview is visible, capturing screenshot...")
-//			return nil
-//		}),
-//		chromedp.FullScreenshot(&buf, 2000),
-//	)
-//
-//	if err != nil {
-//		return ginx.Result{}, err
-//	}
-//
-//	// 保存截图到文件
-//	err = ioutil.WriteFile("logicflow.png", buf, 0644)
-//	if err != nil {
-//		return ginx.Result{}, err
-//	}
-//
-//	return ginx.Result{}, nil
-//}
 
 func (h *Handler) toVoEngineOrder(ctx context.Context, instances []engine.Instance) ([]Order, error) {
 	if len(instances) == 0 {

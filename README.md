@@ -21,37 +21,8 @@ docker network create ecmdb
 # 启动服务
 docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
 
-# 创建用户
-curl -L 'http://127.0.0.1:8666/api/user/register' \
--H 'Content-Type: application/json' \
--d '{
-    "username": "admin",
-    "password": "123456",
-    "re_password": "123456",
-    "display_name": "系统管理员"
-}'
-
-# 同步权限数据
-docker cp ./init/menu.tar.gz ecmdb-mongo:/mnt
-docker cp ./init/role.tar.gz ecmdb-mongo:/mnt
-docker exec ecmdb-mongo mongorestore  --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin"  --gzip  --archive=/mnt/menu.tar.gz  --nsFrom="cmdb.*"  --nsTo="ecmdb.*" --nsInclude="cmdb.c_menu"
-docker exec ecmdb-mongo mongorestore  --uri="mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin"  --gzip  --archive=/mnt/role.tar.gz  --nsFrom="cmdb.*"  --nsTo="ecmdb.*" --nsInclude="cmdb.c_role"
-
-# 修正 ID 自增值
-docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_role", next_id: NumberLong("6") })'
-docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_id_generator.insertOne({ name: "c_menu", next_id:  NumberLong("171") })'
-
-# 导入 Casbin 权限数据
-docker exec -i ecmdb-mysql mysql -uecmdb -p123456 ecmdb < ./init/casbin_rule.sql
-
-# 用户添加权限
-docker exec ecmdb-mongo mongosh "mongodb://ecmdb:123456@127.0.0.1:27017/ecmdb?authSource=admin" --eval 'db.c_user.updateOne( { username: "admin" }, { $set: { role_codes: ["admin"] } } )'
-
-# 重启后端服务，加载策略
-docker restart ecmdb
-
-# 环境销毁
-docker compose -p ecmdb -f deploy/docker-compose.yaml down
+# 执行项目初始化
+docker exec -it ecmdb ./ecmdb init
 ```
 
 ## 关联项目

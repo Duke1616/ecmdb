@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
@@ -34,8 +35,9 @@ type Service interface {
 }
 
 type service struct {
-	repo   repository.UserRepository
-	logger *elog.Component
+	repo      repository.UserRepository
+	policySvc policy.Service
+	logger    *elog.Component
 }
 
 func (s *service) FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error) {
@@ -149,7 +151,19 @@ func (s *service) Login(ctx context.Context, username, password string) (domain.
 }
 
 func (s *service) AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error) {
-	return s.repo.AddRoleBind(ctx, id, roleCodes)
+	// 添加绑定
+	id, err := s.repo.AddRoleBind(ctx, id, roleCodes)
+	if err != nil {
+		return 0, err
+	}
+
+	// 更新策略
+	ok, err := s.policySvc.UpdateFilteredGrouping(ctx, id, roleCodes)
+	if err != nil && !ok {
+		s.logger.Warn("更新策略失败", elog.FieldErr(err))
+		return 0, err
+	}
+	return id, nil
 }
 
 func (s *service) ListUser(ctx context.Context, offset, limit int64) ([]domain.User, int64, error) {
@@ -175,10 +189,11 @@ func (s *service) ListUser(ctx context.Context, offset, limit int64) ([]domain.U
 	return us, total, nil
 }
 
-func NewService(repo repository.UserRepository) Service {
+func NewService(repo repository.UserRepository, policySvc policy.Service) Service {
 	return &service{
-		repo:   repo,
-		logger: elog.DefaultLogger,
+		repo:      repo,
+		policySvc: policySvc,
+		logger:    elog.DefaultLogger,
 	}
 }
 

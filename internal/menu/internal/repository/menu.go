@@ -18,6 +18,9 @@ type MenuRepository interface {
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
 	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
+
+	// InjectMenu 注入菜单数据
+	InjectMenu(ctx context.Context, ms []domain.Menu) error
 }
 
 type menuRepository struct {
@@ -56,6 +59,12 @@ func (repo *menuRepository) FindByIds(ctx context.Context, ids []int64) ([]domai
 
 func (repo *menuRepository) UpdateMenu(ctx context.Context, req domain.Menu) (int64, error) {
 	return repo.dao.UpdateMenu(ctx, repo.toEntity(req))
+}
+
+func (repo *menuRepository) InjectMenu(ctx context.Context, ms []domain.Menu) error {
+	return repo.dao.InjectMenu(ctx, slice.Map(ms, func(idx int, src domain.Menu) dao.Menu {
+		return repo.toEntity(src)
+	}))
 }
 
 func NewMenuRepository(dao dao.MenuDAO) MenuRepository {

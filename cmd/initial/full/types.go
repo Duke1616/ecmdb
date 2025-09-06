@@ -16,9 +16,10 @@ const (
 )
 
 type InitialFull interface {
-	InitUser() error
+	InitUser() (int64, error)
 	InitRole() error
 	InitMenu() error
+	InitPermission(userID int64) error
 }
 
 type fullInitial struct {

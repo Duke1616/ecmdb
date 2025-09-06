@@ -26,15 +26,15 @@ import (
 func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module, sp session.Provider) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
 	userRepository := repository.NewResourceRepository(userDAO)
-	serviceService := service.NewService(userRepository)
+	serviceService := policyModule.Svc
+	service2 := service.NewService(userRepository, serviceService)
 	redisearchLdapUserCache := InitLdapUserCache(redisClient)
 	ldapService := service.NewLdapService(ldapConfig, redisearchLdapUserCache)
-	service2 := policyModule.Svc
 	service3 := departmentModule.Svc
-	handler := web.NewHandler(serviceService, ldapService, service2, service3, sp)
+	handler := web.NewHandler(service2, ldapService, service3, sp)
 	module := &Module{
 		Hdl: handler,
-		Svc: serviceService,
+		Svc: service2,
 	}
 	return module, nil
 }

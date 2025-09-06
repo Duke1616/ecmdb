@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/department"
-	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/user/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -17,17 +16,15 @@ import (
 type Handler struct {
 	svc           service.Service
 	ldapSvc       service.LdapService
-	policySvc     policy.Service
 	sp            session.Provider
 	departmentSvc department.Service
 }
 
 func NewHandler(svc service.Service, ldapSvc service.LdapService,
-	policySvc policy.Service, departmentSvc department.Service, sp session.Provider) *Handler {
+	departmentSvc department.Service, sp session.Provider) *Handler {
 	return &Handler{
 		svc:           svc,
 		ldapSvc:       ldapSvc,
-		policySvc:     policySvc,
 		departmentSvc: departmentSvc,
 		sp:            sp,
 	}
@@ -420,13 +417,8 @@ func (h *Handler) UserRoleBind(ctx *gin.Context, req UserBindRoleReq) (ginx.Resu
 		return systemErrorResult, err
 	}
 
-	ok, err := h.policySvc.UpdateFilteredGrouping(ctx, req.Id, req.RoleCodes)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
 	return ginx.Result{
-		Data: ok,
+		Data: "ok",
 		Msg:  "用户角色绑定成功",
 	}, nil
 }

@@ -22,6 +22,9 @@ type Service interface {
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
+
+	// 注入菜单数据
+	InjectMenu(ctx context.Context, ms []domain.Menu) error
 }
 
 type service struct {
@@ -146,6 +149,10 @@ func (s *service) sendMenuEvent(action event.Action, id int64, menu domain.Menu)
 			elog.Any("evt", evt),
 		)
 	}
+}
+
+func (s *service) InjectMenu(ctx context.Context, ms []domain.Menu) error {
+	return s.repo.InjectMenu(ctx, ms)
 }
 
 func NewService(repo repository.MenuRepository, producer event.MenuChangeEventProducer) Service {

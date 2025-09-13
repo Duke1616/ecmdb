@@ -8,7 +8,6 @@ import (
 	"go/format"
 	"go/printer"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -30,12 +29,12 @@ type MenuData struct {
 
 // MetaData 表示 meta 字段的结构
 type MetaData struct {
-	Title       string `json:"title"`
-	IsHidden    bool   `json:"is_hidden"`
-	IsAffix     bool   `json:"is_affix"`
-	IsKeepAlive bool   `json:"is_keepalive"`
-	Icon        string `json:"icon"`
-	Platform    string `json:"platform"`
+	Title       string   `json:"title"`
+	IsHidden    bool     `json:"is_hidden"`
+	IsAffix     bool     `json:"is_affix"`
+	IsKeepAlive bool     `json:"is_keepalive"`
+	Icon        string   `json:"icon"`
+	Platforms   []string `json:"platforms"`
 }
 
 // EndpointData 表示 endpoints 字段的结构
@@ -54,7 +53,7 @@ func main() {
 	jsonFile := os.Args[1]
 
 	// 读取 JSON 文件
-	jsonData, err := ioutil.ReadFile(jsonFile)
+	jsonData, err := os.ReadFile(jsonFile)
 	if err != nil {
 		fmt.Printf("读取 JSON 文件失败: %v\n", err)
 		os.Exit(1)
@@ -70,14 +69,15 @@ func main() {
 	// 生成 AST
 	file := generateMenuFile(menus)
 
-	// 格式化并输出代码
-	if err = formatAndWrite(file, "menu_data.go"); err != nil {
+	// 格式化并输出代码到 cmd/initial/menu/ 目录
+	outputPath := "../../initial/menu/menu_data.go"
+	if err = formatAndWrite(file, outputPath); err != nil {
 		fmt.Printf("生成代码失败: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Println("✅ 菜单代码生成成功!")
-	fmt.Println("📁 生成文件: menu_data.go")
+	fmt.Println("📁 生成文件: cmd/initial/menu/menu_data.go")
 }
 
 // generateMenuFile 生成菜单文件的 AST
@@ -264,10 +264,32 @@ func generateMetaStruct(meta MetaData) ast.Expr {
 				Value: &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(meta.Icon)},
 			},
 			&ast.KeyValueExpr{
-				Key:   &ast.Ident{Name: "Platform"},
-				Value: &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(meta.Platform)},
+				Key:   &ast.Ident{Name: "Platforms"},
+				Value: generatePlatformsSlice(meta.Platforms),
 			},
 		},
+	}
+}
+
+// generatePlatformsSlice 生成 Platforms 切片
+func generatePlatformsSlice(platforms []string) ast.Expr {
+	if len(platforms) == 0 {
+		return &ast.Ident{Name: "nil"}
+	}
+
+	var elements []ast.Expr
+	for _, platform := range platforms {
+		elements = append(elements, &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: strconv.Quote(platform),
+		})
+	}
+
+	return &ast.CompositeLit{
+		Type: &ast.ArrayType{
+			Elt: &ast.Ident{Name: "string"},
+		},
+		Elts: elements,
 	}
 }
 
@@ -392,7 +414,7 @@ func parseMetaData(metaStr string) MetaData {
 			IsAffix:     false,
 			IsKeepAlive: false,
 			Icon:        "",
-			Platform:    "",
+			Platforms:   []string{},
 		}
 	}
 	return meta

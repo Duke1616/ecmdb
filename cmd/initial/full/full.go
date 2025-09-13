@@ -97,7 +97,7 @@ func (i *fullInitial) InitPermission(userId int64) error {
 		fmt.Printf("❌ 权限初始化失败: %v\n", err)
 		return err
 	}
-	
+
 	// 用户绑定角色
 	if _, err := i.App.UserSvc.AddRoleBind(ctx, userId, []string{RoleCode}); err != nil {
 		fmt.Printf("❌ 用户绑定角色失败: %v\n", err)

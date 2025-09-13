@@ -23,7 +23,7 @@ type Service interface {
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
 
-	// 注入菜单数据
+	// InjectMenu 注入菜单数据
 	InjectMenu(ctx context.Context, ms []domain.Menu) error
 }
 

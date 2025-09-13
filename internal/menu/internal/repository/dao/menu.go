@@ -37,7 +37,9 @@ func (dao *menuDAO) ListByPlatform(ctx context.Context, platform string) ([]Menu
 	col := dao.db.Collection(MenuCollection)
 	filter := bson.M{}
 	if platform != "" {
-		filter["meta.platform"] = platform
+		filter["meta.platforms"] = bson.M{
+			"$elemMatch": bson.M{"$eq": platform},
+		}
 	}
 	cursor, err := col.Find(ctx, filter)
 	var result []Menu
@@ -125,12 +127,12 @@ func (dao *menuDAO) ListMenu(ctx context.Context) ([]Menu, error) {
 func (dao *menuDAO) InjectMenu(ctx context.Context, ms []Menu) error {
 	col := dao.db.Collection(MenuCollection)
 	now := time.Now()
-	
+
 	operations := slice.Map(ms, func(idx int, menu Menu) mongo.WriteModel {
 		// 设置时间戳
 		menu.Ctime = now.UnixMilli()
 		menu.Utime = now.UnixMilli()
-		
+
 		// 使用 upsert 操作：根据 id 查找，存在则更新，不存在则插入
 		filter := bson.M{"id": menu.Id}
 		updateDoc := bson.M{
@@ -151,20 +153,20 @@ func (dao *menuDAO) InjectMenu(ctx context.Context, ms []Menu) error {
 				"ctime": menu.Ctime,
 			},
 		}
-		
+
 		return &mongo.UpdateOneModel{
 			Filter: filter,
 			Update: updateDoc,
 			Upsert: &[]bool{true}[0],
 		}
 	})
-	
+
 	// 执行批量写入
 	_, err := col.BulkWrite(ctx, operations)
 	if err != nil {
 		return fmt.Errorf("批量注入菜单数据失败: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -237,10 +239,10 @@ type Endpoint struct {
 }
 
 type Meta struct {
-	Title       string `bson:"title"`        // 展示名称
-	IsHidden    bool   `bson:"is_hidden"`    // 是否展示
-	IsAffix     bool   `bson:"is_affix"`     // 是否固定
-	Platform    string `bson:"platform"`     // 作用平台
-	IsKeepAlive bool   `bson:"is_keepalive"` // 是否缓存
-	Icon        string `bson:"icon"`         // Icon图标
+	Title       string   `bson:"title"`        // 展示名称
+	IsHidden    bool     `bson:"is_hidden"`    // 是否展示
+	IsAffix     bool     `bson:"is_affix"`     // 是否固定
+	Platforms   []string `bson:"platforms"`    // 作用平台
+	IsKeepAlive bool     `bson:"is_keepalive"` // 是否缓存
+	Icon        string   `bson:"icon"`         // Icon图标
 }

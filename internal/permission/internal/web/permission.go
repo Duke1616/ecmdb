@@ -194,6 +194,7 @@ func toVoMenu(req menu.Menu) *Menu {
 		Meta: Meta{
 			Title:       req.Meta.Title,
 			IsHidden:    req.Meta.IsHidden,
+			Platforms:   req.Meta.Platforms,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
 			Icon:        req.Meta.Icon,

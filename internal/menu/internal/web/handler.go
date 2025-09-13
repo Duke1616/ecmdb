@@ -102,7 +102,7 @@ func (h *Handler) toDomain(req CreateMenuReq) domain.Menu {
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
-			Platform:    req.Meta.Platform,
+			Platforms:   req.Meta.Platforms,
 			Icon:        req.Meta.Icon,
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src Endpoint) domain.Endpoint {
@@ -129,7 +129,7 @@ func (h *Handler) toDomainUpdate(req UpdateMenuReq) domain.Menu {
 		Meta: domain.Meta{
 			Title:       req.Meta.Title,
 			IsHidden:    req.Meta.IsHidden,
-			Platform:    req.Meta.Platform,
+			Platforms:   req.Meta.Platforms,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
 			Icon:        req.Meta.Icon,

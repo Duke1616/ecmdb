@@ -43,6 +43,7 @@ type Meta struct {
 	IsHidden    bool     `json:"is_hidden"`    // 是否展示
 	IsAffix     bool     `json:"is_affix"`     // 是否固定
 	IsKeepAlive bool     `json:"is_keepalive"` // 是否缓存
+	Platforms   []string `json:"platforms"`    // 作用平台
 	Icon        string   `json:"icon"`         // Icon图标
 	Buttons     []string `json:"buttons"`      // 按钮权限
 }

@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/domain"
@@ -107,11 +106,14 @@ func (h *Handler) ListByWorkflowId(ctx *gin.Context, req ListByWorkflowIdReq) (g
 	}
 
 	if len(codebookUids) == 0 {
-		return systemErrorResult, nil
+		return ginx.Result{Msg: "此模版暂未绑定 【任务模版】", Code: 500102}, nil
 	}
 
 	rs, err := h.svc.ListByCodebookUids(ctx, codebookUids)
-	fmt.Println(rs)
+	if len(rs) == 0 {
+		return ginx.Result{Msg: "此模版暂未绑定 【执行器】", Code: 500103}, nil
+	}
+
 	return ginx.Result{
 		Msg: "查询 runner 列表成功",
 		Data: RetrieveWorkers{

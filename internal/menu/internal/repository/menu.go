@@ -100,7 +100,7 @@ func (repo *menuRepository) toEntity(req domain.Menu) dao.Menu {
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
-			Platform:    req.Meta.Platform,
+			Platforms:   req.Meta.Platforms,
 			Icon:        req.Meta.Icon,
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src domain.Endpoint) dao.Endpoint {
@@ -128,7 +128,7 @@ func (repo *menuRepository) toDomain(req dao.Menu) domain.Menu {
 			Title:       req.Meta.Title,
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
-			Platform:    req.Meta.Platform,
+			Platforms:   req.Meta.Platforms,
 			IsKeepAlive: req.Meta.IsKeepAlive,
 			Icon:        req.Meta.Icon,
 		},

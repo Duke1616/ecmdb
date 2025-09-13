@@ -127,13 +127,13 @@ func (dao *departmentDAO) CreateDepartment(ctx context.Context, req Department) 
 }
 
 type Department struct {
-	Id         int64   `bson:"id"`
-	Pid        int64   `bson:"pid"`
-	Name       string  `bson:"name"`
-	Sort       int64   `bson:"sort"`
-	Enabled    bool    `bson:"enabled"`
-	Leaders    []int64 `bson:"leaders"`
-	MainLeader int64   `bson:"main_leader"`
-	Ctime      int64   `bson:"ctime"`
-	Utime      int64   `bson:"utime"`
+	Id         int64    `bson:"id"`
+	Pid        int64    `bson:"pid"`
+	Name       string   `bson:"name"`
+	Sort       int64    `bson:"sort"`
+	Enabled    bool     `bson:"enabled"`
+	Leaders    []string `bson:"leaders"`
+	MainLeader string   `bson:"main_leader"`
+	Ctime      int64    `bson:"ctime"`
+	Utime      int64    `bson:"utime"`
 }

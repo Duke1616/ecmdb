@@ -40,12 +40,12 @@ type Endpoint struct {
 }
 
 type Meta struct {
-	Title       string `json:"title"`        // 展示名称
-	IsHidden    bool   `json:"is_hidden"`    // 是否展示
-	IsAffix     bool   `json:"is_affix"`     // 是否固定
-	IsKeepAlive bool   `json:"is_keepalive"` // 是否缓存
-	Icon        string `json:"icon"`         // Icon图标
-	Platform    string `json:"platform"`     // 作用平台
+	Title       string   `json:"title"`        // 展示名称
+	IsHidden    bool     `json:"is_hidden"`    // 是否展示
+	IsAffix     bool     `json:"is_affix"`     // 是否固定
+	IsKeepAlive bool     `json:"is_keepalive"` // 是否缓存
+	Icon        string   `json:"icon"`         // Icon图标
+	Platforms   []string `json:"platforms"`    // 作用平台
 }
 
 type ListByPlatformReq struct {

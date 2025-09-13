@@ -439,7 +439,7 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 			return err
 		}
 
-		users, err := n.userSvc.FindByIds(ctx, depart.Leaders)
+		users, err := n.userSvc.FindByUsernames(ctx, depart.Leaders)
 		if err != nil {
 			return err
 		}
@@ -461,7 +461,7 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 			return err
 		}
 
-		u, err := n.userSvc.FindById(ctx, depart.MainLeader)
+		u, err := n.userSvc.FindByUsername(ctx, depart.MainLeader)
 		if err != nil {
 			return err
 		}

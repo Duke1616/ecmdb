@@ -23,8 +23,16 @@ func GetMenusTree(ms []domain.Menu) []*Menu {
 
 	// 构建菜单树
 	for _, m := range ms {
+		if m.Pid == 0 {
+			continue
+		}
+
 		if parent, exists := allMap[m.Pid]; exists {
+			// 父节点存在，添加到父节点下
 			parent.Children = append(parent.Children, allMap[m.Id])
+		} else {
+			// 父节点不存在，将该节点作为根节点处理
+			list = append(list, allMap[m.Id])
 		}
 	}
 
@@ -64,6 +72,7 @@ func toVoMenu(req domain.Menu) *Menu {
 			IsHidden:    req.Meta.IsHidden,
 			IsAffix:     req.Meta.IsAffix,
 			IsKeepAlive: req.Meta.IsKeepAlive,
+			Platforms:   req.Meta.Platforms,
 			Icon:        req.Meta.Icon,
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src domain.Endpoint) Endpoint {

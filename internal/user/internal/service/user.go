@@ -152,7 +152,7 @@ func (s *service) Login(ctx context.Context, username, password string) (domain.
 
 func (s *service) AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error) {
 	// 添加绑定
-	id, err := s.repo.AddRoleBind(ctx, id, roleCodes)
+	_, err := s.repo.AddRoleBind(ctx, id, roleCodes)
 	if err != nil {
 		return 0, err
 	}

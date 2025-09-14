@@ -235,7 +235,7 @@ func (r *rruleSchedule) filterAdjustmentSchedule(rostered domain.ShiftRostered,
 		}
 
 		// 使用 map 来检查元素是否已经存在
-		memberMap := make(map[int64]bool)
+		memberMap := make(map[string]bool)
 		for _, member := range rostered.Members {
 			memberMap[member] = true
 		}

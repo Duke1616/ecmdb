@@ -149,10 +149,10 @@ func (s *service) GenerateShiftRostered(ctx context.Context, id, stime, etime in
 }
 
 // 获取用户信息
-func toMembers(rotaGroup []domain.RotaGroup) []int64 {
-	members := make([]int64, 0)
+func toMembers(rotaGroup []domain.RotaGroup) []string {
+	members := make([]string, 0)
 	for _, group := range rotaGroup {
-		seen := make(map[int64]struct{})
+		seen := make(map[string]struct{})
 		for _, member := range group.Members {
 			if _, exists := seen[member]; !exists {
 				seen[member] = struct{}{}

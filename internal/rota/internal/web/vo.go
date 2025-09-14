@@ -22,7 +22,7 @@ type Rota struct {
 	Name            string               `json:"name"`
 	Desc            string               `json:"desc"`
 	Enabled         bool                 `json:"enabled"`
-	Owner           int64                `json:"owner"`
+	Owner           string               `json:"owner"`
 	Rules           []RotaRule           `json:"rules"`
 	AdjustmentRules []RotaAdjustmentRule `json:"adjustment_rules"`
 }
@@ -50,9 +50,9 @@ type Rotate struct {
 
 // RotaGroup 值班组
 type RotaGroup struct {
-	Id      int64   `json:"id"`
-	Name    string  `json:"name"`
-	Members []int64 `json:"members"`
+	Id      int64    `json:"id"`
+	Name    string   `json:"name"`
+	Members []string `json:"members"`
 }
 
 // CreateRotaReq 创建值班请求
@@ -60,7 +60,7 @@ type CreateRotaReq struct {
 	Name    string `json:"name"`
 	Desc    string `json:"desc"`
 	Enabled bool   `json:"enabled"`
-	Owner   int64  `json:"owner"`
+	Owner   string `json:"owner"`
 }
 
 type ListReq struct {
@@ -81,7 +81,7 @@ type UpdateReq struct {
 	Name    string `json:"name"`
 	Desc    string `json:"desc"`
 	Enabled bool   `json:"enabled"`
-	Owner   int64  `json:"owner"`
+	Owner   string `json:"owner"`
 }
 
 type UpdateShiftRuleReq struct {
@@ -105,7 +105,7 @@ type RetrieveShiftRostered struct {
 	FinalSchedule   []Schedule `json:"final_schedule"`
 	CurrentSchedule Schedule   `json:"current_schedule"`
 	NextSchedule    Schedule   `json:"next_schedule"`
-	Members         []int64    `json:"members"`
+	Members         []string   `json:"members"`
 }
 
 type Schedule struct {

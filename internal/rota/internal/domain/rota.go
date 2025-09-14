@@ -26,7 +26,7 @@ type Rota struct {
 	Name            string               // 名称
 	Desc            string               // 描述
 	Enabled         bool                 // 是否启用
-	Owner           int64                // 管理员
+	Owner           string               // 管理员
 	Rules           []RotaRule           // 值班规则
 	AdjustmentRules []RotaAdjustmentRule // 临时调班
 }
@@ -55,8 +55,8 @@ type Rotate struct {
 // RotaGroup 值班组
 type RotaGroup struct {
 	Id      int64
-	Name    string  // 组名称
-	Members []int64 // 值班人员
+	Name    string   // 组名称
+	Members []string // 值班人员
 }
 
 // ShiftRostered 排班表
@@ -64,7 +64,7 @@ type ShiftRostered struct {
 	FinalSchedule   []Schedule // 总排班
 	CurrentSchedule Schedule   // 当前排班
 	NextSchedule    Schedule   // 下期排班
-	Members         []int64    // 用户
+	Members         []string   // 用户
 }
 
 type Schedule struct {

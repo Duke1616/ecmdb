@@ -229,7 +229,7 @@ type Rota struct {
 	Name            string               `bson:"name"`
 	Desc            string               `bson:"desc"`
 	Enabled         bool                 `bson:"enabled"`
-	Owner           int64                `bson:"owner"`
+	Owner           string               `bson:"owner"`
 	Rules           []RotaRule           `bson:"rules"`
 	AdjustmentRules []RotaAdjustmentRule `bson:"adjustment_rules"`
 	Ctime           int64                `bson:"ctime"`
@@ -259,7 +259,7 @@ type Rotate struct {
 
 // RotaGroup 值班组
 type RotaGroup struct {
-	Id      int64   `bson:"id"`
-	Name    string  `bson:"name"`
-	Members []int64 `bson:"members"`
+	Id      int64    `bson:"id"`
+	Name    string   `bson:"name"`
+	Members []string `bson:"members"`
 }

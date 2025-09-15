@@ -6,6 +6,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.9.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.9.0) - 2025-09-15
+
+- [`806715f`](https://github.com/Duke1616/ecmdb/commit/806715f73bae807d0b93faa9948d8734aacfbdcd) refactor: 排班系统，使用 username 存储，替换 id 统一管理
+- [`fa9a169`](https://github.com/Duke1616/ecmdb/commit/fa9a169752e704ccc83bdeedf73d5fda1ba485cc) fix: 用户绑定角色，传递 id 错误
+- [`6c8933b`](https://github.com/Duke1616/ecmdb/commit/6c8933b5a61ed3ea7d4ad450f492c8f55f3cfa8a) chore: 更新菜单
+- [`8f72df4`](https://github.com/Duke1616/ecmdb/commit/8f72df422c010be2748234fe3d1e76e598a77364) chore: 菜单支持多平台
+- [`1892627`](https://github.com/Duke1616/ecmdb/commit/18926272c506cf6510923601343afdd633ea66bd) feat: 提供更方便的初始化环境方式，提高用户体验度
+- [`4a0236e`](https://github.com/Duke1616/ecmdb/commit/4a0236ea16f704cae4610f1ed4f832d5bfce62ad) chore: 调整 ctx 构造顺序
+- [`a29b602`](https://github.com/Duke1616/ecmdb/commit/a29b6025788eb78f84dcb410e53e3ec23cebe946) fix: 修复 ctx 超时
+- [`4b21895`](https://github.com/Duke1616/ecmdb/commit/4b21895b49c53722a2ac675dc4fd55c62735e9db) chore: 验证回调消息
+- [`cb3e9e1`](https://github.com/Duke1616/ecmdb/commit/cb3e9e1946e0a125b12446153dc1821ea2578128) fix: 修复飞书查看流程进度无法正常响应
+- [`0b58df5`](https://github.com/Duke1616/ecmdb/commit/0b58df5ac1fcac9f8def515ca26db6890e46140d) fix: 遗漏修改
+- [`d549711`](https://github.com/Duke1616/ecmdb/commit/d5497112d6c5a2069a1720007f99f065632a8305) refactor: codebook 修改为存储用户名称取代原本的用户ID
+- [`9f841ca`](https://github.com/Duke1616/ecmdb/commit/9f841caf282ce4550a18318b4df9922b018f5af1) chore: 提供根据平台获取菜单接口
+- [`3bafdb3`](https://github.com/Duke1616/ecmdb/commit/3bafdb324880d88e7074781bb9e9599017e7e1df) fix: go mod 修改
+- [`3d26128`](https://github.com/Duke1616/ecmdb/commit/3d261282b13af18228f6d666c8b4ac14059a936c) chore: session 过期时间修改为 30 天
+- [`a8b3cd0`](https://github.com/Duke1616/ecmdb/commit/a8b3cd0c04ca01a815ff73e30e034417efea3da0) chore: 优化 middleware 传递
+- [`7148c95`](https://github.com/Duke1616/ecmdb/commit/7148c95c4e242e588c412a1992e4720380227203) chore: 改为通过 cookie 进行认证
+- [`565a904`](https://github.com/Duke1616/ecmdb/commit/565a904a64d48f6f1449e4b25776c6fbbf6f315b) chore: 升级 session 机制
+- [`0c5bee3`](https://github.com/Duke1616/ecmdb/commit/0c5bee3159b68915e66bb2c10b13367a0d90b2e1) fix: 升级依赖为安全的版本
+- [`6f497ac`](https://github.com/Duke1616/ecmdb/commit/6f497ac6af172a0417e4e4d71673cd4f7c2c4b79) refactor: 编译器提示优化
+- [`2b0cb73`](https://github.com/Duke1616/ecmdb/commit/2b0cb73a5429bcdcca2a939264f899009b97a05c) refactor: 优化代码
+- [`4d8c097`](https://github.com/Duke1616/ecmdb/commit/4d8c0973fd25f9118f67791f13bcfa534751ca6c) refactor: 重新组织 user 模块消息通知代码，新增告警转工单能力, 并通过工单模版进行消息发送
+- [`e3ae6ab`](https://github.com/Duke1616/ecmdb/commit/e3ae6ab408bd2514c0db71e738ac7d205d53f1cb) chore: 为前端提供根据IDS获取模版列表接口
+- [`bcaaa34`](https://github.com/Duke1616/ecmdb/commit/bcaaa34148ff3c20683068b525163052be636326) fix: 程序无法启动，多余使用字段未删除
+- [`bf3fb2f`](https://github.com/Duke1616/ecmdb/commit/bf3fb2f21b7f590f83bb156578c9296c8cdbae5c) chore: 优化代码，Order 模块不再传递模版名称，通过 id 去查询
+- [`f3cf101`](https://github.com/Duke1616/ecmdb/commit/f3cf101b52b920da641b565a169a0294f232dccd) feat: order 模块编写 grpc 集成测试
+- [`815bbbc`](https://github.com/Duke1616/ecmdb/commit/815bbbcaf5361651481adeae015197c184017738) feat: order 模块编写 grpc 集成测试
+- [`7acda34`](https://github.com/Duke1616/ecmdb/commit/7acda34df9e2b3468cf1694dd19a185056538954) chore: 配置文件同步
+- [`810c69a`](https://github.com/Duke1616/ecmdb/commit/810c69a198405b4148345ccaa5622f5a8370e467) faet: 工单创建封装 GRPC 接口
+- [`f19991d`](https://github.com/Duke1616/ecmdb/commit/f19991d44218e5a0042348369428a9b5e236c3ef) chore: 修复 model 模块集成测试
+- [`0d80375`](https://github.com/Duke1616/ecmdb/commit/0d803756a315a0f819ed48b6fe74f208d20888d1) chore: 修复 model 模块集成测试
+- [`8407eed`](https://github.com/Duke1616/ecmdb/commit/8407eede785423f976d39610a0f8bcc82e65b3e7) refactor: 重构流程引擎事件消息通知，让代码更优雅
+- [`94c2390`](https://github.com/Duke1616/ecmdb/commit/94c23906e286cdb1725619a36864c1bf88bc89c4) chore: 添加任务自动通过标记位
+- [`5114858`](https://github.com/Duke1616/ecmdb/commit/5114858672c25f500f9c2fcc36f971e172ffb37c) fix: 自动化任务 自动pass 改为以 Utime 时间，以防自动化延迟节点无法自动通过
+- [`0abc5dd`](https://github.com/Duke1616/ecmdb/commit/0abc5dd28f249654973b95221ea8d1abafd52322) fix: 同步数据，确实字段补充
+- [`39f99b3`](https://github.com/Duke1616/ecmdb/commit/39f99b3a6395979b4c7658d9338732bc2dc1a100) chore: 删除不必要的同步字段
+- [`f9c3dc3`](https://github.com/Duke1616/ecmdb/commit/f9c3dc3e4c8d687d31429d92e76026df1afcc736) chore: 同步数据接口
+- [`688f330`](https://github.com/Duke1616/ecmdb/commit/688f3303e1485ad80e66a6a1950c5bab48083e89) chore: 自动化任务调度节点，支持自动发现
+- [`7a97d64`](https://github.com/Duke1616/ecmdb/commit/7a97d64fd22a98afdad9c7048c20f740e3c2512b) feat: runner 模块支持 by_ids, by_workflow_id 获取数据
+- [`9db517b`](https://github.com/Duke1616/ecmdb/commit/9db517b41d7eec78a627fd1351b930764c51d5ad) feat: 自动发现 CRUD 接口
+- [`cd35655`](https://github.com/Duke1616/ecmdb/commit/cd356555198c4cd65aaf9aa41008f4bd0fb70c2e) chore: 校验工单驳回、同意用户是否与任务一致，超级管理员跳过校验
+- [`74ef395`](https://github.com/Duke1616/ecmdb/commit/74ef3952573cbb1641d129ebade67fe35a423d2b) chore: 自动化任务定时逻辑
+- [`3fa6c53`](https://github.com/Duke1616/ecmdb/commit/3fa6c5327b80d505b2342371fee58c3d3c85d329) chore: 自动化任务定时逻辑
+- [`32a52d5`](https://github.com/Duke1616/ecmdb/commit/32a52d5c12ff89ff9aeb23d7dfcc6324fe55f0f2) refactor: 新增接口，为前端提供更友好的模版提取字段信息
+- [`dd3a5fc`](https://github.com/Duke1616/ecmdb/commit/dd3a5fcb04c86be98023324cf0a57039dbde4859) refactor: 并发处理任务
+- [`88f36b3`](https://github.com/Duke1616/ecmdb/commit/88f36b364a3f855806d6ee51551febec42ed393b) chore: 重构解析 options 数据获取真实字段信息
+- [`58d1bd2`](https://github.com/Duke1616/ecmdb/commit/58d1bd2fea5b99692f3919753e2ed034c8e1419a) chore: 栅格布局处理字段解析
+- [`74d7400`](https://github.com/Duke1616/ecmdb/commit/74d7400402482a1d8c551518df70443bb906b542) fix: wantResult 阻止正常情况下的消息通知
+- [`fccd3c4`](https://github.com/Duke1616/ecmdb/commit/fccd3c4fe39e6c124e4e104a6cd7d028fd2db7a7) refactor: 自动化任务获取, 封装接口
+- [`7fb5cdc`](https://github.com/Duke1616/ecmdb/commit/7fb5cdca14b835d5b76dcd43cf01ec0b4cbb59fa) refactor: 优化流程事件部分，提升代码整洁度
+- [`c36648c`](https://github.com/Duke1616/ecmdb/commit/c36648c9d063eff2c1b48328c69832aac698311a) fix: 多选匹配
+- [`3470398`](https://github.com/Duke1616/ecmdb/commit/34703986f05d745ebee92a80ce09890c4b99a922) chore: 新增start阶段消息通知、自动化阶段发送方式多选
+- [`1ecdfb7`](https://github.com/Duke1616/ecmdb/commit/1ecdfb7a1c3e8aa9666399778086d8d0194504ea) chore: 临时处理返回消息组合
+- [`26a308d`](https://github.com/Duke1616/ecmdb/commit/26a308d1eea3d15c5d8d62a5fd5a510757d5d296) refactor: 修改 runner tags 返回结构
+
 ## [v1.8.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.8.0) - 2025-03-18
 
 - [`c1cff73`](https://github.com/Duke1616/ecmdb/commit/c1cff73d1bfcbdf3b03fc68f6dfedf368b1550e7) chore: 新增工单任务记录

@@ -9,7 +9,7 @@
 
 **现代化企业级配置管理数据库与智能工单系统**
 
-[快速开始](#项目部署) • [功能特性](#核心功能) • [技术架构](#技术栈)
+
 
 </div>
 
@@ -121,45 +121,17 @@ docker exec -it ecmdb ./ecmdb init
 
 ## 🎨 界面展示
 
-### CMDB
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; text-align: center;">
-  <div>
-    <img src="docs/img/navigation.png" alt="首页导航" style="width: 100%; max-width: 300px;">
-    <p><strong>首页导航</strong></p>
-  </div>
-  <div>
-    <img src="docs/img/cmdb.png" alt="CMDB" style="width: 100%; max-width: 300px;">
-    <p><strong>CMDB</strong></p>
-  </div>
-  <div>
-    <img src="docs/img/menu.png" alt="菜单管理" style="width: 100%; max-width: 300px;">
-    <p><strong>菜单管理</strong></p>
-  </div>
-  <div>
-    <img src="docs/img/scheduling.png" alt="排班管理" style="width: 100%; max-width: 300px;">
-    <p><strong>排班管理</strong></p>
-  </div>
-</div>
+### 🖥️ 系统界面展示
 
-### 工单中心
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; text-align: center;">
-  <div>
-    <img src="docs/img/order/start.png" alt="工单列表" style="width: 100%; max-width: 300px;">
-    <p><strong>工单列表</strong></p>
-  </div>
-  <div>
-    <img src="docs/img/order/workflow.png" alt="流程控制" style="width: 100%; max-width: 300px;">
-    <p><strong>流程控制</strong></p>
-  </div>
-  <div>
-    <img src="docs/img/order/form.png" alt="模版管理" style="width: 100%; max-width: 300px;">
-    <p><strong>模版管理</strong></p>
-  </div>
-  <div>
-    <img src="docs/img/order/codebook.png" alt="自动化代码库" style="width: 100%; max-width: 300px;">
-    <p><strong>自动化代码库</strong></p>
-  </div>
-</div>
+| ![首页导航](docs/img/navigation.png) | ![CMDB](docs/img/cmdb.png) |
+|:--------------------------:|:------------------------------:|
+| **首页导航** | **CMDB 资产管理** |
+| ![菜单管理](docs/img/menu.png) | ![排班管理](docs/img/scheduling.png) |
+| **菜单管理** | **排班管理** |
+| ![工单列表](docs/img/order/start.png) | ![流程控制](docs/img/order/workflow.png) |
+| **工单列表** | **流程控制** |
+| ![模版管理](docs/img/order/form.png) | ![自动化代码库](docs/img/order/codebook.png) |
+| **模版管理** | **自动化代码库** |
 
 ### 自动化任务流程图
 ![自动化任务设计流程图](docs/img/自动化任务-设计流程图.png)
@@ -192,34 +164,6 @@ ecmdb/
 │   └── terminal   # 终端 - Web终端
 ```
 
-## 🚀 快速开始
-
-### 环境要求
-- **Go**: 1.21+
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
-- **MongoDB**: 4.4+
-- **MySQL**: 8.0+
-- **Redis**: 6.0+
-
-### 一键部署
-```bash
-# 1. 克隆项目
-git clone https://github.com/Duke1616/ecmdb.git
-cd ecmdb
-
-# 2. 创建网络
-docker network create ecmdb
-
-# 3. 启动服务
-docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
-
-# 4. 初始化系统
-docker exec -it ecmdb ./ecmdb init
-```
-
-### 访问系统
-**默认账户**: admin / 123456
 
 ## 📚 开发指南
 

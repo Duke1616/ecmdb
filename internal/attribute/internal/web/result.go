@@ -10,4 +10,9 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+
+	duplicateErrorResult = ginx.Result{
+		Code: 500001,
+		Msg:  "唯一标识冲突",
+	}
 )

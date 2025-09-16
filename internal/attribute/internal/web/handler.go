@@ -1,13 +1,12 @@
 package web
 
 import (
-	"fmt"
-
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Handler struct {
@@ -39,7 +38,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
 	id, err := h.svc.CreateAttribute(ctx.Request.Context(), toDomain(req))
 
-	fmt.Println(req)
+	if mongo.IsDuplicateKeyError(err) {
+		return duplicateErrorResult, err
+	}
+
 	if err != nil {
 		return systemErrorResult, err
 	}

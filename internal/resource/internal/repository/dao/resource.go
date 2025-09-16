@@ -163,6 +163,7 @@ func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, model
 		Projection: projection,
 		Limit:      &limit,
 		Skip:       &offset,
+		Sort:       bson.D{{Key: "ctime", Value: -1}},
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)

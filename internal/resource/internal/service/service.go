@@ -53,7 +53,6 @@ func (s *service) UpdateResource(ctx context.Context, resource domain.Resource) 
 }
 
 func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
-	// TODO 判断是否为加密模型，
 	return s.repo.CreateResource(ctx, req)
 }
 

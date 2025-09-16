@@ -19,11 +19,12 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	repository.NewResourceRepository)
 
-func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module) (*Module, error) {
+func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module, aesKey string) (*Module, error) {
 	wire.Build(
 		ProviderSet,
-		NewService,
+		NewEncryptedService,
 		InitResourceDAO,
+		NewService,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
 		wire.FieldsOf(new(*relation.Module), "RRSvc"),
 		wire.Struct(new(Module), "*"),
@@ -49,4 +50,9 @@ func InitResourceDAO(db *mongox.Mongo) dao.ResourceDAO {
 
 func NewService(repo repository.ResourceRepository) Service {
 	return service.NewService(repo)
+}
+
+func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service,
+	aesKey string) EncryptedSvc {
+	return service.NewEncryptedResourceService(baseSvc, attrSvc, aesKey)
 }

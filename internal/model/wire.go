@@ -24,7 +24,7 @@ func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribu
 		ProviderSet,
 		wire.FieldsOf(new(*relation.Module), "RMSvc"),
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
-		wire.FieldsOf(new(*resource.Module), "Svc"),
+		wire.FieldsOf(new(*resource.Module), "EncryptedSvc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil

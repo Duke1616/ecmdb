@@ -17,13 +17,13 @@ import (
 type Handler struct {
 	svc         service.Service
 	mgSvc       service.MGService
-	resourceSvc resource.Service
+	resourceSvc resource.EncryptedSvc
 	RMSvc       relation.RMSvc
 	AttrSvc     attribute.Service
 }
 
 func NewHandler(svc service.Service, mgSvc service.MGService, rmSvc relation.RMSvc, attrSvc attribute.Service,
-	resourceSvc resource.Service) *Handler {
+	resourceSvc resource.EncryptedSvc) *Handler {
 	return &Handler{
 		svc:         svc,
 		mgSvc:       mgSvc,

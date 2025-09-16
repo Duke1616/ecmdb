@@ -27,7 +27,7 @@ import (
 
 type Handler struct {
 	RRSvc        relation.RRSvc
-	resourceSvc  resource.Service
+	resourceSvc  resource.EncryptedSvc
 	attributeSvc attribute.Service
 	session      *term.SessionPool
 	finder       web.Handler
@@ -35,7 +35,7 @@ type Handler struct {
 	finderWeb    *finderWeb.Handler
 }
 
-func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.Service, attributeSvc attribute.Service) *Handler {
+func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.EncryptedSvc, attributeSvc attribute.Service) *Handler {
 	return &Handler{
 		RRSvc:        RRSvc,
 		resourceSvc:  resourceSvc,

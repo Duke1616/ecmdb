@@ -15,12 +15,12 @@ import (
 )
 
 type Handler struct {
-	svc     service.Service
+	svc     service.EncryptedSvc
 	attrSvc attribute.Service
 	RRSvc   relation.RRSvc
 }
 
-func NewHandler(service service.Service, attributeSvc attribute.Service, RRSvc relation.RRSvc) *Handler {
+func NewHandler(service service.EncryptedSvc, attributeSvc attribute.Service, RRSvc relation.RRSvc) *Handler {
 	return &Handler{
 		svc:     service,
 		attrSvc: attributeSvc,

@@ -11,3 +11,5 @@ type Handler = web.Handler
 type Service = service.Service
 
 type Resource = domain.Resource
+
+type EncryptedSvc = service.EncryptedSvc

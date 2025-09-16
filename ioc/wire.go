@@ -39,7 +39,7 @@ import (
 )
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu)
+	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu, AesKey)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),

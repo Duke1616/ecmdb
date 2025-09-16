@@ -14,7 +14,7 @@ func InitModule(relationModule *relation.Module, resourceModule *resource.Module
 	wire.Build(
 		web.NewHandler,
 		wire.FieldsOf(new(*relation.Module), "RRSvc"),
-		wire.FieldsOf(new(*resource.Module), "Svc"),
+		wire.FieldsOf(new(*resource.Module), "EncryptedSvc"),
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
 	)
 	return new(web.Handler), nil

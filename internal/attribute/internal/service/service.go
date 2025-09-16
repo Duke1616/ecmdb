@@ -12,28 +12,42 @@ import (
 
 //go:generate mockgen -source=./service.go -destination=../../mocks/attribute.mock.go -package=attributemocks -typed Service
 type Service interface {
+	// CreateAttribute 创建模型字段
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
+
 	// SearchAttributeFieldsByModelUid 查询模型下的所有字段信息，不包含安全字段，内部使用
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
+
 	// SearchAllAttributeFieldsByModelUid 查询模型下的所有字段信息，内部使用
 	SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
+
 	// SearchAttributeFieldsBySecure 查询全有的安全字段
 	SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error)
+
 	// ListAttributes 查询模型下的所有字段详情信息，前端使用
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, int64, error)
+
+	// DeleteAttribute 删除模型字段
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
+
+	// UpdateAttribute 更新模型字段
+	UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error)
+
 	// CustomAttributeFieldColumns 自定义展示字段、以及排序
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 
+	// ListAttributePipeline 根据组聚合获取每个组下的所有字段
 	ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error)
+
 	// CreateDefaultAttribute 创建新模型，创建默认字段信息
 	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
 
+	// CreateAttributeGroup 创建模型字段组
 	CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error)
+
+	// ListAttributeGroup 模型组
 	ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error)
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
-
-	UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error)
 }
 
 type service struct {

@@ -69,7 +69,8 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	resourceModule, err := resource.InitModule(mongo, attributeModule, relationModule)
+	string2 := AesKey()
+	resourceModule, err := resource.InitModule(mongo, attributeModule, relationModule, string2)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +213,7 @@ func InitApp() (*App, error) {
 // wire.go:
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu)
+	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu, AesKey)
 
 func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.NotificationServiceClient {
 	type Config struct {

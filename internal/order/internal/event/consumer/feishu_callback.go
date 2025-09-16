@@ -259,7 +259,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	}
 
 	// 获取代码
-	jsCode, err := c.getJsCode(wf, edges)
+	injectData, err := c.getJsCode(wf, edges)
 	if err != nil {
 		return err
 	}
@@ -269,18 +269,30 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(c.logicFlowUrl),
 		chromedp.WaitReady("body"),
+		// 等待数据加载
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("Page loaded, waiting for LF-preview...")
 			return nil
 		}),
-		chromedp.Evaluate(jsCode, nil),
+		// 注入数据
+		chromedp.Evaluate(injectData, nil),
+
+		// 等待 LogicFlow 容器可见
 		chromedp.WaitVisible("#LF-preview", chromedp.ByID),
-		chromedp.Sleep(1*time.Second),
+
+		// 等待前端设置的 data-rendered 标志
+		chromedp.WaitVisible(`#LF-preview[data-rendered="true"]`, chromedp.ByQuery),
+
+		// 再等 300ms，防止动画残影
+		chromedp.Sleep(300*time.Millisecond),
+
+		// 准备开始截图
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			log.Println("LF-preview is visible, capturing screenshot...")
 			return nil
 		}),
-		chromedp.FullScreenshot(&buf, 100),
+		// 截取容器截图（比全屏更精准）
+		chromedp.Screenshot("#LF-preview", &buf, chromedp.NodeVisible, chromedp.ByID),
 	)
 	if err != nil {
 		return err

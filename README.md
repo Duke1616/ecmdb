@@ -139,7 +139,7 @@ docker exec -it ecmdb ./ecmdb init
 
 ## 🏗️ 系统架构
 
-### 微服务模块
+### 模块化开发
 ```
 ecmdb/
 ├── internal/

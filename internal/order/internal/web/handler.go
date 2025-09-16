@@ -437,25 +437,31 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 	// 存储截图的 buffer
 	var buf []byte
 
+	// 定义注入的数据
+	injectData := `window.__DATA__ = {
+		nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}],
+		edges: []
+	};`
+
 	err := chromedp.Run(taskCtx,
 		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
 		chromedp.Navigate(req.TargetUrl),
 		chromedp.WaitReady("body"),
 
 		// 注入数据
-		chromedp.Evaluate(`window.__DATA__ = {
-            nodes: [{id: "1", type: "rect", x: 100, y: 100, text: "哈哈哈"}],
-            edges: []
-        };`, nil),
+		chromedp.Evaluate(injectData, nil),
 
-		// 等待 LogicFlow 容器
+		// 等待 LogicFlow 容器可见
 		chromedp.WaitVisible("#LF-preview", chromedp.ByID),
 
-		// 额外等待确保完全渲染
-		chromedp.Sleep(3*time.Second),
+		// 等待前端设置的 data-rendered 标志
+		chromedp.WaitVisible(`#LF-preview[data-rendered="true"]`, chromedp.ByQuery),
 
-		// 截图
-		chromedp.FullScreenshot(&buf, 100),
+		// 再等 300ms，防止动画残影
+		chromedp.Sleep(300*time.Millisecond),
+
+		// 截取容器截图（比全屏更精准）
+		chromedp.Screenshot("#LF-preview", &buf, chromedp.NodeVisible, chromedp.ByID),
 	)
 
 	if err != nil {

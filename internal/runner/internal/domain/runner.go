@@ -28,7 +28,7 @@ type Runner struct {
 
 type Variables struct {
 	Key    string
-	Value  any
+	Value  string
 	Secret bool
 }
 

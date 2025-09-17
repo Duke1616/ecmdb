@@ -232,7 +232,7 @@ type Runner struct {
 
 type Variables struct {
 	Key    string `bson:"key"`
-	Value  any    `bson:"value"`
+	Value  string `bson:"value"`
 	Secret bool   `bson:"secret"`
 }
 

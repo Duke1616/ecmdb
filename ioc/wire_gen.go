@@ -97,7 +97,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule, provider)
+	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule, provider, string2)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	runnerModule, err := runner.InitModule(mongo, mq, workerModule, workflowModule, codebookModule)
+	runnerModule, err := runner.InitModule(mongo, mq, workerModule, workflowModule, codebookModule, string2)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient)
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, string2)
 	if err != nil {
 		return nil, err
 	}

@@ -47,6 +47,8 @@ type Service interface {
 
 	// ListAttributeGroup 模型组
 	ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error)
+
+	// ListAttributeGroupByIds 返回每个组下面的属性
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
 }
 

@@ -85,6 +85,6 @@ type UpdateStatusToSuccessReq struct {
 
 type Variables struct {
 	Key    string `json:"key"`
-	Value  any    `json:"value"`
+	Value  string `json:"value"`
 	Secret bool   `json:"secret"`
 }

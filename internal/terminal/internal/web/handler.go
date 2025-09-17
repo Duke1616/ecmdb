@@ -58,12 +58,14 @@ var UpGrader = websocket.Upgrader{
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/term")
 	g.GET("/guac/tunnel", ginx.Wrap(h.ConnectGuacTunnel))
+
+	// SSH 连接服务器，支持多层网关跳转
 	g.GET("/ssh/session", ginx.Ws(h.SshSessionTunnel))
 
 	// 主要用于连接管理成功后，存储到Session中，不需要重复建立连接
 	g.POST("/connect", ginx.WrapBody(h.Connect))
 
-	// 注册 FinderWeb 路由
+	// 注册 FinderWeb 路由，实现 SFTP 能力
 	h.finderWeb.RegisterRoutes(server)
 }
 
@@ -82,6 +84,8 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 
 	// 获取指定资产关联网关数据
 	hostResource, gatewayRs, err := h.queryResource(ctx, req.ResourceId)
+
+	fmt.Println(hostResource)
 	if err != nil {
 		return ginx.Result{
 			Msg: "获取基本连接信息失败",
@@ -315,6 +319,7 @@ func (h *Handler) queryResource(ctx context.Context, resourceId int64) (resource
 		if err != nil {
 			return err
 		}
+
 		gatewayRs, err = h.resourceSvc.ListResourceByIds(ctx, fields, ids)
 		if err != nil {
 			return err

@@ -19,12 +19,21 @@ import (
 )
 
 type Service interface {
+	// CreateOrder 创建工单
 	CreateOrder(ctx context.Context, req domain.Order) error
+
+	// DetailByProcessInstId 根据流程实例 ID 获取工单信息
 	DetailByProcessInstId(ctx context.Context, instanceId int) (domain.Order, error)
+
+	// Detail 根据ID获取工单详情信息
 	Detail(ctx context.Context, id int64) (domain.Order, error)
+
+	// UpdateStatusByInstanceId 更新状态
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
+
 	// RegisterProcessInstanceId 注册流程引擎ID
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error
+	
 	// ListOrderByProcessInstanceIds 获取代办流程
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
 

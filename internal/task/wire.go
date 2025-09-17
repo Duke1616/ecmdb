@@ -40,7 +40,7 @@ var ProviderSet = wire.NewSet(
 func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module,
 	engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module,
 	runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module,
-	lark *lark.Client) (*Module, error) {
+	lark *lark.Client, aesKey string) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initStartTaskJob,

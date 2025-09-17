@@ -9,14 +9,28 @@ import (
 )
 
 type Service interface {
+	// Create 创建模型
 	Create(ctx context.Context, req domain.Model) (int64, error)
+
+	// List 获取模型列表、带有分页
 	List(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error)
+
+	// ListAll 获取所有模型
 	ListAll(ctx context.Context) ([]domain.Model, error)
+
+	// GetByUids 根据唯一标识检索模型列表
 	GetByUids(ctx context.Context, uids []string) ([]domain.Model, error)
 
+	// DeleteById 根据ID删除指定模型
 	DeleteById(ctx context.Context, id int64) (int64, error)
+
+	// DeleteByModelUid 根据唯一标识删除指定模型
 	DeleteByModelUid(ctx context.Context, modelUid string) (int64, error)
+
+	// FindModelById 根据ID 检索模型
 	FindModelById(ctx context.Context, id int64) (domain.Model, error)
+
+	// ListModelByGroupIds  获取指定组下的所有模型
 	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
 }
 

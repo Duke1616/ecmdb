@@ -85,6 +85,6 @@ type TaskResult struct {
 
 type Variables struct {
 	Key    string
-	Value  any
+	Value  string
 	Secret bool
 }

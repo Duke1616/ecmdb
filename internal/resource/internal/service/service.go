@@ -10,23 +10,40 @@ import (
 
 //go:generate mockgen -source=./service.go -destination=../../mocks/resource.mock.go -package=resourcemocks -typed Service
 type Service interface {
+	// CreateResource 创建资产
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
+
+	// FindResourceById 根据ID，获取资产信息
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
+
+	// ListResource 获取置顶模型资产数据
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource,
 		int64, error)
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
+
+	// SetCustomField 变更指定字段的数据
 	SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error)
+
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
+
 	// ListExcludeAndFilterResourceByIds 排序以及过滤
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
 		ids []int64, filter domain.Condition) ([]domain.Resource, int64, error)
+
+	// DeleteResource 删除资产数据
 	DeleteResource(ctx context.Context, id int64) (int64, error)
+
 	// CountByModelUids 聚合查看模型下的数量
 	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
+
+	// Search 全局搜索
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
+	// FindSecureData 查看指定资产加密字段数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
+
+	// UpdateResource 修改资产数据
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 }
 

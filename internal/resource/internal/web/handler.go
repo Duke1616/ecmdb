@@ -547,9 +547,10 @@ func (h *Handler) toResourceRelationVo(src relation.ResourceRelation) ResourceRe
 
 func (h *Handler) toDomainUpdate(src UpdateResourceReq) domain.Resource {
 	return domain.Resource{
-		ID:   src.Id,
-		Name: src.Name,
-		Data: src.Data,
+		ID:       src.Id,
+		Name:     src.Name,
+		ModelUID: src.ModelUid,
+		Data:     src.Data,
 	}
 }
 

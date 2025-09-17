@@ -30,7 +30,7 @@ func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
 }
 
 func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module,
-	departmentModule *department.Module, sp session.Provider) (*Module, error) {
+	departmentModule *department.Module, sp session.Provider, aesKey string) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		InitLdapUserCache,

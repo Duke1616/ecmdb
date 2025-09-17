@@ -8,7 +8,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
-	"github.com/spf13/viper"
 )
 
 type ExecService interface {
@@ -16,10 +15,11 @@ type ExecService interface {
 }
 type execService struct {
 	workerSvc worker.Service
+	crypto    cryptox.Crypto[string]
 }
 
-func NewExecService(workerSvc worker.Service) ExecService {
-	return &execService{workerSvc: workerSvc}
+func NewExecService(workerSvc worker.Service, aesKey string) ExecService {
+	return &execService{workerSvc: workerSvc, crypto: cryptox.NewAESCrypto[string](aesKey)}
 }
 
 func (e *execService) Execute(ctx context.Context, task domain.Task) error {
@@ -29,15 +29,15 @@ func (e *execService) Execute(ctx context.Context, task domain.Task) error {
 		Code:      task.Code,
 		Language:  task.Language,
 		Args:      task.Args,
-		Variables: decryptVariables(task.Variables),
+		Variables: e.decryptVariables(task.Variables),
 	})
 }
 
 // decryptVariables 处理变量，进行解密
-func decryptVariables(req []domain.Variables) string {
+func (e *execService) decryptVariables(req []domain.Variables) string {
 	variables := slice.Map(req, func(idx int, src domain.Variables) domain.Variables {
 		if src.Secret {
-			val, er := cryptox.DecryptAES[any](viper.Get("crypto_aes_key").(string), src.Value.(string))
+			val, er := e.crypto.Decrypt(src.Value)
 			if er != nil {
 				return domain.Variables{}
 			}

@@ -10,27 +10,57 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
+	// FindOrCreateByLdap 查找或创建来自LDAP的用户
 	FindOrCreateByLdap(ctx context.Context, req domain.User) (domain.User, error)
+
+	// SyncCreateLdapUser 同步 LDAP 用户
 	SyncCreateLdapUser(ctx context.Context, req domain.User) (int64, error)
+
+	// FindOrCreateBySystem 查找或创建来自本系统的用户
 	FindOrCreateBySystem(ctx context.Context, username, password, displayName string) (domain.User, error)
+
+	// ListUser 获取用户列表
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, int64, error)
+
+	// UpdateUser 更新用户
 	UpdateUser(ctx context.Context, req domain.User) (int64, error)
+
+	// Login 登陆
 	Login(ctx context.Context, username, password string) (domain.User, error)
+
+	// AddRoleBind 绑定角色
 	AddRoleBind(ctx context.Context, id int64, roleCodes []string) (int64, error)
+
+	// FindById 通过 ID 检索用户
 	FindById(ctx context.Context, id int64) (domain.User, error)
+
+	// FindByIds 通过IDS检索用户
 	FindByIds(ctx context.Context, ids []int64) ([]domain.User, error)
-	FindByUsername(ctx context.Context, username string) (domain.User, error)
+
+	// FindByKeywords 根据 用户名称、用户名 关键字 检索用户列表
 	FindByKeywords(ctx context.Context, offset, limit int64, keyword string) ([]domain.User, int64, error)
+
+	// FindByDepartmentId 根据部门ID 查询用户
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error)
+
+	// FindByUsername 根据用户名获取用户
+	FindByUsername(ctx context.Context, username string) (domain.User, error)
+
+	// FindByUsernames 根据用户名查询用户列表
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
+
+	// PipelineDepartmentId 根据部门聚合查询用户
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
+
+	// FindByWechatUser 根据 企业微信ID 查询用户
 	FindByWechatUser(ctx context.Context, wechatUserId string) (domain.User, error)
+
+	// FindByFeishuUserId 根据 飞书用户ID 查询用户
 	FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error)
 }
 
@@ -38,6 +68,7 @@ type service struct {
 	repo      repository.UserRepository
 	policySvc policy.Service
 	logger    *elog.Component
+	crypto    cryptox.Crypto[string]
 }
 
 func (s *service) FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error) {
@@ -136,8 +167,7 @@ func (s *service) Login(ctx context.Context, username, password string) (domain.
 	}
 
 	// 判断密码是否正确
-	aesKey := viper.Get("crypto_aes_key").(string)
-	pwd, err := cryptox.DecryptAES[string](aesKey, u.Password)
+	pwd, err := s.crypto.Decrypt(u.Password)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("用户：%s, 解密错误", username)
 	}
@@ -189,11 +219,12 @@ func (s *service) ListUser(ctx context.Context, offset, limit int64) ([]domain.U
 	return us, total, nil
 }
 
-func NewService(repo repository.UserRepository, policySvc policy.Service) Service {
+func NewService(repo repository.UserRepository, policySvc policy.Service, aesKey string) Service {
 	return &service{
 		repo:      repo,
 		policySvc: policySvc,
 		logger:    elog.DefaultLogger,
+		crypto:    cryptox.NewAESCrypto[string](aesKey),
 	}
 }
 
@@ -225,7 +256,7 @@ func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, 
 	// 函数完成，注入密码
 	defer func() {
 		if u.Password == "" {
-			pwd, er := encryptAES(password)
+			pwd, er := s.crypto.Encrypt(password)
 			if er != nil {
 				return
 			}
@@ -257,9 +288,4 @@ func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, 
 
 	user.Id = id
 	return user, nil
-}
-
-func encryptAES(passwork string) (string, error) {
-	aesKey := viper.Get("crypto_aes_key").(string)
-	return cryptox.EncryptAES(aesKey, passwork)
 }

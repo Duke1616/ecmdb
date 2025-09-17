@@ -14,7 +14,6 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 )
 
 type Handler struct {
@@ -22,17 +21,17 @@ type Handler struct {
 	workerSvc   worker.Service
 	workflowSvc workflow.Service
 	codebookSvc codebook.Service
-	aesKey      string
+	crypto      cryptox.Crypto[string]
 }
 
 func NewHandler(svc service.Service, workerSvc worker.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service) *Handler {
+	codebookSvc codebook.Service, aesKey string) *Handler {
 	return &Handler{
 		svc:         svc,
 		workerSvc:   workerSvc,
 		workflowSvc: workflowSvc,
 		codebookSvc: codebookSvc,
-		aesKey:      viper.Get("crypto_aes_key").(string),
+		crypto:      cryptox.NewAESCrypto[string](aesKey),
 	}
 }
 
@@ -262,10 +261,10 @@ func (h *Handler) toUpdateVariablesDomain(oldVars map[string]domain.Variables, r
 		value := src.Value
 		if src.Secret {
 			val, ok := oldVars[src.Key]
-			if ok && src.Value == nil {
+			if ok && src.Value == "" {
 				value = val.Value
 			} else {
-				aesVal, err := cryptox.EncryptAES(h.aesKey, src.Value)
+				aesVal, err := h.crypto.Encrypt(src.Value)
 				if err != nil {
 					return domain.Variables{}
 				}
@@ -286,7 +285,7 @@ func (h *Handler) toVariablesDomain(req []Variables) []domain.Variables {
 		val := src.Value
 		if src.Secret {
 			// 如果加密失败就存储原始存储
-			aesVal, err := cryptox.EncryptAES(h.aesKey, src.Value)
+			aesVal, err := h.crypto.Encrypt(src.Value)
 			if err != nil {
 				return domain.Variables{}
 			}

@@ -34,11 +34,11 @@ func init() {
 // runRepair 执行修复命令
 func runRepair(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	
+
 	// 确定是否使用干跑模式
 	// 如果指定了 --execute，则覆盖默认的 dry-run 模式
 	actualDryRun := dryRun && !execute
-	
+
 	// 初始化服务
 	app, err := ioc.InitApp()
 	if err != nil {
@@ -47,7 +47,7 @@ func runRepair(cmd *cobra.Command, args []string) error {
 
 	// 创建修复器
 	repairer := NewFieldEncryptionRepairer(app.ModelSvc, app.AttrSvc, app.ResourceSvc, app.AesKey, actualDryRun)
-	
+
 	// 执行修复
 	return repairer.Repair(ctx)
 }
@@ -84,7 +84,7 @@ func (r *FieldEncryptionRepairer) Repair(ctx context.Context) error {
 	if r.dryRun {
 		fmt.Println("🔍 运行在干跑模式，不会实际修改数据")
 	}
-	
+
 	startTime := time.Now()
 	defer func() {
 		duration := time.Since(startTime)
@@ -167,7 +167,7 @@ func (r *FieldEncryptionRepairer) processModel(ctx context.Context, modelUid str
 
 	// 创建字段处理器
 	processor := NewFieldProcessor(r.encryptKey, r.dryRun)
-	
+
 	// 批量处理资源
 	stats, err := processor.ProcessResources(ctx, r.resourceSvc, modelUid, allFields, secureFields)
 	if err != nil {
@@ -203,7 +203,7 @@ func (p *FieldProcessor) ProcessResources(
 	const batchSize = 100
 	offset := int64(0)
 	stats := &RepairStats{}
-	
+
 	// 创建加密字段映射
 	secureFieldMap := make(map[string]struct{})
 	for _, field := range secureFields {
@@ -231,7 +231,7 @@ func (p *FieldProcessor) ProcessResources(
 		}
 
 		offset += batchSize
-		
+
 		// 显示进度
 		if stats.Processed%1000 == 0 {
 			fmt.Printf("📊 已处理 %d 条资源...\n", stats.Processed)
@@ -249,13 +249,13 @@ func (p *FieldProcessor) processBatch(
 	secureFieldMap map[string]struct{},
 ) *RepairStats {
 	stats := &RepairStats{}
-	
+
 	for _, resource := range resources {
 		stats.Processed++
-		
+
 		// 处理单个资源
 		needsUpdate, encryptedData := p.processResource(resource, secureFieldMap)
-		
+
 		if needsUpdate {
 			if p.dryRun {
 				encryptedFields := p.getEncryptedFields(resource.Data, encryptedData, secureFieldMap)
@@ -264,6 +264,7 @@ func (p *FieldProcessor) processBatch(
 			} else {
 				// 更新资源
 				resource.Data = encryptedData
+
 				_, err := resourceSvc.UpdateResource(ctx, resource)
 				if err != nil {
 					fmt.Printf("⚠️  更新资源失败 (ID: %d): %v\n", resource.ID, err)
@@ -273,7 +274,7 @@ func (p *FieldProcessor) processBatch(
 			}
 		}
 	}
-	
+
 	return stats
 }
 
@@ -284,7 +285,7 @@ func (p *FieldProcessor) processResource(
 ) (bool, map[string]interface{}) {
 	needsUpdate := false
 	encryptedData := make(map[string]interface{})
-	
+
 	for key, value := range resource.Data {
 		if _, isSecure := secureFieldMap[key]; isSecure {
 			// 处理加密字段
@@ -298,7 +299,7 @@ func (p *FieldProcessor) processResource(
 			encryptedData[key] = value
 		}
 	}
-	
+
 	return needsUpdate, encryptedData
 }
 
@@ -308,14 +309,14 @@ func (p *FieldProcessor) encryptField(key string, value interface{}) (interface{
 	if p.isAlreadyEncrypted(value) {
 		return value, false
 	}
-	
+
 	// 加密字段
 	encrypted, err := cryptox.EncryptAES(p.encryptKey, value)
 	if err != nil {
 		fmt.Printf("⚠️  加密字段 %s 失败: %v\n", key, err)
 		return value, false
 	}
-	
+
 	return encrypted, true
 }
 
@@ -325,7 +326,7 @@ func (p *FieldProcessor) isAlreadyEncrypted(value interface{}) bool {
 	if !ok || len(strValue) <= 10 {
 		return false
 	}
-	
+
 	// 尝试解密，如果成功说明已经加密
 	_, err := cryptox.DecryptAES[string](p.encryptKey, strValue)
 	return err == nil

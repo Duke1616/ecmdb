@@ -36,7 +36,8 @@ func InitApp() (*App, error) {
 	}
 	cmdable := ioc.InitRedis()
 	provider := ioc.InitSession(cmdable)
-	userModule, err := user.InitModule(mongo, client, config, module, departmentModule, provider)
+	string2 := ioc.AesKey()
+	userModule, err := user.InitModule(mongo, client, config, module, departmentModule, provider, string2)
 	if err != nil {
 		return nil, err
 	}
@@ -73,4 +74,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRediSearch, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRediSearch, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.AesKey)

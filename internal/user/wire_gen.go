@@ -23,11 +23,11 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module, sp session.Provider) (*Module, error) {
+func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module, sp session.Provider, aesKey string) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
 	userRepository := repository.NewResourceRepository(userDAO)
 	serviceService := policyModule.Svc
-	service2 := service.NewService(userRepository, serviceService)
+	service2 := service.NewService(userRepository, serviceService, aesKey)
 	redisearchLdapUserCache := InitLdapUserCache(redisClient)
 	ldapService := service.NewLdapService(ldapConfig, redisearchLdapUserCache)
 	service3 := departmentModule.Svc

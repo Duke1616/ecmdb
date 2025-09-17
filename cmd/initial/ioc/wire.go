@@ -15,7 +15,7 @@ import (
 )
 
 var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRediSearch,
-	ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig)
+	ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.AesKey)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),

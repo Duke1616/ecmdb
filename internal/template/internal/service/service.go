@@ -14,16 +14,34 @@ import (
 
 //go:generate mockgen -source=./service.go -package=templatemocks -destination=../../mocks/template.mock.go -typed Service
 type Service interface {
+	// FindOrCreateByWechat 创建或查询来自企业微信的 OA 模版，会把企业微信的 OA 模版同步到本系统存储
 	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
+
+	// CreateTemplate 创建模版
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
+
+	// DetailTemplate 查询模版详情
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
+
+	// FindByTemplateIds 根据 IDS 获取模版列表
 	FindByTemplateIds(ctx context.Context, ids []int64) ([]domain.Template, error)
+
+	// DetailTemplateByExternalTemplateId 查询外部模版，比如集成飞书OA之类的，统一一个ID
 	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error)
+
+	// ListTemplate 获取模版列表
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
+
+	// DeleteTemplate 删除模版
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+
+	// UpdateTemplate 修改模版
 	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
+
+	// Pipeline 返回每个组下的模版列表
 	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
 
+	// GetByWorkflowId 根据流程ID，获取绑定的模版列表
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
 	// 创建流程，生成传递数据的规则
 }

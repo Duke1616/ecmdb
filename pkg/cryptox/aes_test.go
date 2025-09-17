@@ -28,3 +28,50 @@ func TestDecryptAES(t *testing.T) {
 	}
 	fmt.Println("Decrypted:", decryptedData)
 }
+
+func TestAESCryptoInterface(t *testing.T) {
+	key := "1234567890"
+	data := map[string]interface{}{
+		"username": "user1",
+		"password": "pass1",
+	}
+
+	// 使用接口
+	crypto := NewAESCrypto[map[string]interface{}](key)
+
+	// Encrypt
+	encrypted, err := crypto.Encrypt(data)
+	if err != nil {
+		t.Fatalf("Encryption error: %v", err)
+	}
+	fmt.Println("Interface Encrypted:", encrypted)
+
+	// Decrypt
+	decryptedData, err := crypto.Decrypt(encrypted)
+	if err != nil {
+		t.Fatalf("Decryption error: %v", err)
+	}
+	fmt.Println("Interface Decrypted:", decryptedData)
+}
+
+func TestAESCryptoString(t *testing.T) {
+	key := "1234567890"
+	data := "hello world"
+
+	// 使用接口
+	crypto := NewAESCrypto[string](key)
+
+	// Encrypt
+	encrypted, err := crypto.Encrypt(data)
+	if err != nil {
+		t.Fatalf("Encryption error: %v", err)
+	}
+	fmt.Println("String Encrypted:", encrypted)
+
+	// Decrypt
+	decryptedData, err := crypto.Decrypt(encrypted)
+	if err != nil {
+		t.Fatalf("Decryption error: %v", err)
+	}
+	fmt.Println("String Decrypted:", decryptedData)
+}

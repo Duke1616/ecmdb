@@ -7,31 +7,38 @@
 package resource
 
 import (
+	"context"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
+	"github.com/Duke1616/ecmdb/internal/resource/internal/event"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/web"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"sync"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module, aesKey string) (*Module, error) {
+func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module, q mq.MQ, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	resourceDAO := InitResourceDAO(db)
 	resourceRepository := repository.NewResourceRepository(resourceDAO)
 	service := NewService(resourceRepository)
 	serviceService := attributeModule.Svc
-	encryptedSvc := NewEncryptedService(service, serviceService, aesKey)
+	cryptoxCrypto := InitCrypto(crypto)
+	encryptedSvc := NewEncryptedService(service, serviceService, cryptoxCrypto)
 	relationResourceService := relationModule.RRSvc
 	handler := web.NewHandler(encryptedSvc, serviceService, relationResourceService)
+	fieldSecureAttrChangeConsumer := initConsumer(q, encryptedSvc, cryptoxCrypto)
 	module := &Module{
 		Svc:          service,
 		EncryptedSvc: encryptedSvc,
 		Hdl:          handler,
+		c:            fieldSecureAttrChangeConsumer,
 	}
 	return module, nil
 }
@@ -60,7 +67,20 @@ func NewService(repo repository.ResourceRepository) Service {
 	return service.NewService(repo)
 }
 
-func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service,
-	aesKey string) EncryptedSvc {
-	return service.NewEncryptedResourceService(baseSvc, attrSvc, aesKey)
+func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service, cryptox2 cryptox.Crypto[string]) EncryptedSvc {
+	return service.NewEncryptedResourceService(baseSvc, attrSvc, cryptox2)
+}
+
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.Resource
+}
+
+func initConsumer(q mq.MQ, svc service.EncryptedSvc, cryptox2 cryptox.Crypto[string]) *event.FieldSecureAttrChangeConsumer {
+	consumer, err := event.NewFieldSecureAttrChangeConsumer(q, svc, 20, cryptox2)
+	if err != nil {
+		panic(err)
+	}
+
+	consumer.Start(context.Background())
+	return consumer
 }

@@ -23,12 +23,13 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	attributeModule, err := attribute.InitModule(mongo)
+	mq := ioc.InitMQ()
+	attributeModule, err := attribute.InitModule(mongo, mq)
 	if err != nil {
 		return nil, err
 	}
-	string2 := ioc.AesKey()
-	resourceModule, err := resource.InitModule(mongo, attributeModule, module, string2)
+	cryptoRegistry := ioc.InitModuleCrypto()
+	resourceModule, err := resource.InitModule(mongo, attributeModule, module, mq, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -38,16 +39,15 @@ func InitApp() (*App, error) {
 	}
 	service := modelModule.Svc
 	serviceService := attributeModule.Svc
-	service2 := resourceModule.Svc
+	encryptedSvc := resourceModule.EncryptedSvc
 	app := &App{
 		ModelSvc:    service,
 		AttrSvc:     serviceService,
-		ResourceSvc: service2,
-		AesKey:      string2,
+		ResourceSvc: encryptedSvc,
 	}
 	return app, nil
 }
 
 // wire.go:
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.AesKey)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMQ, ioc.InitModuleCrypto)

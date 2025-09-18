@@ -41,6 +41,45 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// BatchUpdateResources mocks base method.
+func (m *MockService) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchUpdateResources", ctx, resources)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BatchUpdateResources indicates an expected call of BatchUpdateResources.
+func (mr *MockServiceMockRecorder) BatchUpdateResources(ctx, resources any) *MockServiceBatchUpdateResourcesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchUpdateResources", reflect.TypeOf((*MockService)(nil).BatchUpdateResources), ctx, resources)
+	return &MockServiceBatchUpdateResourcesCall{Call: call}
+}
+
+// MockServiceBatchUpdateResourcesCall wrap *gomock.Call
+type MockServiceBatchUpdateResourcesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceBatchUpdateResourcesCall) Return(arg0 int64, arg1 error) *MockServiceBatchUpdateResourcesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceBatchUpdateResourcesCall) Do(f func(context.Context, []domain.Resource) (int64, error)) *MockServiceBatchUpdateResourcesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceBatchUpdateResourcesCall) DoAndReturn(f func(context.Context, []domain.Resource) (int64, error)) *MockServiceBatchUpdateResourcesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CountByModelUid mocks base method.
 func (m *MockService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -271,6 +310,45 @@ func (c *MockServiceFindSecureDataCall) Do(f func(context.Context, int64, string
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServiceFindSecureDataCall) DoAndReturn(f func(context.Context, int64, string) (string, error)) *MockServiceFindSecureDataCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListBeforeUtime mocks base method.
+func (m *MockService) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListBeforeUtime", ctx, utime, fields, modelUid, offset, limit)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListBeforeUtime indicates an expected call of ListBeforeUtime.
+func (mr *MockServiceMockRecorder) ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit any) *MockServiceListBeforeUtimeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListBeforeUtime", reflect.TypeOf((*MockService)(nil).ListBeforeUtime), ctx, utime, fields, modelUid, offset, limit)
+	return &MockServiceListBeforeUtimeCall{Call: call}
+}
+
+// MockServiceListBeforeUtimeCall wrap *gomock.Call
+type MockServiceListBeforeUtimeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceListBeforeUtimeCall) Return(arg0 []domain.Resource, arg1 error) *MockServiceListBeforeUtimeCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceListBeforeUtimeCall) Do(f func(context.Context, int64, []string, string, int64, int64) ([]domain.Resource, error)) *MockServiceListBeforeUtimeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceListBeforeUtimeCall) DoAndReturn(f func(context.Context, int64, []string, string, int64, int64) ([]domain.Resource, error)) *MockServiceListBeforeUtimeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

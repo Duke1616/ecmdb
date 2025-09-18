@@ -9,8 +9,10 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/gotomicro/ego/core/elog"
 )
 
+//go:generate mockgen -source=./encrypted.go -destination=../../mocks/encrypted.mock.go -package=resourcemocks -typed EncryptedSvc
 type EncryptedSvc interface {
 	Service
 }
@@ -19,14 +21,33 @@ type EncryptedResourceService struct {
 	Service
 	attrSvc attribute.Service
 	crypto  cryptox.Crypto[string]
+	logger  *elog.Component
 }
 
-func NewEncryptedResourceService(inner Service, attrSvc attribute.Service, aseKey string) EncryptedSvc {
+func NewEncryptedResourceService(inner Service, attrSvc attribute.Service, crypto cryptox.Crypto[string]) EncryptedSvc {
 	return &EncryptedResourceService{
 		Service: inner,
 		attrSvc: attrSvc,
-		crypto:  cryptox.NewAESCrypto[string](aseKey),
+		crypto:  crypto,
+		logger:  elog.DefaultLogger,
 	}
+}
+
+func (s *EncryptedResourceService) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+	offset, limit int64) ([]domain.Resource, error) {
+	resources, err := s.Service.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
+
+	// 无论是否需要解密都进行操作
+	for i := range resources {
+		decryptedData, err1 := s.decryptSensitiveFields(resources[i].Data, fields)
+		if err1 != nil {
+			return nil, fmt.Errorf("failed to decrypt resource %d: %w", resources[i].ID, err)
+		}
+
+		resources[i].Data = decryptedData
+	}
+
+	return resources, nil
 }
 
 func (s *EncryptedResourceService) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
@@ -34,10 +55,61 @@ func (s *EncryptedResourceService) CreateResource(ctx context.Context, req domai
 	encryptedReq, err := s.processEncryption(ctx, req)
 	if err != nil {
 		return 0, err
-
 	}
 
 	return s.Service.CreateResource(ctx, encryptedReq)
+}
+
+func (s *EncryptedResourceService) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) (
+	[]domain.Resource,
+	int64, error) {
+	rs, total, err := s.Service.ListResource(ctx, fields, modelUid, offset, limit)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if len(rs) == 0 {
+		return nil, 0, err
+	}
+
+	// 批量解密资源数据
+	decodeRs, err := s.decryptResources(ctx, rs)
+
+	return decodeRs, total, err
+}
+
+func (s *EncryptedResourceService) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
+	if len(resources) == 0 {
+		return 0, nil
+	}
+
+	// 收集所有模型UID
+	modelUIDs := s.buildModelUIDs(resources)
+
+	// 批量查询安全字段
+	secureFieldsMap, err := s.attrSvc.SearchAttributeFieldsBySecure(ctx, modelUIDs)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch secure fields: %w", err)
+	}
+
+	// 处理如果需要加密则进行加密处理
+	for i := range resources {
+		secureFields := secureFieldsMap[resources[i].ModelUID]
+		if len(secureFields) == 0 {
+			continue
+		}
+
+		encryptedData, err1 := s.encryptSensitiveFields(resources[i].Data, secureFieldsMap[resources[i].ModelUID])
+		if err1 != nil {
+			return 0, fmt.Errorf("failed to encrypt sensitive fields: %w", err)
+		}
+
+		// 更新处理后的值
+		resources[i].Data = encryptedData
+	}
+
+	return s.Service.BatchUpdateResources(ctx, resources)
 }
 
 func (s *EncryptedResourceService) UpdateResource(ctx context.Context, req domain.Resource) (int64, error) {
@@ -88,18 +160,22 @@ func (s *EncryptedResourceService) FindResourceById(ctx context.Context, fields 
 	}
 
 	resource.Data = decryptedData
-	
+
 	return resource, nil
+}
+
+func (s *EncryptedResourceService) buildModelUIDs(resources []domain.Resource) []string {
+	uniqueMap := &sync.Map{}
+	return slice.FilterMap(resources, func(idx int, src domain.Resource) (string, bool) {
+		_, loaded := uniqueMap.LoadOrStore(src.ModelUID, struct{}{})
+		return src.ModelUID, !loaded
+	})
 }
 
 // decryptResources 批量解密资源数据
 func (s *EncryptedResourceService) decryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
 	// 收集所有模型UID
-	uniqueMap := &sync.Map{}
-	modelUIDs := slice.FilterMap(resources, func(idx int, src domain.Resource) (string, bool) {
-		_, loaded := uniqueMap.LoadOrStore(src.ModelUID, struct{}{})
-		return src.ModelUID, !loaded
-	})
+	modelUIDs := s.buildModelUIDs(resources)
 
 	// 批量查询安全字段
 	secureFieldsMap, err := s.attrSvc.SearchAttributeFieldsBySecure(ctx, modelUIDs)
@@ -192,17 +268,6 @@ func (s *EncryptedResourceService) isSecureField(fieldName string, secureMap map
 	return exists
 }
 
-// encryptValue 加密值（目前只支持字符串类型）
-func (s *EncryptedResourceService) encryptValue(value interface{}) (interface{}, error) {
-	strVal, ok := value.(string)
-	if !ok {
-		// 非字符串类型直接返回原值
-		return value, nil
-	}
-
-	return s.crypto.Encrypt(strVal)
-}
-
 // decryptSensitiveFields 解密敏感字段
 func (s *EncryptedResourceService) decryptSensitiveFields(data map[string]interface{}, secureFields []string) (map[string]interface{}, error) {
 	// 构建安全字段映射，提高查找效率
@@ -225,25 +290,32 @@ func (s *EncryptedResourceService) decryptSensitiveFields(data map[string]interf
 	return result, nil
 }
 
-// decryptValue 解密值（目前只支持字符串类型）
-func (s *EncryptedResourceService) decryptValue(value interface{}) (interface{}, error) {
+// encryptValue 加密值
+func (s *EncryptedResourceService) encryptValue(value interface{}) (interface{}, error) {
 	strVal, ok := value.(string)
 	if !ok {
-		// 非字符串类型直接返回原值
 		return value, nil
 	}
 
-	return s.crypto.Decrypt(strVal)
+	val, err := s.crypto.Encrypt(strVal)
+	if err != nil {
+		s.logger.Error("encrypt failed", elog.FieldErr(err), elog.FieldValue(strVal))
+	}
+	return val, nil
 }
 
-// encode 编码敏感字段（已废弃，使用 encryptSensitiveFields 替代）
-func (s *EncryptedResourceService) encode(data map[string]interface{}, secureFields []string) (map[string]interface{}, error) {
-	return s.encryptSensitiveFields(data, secureFields)
-}
+// decryptValue 解密值
+func (s *EncryptedResourceService) decryptValue(value interface{}) (interface{}, error) {
+	strVal, ok := value.(string)
+	if !ok {
+		return value, nil
+	}
 
-// decode 解码敏感字段（已废弃，使用 decryptSensitiveFields 替代）
-func (s *EncryptedResourceService) decode(data map[string]interface{}, secureFields []string) (map[string]interface{}, error) {
-	return s.decryptSensitiveFields(data, secureFields)
+	val, err := s.crypto.Decrypt(strVal)
+	if err != nil {
+		s.logger.Error("decrypt failed", elog.FieldErr(err), elog.FieldValue(strVal))
+	}
+	return val, nil
 }
 
 func (s *EncryptedResourceService) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
@@ -256,7 +328,7 @@ func (s *EncryptedResourceService) FindSecureData(ctx context.Context, id int64,
 	// 解密数据
 	decryptedData, err := s.crypto.Decrypt(encryptedData)
 	if err != nil {
-		return "", fmt.Errorf("failed to decrypt secure data for field %s: %w", fieldUid, err)
+		return "", fmt.Errorf("failed to decrypt secure data: %w", err)
 	}
 
 	return decryptedData, nil

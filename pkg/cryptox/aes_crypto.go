@@ -10,18 +10,18 @@ import (
 	"io"
 )
 
-// AESCrypto AES 加密器实现
-type AESCrypto[T any] struct {
+// CryptoAES AES 加密器实现
+type CryptoAES[T any] struct {
 	key string
 }
 
 // NewAESCrypto 创建新的 AES 加密器
 func NewAESCrypto[T any](key string) Crypto[T] {
-	return &AESCrypto[T]{key: key}
+	return &CryptoAES[T]{key: key}
 }
 
 // Encrypt 加密任意类型的数据
-func (a *AESCrypto[T]) Encrypt(data T) (string, error) {
+func (a *CryptoAES[T]) Encrypt(data T) (string, error) {
 	plainText, err := json.Marshal(data)
 	if err != nil {
 		return "", err
@@ -52,7 +52,7 @@ func (a *AESCrypto[T]) Encrypt(data T) (string, error) {
 }
 
 // Decrypt 解密数据到指定类型
-func (a *AESCrypto[T]) Decrypt(encryptedText string) (T, error) {
+func (a *CryptoAES[T]) Decrypt(encryptedText string) (T, error) {
 	var result T
 	decodedText, err := hex.DecodeString(encryptedText)
 	if err != nil {

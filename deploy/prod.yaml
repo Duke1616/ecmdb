@@ -1,4 +1,14 @@
-crypto_aes_key: "1234567890"
+# 数据加密，根据模块划分
+encryption:
+  user:
+    version: "V1"
+    key: "1234567890"
+  resource:
+    version: "V1"
+    key: "1234567890"
+  runner:
+    version: "V1"
+    key: "1234567890"
 
 ldap:
   url: "ldap://127.0.0.1:389"

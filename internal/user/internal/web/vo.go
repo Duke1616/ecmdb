@@ -11,10 +11,15 @@ type LoginSystemReq struct {
 }
 
 type RegisterUserReq struct {
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	RePassword  string `json:"re_password"`
-	DisplayName string `json:"display_name"`
+	Username     string     `json:"username"`
+	DepartmentId int64      `json:"department_id"`
+	Password     string     `json:"password"`
+	RePassword   string     `json:"re_password"`
+	Email        string     `json:"email"`
+	Title        string     `json:"title"`
+	DisplayName  string     `json:"display_name"`
+	FeishuInfo   FeishuInfo `json:"feishu_info"`
+	WechatInfo   WechatInfo `json:"wechat_info"`
 }
 
 type SearchLdapUser struct {

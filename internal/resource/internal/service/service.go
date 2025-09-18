@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/repository"
@@ -19,6 +20,7 @@ type Service interface {
 	// ListResource 获取置顶模型资产数据
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource,
 		int64, error)
+
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// SetCustomField 变更指定字段的数据
@@ -45,10 +47,26 @@ type Service interface {
 
 	// UpdateResource 修改资产数据
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
+
+	// BatchUpdateResources 因为资产属性变更，处理改变
+	BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error)
+
+	// ListBeforeUtime 获取指定时间前的资产列表
+	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+		offset, limit int64) ([]domain.Resource, error)
 }
 
 type service struct {
 	repo repository.ResourceRepository
+}
+
+func (s *service) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+	offset, limit int64) ([]domain.Resource, error) {
+	return s.repo.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
+}
+
+func (s *service) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
+	return s.repo.BatchUpdateResources(ctx, resources)
 }
 
 func (s *service) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
@@ -78,6 +96,14 @@ func (s *service) FindResourceById(ctx context.Context, fields []string, id int6
 }
 
 func (s *service) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, int64, error) {
+	if fields == nil {
+		return nil, 0, fmt.Errorf("传递字段信息不能为空")
+	}
+
+	if modelUid == "" {
+		return nil, 0, fmt.Errorf("模型唯一标识不能为空")
+	}
+
 	var (
 		total     int64
 		resources []domain.Resource

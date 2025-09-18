@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/attribute/internal/event"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
@@ -54,17 +55,44 @@ type Service interface {
 
 type service struct {
 	repo      repository.AttributeRepository
+	producer  event.FieldSecureAttrChangeEventProducer
 	groupRepo repository.AttributeGroupRepository
 }
 
 func (s *service) UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error) {
-	return s.repo.UpdateAttribute(ctx, attribute)
+	// 查看当前的数据
+	attr, err := s.repo.DetailAttribute(ctx, attribute.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	// 更新数据
+	id, err := s.repo.UpdateAttribute(ctx, attribute)
+	if err != nil {
+		return 0, err
+	}
+
+	// 比对安全属性是否变更
+	if attr.Secure == attribute.Secure {
+		return id, nil
+	}
+
+	// 如果更新了则推送事件
+	err = s.producer.Produce(ctx, event.FieldSecureAttrChange{
+		ModelUid:   attr.ModelUid,
+		FieldUid:   attr.FieldUid,
+		Secure:     attribute.Secure,
+		TiggerTime: time.Now().UnixMilli(),
+	})
+	return id, err
 }
 
-func NewService(repo repository.AttributeRepository, groupRepo repository.AttributeGroupRepository) Service {
+func NewService(repo repository.AttributeRepository, groupRepo repository.AttributeGroupRepository,
+	producer event.FieldSecureAttrChangeEventProducer) Service {
 	return &service{
 		repo:      repo,
 		groupRepo: groupRepo,
+		producer:  producer,
 	}
 }
 
@@ -136,8 +164,6 @@ func (s *service) CreateDefaultAttribute(ctx context.Context, modelUid string) (
 	if err != nil {
 		return 0, err
 	}
-
-	fmt.Println("获取ID", groupId)
 
 	attr := s.defaultAttr(modelUid, groupId)
 

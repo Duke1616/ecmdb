@@ -5,11 +5,13 @@ package attribute
 import (
 	"sync"
 
+	"github.com/Duke1616/ecmdb/internal/attribute/internal/event"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/service"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/web"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 )
 
@@ -19,10 +21,11 @@ var ProviderSet = wire.NewSet(
 	repository.NewAttributeGroupRepository,
 	dao.NewAttributeGroupDAO)
 
-func InitModule(db *mongox.Mongo) (*Module, error) {
+func InitModule(db *mongox.Mongo, q mq.MQ) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		NewService,
+		event.NewFieldSecureAttrChangeEventProducer,
 		InitAttributeDAO,
 		wire.Struct(new(Module), "*"),
 	)
@@ -45,6 +48,7 @@ func InitAttributeDAO(db *mongox.Mongo) dao.AttributeDAO {
 	return dao.NewAttributeDAO(db)
 }
 
-func NewService(repo repository.AttributeRepository, repoGroup repository.AttributeGroupRepository) Service {
-	return service.NewService(repo, repoGroup)
+func NewService(repo repository.AttributeRepository, repoGroup repository.AttributeGroupRepository,
+	producer event.FieldSecureAttrChangeEventProducer) Service {
+	return service.NewService(repo, repoGroup, producer)
 }

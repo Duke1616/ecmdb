@@ -24,10 +24,17 @@ type AttributeRepository interface {
 
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error)
 	UpdateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
+
+	DetailAttribute(ctx context.Context, id int64) (domain.Attribute, error)
 }
 
 type attributeRepository struct {
 	dao dao.AttributeDAO
+}
+
+func (repo *attributeRepository) DetailAttribute(ctx context.Context, id int64) (domain.Attribute, error) {
+	attr, err := repo.dao.DetailAttribute(ctx, id)
+	return repo.toDomain(attr), err
 }
 
 func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {

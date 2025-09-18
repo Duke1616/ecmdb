@@ -347,7 +347,7 @@ func (h *Handler) RegisterUser(ctx *gin.Context, req RegisterUserReq) (ginx.Resu
 	}
 
 	// 查询用户并创建
-	u, err := h.svc.FindOrCreateBySystem(ctx, req.Username, req.Password, req.DisplayName)
+	u, err := h.svc.FindOrCreateBySystem(ctx, h.ToRegisterVo(req))
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -456,6 +456,23 @@ func (h *Handler) toUpdateDomain(req UpdateUserReq) domain.User {
 		Id:           req.Id,
 		Email:        req.Email,
 		Title:        req.Title,
+		DisplayName:  req.DisplayName,
+		DepartmentId: req.DepartmentId,
+		FeishuInfo: domain.FeishuInfo{
+			UserId: req.FeishuInfo.UserId,
+		},
+		WechatInfo: domain.WechatInfo{
+			UserId: req.WechatInfo.UserId,
+		},
+	}
+}
+
+func (H *Handler) ToRegisterVo(req RegisterUserReq) domain.User {
+	return domain.User{
+		Email:        req.Email,
+		Title:        req.Title,
+		Password:     req.Password,
+		Username:     req.Username,
 		DisplayName:  req.DisplayName,
 		DepartmentId: req.DepartmentId,
 		FeishuInfo: domain.FeishuInfo{

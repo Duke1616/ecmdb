@@ -33,10 +33,97 @@ type ResourceDAO interface {
 	UpdateAttribute(ctx context.Context, resource Resource) (int64, error)
 
 	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
+
+	BatchUpdateResources(ctx context.Context, resources []Resource) (int64, error)
+
+	// ListBeforeUtime 获取指定时间前的资产列表
+	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+		offset, limit int64) ([]Resource, error)
 }
 
 type resourceDAO struct {
 	db *mongox.Mongo
+}
+
+func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
+	return &resourceDAO{
+		db: db,
+	}
+}
+
+func (dao *resourceDAO) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+	offset, limit int64) ([]Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+	filter := bson.M{"model_uid": modelUid}
+	filter["utime"] = bson.M{"$lte": utime}
+	projection := make(map[string]int, len(fields))
+	for _, v := range fields {
+		projection[v] = 1
+	}
+	projection["_id"] = 0
+	projection["id"] = 1
+	projection["name"] = 1
+	projection["model_uid"] = 1
+	opts := &options.FindOptions{
+		Projection: projection,
+		Limit:      &limit,
+		Skip:       &offset,
+		Sort:       bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	var result []Resource
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *resourceDAO) BatchUpdateResources(ctx context.Context, resources []Resource) (int64, error) {
+	if len(resources) == 0 {
+		return 0, nil
+	}
+
+	col := dao.db.Collection(ResourceCollection)
+	var totalModified int64
+
+	// 为批量操作创建切片
+	models := make([]mongo.WriteModel, 0, len(resources))
+
+	utime := time.Now().UnixMilli()
+	for _, resource := range resources {
+		updateDoc := bson.M{
+			"utime": utime,
+		}
+
+		// 将资源数据合并到更新文档中
+		for key, value := range resource.Data {
+			updateDoc[key] = value
+		}
+
+		// 创建更新模型
+		filter := bson.M{"id": resource.ID}
+		update := bson.M{"$set": updateDoc}
+
+		model := mongo.NewUpdateOneModel().
+			SetFilter(filter).
+			SetUpdate(update).
+			SetUpsert(false)
+
+		models = append(models, model)
+	}
+	
+	// 执行批量操作
+	result, err := col.BulkWrite(ctx, models)
+	if err != nil {
+		return 0, fmt.Errorf("批量更新文档操作: %w", err)
+	}
+
+	totalModified = result.ModifiedCount
+	return totalModified, nil
 }
 
 func (dao *resourceDAO) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
@@ -81,12 +168,6 @@ func (dao *resourceDAO) UpdateAttribute(ctx context.Context, resource Resource) 
 	}
 
 	return count.ModifiedCount, nil
-}
-
-func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
-	return &resourceDAO{
-		db: db,
-	}
 }
 
 func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
@@ -159,7 +240,7 @@ func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, model
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
-
+	projection["model_uid"] = 1
 	opts := &options.FindOptions{
 		Projection: projection,
 		Limit:      &limit,

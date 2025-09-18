@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/runner/internal/web"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
@@ -26,16 +27,21 @@ var ProviderSet = wire.NewSet(
 )
 
 func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflowSvc *workflow.Module,
-	codebookModule *codebook.Module, aesKey string) (*Module, error) {
+	codebookModule *codebook.Module, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initTaskRunnerConsumer,
+		InitCrypto,
 		wire.FieldsOf(new(*worker.Module), "Svc"),
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.FieldsOf(new(*codebook.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
+}
+
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.Runner
 }
 
 func initTaskRunnerConsumer(svc service.Service, mq mq.MQ, workerSvc worker.Service, codebookSvc codebook.Service) *event.TaskRunnerConsumer {

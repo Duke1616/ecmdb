@@ -65,12 +65,13 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	attributeModule, err := attribute.InitModule(mongo)
+	mq := InitMQ()
+	attributeModule, err := attribute.InitModule(mongo, mq)
 	if err != nil {
 		return nil, err
 	}
-	string2 := AesKey()
-	resourceModule, err := resource.InitModule(mongo, attributeModule, relationModule, string2)
+	cryptoRegistry := InitModuleCrypto()
+	resourceModule, err := resource.InitModule(mongo, attributeModule, relationModule, mq, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,6 @@ func InitApp() (*App, error) {
 	handler2 := resourceModule.Hdl
 	relationModelHandler := relationModule.RMHdl
 	relationResourceHandler := relationModule.RRHdl
-	mq := InitMQ()
 	client := InitEtcdClient()
 	workerModule, err := worker.InitModule(mq, mongo, client)
 	if err != nil {
@@ -97,7 +97,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule, provider, string2)
+	userModule, err := user.InitModule(mongo, redisearchClient, config, module, departmentModule, provider, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	runnerModule, err := runner.InitModule(mongo, mq, workerModule, workflowModule, codebookModule, string2)
+	runnerModule, err := runner.InitModule(mongo, mq, workerModule, workflowModule, codebookModule, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, string2)
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func InitApp() (*App, error) {
 // wire.go:
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu, AesKey)
+	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu, InitModuleCrypto)
 
 func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.NotificationServiceClient {
 	type Config struct {

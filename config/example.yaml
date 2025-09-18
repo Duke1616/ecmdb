@@ -1,5 +1,17 @@
 crypto_aes_key: "1234567890"
 
+# 数据加密，根据模块划分
+encryption:
+  user:
+    version: "V1"
+    key: "1234567890"
+  resource:
+    version: "V1"
+    key: "1234567890"
+  runner:
+    version: "V1"
+    key: "1234567890"
+
 ldap:
   url: "ldap://127.0.0.1:389"
   base_dn: "DC=example,DC=com"
@@ -46,7 +58,6 @@ minio:
   secretAccessKey: minio123
   useSSL: false
 
-
 feishu:
   appId: ""
   appSecret: ""
@@ -56,6 +67,7 @@ wechat:
   corpSecret: ""
   agentId: 1000002
 
+# 如果工单需要自动化任务必须开启
 cronjob:
   enabled: true
 

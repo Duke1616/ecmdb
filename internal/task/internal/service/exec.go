@@ -18,8 +18,8 @@ type execService struct {
 	crypto    cryptox.Crypto[string]
 }
 
-func NewExecService(workerSvc worker.Service, aesKey string) ExecService {
-	return &execService{workerSvc: workerSvc, crypto: cryptox.NewAESCrypto[string](aesKey)}
+func NewExecService(workerSvc worker.Service, crypto cryptox.Crypto[string]) ExecService {
+	return &execService{workerSvc: workerSvc, crypto: crypto}
 }
 
 func (e *execService) Execute(ctx context.Context, task domain.Task) error {

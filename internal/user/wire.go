@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/ecodeclub/ginx/session"
@@ -29,11 +30,16 @@ func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
 	return cache.NewRedisearchLdapUserCache(conn)
 }
 
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.User
+}
+
 func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module,
-	departmentModule *department.Module, sp session.Provider, aesKey string) (*Module, error) {
+	departmentModule *department.Module, sp session.Provider, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		InitLdapUserCache,
+		InitCrypto,
 		wire.Struct(new(Module), "*"),
 		wire.FieldsOf(new(*department.Module), "Svc"),
 		wire.FieldsOf(new(*policy.Module), "Svc"),

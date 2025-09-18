@@ -9,6 +9,5 @@ import (
 type App struct {
 	ModelSvc    model.Service
 	AttrSvc     attribute.Service
-	ResourceSvc resource.Service
-	AesKey      string
+	ResourceSvc resource.EncryptedSvc
 }

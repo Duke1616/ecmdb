@@ -22,7 +22,7 @@ type Service interface {
 	SyncCreateLdapUser(ctx context.Context, req domain.User) (int64, error)
 
 	// FindOrCreateBySystem 查找或创建来自本系统的用户
-	FindOrCreateBySystem(ctx context.Context, username, password, displayName string) (domain.User, error)
+	FindOrCreateBySystem(ctx context.Context, user domain.User) (domain.User, error)
 
 	// ListUser 获取用户列表
 	ListUser(ctx context.Context, offset, limit int64) ([]domain.User, int64, error)
@@ -69,6 +69,15 @@ type service struct {
 	policySvc policy.Service
 	logger    *elog.Component
 	crypto    cryptox.Crypto[string]
+}
+
+func NewService(repo repository.UserRepository, policySvc policy.Service, crypto cryptox.Crypto[string]) Service {
+	return &service{
+		repo:      repo,
+		policySvc: policySvc,
+		logger:    elog.DefaultLogger,
+		crypto:    crypto,
+	}
 }
 
 func (s *service) FindByFeishuUserId(ctx context.Context, feishuUserId string) (domain.User, error) {
@@ -219,15 +228,6 @@ func (s *service) ListUser(ctx context.Context, offset, limit int64) ([]domain.U
 	return us, total, nil
 }
 
-func NewService(repo repository.UserRepository, policySvc policy.Service, aesKey string) Service {
-	return &service{
-		repo:      repo,
-		policySvc: policySvc,
-		logger:    elog.DefaultLogger,
-		crypto:    cryptox.NewAESCrypto[string](aesKey),
-	}
-}
-
 func (s *service) FindOrCreateByLdap(ctx context.Context, req domain.User) (domain.User, error) {
 	// 查询数据
 	u, err := s.repo.FindByUsername(ctx, req.Username)
@@ -245,18 +245,18 @@ func (s *service) FindOrCreateByLdap(ctx context.Context, req domain.User) (doma
 	return req, nil
 }
 
-func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, displayName string) (domain.User, error) {
+func (s *service) FindOrCreateBySystem(ctx context.Context, req domain.User) (domain.User, error) {
 	// 设置用户ID
 	var id int64
 
 	// 查询数据
-	u, err := s.repo.FindByUsername(ctx, username)
+	u, err := s.repo.FindByUsername(ctx, req.Username)
 	id = u.Id
 
 	// 函数完成，注入密码
 	defer func() {
 		if u.Password == "" {
-			pwd, er := s.crypto.Encrypt(password)
+			pwd, er := s.crypto.Encrypt(req.Password)
 			if er != nil {
 				return
 			}
@@ -274,10 +274,19 @@ func (s *service) FindOrCreateBySystem(ctx context.Context, username, password, 
 
 	// 生成结构
 	user := domain.User{
-		Username:    username,
-		DisplayName: displayName,
-		Status:      domain.ENABLED,
-		CreateType:  domain.SYSTEM,
+		Username:     req.Username,
+		DisplayName:  req.DisplayName,
+		DepartmentId: req.DepartmentId,
+		Title:        req.Title,
+		Email:        req.Email,
+		WechatInfo: domain.WechatInfo{
+			UserId: req.WechatInfo.UserId,
+		},
+		FeishuInfo: domain.FeishuInfo{
+			UserId: req.FeishuInfo.UserId,
+		},
+		Status:     domain.ENABLED,
+		CreateType: domain.SYSTEM,
 	}
 
 	// 创建用户

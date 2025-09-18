@@ -23,6 +23,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
@@ -33,7 +34,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module, lark2 *lark.Client, aesKey string) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module, lark2 *lark.Client, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	taskDAO := dao.NewTaskDAO(db)
 	taskRepository := repository.NewTaskRepository(taskDAO)
 	serviceService := orderModule.Svc
@@ -41,7 +42,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service3 := codebookModule.Svc
 	service4 := runnerModule.Svc
 	service5 := workerModule.Svc
-	execService := service.NewExecService(service5, aesKey)
+	cryptoxCrypto := InitCrypto(crypto)
+	execService := service.NewExecService(service5, cryptoxCrypto)
 	cronjob := service.NewCronjob(execService)
 	service6 := engineModule.Svc
 	service7 := userModule.Svc
@@ -76,6 +78,10 @@ func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
 
 	consumer.Start(context.Background())
 	return consumer
+}
+
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.Runner
 }
 
 func initStartTaskJob(svc service.Service) *StartTaskJob {

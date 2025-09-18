@@ -7,6 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/cmd/initial/menu"
 	"github.com/Duke1616/ecmdb/internal/role"
+	userStruct "github.com/Duke1616/ecmdb/internal/user"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -19,7 +20,11 @@ func (i *fullInitial) InitUser() (int64, error) {
 	// 创建用户
 	fmt.Printf("🔧 创建系统管理员用户...\n")
 	start := time.Now()
-	user, err := i.App.UserSvc.FindOrCreateBySystem(ctx, UserName, Password, DisPlayName)
+	user, err := i.App.UserSvc.FindOrCreateBySystem(ctx, userStruct.User{
+		Password:    Password,
+		Username:    UserName,
+		DisplayName: DisPlayName,
+	})
 	duration := time.Since(start)
 
 	if err != nil {

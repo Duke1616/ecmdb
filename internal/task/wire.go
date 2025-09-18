@@ -21,6 +21,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
@@ -40,13 +41,14 @@ var ProviderSet = wire.NewSet(
 func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module,
 	engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module,
 	runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module,
-	lark *lark.Client, aesKey string) (*Module, error) {
+	lark *lark.Client, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initStartTaskJob,
 		initPassProcessTaskJob,
 		initRecoveryTaskJob,
 		initConsumer,
+		InitCrypto,
 		wire.FieldsOf(new(*order.Module), "Svc"),
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.FieldsOf(new(*codebook.Module), "Svc"),
@@ -69,6 +71,10 @@ func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
 
 	consumer.Start(context.Background())
 	return consumer
+}
+
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.Runner
 }
 
 func initStartTaskJob(svc service.Service) *StartTaskJob {

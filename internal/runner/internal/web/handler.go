@@ -25,13 +25,13 @@ type Handler struct {
 }
 
 func NewHandler(svc service.Service, workerSvc worker.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service, aesKey string) *Handler {
+	codebookSvc codebook.Service, crypto cryptox.Crypto[string]) *Handler {
 	return &Handler{
 		svc:         svc,
 		workerSvc:   workerSvc,
 		workflowSvc: workflowSvc,
 		codebookSvc: codebookSvc,
-		crypto:      cryptox.NewAESCrypto[string](aesKey),
+		crypto:      crypto,
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/runner/internal/web"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
@@ -23,14 +24,15 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflowSvc *workflow.Module, codebookModule *codebook.Module, aesKey string) (*Module, error) {
+func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflowSvc *workflow.Module, codebookModule *codebook.Module, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	runnerDAO := dao.NewRunnerDAO(db)
 	runnerRepository := repository.NewRunnerRepository(runnerDAO)
 	serviceService := service.NewService(runnerRepository)
 	service2 := workerModule.Svc
 	service3 := workflowSvc.Svc
 	service4 := codebookModule.Svc
-	handler := web.NewHandler(serviceService, service2, service3, service4, aesKey)
+	cryptoxCrypto := InitCrypto(crypto)
+	handler := web.NewHandler(serviceService, service2, service3, service4, cryptoxCrypto)
 	taskRunnerConsumer := initTaskRunnerConsumer(serviceService, q, service2, service4)
 	module := &Module{
 		Svc: serviceService,
@@ -43,6 +45,10 @@ func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflow
 // wire.go:
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewRunnerRepository, dao.NewRunnerDAO)
+
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.Runner
+}
 
 func initTaskRunnerConsumer(svc service.Service, mq2 mq.MQ, workerSvc worker.Service, codebookSvc codebook.Service) *event.TaskRunnerConsumer {
 	consumer, err := event.NewTaskRunnerConsumer(svc, mq2, workerSvc, codebookSvc)

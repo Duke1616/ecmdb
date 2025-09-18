@@ -29,10 +29,24 @@ type AttributeDAO interface {
 
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error)
 	UpdateAttribute(ctx context.Context, attribute Attribute) (int64, error)
+
+	DetailAttribute(ctx context.Context, id int64) (Attribute, error)
 }
 
 type attributeDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *attributeDAO) DetailAttribute(ctx context.Context, id int64) (Attribute, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"id": id}
+
+	var result Attribute
+	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+		return Attribute{}, fmt.Errorf("解码错误，%w", err)
+	}
+
+	return result, nil
 }
 
 func (dao *attributeDAO) SearchAllAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {

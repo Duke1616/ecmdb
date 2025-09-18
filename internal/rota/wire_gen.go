@@ -41,7 +41,7 @@ func InitScheduleRule() schedule.Scheduler {
 
 	location, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
-		fmt.Print()
+		fmt.Println("Error loading location:", err)
 	}
 
 	return schedule.NewRruleSchedule(location)

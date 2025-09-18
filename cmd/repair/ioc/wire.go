@@ -11,7 +11,7 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.AesKey)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMQ, ioc.InitModuleCrypto)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
@@ -22,7 +22,7 @@ func InitApp() (*App, error) {
 		attribute.InitModule,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
 		resource.InitModule,
-		wire.FieldsOf(new(*resource.Module), "Svc"),
+		wire.FieldsOf(new(*resource.Module), "EncryptedSvc"),
 	)
 	return new(App), nil
 }

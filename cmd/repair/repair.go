@@ -9,7 +9,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/resource"
-	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +45,7 @@ func runRepair(cmd *cobra.Command, args []string) error {
 	}
 
 	// 创建修复器
-	repairer := NewFieldEncryptionRepairer(app.ModelSvc, app.AttrSvc, app.ResourceSvc, app.AesKey, actualDryRun)
+	repairer := NewFieldEncryptionRepairer(app.ModelSvc, app.AttrSvc, app.ResourceSvc, actualDryRun)
 
 	// 执行修复
 	return repairer.Repair(ctx)
@@ -56,8 +55,7 @@ func runRepair(cmd *cobra.Command, args []string) error {
 type FieldEncryptionRepairer struct {
 	modelSvc    model.Service
 	attrSvc     attribute.Service
-	resourceSvc resource.Service
-	encryptKey  string
+	resourceSvc resource.EncryptedSvc
 	dryRun      bool
 }
 
@@ -65,15 +63,13 @@ type FieldEncryptionRepairer struct {
 func NewFieldEncryptionRepairer(
 	modelSvc model.Service,
 	attrSvc attribute.Service,
-	resourceSvc resource.Service,
-	encryptKey string,
+	resourceSvc resource.EncryptedSvc,
 	dryRun bool,
 ) *FieldEncryptionRepairer {
 	return &FieldEncryptionRepairer{
 		modelSvc:    modelSvc,
 		attrSvc:     attrSvc,
 		resourceSvc: resourceSvc,
-		encryptKey:  encryptKey,
 		dryRun:      dryRun,
 	}
 }
@@ -103,7 +99,7 @@ func (r *FieldEncryptionRepairer) Repair(ctx context.Context) error {
 	}
 
 	// 处理每个模型
-	stats := &RepairStats{}
+	stats := &StatsRepair{}
 	for modelUid, secureFields := range models {
 		modelStats, err := r.processModel(ctx, modelUid, secureFields)
 		if err != nil {
@@ -156,20 +152,14 @@ func (r *FieldEncryptionRepairer) getModelsWithSecureFields(ctx context.Context)
 }
 
 // processModel 处理单个模型
-func (r *FieldEncryptionRepairer) processModel(ctx context.Context, modelUid string, secureFields []string) (*RepairStats, error) {
+func (r *FieldEncryptionRepairer) processModel(ctx context.Context, modelUid string, secureFields []string) (*StatsRepair, error) {
 	fmt.Printf("\n🔄 正在处理模型: %s\n", modelUid)
 
-	// 获取模型的所有字段
-	allFields, err := r.attrSvc.SearchAllAttributeFieldsByModelUid(ctx, modelUid)
-	if err != nil {
-		return nil, fmt.Errorf("获取模型字段失败: %w", err)
-	}
-
 	// 创建字段处理器
-	processor := NewFieldProcessor(r.encryptKey, r.dryRun)
+	processor := NewFieldProcessor(r.resourceSvc, r.dryRun)
 
 	// 批量处理资源
-	stats, err := processor.ProcessResources(ctx, r.resourceSvc, modelUid, allFields, secureFields)
+	stats, err := processor.ProcessResources(ctx, modelUid, secureFields)
 	if err != nil {
 		return nil, fmt.Errorf("处理资源失败: %w", err)
 	}
@@ -180,39 +170,32 @@ func (r *FieldEncryptionRepairer) processModel(ctx context.Context, modelUid str
 
 // FieldProcessor 字段处理器
 type FieldProcessor struct {
-	encryptKey string
-	dryRun     bool
+	resourceSvc resource.EncryptedSvc
+	dryRun      bool
 }
 
 // NewFieldProcessor 创建字段处理器
-func NewFieldProcessor(encryptKey string, dryRun bool) *FieldProcessor {
+func NewFieldProcessor(resourceSvc resource.EncryptedSvc, dryRun bool) *FieldProcessor {
 	return &FieldProcessor{
-		encryptKey: encryptKey,
-		dryRun:     dryRun,
+		dryRun:      dryRun,
+		resourceSvc: resourceSvc,
 	}
 }
 
 // ProcessResources 处理资源
 func (p *FieldProcessor) ProcessResources(
 	ctx context.Context,
-	resourceSvc resource.Service,
+
 	modelUid string,
-	allFields []string,
 	secureFields []string,
-) (*RepairStats, error) {
+) (*StatsRepair, error) {
 	const batchSize = 100
 	offset := int64(0)
-	stats := &RepairStats{}
-
-	// 创建加密字段映射
-	secureFieldMap := make(map[string]struct{})
-	for _, field := range secureFields {
-		secureFieldMap[field] = struct{}{}
-	}
+	stats := &StatsRepair{}
 
 	for {
-		// 获取一批资源
-		resources, _, err := resourceSvc.ListResource(ctx, allFields, modelUid, offset, batchSize)
+		resources, _, err := p.resourceSvc.ListResource(ctx, secureFields, modelUid, offset, batchSize)
+
 		if err != nil {
 			return stats, fmt.Errorf("获取资源列表失败: %w", err)
 		}
@@ -222,11 +205,11 @@ func (p *FieldProcessor) ProcessResources(
 		}
 
 		// 处理这批资源
-		batchStats := p.processBatch(ctx, resourceSvc, resources, secureFieldMap)
+		batchStats := p.processBatch(ctx, resources)
 		stats.Add(batchStats)
 
-		// 如果这批数据少于批量大小，说明已经处理完所有数据
-		if len(resources) < batchSize {
+		// 如果不足一页，说明到末尾了
+		if int64(len(resources)) < batchSize {
 			break
 		}
 
@@ -244,123 +227,49 @@ func (p *FieldProcessor) ProcessResources(
 // processBatch 处理一批资源
 func (p *FieldProcessor) processBatch(
 	ctx context.Context,
-	resourceSvc resource.Service,
 	resources []resource.Resource,
-	secureFieldMap map[string]struct{},
-) *RepairStats {
-	stats := &RepairStats{}
+) *StatsRepair {
+	stats := &StatsRepair{}
 
-	for _, resource := range resources {
-		stats.Processed++
-
-		// 处理单个资源
-		needsUpdate, encryptedData := p.processResource(resource, secureFieldMap)
-
-		if needsUpdate {
-			if p.dryRun {
-				encryptedFields := p.getEncryptedFields(resource.Data, encryptedData, secureFieldMap)
-				fmt.Printf("🔍 [干跑模式] 资源 ID %d 需要加密字段: %v\n", resource.ID, encryptedFields)
+	if p.dryRun {
+		// 干跑模式：只统计需要更新的资源
+		for _, r := range resources {
+			stats.Processed++
+			// 简单检查：如果资源有数据，就认为需要更新
+			if len(r.Data) > 0 {
 				stats.Updated++
-			} else {
-				// 更新资源
-				resource.Data = encryptedData
-
-				_, err := resourceSvc.UpdateResource(ctx, resource)
-				if err != nil {
-					fmt.Printf("⚠️  更新资源失败 (ID: %d): %v\n", resource.ID, err)
-				} else {
-					stats.Updated++
-				}
+				fmt.Printf("🔍 [干跑模式] 资源 ID %d 将被处理\n", r.ID)
 			}
+		}
+	} else {
+		// 实际执行：使用批量更新
+		stats.Processed = len(resources)
+
+		// 直接使用 BatchUpdateResources，它会自动处理加密
+		updated, err := p.resourceSvc.BatchUpdateResources(ctx, resources)
+		if err != nil {
+			fmt.Printf("⚠️  批量更新资源失败: %v\n", err)
+		} else {
+			stats.Updated = int(updated)
 		}
 	}
 
 	return stats
 }
 
-// processResource 处理单个资源
-func (p *FieldProcessor) processResource(
-	resource resource.Resource,
-	secureFieldMap map[string]struct{},
-) (bool, map[string]interface{}) {
-	needsUpdate := false
-	encryptedData := make(map[string]interface{})
-
-	for key, value := range resource.Data {
-		if _, isSecure := secureFieldMap[key]; isSecure {
-			// 处理加密字段
-			encrypted, shouldUpdate := p.encryptField(key, value)
-			encryptedData[key] = encrypted
-			if shouldUpdate {
-				needsUpdate = true
-			}
-		} else {
-			// 非加密字段，保持原值
-			encryptedData[key] = value
-		}
-	}
-
-	return needsUpdate, encryptedData
-}
-
-// encryptField 加密字段
-func (p *FieldProcessor) encryptField(key string, value interface{}) (interface{}, bool) {
-	// 检查是否已经加密
-	if p.isAlreadyEncrypted(value) {
-		return value, false
-	}
-
-	// 加密字段
-	encrypted, err := cryptox.EncryptAES(p.encryptKey, value)
-	if err != nil {
-		fmt.Printf("⚠️  加密字段 %s 失败: %v\n", key, err)
-		return value, false
-	}
-
-	return encrypted, true
-}
-
-// isAlreadyEncrypted 检查字段是否已经加密
-func (p *FieldProcessor) isAlreadyEncrypted(value interface{}) bool {
-	strValue, ok := value.(string)
-	if !ok || len(strValue) <= 10 {
-		return false
-	}
-
-	// 尝试解密，如果成功说明已经加密
-	_, err := cryptox.DecryptAES[string](p.encryptKey, strValue)
-	return err == nil
-}
-
-// getEncryptedFields 获取需要加密的字段列表
-func (p *FieldProcessor) getEncryptedFields(
-	originalData, encryptedData map[string]interface{},
-	secureFieldMap map[string]struct{},
-) []string {
-	var encryptedFields []string
-	for key := range secureFieldMap {
-		if _, exists := originalData[key]; exists {
-			if originalData[key] != encryptedData[key] {
-				encryptedFields = append(encryptedFields, key)
-			}
-		}
-	}
-	return encryptedFields
-}
-
-// RepairStats 修复统计信息
-type RepairStats struct {
+// StatsRepair 修复统计信息
+type StatsRepair struct {
 	Processed int
 	Updated   int
 }
 
 // Add 添加统计信息
-func (s *RepairStats) Add(other *RepairStats) {
+func (s *StatsRepair) Add(other *StatsRepair) {
 	s.Processed += other.Processed
 	s.Updated += other.Updated
 }
 
 // PrintSummary 打印统计摘要
-func (s *RepairStats) PrintSummary() {
+func (s *StatsRepair) PrintSummary() {
 	fmt.Printf("\n🎉 修复完成! 总计处理 %d 条资源，更新 %d 条\n", s.Processed, s.Updated)
 }

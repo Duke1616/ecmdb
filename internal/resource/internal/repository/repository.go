@@ -8,6 +8,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 )
 
+//go:generate mockgen -source=repository.go -destination=../../mocks/repository.mock.go --package=resourcemocks ResourceRepository
 type ResourceRepository interface {
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
@@ -22,13 +23,35 @@ type ResourceRepository interface {
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
+
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 
 	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
+
+	BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error)
+
+	// ListBeforeUtime 获取指定时间前的资产列表
+	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+		offset, limit int64) ([]domain.Resource, error)
 }
 
 type resourceRepository struct {
 	dao dao.ResourceDAO
+}
+
+func (repo *resourceRepository) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+	offset, limit int64) ([]domain.Resource, error) {
+	rrs, err := repo.dao.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
+
+	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *resourceRepository) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
+	return repo.dao.BatchUpdateResources(ctx, slice.Map(resources, func(idx int, src domain.Resource) dao.Resource {
+		return repo.toEntity(src)
+	}))
 }
 
 func (repo *resourceRepository) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {

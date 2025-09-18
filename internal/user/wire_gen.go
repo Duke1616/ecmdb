@@ -15,6 +15,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user/ldapx"
+	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/RediSearch/redisearch-go/v2/redisearch"
 	"github.com/ecodeclub/ginx/session"
@@ -23,11 +24,12 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module, sp session.Provider, aesKey string) (*Module, error) {
+func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module, sp session.Provider, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
 	userRepository := repository.NewResourceRepository(userDAO)
 	serviceService := policyModule.Svc
-	service2 := service.NewService(userRepository, serviceService, aesKey)
+	cryptoxCrypto := InitCrypto(crypto)
+	service2 := service.NewService(userRepository, serviceService, cryptoxCrypto)
 	redisearchLdapUserCache := InitLdapUserCache(redisClient)
 	ldapService := service.NewLdapService(ldapConfig, redisearchLdapUserCache)
 	service3 := departmentModule.Svc
@@ -45,4 +47,8 @@ var ProviderSet = wire.NewSet(service.NewLdapService, service.NewService, reposi
 
 func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
 	return cache.NewRedisearchLdapUserCache(conn)
+}
+
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+	return reg.User
 }

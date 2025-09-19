@@ -28,16 +28,30 @@ import (
 
 func InitSession(cmd redis.Cmdable) session.Provider {
 	type Config struct {
-		SessionEncryptedKey string `yaml:"session_encrypted_key"`
+		SessionEncryptedKey string `mapstructure:"session_encrypted_key"`
 		Cookie              struct {
-			Domain string `yaml:"domain"`
-			Name   string `yaml:"name"`
-		} `yaml:"cookie"`
+			Domain string `mapstructure:"domain"`
+			Name   string `mapstructure:"name"`
+		} `mapstructure:"cookie"`
 	}
 	var cfg Config
+
 	err := viper.UnmarshalKey("session", &cfg)
 	if err != nil {
 		panic(err)
+	}
+
+	if cfg.SessionEncryptedKey == "" {
+		panic("session_encrypted_key is required")
+	}
+	if cfg.SessionEncryptedKey == "" {
+		panic("session_encrypted_key is required")
+	}
+	if cfg.Cookie.Name == "" {
+		panic("cookie.name is required")
+	}
+	if cfg.Cookie.Domain == "" {
+		panic("cookie.domain is required")
 	}
 
 	const day = time.Hour * 24 * 30

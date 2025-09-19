@@ -1,7 +1,6 @@
 package ioc
 
 import (
-	"strings"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
@@ -112,20 +111,19 @@ func InitGinMiddlewares() []gin.HandlerFunc {
 
 func corsHdl() gin.HandlerFunc {
 	return cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"POST", "GET"},
-		AllowHeaders: []string{"Content-Type", "Authorization"},
-		// 你不加这个，前端是拿不到的
-		ExposeHeaders: []string{"x-jwt-token", "x-refresh-token"},
+		AllowOrigins:  []string{"*"},
+		AllowMethods:  []string{"POST", "GET"},
+		AllowHeaders:  []string{"Content-Type", "Authorization"},
+		ExposeHeaders: []string{"X-Access-Token"},
 		// 是否允许你带 cookie 之类的东西
 		AllowCredentials: true,
-		AllowOriginFunc: func(origin string) bool {
-			if strings.HasPrefix(origin, "http://localhost") {
-				// 你的开发环境
-				return true
-			}
-			return strings.Contains(origin, "yourcompany.com")
-		},
+		//AllowOriginFunc: func(origin string) bool {
+		//	if strings.HasPrefix(origin, "http://localhost") {
+		//		// 你的开发环境
+		//		return true
+		//	}
+		//	return strings.Contains(origin, "example.com")
+		//},
 		MaxAge: 12 * time.Hour,
 	})
 }

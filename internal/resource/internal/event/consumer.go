@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
@@ -18,12 +20,14 @@ import (
 const FieldSecureAttrChangeName = "field_secure_attr_change"
 
 type FieldSecureAttrChangeConsumer struct {
-	consumer mq.Consumer
-	svc      service.EncryptedSvc
-	logger   *elog.Component
-	crypto   cryptox.Crypto[string]
-	limit    int64
-	offset   int64
+	consumer     mq.Consumer
+	svc          service.EncryptedSvc
+	logger       *elog.Component
+	crypto       cryptox.Crypto[string]
+	workers      sync.Map
+	idleDuration time.Duration
+	limit        int64
+	offset       int64
 }
 
 func NewFieldSecureAttrChangeConsumer(q mq.MQ, svc service.EncryptedSvc, limit int64,
@@ -33,12 +37,14 @@ func NewFieldSecureAttrChangeConsumer(q mq.MQ, svc service.EncryptedSvc, limit i
 		return nil, fmt.Errorf("获取消息失败: %w", err)
 	}
 	return &FieldSecureAttrChangeConsumer{
-		consumer: consumer,
-		svc:      svc,
-		logger:   elog.DefaultLogger,
-		limit:    limit,
-		crypto:   crypto,
-		offset:   0,
+		consumer:     consumer,
+		svc:          svc,
+		logger:       elog.DefaultLogger,
+		workers:      sync.Map{},
+		idleDuration: time.Minute * 10,
+		limit:        limit,
+		crypto:       crypto,
+		offset:       0,
 	}, nil
 }
 
@@ -68,8 +74,53 @@ func (c *FieldSecureAttrChangeConsumer) Consume(ctx context.Context) error {
 }
 
 func (c *FieldSecureAttrChangeConsumer) Process(ctx context.Context, evt attribute.Event) error {
+	key := evt.ModelUid + ":" + evt.FieldUid
+
+	chAny, loaded := c.workers.LoadOrStore(key, make(chan attribute.Event, 1))
+	ch := chAny.(chan attribute.Event)
+
+	if !loaded {
+		go c.runWorker(ctx, key, ch)
+	}
+
+	// 覆盖写入最新事件（如果 channel 已经有值，先清掉）
+	select {
+	case <-ch:
+	default:
+	}
+	ch <- evt
+
+	return nil
+}
+
+func (c *FieldSecureAttrChangeConsumer) runWorker(ctx context.Context, key string, ch chan attribute.Event) {
+	idleTimer := time.NewTimer(c.idleDuration)
+	defer idleTimer.Stop()
+
 	for {
-		resources, err := c.svc.ListBeforeUtime(ctx, evt.TiggerTime, []string{evt.FieldUid},
+		select {
+		case evt := <-ch:
+			if err := c.handleEvent(ctx, evt); err != nil {
+				c.logger.Error("处理安全属性字段变更失败", elog.String("key", key), elog.Any("err", err))
+			}
+			if !idleTimer.Stop() {
+				<-idleTimer.C
+			}
+			idleTimer.Reset(c.idleDuration)
+
+		case <-idleTimer.C:
+			// 没有新事件，退出并清理
+			c.workers.Delete(key)
+			close(ch)
+			return
+		}
+	}
+}
+
+func (c *FieldSecureAttrChangeConsumer) handleEvent(ctx context.Context, evt attribute.Event) error {
+	for {
+		// 无论修改状态是加密或解密，都进行一次解密处理，BatchUpdate会在进行进行加密解密的处理
+		resources, err := c.svc.ListAndDecryptBeforeUtime(ctx, evt.TiggerTime, []string{evt.FieldUid},
 			evt.ModelUid, c.offset, c.limit)
 		if err != nil {
 			return fmt.Errorf("field secure attr change list resources failed: %w", err)
@@ -93,11 +144,9 @@ func (c *FieldSecureAttrChangeConsumer) Process(ctx context.Context, evt attribu
 			return fmt.Errorf("field secure attr change: batch update failed: %w", err)
 		}
 
-		// 如果不足一页，说明到末尾了
 		if int64(len(resources)) < c.limit {
 			break
 		}
 	}
-
 	return nil
 }

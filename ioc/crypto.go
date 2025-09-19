@@ -25,6 +25,20 @@ func InitModuleCrypto() *cryptox.CryptoRegistry {
 		panic(fmt.Errorf("unable to decode into struct: %v", err))
 	}
 
+	// 验证配置
+	validateConfig := func(ec EncryptionConfig, name string) {
+		if ec.Version == "" {
+			panic(fmt.Errorf("%s encryption version is required", name))
+		}
+		if ec.Key == "" {
+			panic(fmt.Errorf("%s encryption key is required", name))
+		}
+	}
+
+	validateConfig(cfg.User, "user")
+	validateConfig(cfg.Resource, "resource")
+	validateConfig(cfg.Runner, "runner")
+
 	// 进行注册
 	reg := &cryptox.CryptoRegistry{
 		User: cryptox.NewCryptoManager[string](cfg.User.Version).

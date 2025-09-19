@@ -15,6 +15,9 @@ import (
 //go:generate mockgen -source=./encrypted.go -destination=../../mocks/encrypted.mock.go -package=resourcemocks -typed EncryptedSvc
 type EncryptedSvc interface {
 	Service
+	// ListAndDecryptBeforeUtime 列出指定时间前的资源并解密指定字段
+	ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
+		offset, limit int64) ([]domain.Resource, error)
 }
 
 type EncryptedResourceService struct {
@@ -24,17 +27,7 @@ type EncryptedResourceService struct {
 	logger  *elog.Component
 }
 
-func NewEncryptedResourceService(inner Service, attrSvc attribute.Service, crypto cryptox.Crypto[string]) EncryptedSvc {
-	return &EncryptedResourceService{
-		Service: inner,
-		attrSvc: attrSvc,
-		crypto:  crypto,
-		logger:  elog.DefaultLogger,
-	}
-}
-
-func (s *EncryptedResourceService) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
-	offset, limit int64) ([]domain.Resource, error) {
+func (s *EncryptedResourceService) ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
 	resources, err := s.Service.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
 
 	// 无论是否需要解密都进行操作
@@ -48,6 +41,15 @@ func (s *EncryptedResourceService) ListBeforeUtime(ctx context.Context, utime in
 	}
 
 	return resources, nil
+}
+
+func NewEncryptedResourceService(inner Service, attrSvc attribute.Service, crypto cryptox.Crypto[string]) EncryptedSvc {
+	return &EncryptedResourceService{
+		Service: inner,
+		attrSvc: attrSvc,
+		crypto:  crypto,
+		logger:  elog.DefaultLogger,
+	}
 }
 
 func (s *EncryptedResourceService) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {

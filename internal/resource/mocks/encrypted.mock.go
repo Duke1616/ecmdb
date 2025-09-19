@@ -314,6 +314,45 @@ func (c *MockEncryptedSvcFindSecureDataCall) DoAndReturn(f func(context.Context,
 	return c
 }
 
+// ListAndDecryptBeforeUtime mocks base method.
+func (m *MockEncryptedSvc) ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAndDecryptBeforeUtime", ctx, utime, fields, modelUid, offset, limit)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAndDecryptBeforeUtime indicates an expected call of ListAndDecryptBeforeUtime.
+func (mr *MockEncryptedSvcMockRecorder) ListAndDecryptBeforeUtime(ctx, utime, fields, modelUid, offset, limit any) *MockEncryptedSvcListAndDecryptBeforeUtimeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAndDecryptBeforeUtime", reflect.TypeOf((*MockEncryptedSvc)(nil).ListAndDecryptBeforeUtime), ctx, utime, fields, modelUid, offset, limit)
+	return &MockEncryptedSvcListAndDecryptBeforeUtimeCall{Call: call}
+}
+
+// MockEncryptedSvcListAndDecryptBeforeUtimeCall wrap *gomock.Call
+type MockEncryptedSvcListAndDecryptBeforeUtimeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockEncryptedSvcListAndDecryptBeforeUtimeCall) Return(arg0 []domain.Resource, arg1 error) *MockEncryptedSvcListAndDecryptBeforeUtimeCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockEncryptedSvcListAndDecryptBeforeUtimeCall) Do(f func(context.Context, int64, []string, string, int64, int64) ([]domain.Resource, error)) *MockEncryptedSvcListAndDecryptBeforeUtimeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockEncryptedSvcListAndDecryptBeforeUtimeCall) DoAndReturn(f func(context.Context, int64, []string, string, int64, int64) ([]domain.Resource, error)) *MockEncryptedSvcListAndDecryptBeforeUtimeCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListBeforeUtime mocks base method.
 func (m *MockEncryptedSvc) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
 	m.ctrl.T.Helper()

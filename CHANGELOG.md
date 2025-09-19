@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.9.1](https://github.com/Duke1616/ecmdb/releases/tag/v1.9.1) - 2025-09-19
+
+- [`360b985`](https://github.com/Duke1616/ecmdb/commit/360b985205eac094d538999d446908e43c7321a4) chore: 优化代码逻辑，提高健壮性
+- [`27af294`](https://github.com/Duke1616/ecmdb/commit/27af29487a1cff6510ae5ed1bffcb272e95dabc4) fix: 修复资产数据加密逻辑，模型字段属性变更，资产同步变更，封装加密工具
+- [`fb76249`](https://github.com/Duke1616/ecmdb/commit/fb76249c4afc0cc764cccdd764ae6c5d7f843b1b) fix: 资产部分接口增加数据加密解密, 重新封装 cryptox 方法
+- [`e7f626f`](https://github.com/Duke1616/ecmdb/commit/e7f626f6332352187aa4702341bd34dcc4c116e1) chore: 删除打包二进制文件
+- [`382a032`](https://github.com/Duke1616/ecmdb/commit/382a0322ae1a39392056b44273b5f795010e5259) fix: 修复资产数据加密字段未真实加密情况，对于历史存在数据提供修复方式
+- [`92e5b45`](https://github.com/Duke1616/ecmdb/commit/92e5b45aff122877a4774c627623a55247730009) chore: 优化错误提示
+- [`649938d`](https://github.com/Duke1616/ecmdb/commit/649938dc3d681a130e9ab60598fe6ab37f659ae9) chore: 修改获取进度图方式，代码更严谨
+
 ## [v1.9.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.9.0) - 2025-09-15
 
 - [`806715f`](https://github.com/Duke1616/ecmdb/commit/806715f73bae807d0b93faa9948d8734aacfbdcd) refactor: 排班系统，使用 username 存储，替换 id 统一管理

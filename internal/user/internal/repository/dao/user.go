@@ -161,8 +161,16 @@ func (dao *userDao) UpdateUser(ctx context.Context, req User) (int64, error) {
 
 func (dao *userDao) FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]User, error) {
 	col := dao.db.Collection(UserCollection)
-	filter := bson.M{"department_id": departmentId}
-	cursor, err := col.Find(ctx, filter)
+	filter := bson.M{}
+	if departmentId != 0 {
+		filter = bson.M{"department_id": departmentId}
+	}
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+	cursor, err := col.Find(ctx, filter, opts)
 	var result []User
 	if err = cursor.All(ctx, &result); err != nil {
 		return nil, fmt.Errorf("解码错误: %w", err)
@@ -175,7 +183,10 @@ func (dao *userDao) FindByDepartmentId(ctx context.Context, offset, limit int64,
 
 func (dao *userDao) CountByDepartmentId(ctx context.Context, departmentId int64) (int64, error) {
 	col := dao.db.Collection(UserCollection)
-	filter := bson.M{"department_id": departmentId}
+	filter := bson.M{}
+	if departmentId != 0 {
+		filter = bson.M{"department_id": departmentId}
+	}
 
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {

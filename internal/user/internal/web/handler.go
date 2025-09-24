@@ -184,7 +184,9 @@ func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result
 		return userOrPassErrorResult, err
 	}
 
-	jwtData := make(map[string]string)
+	jwtData := map[string]string{
+		"username": user.Username,
+	}
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.Id).SetJwtData(jwtData).Build()
 	if err != nil {
 		return systemErrorResult, err
@@ -374,7 +376,9 @@ func (h *Handler) LoginLdap(ctx *gin.Context, req LoginLdapReq) (ginx.Result, er
 	}
 
 	// 生成session
-	jwtData := make(map[string]string, 0)
+	jwtData := map[string]string{
+		"username": user.Username,
+	}
 	_, err = session.NewSessionBuilder(&gctx.Context{Context: ctx}, user.Id).SetJwtData(jwtData).Build()
 	if err != nil {
 		return systemErrorResult, err

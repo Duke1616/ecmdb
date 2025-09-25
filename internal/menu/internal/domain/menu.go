@@ -15,6 +15,21 @@ const (
 	BUTTON Type = 3
 )
 
+type Action uint8
+
+func (s Action) ToUint8() uint8 {
+	return uint8(s)
+}
+
+const (
+	// CREATE 创建动作，比如 ADMIN 超级管理员自动权限录入
+	CREATE Action = 1
+	// WRITE 写入动作
+	WRITE Action = 2
+	// DELETE 全部删除、重新录入数据
+	DELETE Action = 3
+)
+
 type Status uint8
 
 func (s Status) ToUint8() uint8 {
@@ -43,9 +58,10 @@ type Menu struct {
 }
 
 type Endpoint struct {
-	Path   string
-	Method string
-	Desc   string
+	Path     string
+	Method   string
+	Resource string
+	Desc     string
 }
 
 type Meta struct {

@@ -19,12 +19,25 @@ type MenuRepository interface {
 	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
 
+	UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []domain.Endpoint) (int64, error)
+
 	// InjectMenu 注入菜单数据
 	InjectMenu(ctx context.Context, ms []domain.Menu) error
 }
 
 type menuRepository struct {
 	dao dao.MenuDAO
+}
+
+func (repo *menuRepository) UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []domain.Endpoint) (int64, error) {
+	return repo.dao.UpdateMenuEndpoints(ctx, id, slice.Map(endpoints, func(idx int, src domain.Endpoint) dao.Endpoint {
+		return dao.Endpoint{
+			Path:     src.Path,
+			Method:   src.Method,
+			Resource: src.Resource,
+			Desc:     src.Desc,
+		}
+	}))
 }
 
 func (repo *menuRepository) ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error) {
@@ -105,9 +118,10 @@ func (repo *menuRepository) toEntity(req domain.Menu) dao.Menu {
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src domain.Endpoint) dao.Endpoint {
 			return dao.Endpoint{
-				Path:   src.Path,
-				Method: src.Method,
-				Desc:   src.Desc,
+				Path:     src.Path,
+				Method:   src.Method,
+				Resource: src.Resource,
+				Desc:     src.Desc,
 			}
 		}),
 	}
@@ -134,9 +148,10 @@ func (repo *menuRepository) toDomain(req dao.Menu) domain.Menu {
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src dao.Endpoint) domain.Endpoint {
 			return domain.Endpoint{
-				Path:   src.Path,
-				Method: src.Method,
-				Desc:   src.Desc,
+				Path:     src.Path,
+				Method:   src.Method,
+				Resource: src.Resource,
+				Desc:     src.Desc,
 			}
 		}),
 	}

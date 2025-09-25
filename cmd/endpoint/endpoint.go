@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const Resource = "CMDB"
+
 var Cmd = &cobra.Command{
 	Use:   "endpoint",
 	Short: "ecmdb endpoint",
@@ -31,8 +33,9 @@ func initEndpoint(web *gin.Engine, svc endpoint.Service) error {
 	routes := web.Routes()
 	for _, route := range routes {
 		_, err := svc.RegisterEndpoint(context.Background(), endpoint.Endpoint{
-			Method: route.Method,
-			Path:   route.Path,
+			Method:   route.Method,
+			Path:     route.Path,
+			Resource: Resource,
 		})
 
 		if err != nil {

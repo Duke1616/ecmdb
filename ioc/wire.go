@@ -79,7 +79,7 @@ func InitApp() (*App, error) {
 		task.InitModule,
 		wire.FieldsOf(new(*task.Module), "Hdl", "StartTaskJob", "PassProcessTaskJob"),
 		policy.InitModule,
-		wire.FieldsOf(new(*policy.Module), "Hdl", "Svc"),
+		wire.FieldsOf(new(*policy.Module), "Hdl", "Svc", "RpcServer"),
 		menu.InitModule,
 		wire.FieldsOf(new(*menu.Module), "Hdl"),
 		endpoint.InitModule,

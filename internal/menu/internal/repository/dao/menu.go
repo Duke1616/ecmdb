@@ -27,10 +27,30 @@ type MenuDAO interface {
 
 	// InjectMenu 注入菜单数据
 	InjectMenu(ctx context.Context, ms []Menu) error
+
+	// UpdateMenuEndpoints 同步菜单API数据变更
+	UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []Endpoint) (int64, error)
 }
 
 type menuDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *menuDAO) UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []Endpoint) (int64, error) {
+	col := dao.db.Collection(MenuCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"endpoints": endpoints,
+			"utime":     time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": id}
+	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return 0, fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return count.ModifiedCount, nil
 }
 
 func (dao *menuDAO) ListByPlatform(ctx context.Context, platform string) ([]Menu, error) {
@@ -183,7 +203,6 @@ func (dao *menuDAO) UpdateMenu(ctx context.Context, t Menu) (int64, error) {
 			"type":      t.Type,
 			"status":    t.Status,
 			"meta":      t.Meta,
-			"endpoints": t.Endpoints,
 			"utime":     time.Now().UnixMilli(),
 		},
 	}
@@ -233,9 +252,10 @@ type Menu struct {
 }
 
 type Endpoint struct {
-	Path   string `bson:"path"`
-	Method string `bson:"method"`
-	Desc   string `bson:"desc"`
+	Path     string `bson:"path"`
+	Method   string `bson:"method"`
+	Resource string `bson:"resource"`
+	Desc     string `bson:"desc"`
 }
 
 type Meta struct {

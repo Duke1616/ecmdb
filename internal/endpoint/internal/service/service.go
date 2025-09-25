@@ -10,7 +10,7 @@ import (
 
 type Service interface {
 	RegisterEndpoint(ctx context.Context, req domain.Endpoint) (int64, error)
-	RegisterMutilEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
+	RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
 	ListResource(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error)
 }
 
@@ -24,7 +24,7 @@ func NewService(repo repository.EndpointRepository) Service {
 	}
 }
 
-func (s *service) RegisterMutilEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error) {
+func (s *service) RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

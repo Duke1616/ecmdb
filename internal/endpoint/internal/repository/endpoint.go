@@ -10,7 +10,7 @@ import (
 
 type EndpointRepository interface {
 	CreateEndpoint(ctx context.Context, req domain.Endpoint) (int64, error)
-	CreateMutilEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
+	RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
 	ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, error)
 	Total(ctx context.Context, path string) (int64, error)
 }
@@ -25,7 +25,7 @@ func NewEndpointRepository(dao dao.EndpointDAO) EndpointRepository {
 	}
 }
 
-func (repo *endpointRepository) CreateMutilEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error) {
+func (repo *endpointRepository) RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

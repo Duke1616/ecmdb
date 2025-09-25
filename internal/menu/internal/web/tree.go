@@ -77,9 +77,10 @@ func toVoMenu(req domain.Menu) *Menu {
 		},
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src domain.Endpoint) Endpoint {
 			return Endpoint{
-				Path:   src.Path,
-				Method: src.Method,
-				Desc:   src.Desc,
+				Path:     src.Path,
+				Method:   src.Method,
+				Resource: src.Resource,
+				Desc:     src.Desc,
 			}
 		}),
 		Children: []*Menu{},

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package policy.v1;
+option go_package="policy/v1;policy";
+
+message AuthorizeReq {
+  // 模版ID
+  string user_id = 1;
+  // 流程ID
+  string path  = 2;
+  // 工单参数
+  string method = 3;
+}
+
+message Response {
+  bool allowed = 1;
+}
+
+service PolicyService {
+  // 创建工单
+  rpc Authorize(AuthorizeReq) returns (Response);
+}

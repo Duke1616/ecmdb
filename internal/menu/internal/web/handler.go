@@ -20,11 +20,38 @@ func NewHandler(svc service.Service) *Handler {
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/menu")
+	// 创建接口
 	g.POST("/create", ginx.WrapBody[CreateMenuReq](h.CreateMenu))
+
+	// 修改接口
 	g.POST("/update", ginx.WrapBody[UpdateMenuReq](h.UpdateMenu))
+
+	// 删除接口
 	g.POST("/delete", ginx.WrapBody[DeleteMenuReq](h.DeleteMenu))
+
+	// 获取菜单列表，树形结构
 	g.POST("/list/tree", ginx.Wrap(h.ListMenuTree))
+
+	// 根据平台获取
 	g.POST("/list/tree/by_platform", ginx.WrapBody[ListByPlatformReq](h.ListByPlatform))
+
+	// 改变 API 接口
+	g.POST("/change_endpoints", ginx.WrapBody[ChangeEndpointsReq](h.ChangeEndpointsReq))
+}
+
+func (h *Handler) ChangeEndpointsReq(ctx *gin.Context, req ChangeEndpointsReq) (ginx.Result, error) {
+	count, err := h.svc.ChangeMenuEndpoints(ctx, req.ID, domain.Action(req.Action), slice.Map(req.Endpoints,
+		func(idx int, src Endpoint) domain.Endpoint {
+			return h.toEndpoint(src)
+		}))
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg:  "success",
+		Data: count,
+	}, nil
 }
 
 func (h *Handler) CreateMenu(ctx *gin.Context, req CreateMenuReq) (ginx.Result, error) {
@@ -112,6 +139,15 @@ func (h *Handler) toDomain(req CreateMenuReq) domain.Menu {
 				Desc:   src.Desc,
 			}
 		}),
+	}
+}
+
+func (h *Handler) toEndpoint(req Endpoint) domain.Endpoint {
+	return domain.Endpoint{
+		Path:     req.Path,
+		Method:   req.Method,
+		Resource: req.Resource,
+		Desc:     req.Desc,
 	}
 }
 

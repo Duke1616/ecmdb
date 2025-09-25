@@ -12,8 +12,8 @@ const (
 	CREATE Action = 1
 	// WRITE 写入动作
 	WRITE Action = 2
-	// REWRITE 全部删除、重新录入数据
-	REWRITE Action = 3
+	// DELETE 全部删除、重新录入数据
+	DELETE Action = 3
 )
 
 type MenuEvent struct {
@@ -27,6 +27,7 @@ type Menu struct {
 }
 
 type Endpoint struct {
-	Path   string `json:"path"`
-	Method string `json:"method"`
+	Path     string `json:"path"`
+	Method   string `json:"method"`
+	Resource string `json:"resource"`
 }

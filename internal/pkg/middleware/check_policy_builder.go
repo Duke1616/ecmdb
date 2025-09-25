@@ -34,7 +34,6 @@ func (c *CheckPolicyMiddlewareBuilder) Build() gin.HandlerFunc {
 			c.logger.Debug("用户未登录", elog.FieldErr(err))
 			return
 		}
-
 		// 获取请求的路径
 		path := ctx.Request.URL.Path
 		// 获取请求的HTTP方法

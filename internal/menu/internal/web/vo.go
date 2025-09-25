@@ -34,9 +34,10 @@ type UpdateMenuReq struct {
 }
 
 type Endpoint struct {
-	Path   string `json:"path"`
-	Method string `json:"method"`
-	Desc   string `json:"desc"`
+	Path     string `json:"path"`
+	Method   string `json:"method"`
+	Resource string `json:"resource"`
+	Desc     string `json:"desc"`
 }
 
 type Meta struct {
@@ -64,4 +65,10 @@ type Menu struct {
 	Meta      Meta       `json:"meta"`
 	Endpoints []Endpoint `json:"endpoints"`
 	Children  []*Menu    `json:"children"`
+}
+
+type ChangeEndpointsReq struct {
+	ID        int64      `json:"id"`
+	Action    uint8      `json:"action"`
+	Endpoints []Endpoint `json:"endpoints"`
 }

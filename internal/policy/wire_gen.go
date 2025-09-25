@@ -7,6 +7,7 @@
 package policy
 
 import (
+	"github.com/Duke1616/ecmdb/internal/policy/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/policy/internal/service"
 	"github.com/Duke1616/ecmdb/internal/policy/internal/web"
 	"github.com/casbin/casbin/v2"
@@ -18,13 +19,15 @@ import (
 func InitModule(enforcer *casbin.SyncedEnforcer) (*Module, error) {
 	serviceService := service.NewService(enforcer)
 	handler := web.NewHandler(serviceService)
+	policyServer := grpc.NewPolicyServer(serviceService)
 	module := &Module{
-		Hdl: handler,
-		Svc: serviceService,
+		Hdl:       handler,
+		Svc:       serviceService,
+		RpcServer: policyServer,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, grpc.NewPolicyServer)

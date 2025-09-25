@@ -19,9 +19,10 @@ type Policies struct {
 }
 
 type Policy struct {
-	Path   string
-	Method string
-	Effect Effect
+	Path     string
+	Method   string
+	Resource string
+	Effect   Effect
 }
 
 type AddGroupingPolicy struct {

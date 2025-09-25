@@ -17,10 +17,8 @@ const (
 	CREATE Action = 1
 	// WRITE 写入动作
 	WRITE Action = 2
-	// REWRITE 全部删除、重新录入数据
-	REWRITE Action = 3
 	// DELETE 全部删除、重新录入数据
-	DELETE Action = 4
+	DELETE Action = 3
 )
 
 type MenuEvent struct {

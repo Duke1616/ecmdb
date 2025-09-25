@@ -13,7 +13,10 @@ import (
 )
 
 type Service interface {
+	// MenuChangeTriggerRoleAndPolicy 菜单绑定 API 发生变化，进行权限同步
 	MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uint8, req domain.Menu) error
+
+	// AddPermissionForRole 对指定的角色添加菜单权限
 	AddPermissionForRole(ctx context.Context, RoleCode string, menuIds []int64) error
 }
 
@@ -31,27 +34,29 @@ func (s *service) AddPermissionForRole(ctx context.Context, RoleCode string, men
 		return err
 	}
 
-	// 根据菜单信息，查询API接口权限，当前只做allow，不考虑deny的情况
-	var policies []policy.Policy
-	uniquePermissions := make(map[policy.Policy]bool)
+	// 先收集所有 endpoints
+	var allEndpoints []menu.Endpoint
 	for _, m := range menus {
-		ps := slice.FilterMap(m.Endpoints, func(idx int, src menu.Endpoint) (policy.Policy, bool) {
-			p := policy.Policy{
-				Path:   src.Path,
-				Method: src.Method,
-				Effect: "allow",
-			}
-			if !uniquePermissions[p] {
-				uniquePermissions[p] = true
-				return p, true
-			}
-
-			return policy.Policy{}, false
-		})
-
-		policies = append(policies, ps...)
+		allEndpoints = append(allEndpoints, m.Endpoints...)
 	}
 
+	// 去重转换
+	uniqueMap := make(map[string]struct{})
+	policies := slice.FilterMap(allEndpoints, func(idx int, src menu.Endpoint) (policy.Policy, bool) {
+		key := fmt.Sprintf("%s:%s:%s", src.Method, src.Path, src.Resource)
+		if _, exists := uniqueMap[key]; exists {
+			return policy.Policy{}, false
+		}
+		uniqueMap[key] = struct{}{}
+		return policy.Policy{
+			Path:     src.Path,
+			Resource: src.Resource,
+			Method:   src.Method,
+			Effect:   "allow",
+		}, true
+	})
+
+	// 同步权限
 	_, err = s.policySvc.CreateOrUpdateFilteredPolicies(ctx, policy.Policies{
 		RoleCode: RoleCode,
 		Policies: policies,
@@ -79,7 +84,7 @@ func (s *service) MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uin
 		if err != nil {
 			return err
 		}
-	case domain.REWRITE.ToUint8():
+	case domain.DELETE.ToUint8():
 		err = s.reWrite(ctx, roles)
 		if err != nil {
 			return err
@@ -118,9 +123,10 @@ func (s *service) write(ctx context.Context, roles []role.Role, es []domain.Endp
 	for _, r := range roles {
 		policies := slice.Map(es, func(idx int, src domain.Endpoint) policy.Policy {
 			return policy.Policy{
-				Path:   src.Path,
-				Method: src.Method,
-				Effect: "allow",
+				Path:     src.Path,
+				Method:   src.Method,
+				Resource: src.Resource,
+				Effect:   "allow",
 			}
 		})
 

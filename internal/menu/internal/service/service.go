@@ -13,24 +13,72 @@ import (
 )
 
 type Service interface {
+	// CreateMenu 创建菜单
 	CreateMenu(ctx context.Context, req domain.Menu) (int64, error)
+
+	// UpdateMenu 更新菜单
 	UpdateMenu(ctx context.Context, req domain.Menu) (int64, error)
+
+	// ListMenu 获取所有菜单
 	ListMenu(ctx context.Context) ([]domain.Menu, error)
+
 	// ListByPlatform 根据平台获取菜单列表
 	ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error)
+
+	// GetAllMenu 获取所有菜单
 	GetAllMenu(ctx context.Context) ([]domain.Menu, error)
+
+	// FindById 根据 ID 获取详情
 	FindById(ctx context.Context, id int64) (domain.Menu, error)
+
+	// FindByIds 根据 IDS 获取菜单组
 	FindByIds(ctx context.Context, ids []int64) ([]domain.Menu, error)
+
+	// DeleteMenu 删除指定 ID 菜单
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
 
 	// InjectMenu 注入菜单数据
 	InjectMenu(ctx context.Context, ms []domain.Menu) error
+
+	// ChangeMenuEndpoints 变更菜单后端 API 接口
+	ChangeMenuEndpoints(ctx context.Context, id int64, action domain.Action, endpoints []domain.Endpoint) (int64, error)
 }
 
 type service struct {
 	producer event.MenuChangeEventProducer
 	repo     repository.MenuRepository
 	logger   *elog.Component
+}
+
+func (s *service) ChangeMenuEndpoints(ctx context.Context, id int64, action domain.Action, endpoints []domain.Endpoint) (int64, error) {
+	// 获取现有菜单信息
+	menu, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	// 根据 action 类型处理权限变更
+	switch action {
+	case domain.WRITE:
+		// 写入权限：添加新权限（不重复）
+		menu.Endpoints = slice.UnionSet(menu.Endpoints, endpoints)
+	case domain.DELETE:
+		// 删除权限：移除指定权限
+		menu.Endpoints = slice.DiffSet(menu.Endpoints, endpoints)
+	default:
+		return 0, fmt.Errorf("不支持的操作类型: %d", action)
+	}
+
+	// 更新菜单权限
+	count, err := s.repo.UpdateMenuEndpoints(ctx, id, menu.Endpoints)
+	if err != nil {
+		return count, err
+	}
+
+	// 发送权限变更事件
+	s.sendMenuEvent(event.Action(action), id, menu)
+
+	return count, nil
 }
 
 func (s *service) ListByPlatform(ctx context.Context, platform string) ([]domain.Menu, error) {
@@ -81,49 +129,7 @@ func (s *service) DeleteMenu(ctx context.Context, id int64) (int64, error) {
 }
 
 func (s *service) UpdateMenu(ctx context.Context, req domain.Menu) (int64, error) {
-	// 查看现有数据
-	oldMenu, err := s.repo.FindById(ctx, req.Id)
-	if err != nil {
-		return 0, err
-	}
-
-	// 针对老数据生成 map
-	pMap := slice.ToMap(oldMenu.Endpoints, func(element domain.Endpoint) string {
-		return fmt.Sprintf("%s:%s", element.Path, element.Method)
-	})
-
-	// 修改数据
-	count, err := s.repo.UpdateMenu(ctx, req)
-	if err != nil {
-		return count, err
-	}
-
-	// 计算新数据是否包含所有老数据
-	oldNum := 0
-	for _, e := range req.Endpoints {
-		key := fmt.Sprintf("%s:%s", e.Path, e.Method)
-		if _, ok := pMap[key]; ok {
-			oldNum++
-		}
-	}
-
-	// 判定修改是否有变更API接口，如果没有则直接退出
-	if oldNum == len(oldMenu.Endpoints) &&
-		len(req.Endpoints) != 0 &&
-		len(oldMenu.Endpoints) != 0 &&
-		len(oldMenu.Endpoints) == len(req.Endpoints) {
-		return count, nil
-	}
-
-	// 判断新增数据拥有所有的老数据，并且新增是要大于老数据，那么就新增角色
-	// 否则重新生成角色菜单对应API权限
-	if oldNum == len(oldMenu.Endpoints) && len(req.Endpoints) > len(oldMenu.Endpoints) {
-		go s.sendMenuEvent(event.WRITE, req.Id, req)
-	} else {
-		go s.sendMenuEvent(event.REWRITE, req.Id, req)
-	}
-
-	return count, nil
+	return s.repo.UpdateMenu(ctx, req)
 }
 
 func (s *service) sendMenuEvent(action event.Action, id int64, menu domain.Menu) {

@@ -91,7 +91,7 @@ func InitApp() (*App, error) {
 	}
 	handler3 := workerModule.Hdl
 	relationTypeHandler := relationModule.RTHdl
-	redisearchClient := InitRediSearch()
+	redisearchClient := InitRedisSearch()
 	config := InitLdapConfig()
 	departmentModule, err := department.InitModule(mongo)
 	if err != nil {
@@ -213,7 +213,7 @@ func InitApp() (*App, error) {
 // wire.go:
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRediSearch, InitEtcdClient, InitWorkWx, InitFeishu, InitModuleCrypto)
+	InitRedisSearch, InitEtcdClient, InitWorkWx, InitFeishu, InitModuleCrypto)
 
 func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.NotificationServiceClient {
 	type Config struct {

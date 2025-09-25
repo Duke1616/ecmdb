@@ -36,6 +36,7 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.POST("/system/login", ginx.WrapBody[LoginSystemReq](h.LoginSystem))
 	g.POST("/refresh", ginx.Wrap(h.RefreshAccessToken))
 	g.POST("/register", ginx.WrapBody[RegisterUserReq](h.RegisterUser))
+	g.POST("/logout", ginx.Wrap(h.Logout))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -51,7 +52,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/find/id", ginx.WrapBody[FindByIdReq](h.FindById))
 	g.POST("/find/by_ids", ginx.WrapBody[FindByIdsReq](h.FindByIds))
 	g.POST("/find/department_id", ginx.WrapBody[FindUsersByDepartmentIdReq](h.FindByDepartmentId))
-	g.POST("/logout", ginx.Wrap(h.Logout))
 
 	// 查询 LDAP 用户
 	g.POST("/ldap/search", ginx.WrapBody[SearchLdapUser](h.SearchLdapUser))
@@ -63,8 +63,9 @@ func (h *Handler) Logout(ctx *gin.Context) (ginx.Result, error) {
 	err := h.sp.Destroy(&gctx.Context{
 		Context: ctx,
 	})
+
 	if err != nil {
-		return systemErrorResult, nil
+		return systemErrorResult, err
 	}
 	return ginx.Result{
 		Msg: "OK",
@@ -471,7 +472,7 @@ func (h *Handler) toUpdateDomain(req UpdateUserReq) domain.User {
 	}
 }
 
-func (H *Handler) ToRegisterVo(req RegisterUserReq) domain.User {
+func (h *Handler) ToRegisterVo(req RegisterUserReq) domain.User {
 	return domain.User{
 		Email:        req.Email,
 		Title:        req.Title,

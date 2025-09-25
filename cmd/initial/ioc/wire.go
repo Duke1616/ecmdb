@@ -14,7 +14,7 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRediSearch,
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRedisSearch,
 	ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.InitModuleCrypto)
 
 func InitApp() (*App, error) {

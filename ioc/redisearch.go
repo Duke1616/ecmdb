@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitRediSearch() *redisearch.Client {
+func InitRedisSearch() *redisearch.Client {
 	type Config struct {
 		Addr     string `mapstructure:"addr"`
 		Password string `mapstructure:"password"`

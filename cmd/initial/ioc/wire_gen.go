@@ -22,7 +22,7 @@ import (
 
 func InitApp() (*App, error) {
 	mongo := ioc.InitMongoDB()
-	client := ioc.InitRediSearch()
+	client := ioc.InitRedisSearch()
 	config := ioc.InitLdapConfig()
 	db := ioc.InitMySQLDB()
 	syncedEnforcer := ioc.InitCasbin(db)
@@ -74,4 +74,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRediSearch, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.InitModuleCrypto)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRedisSearch, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.InitModuleCrypto)

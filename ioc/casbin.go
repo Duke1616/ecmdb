@@ -57,18 +57,18 @@ func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {
 		Channel: "/casbin",
 	})
 	if err != nil {
-		panic(err)
+		fmt.Printf("警告: Casbin 策略规则格式错误，需要修复数据: %v\n", err)
 	}
 
 	enforcer, err := casbin.NewSyncedEnforcer(m, adapter)
 	if err != nil {
-		fmt.Printf("警告：Casbin 策略规则格式错误，需要修复数据: %v\n", err)
+		fmt.Printf("警告: Casbin 策略规则格式错误，需要修复数据: %v\n", err)
 	}
 
 	_ = enforcer.SetWatcher(w)
 	enforcer.EnableLog(false)
 	if err = enforcer.LoadPolicy(); err != nil {
-		fmt.Printf("警告：Casbin 策略规则格式错误，需要修复数据: %v\n", err)
+		fmt.Printf("警告: Casbin 策略规则格式错误，需要修复数据: %v\n", err)
 	}
 
 	_ = w.SetUpdateCallback(updateCallback)

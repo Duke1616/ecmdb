@@ -68,7 +68,7 @@ func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {
 	_ = enforcer.SetWatcher(w)
 	enforcer.EnableLog(false)
 	if err = enforcer.LoadPolicy(); err != nil {
-		panic(err)
+		fmt.Printf("warning: load policy failed: %v\n", err)
 	}
 
 	_ = w.SetUpdateCallback(updateCallback)

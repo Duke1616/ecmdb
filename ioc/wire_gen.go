@@ -34,6 +34,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
 	"go.etcd.io/etcd/client/v3"
@@ -220,6 +221,7 @@ func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.N
 	type Config struct {
 		Target string `mapstructure:"target"`
 		Secure bool   `mapstructure:"secure"`
+		Key    string `mapstructure:"key"`
 	}
 	var cfg Config
 	err := viper.UnmarshalKey("grpc.client.ealert", &cfg)
@@ -232,7 +234,9 @@ func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.N
 		panic(err)
 	}
 
-	opts := []grpc.DialOption{grpc.WithResolvers(rs)}
+	jwtInterceptor := jwt.NewClientInterceptorBuilder(cfg.Key)
+	opts := []grpc.DialOption{grpc.WithResolvers(rs), grpc.WithUnaryInterceptor(jwtInterceptor.UnaryClientInterceptor())}
+
 	if !cfg.Secure {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}

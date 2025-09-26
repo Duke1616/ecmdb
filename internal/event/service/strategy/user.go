@@ -18,12 +18,10 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -238,9 +236,7 @@ func (n *UserNotification) send(ctx context.Context, tasks []model.Task,
 	}
 
 	// 发送消息
-	jwtKey := viper.Get("grpc.client.ealert.key")
-	jwtCtx := jwt.ContextWithJWT(ctx, jwtKey.(string))
-	_, err = n.notificationSvc.SendNotification(jwtCtx, &notificationv1.SendNotificationRequest{
+	_, err = n.notificationSvc.SendNotification(ctx, &notificationv1.SendNotificationRequest{
 		Notification: &notificationv1.Notification{
 			Key:            "ecmdb",
 			Receivers:      userIds,

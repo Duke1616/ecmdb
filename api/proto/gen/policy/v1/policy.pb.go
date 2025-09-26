@@ -23,12 +23,14 @@ const (
 
 type AuthorizeReq struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 模版ID
+	// 用户ID
 	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// 流程ID
+	// 路径
 	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	// 工单参数
-	Method        string `protobuf:"bytes,3,opt,name=method,proto3" json:"method,omitempty"`
+	// 方法
+	Method string `protobuf:"bytes,3,opt,name=method,proto3" json:"method,omitempty"`
+	// 资源
+	Resource      string `protobuf:"bytes,4,opt,name=resource,proto3" json:"resource,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -84,6 +86,13 @@ func (x *AuthorizeReq) GetMethod() string {
 	return ""
 }
 
+func (x *AuthorizeReq) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
 type Response struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Allowed       bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
@@ -132,11 +141,12 @@ var File_policy_v1_policy_proto protoreflect.FileDescriptor
 
 const file_policy_v1_policy_proto_rawDesc = "" +
 	"\n" +
-	"\x16policy/v1/policy.proto\x12\tpolicy.v1\"S\n" +
+	"\x16policy/v1/policy.proto\x12\tpolicy.v1\"o\n" +
 	"\fAuthorizeReq\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
-	"\x06method\x18\x03 \x01(\tR\x06method\"$\n" +
+	"\x06method\x18\x03 \x01(\tR\x06method\x12\x1a\n" +
+	"\bresource\x18\x04 \x01(\tR\bresource\"$\n" +
 	"\bResponse\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed2J\n" +
 	"\rPolicyService\x129\n" +

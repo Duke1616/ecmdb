@@ -24,7 +24,7 @@ func (f *PolicyServer) Register(server grpc.ServiceRegistrar) {
 
 func (f *PolicyServer) Authorize(ctx context.Context, request *policyv1.AuthorizeReq) (
 	*policyv1.Response, error) {
-	authorize, err := f.policySvc.Authorize(ctx, request.UserId, request.Path, request.Method)
+	authorize, err := f.policySvc.Authorize(ctx, request.UserId, request.Path, request.Method, request.Resource)
 	if err != nil {
 		return &policyv1.Response{Allowed: false}, err
 	}

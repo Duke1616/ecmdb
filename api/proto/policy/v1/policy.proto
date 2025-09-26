@@ -4,12 +4,14 @@ package policy.v1;
 option go_package="policy/v1;policy";
 
 message AuthorizeReq {
-  // 模版ID
+  // 用户ID
   string user_id = 1;
-  // 流程ID
+  // 路径
   string path  = 2;
-  // 工单参数
+  // 方法
   string method = 3;
+  // 资源
+  string resource = 4;
 }
 
 message Response {

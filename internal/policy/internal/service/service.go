@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/Duke1616/ecmdb/internal/policy/internal/domain"
@@ -17,7 +18,7 @@ type Service interface {
 	// CreateOrUpdateFilteredPolicies 通过过滤完成新增修改删除
 	CreateOrUpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error)
 	// Authorize 权限校验
-	Authorize(ctx context.Context, userId, path, method string) (bool, error)
+	Authorize(ctx context.Context, userId, path, method, resource string) (bool, error)
 	// GetImplicitPermissionsForUser 获取用户拥有的所有接口权限
 	GetImplicitPermissionsForUser(ctx context.Context, userId int64) ([]domain.Policy, error)
 	// GetPermissionsForRole 获取角色拥有的所有权限
@@ -41,9 +42,10 @@ func (s *service) GetPermissionsForRole(ctx context.Context, roleCode string) ([
 
 	return slice.Map(pers, func(idx int, src []string) domain.Policy {
 		return domain.Policy{
-			Path:   src[1],
-			Method: src[2],
-			Effect: domain.Effect(src[3]),
+			Path:     src[1],
+			Method:   src[2],
+			Resource: src[3],
+			Effect:   domain.Effect(src[4]),
 		}
 	}), err
 
@@ -51,31 +53,32 @@ func (s *service) GetPermissionsForRole(ctx context.Context, roleCode string) ([
 
 func (s *service) GetImplicitPermissionsForUser(ctx context.Context, userId int64) ([]domain.Policy, error) {
 	pers, err := s.enforcer.GetImplicitPermissionsForUser(strconv.FormatInt(userId, 10))
-	uniquePermissions := make(map[domain.Policy]bool)
+
+	uniqueMap := make(map[string]struct{})
 	return slice.FilterMap(pers, func(idx int, src []string) (domain.Policy, bool) {
-		policy := domain.Policy{
-			Path:   src[1],
-			Method: src[2],
-			Effect: domain.Effect(src[3]),
+		key := fmt.Sprintf("%s:%s:%s", src[1], src[2], src[3])
+		if _, exists := uniqueMap[key]; exists {
+			return domain.Policy{}, false
 		}
-
-		if !uniquePermissions[policy] {
-			uniquePermissions[policy] = true
-			return policy, true
-		}
-
-		return policy, false
+		uniqueMap[key] = struct{}{}
+		return domain.Policy{
+			Path:     src[1],
+			Method:   src[2],
+			Resource: src[3],
+			Effect:   domain.Effect(src[4]),
+		}, true
 	}), err
 }
 
-func (s *service) Authorize(ctx context.Context, userId, path, method string) (bool, error) {
-	return s.enforcer.Enforce(userId, path, method)
+func (s *service) Authorize(ctx context.Context, userId, path, method, resource string) (bool, error) {
+	return s.enforcer.Enforce(userId, path, method, resource)
 }
 
 func (s *service) AddPolicies(ctx context.Context, req domain.Policies) (bool, error) {
 	var policies [][]string
 	for _, policy := range req.Policies {
-		policies = append(policies, []string{req.RoleCode, policy.Path, policy.Method, policy.Effect.ToString()})
+		policies = append(policies, []string{req.RoleCode, policy.Path, policy.Method, policy.Resource,
+			policy.Effect.ToString()})
 	}
 
 	ok, err := s.enforcer.RemovePolicies(policies)
@@ -93,7 +96,8 @@ func (s *service) AddPolicies(ctx context.Context, req domain.Policies) (bool, e
 func (s *service) CreateOrUpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error) {
 	var policies [][]string
 	for _, policy := range req.Policies {
-		policies = append(policies, []string{req.RoleCode, policy.Path, policy.Method, policy.Effect.ToString()})
+		policies = append(policies, []string{req.RoleCode, policy.Path, policy.Method, policy.Resource,
+			policy.Effect.ToString()})
 	}
 	ok, err := s.enforcer.UpdateFilteredPolicies(policies, 0, req.RoleCode)
 	if err != nil {

@@ -95,7 +95,7 @@ func (h *Handler) UpdatePolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, 
 }
 
 func (h *Handler) Authorize(ctx *gin.Context, req AuthorizeReq) (ginx.Result, error) {
-	authorize, err := h.svc.Authorize(ctx, req.UserId, req.Path, req.Method)
+	authorize, err := h.svc.Authorize(ctx, req.UserId, req.Path, req.Method, req.Resource)
 	if err != nil {
 		return systemErrorResult, err
 	}

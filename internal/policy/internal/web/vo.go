@@ -34,9 +34,10 @@ type GetPermissionsForRoleReq struct {
 }
 
 type AuthorizeReq struct {
-	UserId string `json:"user_id"`
-	Path   string `json:"path"`
-	Method string `json:"method"`
+	UserId   string `json:"user_id"`
+	Path     string `json:"path"`
+	Method   string `json:"method"`
+	Resource string `json:"resource"`
 }
 
 type RetrievePolicies struct {

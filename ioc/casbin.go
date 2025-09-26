@@ -16,10 +16,10 @@ import (
 
 const (
 	rbacModel = `[request_definition]
-r = sub, obj, act
+r = sub, obj, act, res
 
 [policy_definition]
-p = sub, obj, act, eft
+p = sub, obj, act, res, eft
 
 [role_definition]
 g = _, _
@@ -28,7 +28,7 @@ g = _, _
 e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
 
 [matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.sub == "root"`
+m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act && r.res == p.res || r.sub == "root"`
 )
 
 func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {

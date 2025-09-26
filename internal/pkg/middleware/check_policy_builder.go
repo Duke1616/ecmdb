@@ -40,7 +40,7 @@ func (c *CheckPolicyMiddlewareBuilder) Build() gin.HandlerFunc {
 		method := ctx.Request.Method
 		// 获取用户ID
 		uid := sess.Claims().Uid
-		ok, err := c.svc.Authorize(ctx.Request.Context(), strconv.FormatInt(uid, 10), path, method)
+		ok, err := c.svc.Authorize(ctx.Request.Context(), strconv.FormatInt(uid, 10), path, method, "CMDB")
 		if err != nil || !ok {
 			gCtx.AbortWithStatus(http.StatusForbidden)
 			c.logger.Debug("用户无权限", elog.FieldErr(err))

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/Duke1616/ecmdb/cmd/backup"
 	"github.com/Duke1616/ecmdb/cmd/endpoint"
 	"github.com/Duke1616/ecmdb/cmd/initial"
 	"github.com/Duke1616/ecmdb/cmd/repair"
@@ -46,6 +47,7 @@ func Execute(version string) {
 	cobra.OnInitialize(initAll)
 	rootCmd.AddCommand(start.Cmd)
 	rootCmd.AddCommand(initial.Cmd)
+	rootCmd.AddCommand(backup.Cmd)
 	rootCmd.AddCommand(endpoint.Cmd)
 	rootCmd.AddCommand(repair.Cmd)
 	err := rootCmd.Execute()

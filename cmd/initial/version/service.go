@@ -8,7 +8,10 @@ import (
 )
 
 type Service interface {
+	// CreateOrUpdateVersion 创建或更新版本信息
 	CreateOrUpdateVersion(ctx context.Context, version string) error
+
+	// GetVersion 获取当前版本
 	GetVersion(ctx context.Context) (string, error)
 }
 

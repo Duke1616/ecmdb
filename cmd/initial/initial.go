@@ -5,14 +5,16 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/cmd/initial/full"
-	"github.com/Duke1616/ecmdb/cmd/initial/incr"
+	"github.com/Duke1616/ecmdb/cmd/initial/incr/register"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/spf13/cobra"
 )
 
 var (
-	debug      bool
-	TagVersion string
+	debug         bool
+	TagVersion    string
+	targetVersion string
+	dryRun        bool
 )
 
 var Cmd = &cobra.Command{
@@ -28,12 +30,31 @@ var Cmd = &cobra.Command{
 		currentVersion, err := app.VerSvc.GetVersion(context.Background())
 		cobra.CheckErr(err)
 
+		if dryRun {
+			fmt.Printf("🔍 干运行模式 - 预览操作\n")
+			fmt.Printf("==================================================\n")
+			fmt.Printf("当前版本: %s\n", currentVersion)
+			if targetVersion != "" {
+				fmt.Printf("目标版本: %s\n", targetVersion)
+			}
+			fmt.Printf("==================================================\n")
+			return
+		}
+
 		// 判断是执行全量 OR 增量数据
 		if currentVersion == "" {
 			complete(app)
-			increment(app, "v1.0.0")
+			if targetVersion != "" {
+				incrementToVersion(app, "v1.0.0", targetVersion)
+			} else {
+				increment(app, "v1.0.0")
+			}
 		} else {
-			increment(app, currentVersion)
+			if targetVersion != "" {
+				incrementToVersion(app, currentVersion, targetVersion)
+			} else {
+				increment(app, currentVersion)
+			}
 		}
 	},
 }
@@ -75,16 +96,119 @@ func increment(app *ioc.App, currentVersion string) {
 	fmt.Printf("==================================================\n")
 
 	// 注册所有增量版本信息
-	incr.RegisterIncr(app)
+	register.RegisterIncr(app)
 
 	// 执行增量数据
-	err := incr.RunIncrementalOperations(currentVersion)
+	err := register.RunIncrementalOperations(currentVersion)
 	cobra.CheckErr(err)
 
 	fmt.Printf("==================================================\n")
 	fmt.Printf("✅ 增量更新完成! 系统已更新到最新版本\n")
 }
 
+// incrementToVersion 执行到指定版本的增量更新
+func incrementToVersion(app *ioc.App, currentVersion, targetVersion string) {
+	fmt.Printf("🔄 开始增量更新到指定版本...\n")
+	fmt.Printf("📊 当前版本: %s\n", currentVersion)
+	fmt.Printf("🎯 目标版本: %s\n", targetVersion)
+	fmt.Printf("==================================================\n")
+
+	// 注册所有增量版本信息
+	register.RegisterIncr(app)
+
+	// 执行增量数据到指定版本
+	err := register.RunIncrementalOperationsToVersion(currentVersion, targetVersion)
+	cobra.CheckErr(err)
+
+	fmt.Printf("==================================================\n")
+	fmt.Printf("✅ 增量更新完成! 系统已更新到版本 %s\n", targetVersion)
+}
+
+// rollbackCmd 回滚命令
+var rollbackCmd = &cobra.Command{
+	Use:   "rollback [version]",
+	Short: "回滚到指定版本",
+	Long:  "回滚系统到指定的版本",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		rollbackVersion := args[0]
+
+		// 初始化 Ioc 注册
+		app, err := ioc.InitApp()
+		cobra.CheckErr(err)
+
+		// 获取当前版本
+		currentVersion, err := app.VerSvc.GetVersion(context.Background())
+		cobra.CheckErr(err)
+
+		fmt.Printf("🔄 开始回滚操作...\n")
+		fmt.Printf("📊 当前版本: %s\n", currentVersion)
+		fmt.Printf("🎯 回滚到版本: %s\n", rollbackVersion)
+		fmt.Printf("==================================================\n")
+
+		if dryRun {
+			fmt.Printf("🔍 干运行模式 - 预览回滚操作\n")
+			fmt.Printf("将回滚以下版本:\n")
+			// 这里可以添加预览逻辑
+			return
+		}
+
+		// 注册所有增量版本信息
+		register.RegisterIncr(app)
+
+		// 执行回滚操作
+		err = register.RollbackToVersion(currentVersion, rollbackVersion)
+		cobra.CheckErr(err)
+
+		fmt.Printf("==================================================\n")
+		fmt.Printf("✅ 回滚完成! 系统已回滚到版本 %s\n", rollbackVersion)
+	},
+}
+
+// listCmd 列表命令
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "列出所有可用版本",
+	Long:  "列出系统中所有可用的版本信息",
+	Run: func(cmd *cobra.Command, args []string) {
+		// 初始化 Ioc 注册
+		app, err := ioc.InitApp()
+		cobra.CheckErr(err)
+
+		// 获取当前版本
+		currentVersion, err := app.VerSvc.GetVersion(context.Background())
+		cobra.CheckErr(err)
+
+		fmt.Printf("📋 版本信息列表\n")
+		fmt.Printf("==================================================\n")
+		fmt.Printf("当前版本: %s\n", currentVersion)
+		fmt.Printf("==================================================\n")
+		fmt.Printf("可用版本:\n")
+
+		// 注册所有增量版本信息
+		register.RegisterIncr(app)
+
+		// 获取所有版本并显示
+		versions := register.GetAllVersions()
+		for i, version := range versions {
+			status := "未执行"
+			if currentVersion != "" && version <= currentVersion {
+				status = "已执行"
+			}
+			if version == currentVersion {
+				status = "当前版本"
+			}
+			fmt.Printf("%d. %s (%s)\n", i+1, version, status)
+		}
+	},
+}
+
 func init() {
 	Cmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "show debug info")
+	Cmd.PersistentFlags().StringVarP(&targetVersion, "version", "v", "", "指定目标版本 (例如: v1.2.3)")
+	Cmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "预览模式，不执行实际操作")
+
+	// 添加子命令
+	Cmd.AddCommand(rollbackCmd)
+	Cmd.AddCommand(listCmd)
 }

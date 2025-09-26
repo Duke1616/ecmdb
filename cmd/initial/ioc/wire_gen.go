@@ -68,6 +68,8 @@ func InitApp() (*App, error) {
 		PermissionSvc: service3,
 		policySvc:     service4,
 		VerSvc:        versionService,
+		GormDB:        db,
+		DB:            mongo,
 	}
 	return app, nil
 }

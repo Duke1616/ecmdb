@@ -7,6 +7,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"gorm.io/gorm"
 )
 
 type App struct {
@@ -16,4 +18,6 @@ type App struct {
 	PermissionSvc permission.Service
 	policySvc     policy.Service
 	VerSvc        version.Service
+	GormDB        *gorm.DB
+	DB            *mongox.Mongo
 }

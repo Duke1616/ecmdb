@@ -48,8 +48,6 @@ if [[ "$JSON_FILE" != /* ]]; then
     JSON_FILE="../../../$JSON_FILE"
 fi
 go run ast_generator.go "$JSON_FILE"
-# 移动生成的文件到正确位置
-mv menu_data.go ../../initial/menu/
 cd ../../..
 
 echo "✅ 菜单代码生成完成!"

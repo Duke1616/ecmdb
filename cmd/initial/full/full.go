@@ -68,7 +68,7 @@ func (i *fullInitial) InitRole() error {
 }
 
 func (i *fullInitial) InitMenu() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	ms := menu.GetInjectMenus()
@@ -76,12 +76,24 @@ func (i *fullInitial) InitMenu() error {
 	fmt.Printf("📊 菜单数据统计: 共 %d 个菜单项\n", len(ms))
 
 	start := time.Now()
-	err := i.App.MenuSvc.InjectMenu(ctx, ms)
+	_, err := i.App.MenuSvc.InjectMenu(ctx, ms)
 	duration := time.Since(start)
 
 	if err != nil {
 		fmt.Printf("❌ 菜单初始化失败: %v\n", err)
 		return err
+	}
+
+	// 计算并存储菜单文件的 MD5 哈希值
+	hashCalculator := menu.NewMenuHashCalculator()
+	menuHash, err := hashCalculator.CalculateProjectMenuHash()
+	if err != nil {
+		fmt.Printf("⚠️  计算菜单哈希失败: %v\n", err)
+	}
+
+	// 存储菜单哈希值到版本信息中
+	if err = i.App.VerSvc.SetMenuHash(ctx, menuHash); err != nil {
+		fmt.Printf("⚠️  存储菜单哈希失败: %v\n", err)
 	}
 
 	fmt.Printf("✅ 菜单初始化完成! 耗时: %v\n", duration)

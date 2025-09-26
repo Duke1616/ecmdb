@@ -2,26 +2,26 @@ package v192
 
 import (
 	"context"
-	"time"
 
 	"github.com/Duke1616/ecmdb/cmd/initial/backup"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
+	"github.com/Duke1616/ecmdb/cmd/initial/menu"
 	"github.com/gotomicro/ego/core/elog"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
 type incrV192 struct {
-	App    *ioc.App
-	logger elog.Component
+	App        *ioc.App
+	ChangeSync *menu.ChangeSync
+	logger     elog.Component
 }
 
 func NewIncrV192(app *ioc.App) incr.InitialIncr {
 	return &incrV192{
-		App:    app,
-		logger: *elog.DefaultLogger,
+		App:        app,
+		ChangeSync: menu.NewChange(app),
+		logger:     *elog.DefaultLogger,
 	}
 }
 
@@ -39,13 +39,13 @@ func (i *incrV192) update(tx *gorm.DB, column string, value interface{}) error {
 func (i *incrV192) Commit(ctx context.Context) error {
 	i.logger.Info("开始执行 Commit", elog.String("版本", i.Version()))
 
-	// 处理 c_menu 集合中的 endpoints
-	if err := i.updateMenuEndpoints(ctx); err != nil {
+	// 处理 casbin_rule 表
+	if err := i.updateCasbinRule(ctx); err != nil {
 		return err
 	}
 
-	// 处理 casbin_rule 表
-	if err := i.updateCasbinRule(ctx); err != nil {
+	// 处理菜单变更
+	if err := i.ChangeSync.UpdateMenu(ctx); err != nil {
 		return err
 	}
 
@@ -82,105 +82,6 @@ func (i *incrV192) updateCasbinRule(ctx context.Context) error {
 
 		return nil
 	})
-}
-
-// updateMenuEndpoints 更新 c_menu 集合中的 endpoints resource 字段
-func (i *incrV192) updateMenuEndpoints(ctx context.Context) error {
-	i.logger.Info("开始处理 c_menu 集合中的 endpoints resource 字段")
-
-	collection := i.App.DB.Collection("c_menu")
-
-	// 查询所有菜单数据
-	cursor, err := collection.Find(ctx, bson.M{})
-	if err != nil {
-		i.logger.Error("查询 c_menu 集合失败", elog.FieldErr(err))
-		return err
-	}
-	defer cursor.Close(ctx)
-
-	// 使用 cursor.All() 获取所有数据
-	var menus []bson.M
-	if err = cursor.All(ctx, &menus); err != nil {
-		i.logger.Error("解码菜单数据失败", elog.FieldErr(err))
-		return err
-	}
-
-	// 准备批量更新操作
-	var bulkOperations []mongo.WriteModel
-	var updatedCount int64
-
-	for _, menu := range menus {
-		// 检查是否有 endpoints 字段
-		endpoints, ok := menu["endpoints"].(bson.A)
-		if !ok || len(endpoints) == 0 {
-			continue
-		}
-
-		// 检查是否需要更新
-		needUpdate := false
-		var updatedEndpoints []bson.M
-		for _, endpoint := range endpoints {
-			if ep, ok := endpoint.(bson.M); ok {
-				resource, _ := ep["resource"].(string)
-				if resource == "" {
-					needUpdate = true
-					ep["resource"] = "CMDB"
-					i.logger.Info("准备更新 endpoint resource 字段",
-						elog.String("path", ep["path"].(string)),
-						elog.String("method", ep["method"].(string)))
-				}
-				updatedEndpoints = append(updatedEndpoints, ep)
-			}
-		}
-
-		if !needUpdate {
-			continue
-		}
-
-		// 添加到批量更新操作
-		filter := bson.M{"id": menu["id"]}
-		update := bson.M{
-			"$set": bson.M{
-				"endpoints": updatedEndpoints,
-				"utime":     time.Now().UnixMilli(),
-			},
-		}
-
-		bulkOperations = append(bulkOperations, mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update))
-	}
-
-	// 执行批量更新
-	if len(bulkOperations) > 0 {
-		i.logger.Info("开始执行批量更新", elog.Int("操作数量", len(bulkOperations)))
-
-		// 分批执行，每批最多 1000 个操作
-		batchSize := 1000
-		for idx := 0; idx < len(bulkOperations); idx += batchSize {
-			end := idx + batchSize
-			if end > len(bulkOperations) {
-				end = len(bulkOperations)
-			}
-
-			batch := bulkOperations[idx:end]
-			result, err := collection.BulkWrite(ctx, batch)
-			if err != nil {
-				i.logger.Error("批量更新失败",
-					elog.FieldErr(err),
-					elog.Int("批次", idx/batchSize+1))
-				return err
-			}
-
-			updatedCount += result.ModifiedCount
-			i.logger.Info("批次更新完成",
-				elog.Int("批次", idx/batchSize+1),
-				elog.Int64("更新数量", result.ModifiedCount))
-		}
-	}
-
-	i.logger.Info("c_menu 集合 endpoints 处理完成", elog.Int64("总更新数量", updatedCount))
-	return nil
 }
 
 func (i *incrV192) Rollback(ctx context.Context) error {

@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
@@ -26,7 +27,7 @@ type MenuDAO interface {
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
 
 	// InjectMenu 注入菜单数据
-	InjectMenu(ctx context.Context, ms []Menu) error
+	InjectMenu(ctx context.Context, ms []Menu) (*mongo.BulkWriteResult, error)
 
 	// UpdateMenuEndpoints 同步菜单API数据变更
 	UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []Endpoint) (int64, error)
@@ -144,50 +145,95 @@ func (dao *menuDAO) ListMenu(ctx context.Context) ([]Menu, error) {
 	return result, nil
 }
 
-func (dao *menuDAO) InjectMenu(ctx context.Context, ms []Menu) error {
+func (dao *menuDAO) InjectMenu(ctx context.Context, ms []Menu) (*mongo.BulkWriteResult, error) {
 	col := dao.db.Collection(MenuCollection)
 	now := time.Now()
 
-	operations := slice.Map(ms, func(idx int, menu Menu) mongo.WriteModel {
-		// 设置时间戳
+	// 先把库里已有的 menu 取出来，映射成 map
+	ids := slice.Map(ms, func(idx int, src Menu) int64 {
+		return src.Id
+	})
+	cur, err := col.Find(ctx, bson.M{"id": bson.M{"$in": ids}})
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	existing := make(map[int64]Menu)
+	for cur.Next(ctx) {
+		var m Menu
+		if err := cur.Decode(&m); err != nil {
+			return nil, err
+		}
+		existing[m.Id] = m
+	}
+
+	// 构造 bulk operations
+	operations := make([]mongo.WriteModel, 0, len(ms))
+	for _, menu := range ms {
 		menu.Ctime = now.UnixMilli()
 		menu.Utime = now.UnixMilli()
 
-		// 使用 upsert 操作：根据 id 查找，存在则更新，不存在则插入
-		filter := bson.M{"id": menu.Id}
-		updateDoc := bson.M{
-			"$set": bson.M{
-				"pid":       menu.Pid,
-				"path":      menu.Path,
-				"name":      menu.Name,
-				"sort":      menu.Sort,
-				"component": menu.Component,
-				"redirect":  menu.Redirect,
-				"status":    menu.Status,
-				"type":      menu.Type,
-				"meta":      menu.Meta,
-				"endpoints": menu.Endpoints,
-				"utime":     menu.Utime,
-			},
-			"$setOnInsert": bson.M{
-				"ctime": menu.Ctime,
-			},
+		old, ok := existing[menu.Id]
+
+		// 计算差异
+		setFields := bson.M{}
+		if !ok || old.Pid != menu.Pid {
+			setFields["pid"] = menu.Pid
+		}
+		if !ok || old.Path != menu.Path {
+			setFields["path"] = menu.Path
+		}
+		if !ok || old.Name != menu.Name {
+			setFields["name"] = menu.Name
+		}
+		if !ok || old.Sort != menu.Sort {
+			setFields["sort"] = menu.Sort
+		}
+		if !ok || old.Component != menu.Component {
+			setFields["component"] = menu.Component
+		}
+		if !ok || old.Redirect != menu.Redirect {
+			setFields["redirect"] = menu.Redirect
+		}
+		if !ok || old.Status != menu.Status {
+			setFields["status"] = menu.Status
+		}
+		if !ok || old.Type != menu.Type {
+			setFields["type"] = menu.Type
+		}
+		if !ok || !reflect.DeepEqual(old.Meta, menu.Meta) {
+			setFields["meta"] = menu.Meta
+		}
+		if !ok || !reflect.DeepEqual(old.Endpoints, menu.Endpoints) {
+			setFields["endpoints"] = menu.Endpoints
 		}
 
-		return &mongo.UpdateOneModel{
-			Filter: filter,
+		// 如果字段有变化，才更新 utime
+		if len(setFields) > 0 {
+			setFields["utime"] = menu.Utime
+		}
+
+		// 构造 update 文档
+		updateDoc := bson.M{}
+		if len(setFields) > 0 {
+			updateDoc["$set"] = setFields
+		}
+		updateDoc["$setOnInsert"] = bson.M{"ctime": menu.Ctime}
+
+		operations = append(operations, &mongo.UpdateOneModel{
+			Filter: bson.M{"id": menu.Id},
 			Update: updateDoc,
 			Upsert: &[]bool{true}[0],
-		}
-	})
-
-	// 执行批量写入
-	_, err := col.BulkWrite(ctx, operations)
-	if err != nil {
-		return fmt.Errorf("批量注入菜单数据失败: %w", err)
+		})
 	}
 
-	return nil
+	if len(operations) == 0 {
+		// 没有任何需要写入的变化
+		return &mongo.BulkWriteResult{}, nil
+	}
+
+	return col.BulkWrite(ctx, operations)
 }
 
 func (dao *menuDAO) UpdateMenu(ctx context.Context, t Menu) (int64, error) {

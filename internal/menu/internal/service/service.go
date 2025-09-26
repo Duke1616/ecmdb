@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/menu/internal/repository"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Service interface {
@@ -38,7 +39,7 @@ type Service interface {
 	DeleteMenu(ctx context.Context, id int64) (int64, error)
 
 	// InjectMenu 注入菜单数据
-	InjectMenu(ctx context.Context, ms []domain.Menu) error
+	InjectMenu(ctx context.Context, ms []domain.Menu) (*mongo.BulkWriteResult, error)
 
 	// ChangeMenuEndpoints 变更菜单后端 API 接口
 	ChangeMenuEndpoints(ctx context.Context, id int64, action domain.Action, endpoints []domain.Endpoint) (int64, error)
@@ -157,7 +158,7 @@ func (s *service) sendMenuEvent(action event.Action, id int64, menu domain.Menu)
 	}
 }
 
-func (s *service) InjectMenu(ctx context.Context, ms []domain.Menu) error {
+func (s *service) InjectMenu(ctx context.Context, ms []domain.Menu) (*mongo.BulkWriteResult, error) {
 	return s.repo.InjectMenu(ctx, ms)
 }
 

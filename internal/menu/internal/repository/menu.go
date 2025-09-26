@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/menu/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type MenuRepository interface {
@@ -22,7 +23,7 @@ type MenuRepository interface {
 	UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []domain.Endpoint) (int64, error)
 
 	// InjectMenu 注入菜单数据
-	InjectMenu(ctx context.Context, ms []domain.Menu) error
+	InjectMenu(ctx context.Context, ms []domain.Menu) (*mongo.BulkWriteResult, error)
 }
 
 type menuRepository struct {
@@ -74,7 +75,7 @@ func (repo *menuRepository) UpdateMenu(ctx context.Context, req domain.Menu) (in
 	return repo.dao.UpdateMenu(ctx, repo.toEntity(req))
 }
 
-func (repo *menuRepository) InjectMenu(ctx context.Context, ms []domain.Menu) error {
+func (repo *menuRepository) InjectMenu(ctx context.Context, ms []domain.Menu) (*mongo.BulkWriteResult, error) {
 	return repo.dao.InjectMenu(ctx, slice.Map(ms, func(idx int, src domain.Menu) dao.Menu {
 		return repo.toEntity(src)
 	}))

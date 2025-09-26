@@ -39,9 +39,10 @@ type MetaData struct {
 
 // EndpointData 表示 endpoints 字段的结构
 type EndpointData struct {
-	Path   string `json:"path"`
-	Method string `json:"method"`
-	Desc   string `json:"desc"`
+	Path     string `json:"path"`
+	Method   string `json:"method"`
+	Resource string `json:"resource"`
+	Desc     string `json:"desc"`
 }
 
 func main() {
@@ -314,6 +315,10 @@ func generateEndpointsSlice(endpoints []EndpointData) ast.Expr {
 				&ast.KeyValueExpr{
 					Key:   &ast.Ident{Name: "Method"},
 					Value: &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(endpoint.Method)},
+				},
+				&ast.KeyValueExpr{
+					Key:   &ast.Ident{Name: "Resource"},
+					Value: &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(endpoint.Resource)},
 				},
 				&ast.KeyValueExpr{
 					Key:   &ast.Ident{Name: "Desc"},

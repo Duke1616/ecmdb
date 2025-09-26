@@ -33,12 +33,30 @@ mkdir -p "$VERSION_DIR"
 
 # 从模板创建文件
 echo "创建实现文件..."
-sed "s/{version}/$VERSION/g" "$TEMPLATE_DIR/incr-v{version}.go.template" > "$VERSION_DIR/incr-$VERSION.go"
-
-echo "创建测试文件..."
 # 提取版本号用于包名（去掉 v 前缀）
 VERSION_PACKAGE=$(echo $VERSION | sed 's/v//' | sed 's/\.//g')
-sed "s/{version}/$VERSION/g; s/v{version}/v$VERSION_PACKAGE/g" "$TEMPLATE_DIR/incr_v{version}_test.go.template" > "$VERSION_DIR/incr_v${VERSION_PACKAGE}_test.go"
+
+# 计算前一个版本和后一个版本
+MAJOR=$(echo $VERSION | sed 's/v\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\1/')
+MINOR=$(echo $VERSION | sed 's/v\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\2/')
+PATCH=$(echo $VERSION | sed 's/v\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\3/')
+
+if [ $PATCH -eq 0 ]; then
+    if [ $MINOR -eq 0 ]; then
+        PREV_VERSION="v$((MAJOR-1)).9.9"
+    else
+        PREV_VERSION="v$MAJOR.$((MINOR-1)).9"
+    fi
+else
+    PREV_VERSION="v$MAJOR.$MINOR.$((PATCH-1))"
+fi
+
+NEXT_VERSION="v$MAJOR.$MINOR.$((PATCH+1))"
+
+sed "s/{version_package}/$VERSION_PACKAGE/g; s/{version}/$VERSION/g; s/backup\.BackupOptions/backup.Options/g; s/return \"vv/return \"v/g" "$TEMPLATE_DIR/incr-v{version}.go.template" > "$VERSION_DIR/incr-$VERSION.go"
+
+echo "创建测试文件..."
+sed "s/{version_package}/$VERSION_PACKAGE/g; s/{version}/$VERSION/g; s/{prev_version}/$PREV_VERSION/g; s/{next_version}/$NEXT_VERSION/g; s/vv/v/g" "$TEMPLATE_DIR/incr_v{version}_test.go.template" > "$VERSION_DIR/incr_v${VERSION_PACKAGE}_test.go"
 
 echo "创建变更文档..."
 sed "s/{version}/$VERSION/g" "$TEMPLATE_DIR/CHANGES.md.template" > "$VERSION_DIR/CHANGES.md"

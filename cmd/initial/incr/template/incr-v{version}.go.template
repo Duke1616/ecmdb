@@ -1,35 +1,31 @@
-package v{version}
+package v{version_package}
 
 import (
 	"context"
-	"time"
 
 	"github.com/Duke1616/ecmdb/cmd/initial/backup"
-	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
+	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/gotomicro/ego/core/elog"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"gorm.io/gorm"
 )
 
-type incrV{version} struct {
+type incrV{version_package} struct {
 	App    *ioc.App
 	logger elog.Component
 }
 
-func NewIncrV{version}(app *ioc.App) incr.InitialIncr {
-	return &incrV{version}{
+func NewIncrV{version_package}(app *ioc.App) incr.InitialIncr {
+	return &incrV{version_package}{
 		App:    app,
 		logger: *elog.DefaultLogger,
 	}
 }
 
-func (i *incrV{version}) Version() string {
+func (i *incrV{version_package}) Version() string {
 	return "v{version}"
 }
 
-func (i *incrV{version}) Commit(ctx context.Context) error {
+func (i *incrV{version_package}) Commit(ctx context.Context) error {
 	i.logger.Info("开始执行 Commit", elog.String("版本", i.Version()))
 	
 	// TODO: 实现版本更新逻辑
@@ -43,7 +39,7 @@ func (i *incrV{version}) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (i *incrV{version}) Rollback(ctx context.Context) error {
+func (i *incrV{version_package}) Rollback(ctx context.Context) error {
 	i.logger.Info("开始执行 Rollback", elog.String("版本", i.Version()))
 	
 	// TODO: 实现版本回滚逻辑
@@ -57,14 +53,14 @@ func (i *incrV{version}) Rollback(ctx context.Context) error {
 	return nil
 }
 
-func (i *incrV{version}) Before(ctx context.Context) error {
+func (i *incrV{version_package}) Before(ctx context.Context) error {
 	i.logger.Info("开始执行 Before，备份数据", elog.String("版本", i.Version()))
 
 	// 创建备份管理器
 	backupManager := backup.NewBackupManager(i.App)
 
 	// 备份选项
-	opts := backup.BackupOptions{
+	opts := backup.Options{
 		Version:     i.Version(),
 		Description: "v{version} 版本更新前备份",
 		Tags: map[string]string{
@@ -72,6 +68,10 @@ func (i *incrV{version}) Before(ctx context.Context) error {
 			"module": "your_module_name",
 		},
 	}
+
+	// 使用 backupManager 和 opts 进行备份
+	_ = backupManager
+	_ = opts
 
 	// TODO: 根据实际需要备份相关数据
 	// 例如：
@@ -89,7 +89,7 @@ func (i *incrV{version}) Before(ctx context.Context) error {
 	return nil
 }
 
-func (i *incrV{version}) After(ctx context.Context) error {
+func (i *incrV{version_package}) After(ctx context.Context) error {
 	i.logger.Info("开始执行 After，更新版本信息", elog.String("版本", i.Version()))
 	if err := i.App.VerSvc.CreateOrUpdateVersion(ctx, i.Version()); err != nil {
 		i.logger.Error("更新版本信息失败", elog.FieldErr(err))

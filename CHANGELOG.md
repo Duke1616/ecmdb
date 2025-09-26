@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.9.2](https://github.com/Duke1616/ecmdb/releases/tag/v1.9.2) - 2025-09-26
+
+- [`1fca303`](https://github.com/Duke1616/ecmdb/commit/1fca303f3e5d806505c78038dc7d7cfdab3c1fb9) fix: 加载策略失败，不直接 panic 处理
+- [`356a48f`](https://github.com/Duke1616/ecmdb/commit/356a48fa7e286a4bc2b9b573cf824c30c364531e) chore: 1.9.2 版本数据修复
+- [`0636773`](https://github.com/Duke1616/ecmdb/commit/06367739fe098961889ec61d379cb9d1902f0bb7) chore: 鉴权 grpc 支持，resouce 传递
+- [`71a1234`](https://github.com/Duke1616/ecmdb/commit/71a1234200369d19fbab944ce2802d1543813aa2) chore: logout 登出
+- [`800d800`](https://github.com/Duke1616/ecmdb/commit/800d8003105f02dd1d8c5e9bdee4d26214ff0270) chore: session data 中存储 username
+- [`a55ca5f`](https://github.com/Duke1616/ecmdb/commit/a55ca5f2b2fe1a1c737b563a979650c7926f9cbb) chore: 兼容 cookie 失败，通过 token 替代的情况
+- [`1eb33e1`](https://github.com/Duke1616/ecmdb/commit/1eb33e15d2f1458fab1e576cf6c4b4712bf2c8fb) chore: ioc session 文件校验
+
 ## [v1.9.1](https://github.com/Duke1616/ecmdb/releases/tag/v1.9.1) - 2025-09-19
 
 - [`360b985`](https://github.com/Duke1616/ecmdb/commit/360b985205eac094d538999d446908e43c7321a4) chore: 优化代码逻辑，提高健壮性

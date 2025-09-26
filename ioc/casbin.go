@@ -34,10 +34,16 @@ m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act && r.res == p.res || r.s
 func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {
 	adapter, err := gormAdapter.NewAdapterByDB(db)
 	if err != nil {
-		panic(err)
+		fmt.Printf("警告: 初始化 Casbin Adapter 失败: %v\n", err)
+		return nil
 	}
 
-	m, _ := model.NewModelFromString(rbacModel)
+	m, err := model.NewModelFromString(rbacModel)
+	if err != nil {
+		fmt.Printf("警告: Casbin 模型解析失败: %v\n", err)
+		return nil
+	}
+
 	type RedisConfig struct {
 		Addr     string `mapstructure:"addr"`
 		DB       int    `mapstructure:"db"`
@@ -46,7 +52,7 @@ func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {
 	}
 	var cfg RedisConfig
 	if err = viper.UnmarshalKey("casbin.redis", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		fmt.Printf("警告: 无法读取 Redis 配置: %v\n", err)
 	}
 
 	w, err := redisWatcher.NewWatcher(cfg.Addr, redisWatcher.WatcherOptions{
@@ -57,25 +63,27 @@ func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {
 		Channel: "/casbin",
 	})
 	if err != nil {
-		fmt.Printf("警告: Casbin 策略规则格式错误，需要修复数据: %v\n", err)
+		panic(err)
 	}
 
 	enforcer, err := casbin.NewSyncedEnforcer(m, adapter)
 	if err != nil {
-		fmt.Printf("警告: Casbin 策略规则格式错误，需要修复数据: %v\n", err)
+		fmt.Printf("警告: Enforcer 初始化失败: %v\n", err)
+		return nil
 	}
 
 	_ = enforcer.SetWatcher(w)
+	_ = w.SetUpdateCallback(updateCallback)
+
 	enforcer.EnableLog(false)
 	if err = enforcer.LoadPolicy(); err != nil {
-		fmt.Printf("警告: Casbin 策略规则格式错误，需要修复数据: %v\n", err)
+		panic(err)
 	}
 
-	_ = w.SetUpdateCallback(updateCallback)
 	enforcer.StartAutoLoadPolicy(time.Minute)
 	return enforcer
 }
 
 func updateCallback(rev string) {
-	//fmt.Printf(rev, "Casbin Watcher")
+	// 可选打印 rev
 }

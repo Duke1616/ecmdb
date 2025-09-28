@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 
 	policyv1 "github.com/Duke1616/ecmdb/api/proto/gen/policy/v1"
 	"github.com/Duke1616/ecmdb/internal/policy/internal/service"

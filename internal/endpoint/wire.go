@@ -5,6 +5,7 @@ package endpoint
 import (
 	"sync"
 
+	"github.com/Duke1616/ecmdb/internal/endpoint/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/endpoint/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/endpoint/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/endpoint/internal/service"
@@ -17,6 +18,7 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewService,
 	repository.NewEndpointRepository,
+	grpc.NewEndpointServer,
 )
 
 func InitModule(db *mongox.Mongo) (*Module, error) {

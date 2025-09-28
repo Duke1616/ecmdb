@@ -26,7 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PolicyServiceClient interface {
-	// 创建工单
+	// API 鉴权
 	Authorize(ctx context.Context, in *AuthorizeReq, opts ...grpc.CallOption) (*Response, error)
 }
 
@@ -52,7 +52,7 @@ func (c *policyServiceClient) Authorize(ctx context.Context, in *AuthorizeReq, o
 // All implementations must embed UnimplementedPolicyServiceServer
 // for forward compatibility.
 type PolicyServiceServer interface {
-	// 创建工单
+	// API 鉴权
 	Authorize(context.Context, *AuthorizeReq) (*Response, error)
 	mustEmbedUnimplementedPolicyServiceServer()
 }

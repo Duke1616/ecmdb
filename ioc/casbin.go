@@ -28,7 +28,7 @@ g = _, _
 e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
 
 [matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act && r.res == p.res || r.sub == "root"`
+m = (g(r.sub, p.sub) && keyMatch2(r.obj, p.obj) && r.act == p.act && r.res == p.res) || r.sub == "root"`
 )
 
 func InitCasbin(db *gorm.DB) *casbin.SyncedEnforcer {

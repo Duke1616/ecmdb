@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/pkg/grpcx"
@@ -11,7 +12,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-func InitGrpcServer(orderRpc *order.RpcServer, policyRpc *policy.RpcServer, etcdClient *clientv3.Client) *grpcx.Server {
+func InitGrpcServer(orderRpc *order.RpcServer, policyRpc *policy.RpcServer, endpointRpc *endpoint.RpcServer,
+	etcdClient *clientv3.Client) *grpcx.Server {
 	type Config struct {
 		Name    string `mapstructure:"name"`
 		Port    int    `mapstructure:"port"`
@@ -46,6 +48,7 @@ func InitGrpcServer(orderRpc *order.RpcServer, policyRpc *policy.RpcServer, etcd
 	))
 	orderRpc.Register(server)
 	policyRpc.Register(server)
+	endpointRpc.Register(server)
 
 	return &grpcx.Server{
 		Server:     server,

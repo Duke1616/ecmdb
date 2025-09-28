@@ -12,6 +12,11 @@ tasks:
     desc: 启动服务
     cmds:
       -  EGO_DEBUG=true go run main.go start
+
+  endpoint:
+    desc: 注入端点
+    cmds:
+      - EGO_DEBUG=true go run main.go endpoint
   gen:
     desc: 代码生成
     cmds:

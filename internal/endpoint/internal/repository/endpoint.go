@@ -9,9 +9,17 @@ import (
 )
 
 type EndpointRepository interface {
+	// CreateEndpoint 创建单个端点
 	CreateEndpoint(ctx context.Context, req domain.Endpoint) (int64, error)
-	RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
+	
+	// BatchRegisterByResource 按 Resource 批量注册端点
+	// 支持智能同步：插入新端点、更新已存在端点、删除不再存在的端点
+	BatchRegisterByResource(ctx context.Context, resource string, req []domain.Endpoint) (int64, error)
+	
+	// ListEndpoint 获取端点列表
 	ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, error)
+	
+	// Total 获取端点总数
 	Total(ctx context.Context, path string) (int64, error)
 }
 
@@ -25,9 +33,20 @@ func NewEndpointRepository(dao dao.EndpointDAO) EndpointRepository {
 	}
 }
 
-func (repo *endpointRepository) RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (repo *endpointRepository) BatchRegisterByResource(ctx context.Context, resource string, req []domain.Endpoint) (int64, error) {
+	if len(req) == 0 {
+		return 0, nil
+	}
+
+	// 转换为 DAO 实体，并设置 Resource
+	entities := make([]dao.Endpoint, len(req))
+	for i, endpoint := range req {
+		entities[i] = repo.toEntity(endpoint)
+		entities[i].Resource = resource
+	}
+
+	// 调用 DAO 的按 Resource 批量同步方法
+	return repo.dao.BatchCreateByResource(ctx, resource, entities)
 }
 
 func (repo *endpointRepository) ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, error) {

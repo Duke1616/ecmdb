@@ -21,7 +21,7 @@ func NewHandler(svc service.Service) *Handler {
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/endpoint")
 	g.POST("/register", ginx.WrapBody[RegisterEndpointReq](h.RegisterEndpoint))
-	g.POST("/register/mutil", ginx.WrapBody[RegisterEndpointsReq](h.RegisterMutilEndpoint))
+	g.POST("/register/multi", ginx.WrapBody[RegisterEndpointsReq](h.BatchRegister))
 	g.POST("/list", ginx.WrapBody[FilterPathReq](h.ListEndpoint))
 }
 
@@ -36,13 +36,27 @@ func (h *Handler) RegisterEndpoint(ctx *gin.Context, req RegisterEndpointReq) (g
 	}, nil
 }
 
-func (h *Handler) RegisterMutilEndpoint(ctx *gin.Context, req RegisterEndpointsReq) (ginx.Result, error) {
-	//TODO implement me
-	panic("implement me")
+func (h *Handler) BatchRegister(ctx *gin.Context, req RegisterEndpointsReq) (ginx.Result, error) {
+	// 将请求中的端点转换为 domain 对象
+	endpoints := make([]domain.Endpoint, len(req.RegisterEndpoint))
+	for i, ep := range req.RegisterEndpoint {
+		endpoints[i] = h.toDomain(ep)
+	}
+	
+	// 直接调用 service 的按 Resource 注册方法
+	count, err := h.svc.BatchRegisterByResource(ctx, req.Resource, endpoints)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	
+	return ginx.Result{
+		Msg:  "批量注册端点成功",
+		Data: count,
+	}, nil
 }
 
 func (h *Handler) ListEndpoint(ctx *gin.Context, req FilterPathReq) (ginx.Result, error) {
-	rts, total, err := h.svc.ListResource(ctx, req.Offset, req.Limit, req.Path)
+	rts, total, err := h.svc.ListEndpoints(ctx, req.Offset, req.Limit, req.Path)
 	if err != nil {
 		return systemErrorResult, err
 	}

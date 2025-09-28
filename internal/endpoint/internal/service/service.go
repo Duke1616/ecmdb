@@ -9,9 +9,15 @@ import (
 )
 
 type Service interface {
+	// RegisterEndpoint 注册单个端点
 	RegisterEndpoint(ctx context.Context, req domain.Endpoint) (int64, error)
-	RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error)
-	ListResource(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error)
+
+	// BatchRegisterByResource 按 Resource 批量注册端点
+	// 支持智能同步：插入新端点、更新已存在端点、删除不再存在的端点
+	BatchRegisterByResource(ctx context.Context, resource string, req []domain.Endpoint) (int64, error)
+
+	// ListEndpoints 获取列表
+	ListEndpoints(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error)
 }
 
 type service struct {
@@ -24,12 +30,18 @@ func NewService(repo repository.EndpointRepository) Service {
 	}
 }
 
-func (s *service) RegisterMultiEndpoint(ctx context.Context, req []domain.Endpoint) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+// BatchRegisterByResource 按 Resource 批量注册端点
+func (s *service) BatchRegisterByResource(ctx context.Context, resource string, req []domain.Endpoint) (int64, error) {
+	if len(req) == 0 {
+		return 0, nil
+	}
+	
+	// 直接调用 repository 的按 Resource 注册方法
+	return s.repo.BatchRegisterByResource(ctx, resource, req)
 }
 
-func (s *service) ListResource(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error) {
+
+func (s *service) ListEndpoints(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error) {
 	var (
 		eg    errgroup.Group
 		es    []domain.Endpoint

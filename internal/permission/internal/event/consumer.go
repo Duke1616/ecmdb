@@ -66,8 +66,9 @@ func (c *MenuChangeEventConsumer) toDomainMenu(req menu.EventMenu) domain.Menu {
 		Id: req.Id,
 		Endpoints: slice.Map(req.Endpoints, func(idx int, src menu.EventEndpoint) domain.Endpoint {
 			return domain.Endpoint{
-				Path:   src.Path,
-				Method: src.Method,
+				Path:     src.Path,
+				Resource: src.Resource,
+				Method:   src.Method,
 			}
 		}),
 	}

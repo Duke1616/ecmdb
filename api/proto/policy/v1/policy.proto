@@ -19,6 +19,6 @@ message Response {
 }
 
 service PolicyService {
-  // 创建工单
+  // API 鉴权
   rpc Authorize(AuthorizeReq) returns (Response);
 }

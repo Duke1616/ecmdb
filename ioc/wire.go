@@ -84,7 +84,7 @@ func InitApp() (*App, error) {
 		menu.InitModule,
 		wire.FieldsOf(new(*menu.Module), "Hdl"),
 		endpoint.InitModule,
-		wire.FieldsOf(new(*endpoint.Module), "Hdl", "Svc"),
+		wire.FieldsOf(new(*endpoint.Module), "Hdl", "Svc", "RpcServer"),
 		department.InitModule,
 		wire.FieldsOf(new(*department.Module), "Hdl"),
 		role.InitModule,

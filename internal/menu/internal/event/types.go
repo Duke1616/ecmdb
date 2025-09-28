@@ -32,6 +32,7 @@ type Menu struct {
 }
 
 type Endpoint struct {
-	Path   string `json:"path"`
-	Method string `json:"method"`
+	Path     string `json:"path"`
+	Resource string `json:"resource"`
+	Method   string `json:"method"`
 }

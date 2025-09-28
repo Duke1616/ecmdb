@@ -71,9 +71,10 @@ func (m *ChangeSync) UpdateMenu(ctx context.Context) error {
 	// 5. 检查是否有变化
 	if HasChanged(result) {
 		m.logger.Info("菜单数据已更新",
-			elog.Int64("修改数量", result.ModifiedCount),
-			elog.Int64("插入数量", result.InsertedCount),
-			elog.Int64("删除数量", result.DeletedCount))
+			elog.Int64("修改数量 ——【INSERT】", result.ModifiedCount),
+			elog.Int64("插入数量 ——【UPDATE】", result.InsertedCount),
+			elog.Int64("删除数量 ——【DELETE】", result.DeletedCount),
+			elog.Int64("变更数量 ——【UPSERT】", result.UpsertedCount))
 
 		// 6. 同步权限
 		if err = m.App.PermissionSvc.AddPermissionForRole(ctx, RoleCode, GetAllMenuIDs()); err != nil {

@@ -142,8 +142,9 @@ func (s *service) sendMenuEvent(action event.Action, id int64, menu domain.Menu)
 			Id: id,
 			Endpoints: slice.Map(menu.Endpoints, func(idx int, src domain.Endpoint) event.Endpoint {
 				return event.Endpoint{
-					Path:   src.Path,
-					Method: src.Method,
+					Path:     src.Path,
+					Resource: src.Resource,
+					Method:   src.Method,
 				}
 			}),
 		},

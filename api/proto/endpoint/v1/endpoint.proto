@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package endpoint.v1;
+option go_package="endpoint/v1;endpoint";
+import "google/protobuf/empty.proto";
+
+message BatchRegisterEndpointsReq {
+  string resource = 1;
+  repeated Endpoint endpoints = 2;
+}
+
+message Endpoint {
+  // 请求路径
+  string path = 1;
+  // 方法
+  string method = 2;
+  // 资源
+  string resource = 3;
+  // 注释
+  string desc = 4;
+  // 是否认证
+  bool is_auth = 5;
+  // 是否审计
+  bool is_audit = 6;
+  // 是否鉴权
+  bool is_permission = 7;
+}
+
+
+service EndpointService {
+  // 注册路由
+  rpc BatchRegister(BatchRegisterEndpointsReq) returns (google.protobuf.Empty);
+}

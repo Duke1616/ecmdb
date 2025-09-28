@@ -11,6 +11,7 @@ type RegisterEndpointReq struct {
 }
 
 type RegisterEndpointsReq struct {
+	Resource        string                `json:"resource"`         // 资源名称
 	RegisterEndpoint []RegisterEndpointReq `json:"register_endpoint"`
 }
 

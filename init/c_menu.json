@@ -2563,7 +2563,7 @@
     "_id": "68d90b0c1fc47ae9102ccdf3",
     "component": "",
     "ctime": "1759054604151",
-    "endpoints": "[ { \"path\" : \"/api/rule/group/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/rule/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/workspace/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/rule/group/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/rule/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
     "id": "193",
     "meta": "{ \"title\" : \"规则列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_rule",
@@ -2573,13 +2573,13 @@
     "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1759054618094"
+    "utime": "1759133250903"
   },
   {
     "_id": "68d90b2e1fc47ae9102ccdf4",
     "component": "",
     "ctime": "1759054638079",
-    "endpoints": "[ { \"path\" : \"/api/rule/save\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/rule/create\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
     "id": "194",
     "meta": "{ \"title\" : \"新增规则\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "add_rule",
@@ -2589,13 +2589,13 @@
     "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1759054643613"
+    "utime": "1759138992642"
   },
   {
     "_id": "68d90b491fc47ae9102ccdf5",
     "component": "",
     "ctime": "1759054665086",
-    "endpoints": "[ { \"path\" : \"/api/rule/save\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/rule/update\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
     "id": "195",
     "meta": "{ \"title\" : \"修改规则\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "edit_rule",
@@ -2605,7 +2605,7 @@
     "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1759054672715"
+    "utime": "1759139005607"
   },
   {
     "_id": "68d90b761fc47ae9102ccdf6",
@@ -2851,7 +2851,7 @@
     "_id": "68d912ae1fc47ae9102cce05",
     "component": "",
     "ctime": "1759056558609",
-    "endpoints": "[ { \"path\" : \"/api/workspace/save\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/template/detail/:id\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/workspace/detail/:id\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/workspace/save\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/team/detail/:id\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
     "id": "211",
     "meta": "{ \"title\" : \"空间设置\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "aelrt_worksapce_settings",
@@ -2861,7 +2861,7 @@
     "sort": "7",
     "status": "1",
     "type": "3",
-    "utime": "1759056678747"
+    "utime": "1759136788301"
   },
   {
     "_id": "68d913691fc47ae9102cce06",
@@ -2958,5 +2958,21 @@
     "status": "1",
     "type": "3",
     "utime": "1759057006042"
+  },
+  {
+    "_id": "68da5373779321919e795a16",
+    "component": "",
+    "ctime": "1759138675904",
+    "endpoints": "[ { \"path\" : \"/api/rule/delete/:id\", \"method\" : \"DELETE\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "218",
+    "meta": "{ \"title\" : \"删除规则\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "186",
+    "redirect": "",
+    "sort": "2",
+    "status": "1",
+    "type": "3",
+    "utime": "1759138708038"
   }
 ]

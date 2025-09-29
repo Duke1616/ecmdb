@@ -2407,13 +2407,13 @@
     "id": "183",
     "meta": "{ \"title\" : \"变更模版\", \"is_hidden\" : true, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "edit_notify_template",
-    "path": "/alert/template/edit/:id",
+    "path": "/alert/notify/template/edit/:id",
     "pid": "174",
     "redirect": "",
     "sort": "2",
     "status": "1",
     "type": "2",
-    "utime": "1759053641388"
+    "utime": "1759128698052"
   },
   {
     "_id": "68d907461fc47ae9102ccde7",
@@ -2423,13 +2423,13 @@
     "id": "184",
     "meta": "{ \"title\" : \"创建模版\", \"is_hidden\" : true, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "create_notify_template",
-    "path": "/alert/template/create",
+    "path": "/alert/notify/template/create",
     "pid": "174",
     "redirect": "",
     "sort": "0",
     "status": "1",
     "type": "2",
-    "utime": "1759053638704"
+    "utime": "1759128693222"
   },
   {
     "_id": "68d9084a1fc47ae9102ccde8",

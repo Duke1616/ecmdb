@@ -1,0 +1,45 @@
+mysql:
+  dsn: ealert:123456@tcp(ecmdb-mysql:3306)/ealert?charset=utf8mb4&parseTime=True&loc=Local&timeout=5s
+
+session:
+  session_encrypted_key: "1234567890Key"
+  cookie:
+    domain: ".example.com"
+    name: "ecmdb-token-key"
+
+redis:
+  addr: "ecmdb-redis:6379"
+  password: "1234567890"
+  db: 0
+
+feishu:
+  appId: ""
+  appSecret: ""
+
+pool:
+  initGo: 1000
+  coreGo: 1500
+  maxGo: 2000
+  maxIdleTime: 5000000000
+  queueSize: 1000
+  queueBacklogRate: 0.8
+
+etcd:
+  endpoints:
+    - ecmdb-etcd:2379
+
+ecmdb:
+  order:
+    template_id: 0
+    workflow_id: 0
+
+grpc:
+  server:
+    name: "ealert"
+    port: 7867
+    etcd_ttl: 60
+    key: "1234567890"
+  client:
+    ecmdb:
+      target: "etcd:///service/ecmdb"
+      key: "1234567890"

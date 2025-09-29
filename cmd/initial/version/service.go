@@ -14,8 +14,10 @@ type Service interface {
 	// GetVersion 获取当前版本
 	GetVersion(ctx context.Context) (string, error)
 
-	// 菜单相关方法
+	// SetMenuHash 设置菜单 Hash
 	SetMenuHash(ctx context.Context, hash string) error
+
+	// GetMenuHash 获取菜单 Hash
 	GetMenuHash(ctx context.Context) (string, error)
 }
 

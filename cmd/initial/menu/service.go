@@ -71,12 +71,18 @@ func (m *ChangeSync) UpdateMenu(ctx context.Context) error {
 	// 5. 检查是否有变化
 	if HasChanged(result) {
 		m.logger.Info("菜单数据已更新",
-			elog.Int64("修改数量 ——【INSERT】", result.ModifiedCount),
-			elog.Int64("插入数量 ——【UPDATE】", result.InsertedCount),
+			elog.Int64("修改数量 ——【UPDATE】", result.ModifiedCount),
+			elog.Int64("插入数量 ——【INSERT】", result.InsertedCount),
 			elog.Int64("删除数量 ——【DELETE】", result.DeletedCount),
 			elog.Int64("变更数量 ——【UPSERT】", result.UpsertedCount))
 
-		// 6. 同步权限
+		// 6、角色添加菜单
+		_, err = m.App.RoleSvc.CreateOrUpdateRoleMenuIds(ctx, RoleCode, GetAllMenuIDs())
+		if err != nil {
+			return err
+		}
+
+		// 7. 角色同步权限
 		if err = m.App.PermissionSvc.AddPermissionForRole(ctx, RoleCode, GetAllMenuIDs()); err != nil {
 			m.logger.Error("权限初始化失败", elog.FieldErr(err))
 			return fmt.Errorf("权限初始化失败: %w", err)

@@ -2261,7 +2261,7 @@
     "ctime": "1759052928909",
     "endpoints": "[ ]",
     "id": "174",
-    "meta": "{ \"title\" : \"通知管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"notify_manager_old\" }",
+    "meta": "{ \"title\" : \"通知管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"notify_manager\" }",
     "name": "notify",
     "path": "/alert/notify",
     "pid": "0",
@@ -2269,7 +2269,7 @@
     "sort": "8",
     "status": "1",
     "type": "1",
-    "utime": "1759992817739"
+    "utime": "1760519476105"
   },
   {
     "_id": "68d904d21fc47ae9102ccdde",
@@ -3173,7 +3173,7 @@
     "ctime": "1760438591959",
     "endpoints": "[ ]",
     "id": "231",
-    "meta": "{ \"title\" : \"通知升级\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"template_set\" }",
+    "meta": "{ \"title\" : \"通知升级\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"notify_escalation\" }",
     "name": "notirfy-escalation",
     "path": "/alert/notify/escalation",
     "pid": "174",
@@ -3181,7 +3181,7 @@
     "sort": "6",
     "status": "1",
     "type": "1",
-    "utime": "1760439367162"
+    "utime": "1760519262881"
   },
   {
     "_id": "68ee2a8bee5c37d980583181",
@@ -3189,7 +3189,7 @@
     "ctime": "1760438923351",
     "endpoints": "[ ]",
     "id": "232",
-    "meta": "{ \"title\" : \"升级配置\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"template_set\" }",
+    "meta": "{ \"title\" : \"升级配置\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"escalation_config\" }",
     "name": "notify_escalation_config",
     "path": "/alert/notify/escalation/config",
     "pid": "231",
@@ -3197,7 +3197,7 @@
     "sort": "1",
     "status": "1",
     "type": "2",
-    "utime": "1760496161184"
+    "utime": "1760519380046"
   },
   {
     "_id": "68ee2b5dee5c37d980583182",
@@ -3205,7 +3205,7 @@
     "ctime": "1760439133737",
     "endpoints": "[ ]",
     "id": "233",
-    "meta": "{ \"title\" : \"步骤模版\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"template\" }",
+    "meta": "{ \"title\" : \"步骤模版\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"escalation_step\" }",
     "name": "notify_escalation_step_tempalte",
     "path": "/alert/notify/escalation/templates",
     "pid": "231",
@@ -3213,7 +3213,7 @@
     "sort": "2",
     "status": "1",
     "type": "2",
-    "utime": "1760439133737"
+    "utime": "1760519389582"
   },
   {
     "_id": "68ee2eaeee5c37d980583183",

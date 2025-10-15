@@ -18,6 +18,9 @@ type Service interface {
 	Delete(ctx context.Context, id int64) (int64, error)
 	Deploy(ctx context.Context, flow domain.Workflow) error
 
+	// FindByKeyword 根据关键字搜索流程
+	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error)
+
 	// FindPassEdgeIds 查找所有已经完成的边id
 	FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error)
 	GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error)
@@ -91,6 +94,29 @@ func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 
 	// 绑定此流程对应引擎的ID, 为了后续查询数据详情使用
 	return s.repo.UpdateProcessId(ctx, wf.Id, processId)
+}
+
+func (s *service) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error) {
+	var (
+		eg    errgroup.Group
+		ws    []domain.Workflow
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ws, err = s.repo.FindByKeyword(ctx, keyword, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.CountByKeyword(ctx, keyword)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ws, total, err
+	}
+	return ws, total, nil
 }
 
 func (s *service) toEasyWorkflow(wf domain.Workflow) easyflow.Workflow {

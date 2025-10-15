@@ -43,6 +43,9 @@ type Service interface {
 
 	// GetByWorkflowId 根据流程ID，获取绑定的模版列表
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
+
+	// FindByKeyword 根据关键字搜索模版
+	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Template, int64, error)
 	// 创建流程，生成传递数据的规则
 }
 
@@ -143,4 +146,27 @@ func (s *service) DeleteTemplate(ctx context.Context, id int64) (int64, error) {
 
 func (s *service) Pipeline(ctx context.Context) ([]domain.TemplateCombination, error) {
 	return s.repo.Pipeline(ctx)
+}
+
+func (s *service) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Template, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Template
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.FindByKeyword(ctx, keyword, offset, limit)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.CountByKeyword(ctx, keyword)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
 }

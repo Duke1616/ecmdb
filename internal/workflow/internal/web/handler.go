@@ -33,6 +33,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/delete", ginx.WrapBody[DeleteReq](h.Delete))
 	g.POST("/deploy", ginx.WrapBody[DeployReq](h.Deploy))
 
+	// 根据关键字搜索流程
+	g.POST("/list/by_keyword", ginx.WrapBody[ByKeywordReq](h.ByKeyword))
+
 	// 工单流程图
 	g.POST("/graph", ginx.WrapBody[OrderGraphReq](h.FindOrderGraph))
 }
@@ -55,6 +58,23 @@ func (h *Handler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
 	}
 	return ginx.Result{
 		Msg: "查询流程模版列表成功",
+		Data: RetrieveWorkflows{
+			Total: total,
+			Workflows: slice.Map(ws, func(idx int, src domain.Workflow) Workflow {
+				return h.toWorkflowVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) ByKeyword(ctx *gin.Context, req ByKeywordReq) (ginx.Result, error) {
+	ws, total, err := h.svc.FindByKeyword(ctx, req.Keyword, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "根据关键字搜索流程成功",
 		Data: RetrieveWorkflows{
 			Total: total,
 			Workflows: slice.Map(ws, func(idx int, src domain.Workflow) Workflow {

@@ -22,6 +22,8 @@ type WorkflowDAO interface {
 	UpdateProcessId(ctx context.Context, id int64, processId int) error
 	Delete(ctx context.Context, id int64) (int64, error)
 	Find(ctx context.Context, id int64) (Workflow, error)
+	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Workflow, error)
+	CountByKeyword(ctx context.Context, keyword string) (int64, error)
 }
 
 func NewWorkflowDAO(db *mongox.Mongo) WorkflowDAO {
@@ -166,4 +168,62 @@ type Workflow struct {
 type LogicFlow struct {
 	Edges []map[string]interface{} `bson:"edges"`
 	Nodes []map[string]interface{} `bson:"nodes"`
+}
+
+func (dao *workflowDAO) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Workflow, error) {
+	col := dao.db.Collection(WorkFlowCollection)
+	
+	// 默认为空查询
+	filter := bson.M{}
+	
+	// 如果关键字不为空，则添加过滤条件
+	if keyword != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": keyword, "$options": "i"}},
+			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
+		}
+	}
+	
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Workflow
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *workflowDAO) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
+	col := dao.db.Collection(WorkFlowCollection)
+	
+	// 默认为空查询
+	filter := bson.M{}
+	
+	// 如果关键字不为空，则添加过滤条件
+	if keyword != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": keyword, "$options": "i"}},
+			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
+		}
+	}
+	
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+	
+	return count, nil
 }

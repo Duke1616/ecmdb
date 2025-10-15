@@ -43,6 +43,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/get_by_workflow_id", ginx.WrapBody[GetTemplatesByWorkFlowIdReq](h.GetTemplatesByWorkflowId))
 
 	g.POST("/rules/by_workflow_id", ginx.WrapBody[GetRulesByWorkFlowIdReq](h.GetRulesByWorkFlowId))
+
+	// 根据关键字搜索模版
+	g.POST("/list/by_keyword", ginx.WrapBody[ByKeywordReq](h.ByKeyword))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -179,6 +182,23 @@ func (h *Handler) UpdateTemplate(ctx *gin.Context, req UpdateTemplateReq) (ginx.
 
 	return ginx.Result{
 		Data: t,
+	}, nil
+}
+
+func (h *Handler) ByKeyword(ctx *gin.Context, req ByKeywordReq) (ginx.Result, error) {
+	ts, total, err := h.svc.FindByKeyword(ctx, req.Keyword, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "根据关键字搜索模版成功",
+		Data: RetrieveTemplates{
+			Total: total,
+			Templates: slice.Map(ts, func(idx int, src domain.Template) TemplateJson {
+				return h.toTemplateJsonVo(src)
+			}),
+		},
 	}, nil
 }
 

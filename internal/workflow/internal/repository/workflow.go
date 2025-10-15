@@ -16,6 +16,8 @@ type WorkflowRepository interface {
 	UpdateProcessId(ctx context.Context, id int64, processId int) error
 	Delete(ctx context.Context, id int64) (int64, error)
 	Find(ctx context.Context, id int64) (domain.Workflow, error)
+	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, error)
+	CountByKeyword(ctx context.Context, keyword string) (int64, error)
 }
 
 func NewWorkflowRepository(dao dao.WorkflowDAO) WorkflowRepository {
@@ -74,6 +76,17 @@ func (repo *workflowRepository) toEntity(req domain.Workflow) dao.Workflow {
 			Nodes: req.FlowData.Nodes,
 		},
 	}
+}
+
+func (repo *workflowRepository) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, error) {
+	ws, err := repo.dao.FindByKeyword(ctx, keyword, offset, limit)
+	return slice.Map(ws, func(idx int, src dao.Workflow) domain.Workflow {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *workflowRepository) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
+	return repo.dao.CountByKeyword(ctx, keyword)
 }
 
 func (repo *workflowRepository) toDomain(req dao.Workflow) domain.Workflow {

@@ -23,6 +23,9 @@ type TemplateRepository interface {
 	FindByTemplateIds(ctx context.Context, ids []int64) ([]domain.Template, error)
 
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
+
+	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Template, error)
+	CountByKeyword(ctx context.Context, keyword string) (int64, error)
 }
 
 func NewTemplateRepository(dao dao.TemplateDAO) TemplateRepository {
@@ -121,6 +124,17 @@ func (repo *templateRepository) toEntity(req domain.Template) dao.Template {
 		Options:            req.Options,
 		Desc:               req.Desc,
 	}
+}
+
+func (repo *templateRepository) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Template, error) {
+	ts, err := repo.dao.FindByKeyword(ctx, keyword, offset, limit)
+	return slice.Map(ts, func(idx int, src dao.Template) domain.Template {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *templateRepository) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
+	return repo.dao.CountByKeyword(ctx, keyword)
 }
 
 func (repo *templateRepository) toDomain(req dao.Template) domain.Template {

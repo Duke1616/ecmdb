@@ -25,6 +25,11 @@ type ListReq struct {
 	Page
 }
 
+type ByKeywordReq struct {
+	Keyword string `json:"keyword"`
+	Page
+}
+
 type DeployReq struct {
 	Id int64
 }

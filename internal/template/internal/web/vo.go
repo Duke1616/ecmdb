@@ -131,3 +131,8 @@ type RetrieveTemplateCombination struct {
 type FindTemplateGroupsByIdsReq struct {
 	Ids []int64 `json:"ids"`
 }
+
+type ByKeywordReq struct {
+	Keyword string `json:"keyword"`
+	Page
+}

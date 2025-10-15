@@ -29,6 +29,9 @@ type TemplateDAO interface {
 	FindByTemplateIds(ctx context.Context, ids []int64) ([]Template, error)
 
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]Template, error)
+
+	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Template, error)
+	CountByKeyword(ctx context.Context, keyword string) (int64, error)
 }
 
 func NewTemplateDAO(db *mongox.Mongo) TemplateDAO {
@@ -245,4 +248,62 @@ func (dao *templateDAO) Pipeline(ctx context.Context) ([]TemplatePipeline, error
 	}
 
 	return result, nil
+}
+
+func (dao *templateDAO) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Template, error) {
+	col := dao.db.Collection(TemplateCollection)
+	
+	// 默认为空查询
+	filter := bson.M{}
+	
+	// 如果关键字不为空，则添加过滤条件
+	if keyword != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": keyword, "$options": "i"}},
+			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
+		}
+	}
+	
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Template
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *templateDAO) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
+	col := dao.db.Collection(TemplateCollection)
+	
+	// 默认为空查询
+	filter := bson.M{}
+	
+	// 如果关键字不为空，则添加过滤条件
+	if keyword != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": keyword, "$options": "i"}},
+			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
+		}
+	}
+	
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+	
+	return count, nil
 }

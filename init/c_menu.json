@@ -1443,7 +1443,7 @@
     "_id": "66bdc1d3ce7b5a67a43e8cb0",
     "component": "",
     "ctime": "1723711955500",
-    "endpoints": "[ { \"path\" : \"/api/workflow/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/user/find/usernames\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "123",
     "meta": "{ \"title\" : \"流程列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_workflow",
@@ -1453,13 +1453,13 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1760525975326"
   },
   {
     "_id": "66bdc20bce7b5a67a43e8cb1",
     "component": "",
     "ctime": "1723712011848",
-    "endpoints": "[ { \"path\" : \"/api/codebook/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/info\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/codebook/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/info\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "124",
     "meta": "{ \"title\" : \"任务模版列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_codebook",
@@ -1469,7 +1469,7 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1760526019685"
   },
   {
     "_id": "66bdc225ce7b5a67a43e8cb2",
@@ -1843,7 +1843,7 @@
     "_id": "6735a6de821c391e24e27224",
     "component": "/views/rota/index.vue",
     "ctime": "1731569374120",
-    "endpoints": "[ { \"path\" : \"/api/rota/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ ]",
     "id": "149",
     "meta": "{ \"title\" : \"排班管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"schedule\" }",
     "name": "rota-manager",
@@ -1853,7 +1853,7 @@
     "sort": "1",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1760525749205"
   },
   {
     "_id": "6735a6eb821c391e24e27225",
@@ -1875,17 +1875,17 @@
     "_id": "6736bc4cb02357e9cadd3827",
     "component": "",
     "ctime": "1731640396963",
-    "endpoints": "[ { \"path\" : \"/api/rota/update\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/rota/update\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "152",
     "meta": "{ \"title\" : \"修改排班\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "",
     "path": "",
     "pid": "149",
     "redirect": "",
-    "sort": "2",
+    "sort": "3",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1760525834366"
   },
   {
     "_id": "6736eba2b0f722b8fd8320be",
@@ -1898,10 +1898,10 @@
     "path": "",
     "pid": "149",
     "redirect": "",
-    "sort": "3",
+    "sort": "4",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1760525743892"
   },
   {
     "_id": "673aa7390c32b2d287937896",
@@ -2138,10 +2138,10 @@
     "path": "",
     "pid": "149",
     "redirect": "",
-    "sort": "1",
+    "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1760525738445"
   },
   {
     "_id": "68c57a12175628f9c3ab47bb",
@@ -3502,5 +3502,21 @@
     "status": "1",
     "type": "3",
     "utime": "1760500503591"
+  },
+  {
+    "_id": "68ef7da63b79b9968e890821",
+    "component": "",
+    "ctime": "1760525734371",
+    "endpoints": "[ { \"path\" : \"/api/user/find/usernames\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/rota/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "252",
+    "meta": "{ \"title\" : \"排班列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "149",
+    "redirect": "",
+    "sort": "1",
+    "status": "1",
+    "type": "3",
+    "utime": "1760525801816"
   }
 ]

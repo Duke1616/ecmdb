@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Duke1616/ecmdb/internal/rota/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/rota/internal/service"
@@ -19,6 +20,7 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewService,
 	repository.NewRotaRepository,
+	grpc.NewRotaServer,
 	dao.NewRotaDao,
 )
 

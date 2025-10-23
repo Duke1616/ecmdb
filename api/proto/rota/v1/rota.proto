@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package rota.v1;
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/Duke1616/ecmdb/api/gen/v1;rota";
+
+
+// 同步单条发送通知请求
+message GetCurrentScheduleRequest {
+  int64 id = 1;
+}
+
+// 值班组
+message RotaGroup {
+  int64 id = 1;
+  // 组名称
+  string name = 2;
+  // 值班人员列表
+  repeated string members = 3;
+}
+
+// 排班计划
+message Schedule {
+  // 标题
+  string title = 1;
+  // 开始时间
+  int64 start_time = 2;
+  // 结束时间
+  int64 end_time = 3;
+  // 值班组
+  RotaGroup rota_group = 4;
+}
+
+
+// 排班服务定义 on call
+service OnCallService {
+  // 查找多个用户名对应的用户信息
+  rpc GetCurrentSchedule (GetCurrentScheduleRequest) returns (Schedule);
+}

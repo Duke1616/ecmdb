@@ -9,6 +9,7 @@ package user
 import (
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
+	"github.com/Duke1616/ecmdb/internal/user/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/cache"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
@@ -34,16 +35,18 @@ func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig lda
 	ldapService := service.NewLdapService(ldapConfig, redisearchLdapUserCache)
 	service3 := departmentModule.Svc
 	handler := web.NewHandler(service2, ldapService, service3, sp)
+	userServer := grpc.NewUserServer(service2)
 	module := &Module{
-		Hdl: handler,
-		Svc: service2,
+		Hdl:       handler,
+		Svc:       service2,
+		RpcServer: userServer,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(service.NewLdapService, service.NewService, repository.NewResourceRepository, dao.NewUserDao, web.NewHandler)
+var ProviderSet = wire.NewSet(service.NewLdapService, service.NewService, repository.NewResourceRepository, grpc.NewUserServer, dao.NewUserDao, web.NewHandler)
 
 func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
 	return cache.NewRedisearchLdapUserCache(conn)

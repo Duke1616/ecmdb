@@ -4,6 +4,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/policy"
+	"github.com/Duke1616/ecmdb/internal/rota"
+	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/pkg/grpcx"
 	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/gotomicro/ego/core/elog"
@@ -13,6 +15,7 @@ import (
 )
 
 func InitGrpcServer(orderRpc *order.RpcServer, policyRpc *policy.RpcServer, endpointRpc *endpoint.RpcServer,
+	userRpc *user.RpcServer, rotaRpc *rota.RpcServer,
 	etcdClient *clientv3.Client) *grpcx.Server {
 	type Config struct {
 		Name    string `mapstructure:"name"`
@@ -49,6 +52,8 @@ func InitGrpcServer(orderRpc *order.RpcServer, policyRpc *policy.RpcServer, endp
 	orderRpc.Register(server)
 	policyRpc.Register(server)
 	endpointRpc.Register(server)
+	userRpc.Register(server)
+	rotaRpc.Register(server)
 
 	return &grpcx.Server{
 		Server:     server,

@@ -192,7 +192,9 @@ func InitApp() (*App, error) {
 	workOrderServer := orderModule.RpcServer
 	policyServer := module.RpcServer
 	endpointServer := endpointModule.RpcServer
-	server := InitGrpcServer(workOrderServer, policyServer, endpointServer, client)
+	userServer := userModule.RpcServer
+	rotaServer := rotaModule.RpcServer
+	server := InitGrpcServer(workOrderServer, policyServer, endpointServer, userServer, rotaServer, client)
 	notificationServiceClient := InitNotificationServiceClient(client)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, departmentModule, larkClient, notificationServiceClient)
 	if err != nil {

@@ -52,19 +52,19 @@ type Rotate struct {
 	TimeDuration uint8    // 轮换时间
 }
 
-// RotaGroup 值班组
-type RotaGroup struct {
-	Id      int64
-	Name    string   // 组名称
-	Members []string // 值班人员
-}
-
 // ShiftRostered 排班表
 type ShiftRostered struct {
 	FinalSchedule   []Schedule // 总排班
 	CurrentSchedule Schedule   // 当前排班
 	NextSchedule    Schedule   // 下期排班
 	Members         []string   // 用户
+}
+
+// RotaGroup 值班组
+type RotaGroup struct {
+	Id      int64
+	Name    string   // 组名称
+	Members []string // 值班人员
 }
 
 type Schedule struct {

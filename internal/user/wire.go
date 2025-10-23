@@ -5,6 +5,7 @@ package user
 import (
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/policy"
+	"github.com/Duke1616/ecmdb/internal/user/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/cache"
 	"github.com/Duke1616/ecmdb/internal/user/internal/repository/dao"
@@ -22,6 +23,7 @@ var ProviderSet = wire.NewSet(
 	service.NewLdapService,
 	service.NewService,
 	repository.NewResourceRepository,
+	grpc.NewUserServer,
 	dao.NewUserDao,
 	web.NewHandler,
 )

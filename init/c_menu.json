@@ -2867,7 +2867,7 @@
     "_id": "68d913691fc47ae9102cce06",
     "component": "",
     "ctime": "1759056745042",
-    "endpoints": "[ { \"path\" : \"/api/aggregate/detail/:workspace_id\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "endpoints": "[ ]",
     "id": "212",
     "meta": "{ \"title\" : \"聚合规则\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "aggreate",
@@ -2877,13 +2877,13 @@
     "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1759056764858"
+    "utime": "1761121055096"
   },
   {
     "_id": "68d913971fc47ae9102cce07",
     "component": "",
     "ctime": "1759056791288",
-    "endpoints": "[ { \"path\" : \"/api/inhibit/list\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "endpoints": "[ ]",
     "id": "213",
     "meta": "{ \"title\" : \"抑制规则\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "inhibit",
@@ -2893,7 +2893,7 @@
     "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1759056809385"
+    "utime": "1761121109495"
   },
   {
     "_id": "68d914041fc47ae9102cce08",
@@ -2906,10 +2906,10 @@
     "path": "",
     "pid": "212",
     "redirect": "",
-    "sort": "1",
+    "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1759056949394"
+    "utime": "1761121002486"
   },
   {
     "_id": "68d9142b1fc47ae9102cce09",
@@ -2922,10 +2922,10 @@
     "path": "",
     "pid": "212",
     "redirect": "",
-    "sort": "2",
+    "sort": "3",
     "status": "1",
     "type": "3",
-    "utime": "1759056954258"
+    "utime": "1761121005004"
   },
   {
     "_id": "68d914571fc47ae9102cce0a",
@@ -3518,5 +3518,69 @@
     "status": "1",
     "type": "3",
     "utime": "1760525801816"
+  },
+  {
+    "_id": "68f892e500ac8c0020749510",
+    "component": "",
+    "ctime": "1761120997413",
+    "endpoints": "[ { \"path\" : \"/api/aggregate/detail/:workspace_id\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "253",
+    "meta": "{ \"title\" : \"聚合详情\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "212",
+    "redirect": "",
+    "sort": "1",
+    "status": "1",
+    "type": "3",
+    "utime": "1761121073008"
+  },
+  {
+    "_id": "68f8933c00ac8c0020749511",
+    "component": "",
+    "ctime": "1761121084032",
+    "endpoints": "[ { \"path\" : \"/api/inhibit/list/by_workspace\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "254",
+    "meta": "{ \"title\" : \"抑制列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "213",
+    "redirect": "",
+    "sort": "1",
+    "status": "1",
+    "type": "3",
+    "utime": "1761121119610"
+  },
+  {
+    "_id": "68f8934d00ac8c0020749512",
+    "component": "",
+    "ctime": "1761121101878",
+    "endpoints": "[ { \"path\" : \"/api/inhibit/toggle/status/:id\", \"method\" : \"PUT\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "255",
+    "meta": "{ \"title\" : \"状态变更\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "213",
+    "redirect": "",
+    "sort": "4",
+    "status": "1",
+    "type": "3",
+    "utime": "1761121125573"
+  },
+  {
+    "_id": "68f8937500ac8c0020749513",
+    "component": "",
+    "ctime": "1761121141124",
+    "endpoints": "[ { \"path\" : \"/api/inhibit/renewal/time_window\", \"method\" : \"PUT\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "256",
+    "meta": "{ \"title\" : \"时间续期\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "213",
+    "redirect": "",
+    "sort": "5",
+    "status": "1",
+    "type": "3",
+    "utime": "1761121147132"
   }
 ]

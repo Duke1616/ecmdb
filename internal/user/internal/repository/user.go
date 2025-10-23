@@ -22,6 +22,7 @@ type UserRepository interface {
 	TotalByKeywords(ctx context.Context, keyword string) (int64, error)
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, error)
 	TotalByDepartmentId(ctx context.Context, departmentId int64) (int64, error)
+	FindByDepartmentIds(ctx context.Context, departmentIds []int64) ([]domain.User, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error)
 	PipelineDepartmentId(ctx context.Context) ([]domain.UserCombination, error)
 	FindByWechatUser(ctx context.Context, userId string) (domain.User, error)
@@ -75,6 +76,13 @@ func (repo *userRepo) UpdateUser(ctx context.Context, req domain.User) (int64, e
 
 func (repo *userRepo) FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, error) {
 	us, err := repo.dao.FindByDepartmentId(ctx, offset, limit, departmentId)
+	return slice.Map(us, func(idx int, src dao.User) domain.User {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *userRepo) FindByDepartmentIds(ctx context.Context, departmentIds []int64) ([]domain.User, error) {
+	us, err := repo.dao.FindByDepartmentIds(ctx, departmentIds)
 	return slice.Map(us, func(idx int, src dao.User) domain.User {
 		return repo.toDomain(src)
 	}), err

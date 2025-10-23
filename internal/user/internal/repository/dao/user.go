@@ -28,6 +28,7 @@ type UserDAO interface {
 	CountByKeywords(ctx context.Context, keyword string) (int64, error)
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]User, error)
 	CountByDepartmentId(ctx context.Context, departmentId int64) (int64, error)
+	FindByDepartmentIds(ctx context.Context, departmentIds []int64) ([]User, error)
 	PipelineDepartmentId(ctx context.Context) ([]UserPipeline, error)
 	FindByUsernames(ctx context.Context, uns []string) ([]User, error)
 	FindByWechatUser(ctx context.Context, wechatUserId string) (User, error)
@@ -171,6 +172,29 @@ func (dao *userDao) FindByDepartmentId(ctx context.Context, offset, limit int64,
 		Skip:  &offset,
 	}
 	cursor, err := col.Find(ctx, filter, opts)
+	var result []User
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *userDao) FindByDepartmentIds(ctx context.Context, departmentIds []int64) ([]User, error) {
+	col := dao.db.Collection(UserCollection)
+	filter := bson.M{"department_id": bson.M{"$in": departmentIds}}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+	
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误: %w", err)
+	}
+	defer cursor.Close(ctx)
+	
 	var result []User
 	if err = cursor.All(ctx, &result); err != nil {
 		return nil, fmt.Errorf("解码错误: %w", err)

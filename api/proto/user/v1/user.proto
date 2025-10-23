@@ -27,6 +27,11 @@ message FindByDepartmentIdReq {
   int64 department_id = 1;
 }
 
+// 批量查找部门用户请求
+message FindByDepartmentIdsReq {
+  repeated int64 department_ids = 1;
+}
+
 // 查找用户请求
 message FindByIdsReq {
   repeated int64 ids = 1;
@@ -47,4 +52,7 @@ service UserService {
 
   // 通过部门查询用户
   rpc FindByDepartmentId(FindByDepartmentIdReq) returns (RetrieveUsers);
+
+  // 批量通过部门IDs查询用户
+  rpc FindByDepartmentIds(FindByDepartmentIdsReq) returns (RetrieveUsers);
 }

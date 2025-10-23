@@ -29,6 +29,7 @@ type Service interface {
 	// GenerateShiftRostered 生成排班表
 	GenerateShiftRostered(ctx context.Context, id, stime, etime int64) (domain.ShiftRostered, error)
 	GetCurrentSchedule(ctx context.Context, id int64) (domain.Schedule, error)
+	GetCurrentSchedulesByIDs(ctx context.Context, ids []int64) ([]domain.Schedule, error)
 }
 
 func NewService(repo repository.RotaRepository, rule schedule.Scheduler) Service {
@@ -63,6 +64,48 @@ func (s *service) GetCurrentSchedule(ctx context.Context, id int64) (domain.Sche
 	}
 
 	return sc, err
+}
+
+func (s *service) GetCurrentSchedulesByIDs(ctx context.Context, ids []int64) ([]domain.Schedule, error) {
+	// 批量查询 rota 信息
+	rotas, err := s.repo.FindByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	// 使用 errgroup 并发处理每个 rota 的当前排班
+	var (
+		eg        errgroup.Group
+		schedules = make([]domain.Schedule, len(rotas))
+	)
+
+	for i, rota := range rotas {
+		i, rota := i, rota // 捕获循环变量
+		eg.Go(func() error {
+			if len(rota.Rules) == 0 {
+				schedules[i] = domain.Schedule{}
+				return nil
+			}
+
+			// TODO 暂时不处理多规则情况，前端控制只能有一条规则
+			var sc domain.Schedule
+			for _, rule := range rota.Rules {
+				var err error
+				sc, err = s.rule.GetCurrentSchedule(rule, rota.AdjustmentRules)
+				if err != nil {
+					return err
+				}
+			}
+			schedules[i] = sc
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
 }
 
 func (s *service) Delete(ctx context.Context, id int64) (int64, error) {

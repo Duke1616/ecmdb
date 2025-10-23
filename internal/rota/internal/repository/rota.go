@@ -15,6 +15,7 @@ type RotaRepository interface {
 	Update(ctx context.Context, req domain.Rota) (int64, error)
 	Detail(ctx context.Context, id int64) (domain.Rota, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	FindByIDs(ctx context.Context, ids []int64) ([]domain.Rota, error)
 
 	AddSchedulingRule(ctx context.Context, id int64, rr domain.RotaRule) (int64, error)
 	UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []domain.RotaRule) (int64, error)
@@ -61,6 +62,13 @@ func (repo *rotaRepository) UpdateSchedulingRule(ctx context.Context, id int64, 
 func (repo *rotaRepository) Detail(ctx context.Context, id int64) (domain.Rota, error) {
 	rota, err := repo.dao.Detail(ctx, id)
 	return repo.toDomain(rota), err
+}
+
+func (repo *rotaRepository) FindByIDs(ctx context.Context, ids []int64) ([]domain.Rota, error) {
+	rotas, err := repo.dao.FindByIDs(ctx, ids)
+	return slice.Map(rotas, func(idx int, src dao.Rota) domain.Rota {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *rotaRepository) List(ctx context.Context, offset, limit int64) ([]domain.Rota, error) {

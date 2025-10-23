@@ -11,6 +11,16 @@ message GetCurrentScheduleRequest {
   int64 id = 1;
 }
 
+// 批量查询当前排班请求
+message GetCurrentSchedulesByIDsRequest {
+  repeated int64 ids = 1;
+}
+
+// 批量查询当前排班响应
+message Schedules {
+  repeated Schedule schedules = 1;
+}
+
 // 值班组
 message RotaGroup {
   int64 id = 1;
@@ -35,6 +45,8 @@ message Schedule {
 
 // 排班服务定义 on call
 service OnCallService {
-  // 查找多个用户名对应的用户信息
+  // 查找单个排班的当前排班信息
   rpc GetCurrentSchedule (GetCurrentScheduleRequest) returns (Schedule);
+  // 批量查找多个排班的当前排班信息
+  rpc GetCurrentSchedulesByIDs (GetCurrentSchedulesByIDsRequest) returns (Schedules);
 }

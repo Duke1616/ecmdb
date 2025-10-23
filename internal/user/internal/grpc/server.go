@@ -36,6 +36,14 @@ func (u *UserServer) FindByDepartmentId(ctx context.Context, req *userv1.FindByD
 		return u.ToRetrieveUsers(src)
 	})}, err
 }
+
+func (u *UserServer) FindByDepartmentIds(ctx context.Context, req *userv1.FindByDepartmentIdsReq) (*userv1.RetrieveUsers, error) {
+	userInfos, err := u.userSvc.FindByDepartmentIds(ctx, req.DepartmentIds)
+	return &userv1.RetrieveUsers{Users: slice.Map(userInfos, func(idx int, src domain.User) *userv1.User {
+		return u.ToRetrieveUsers(src)
+	})}, err
+}
+
 func NewUserServer(userSvc service.Service) *UserServer {
 	return &UserServer{userSvc: userSvc}
 }

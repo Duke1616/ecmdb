@@ -67,6 +67,96 @@ func (x *GetCurrentScheduleRequest) GetId() int64 {
 	return 0
 }
 
+// 批量查询当前排班请求
+type GetCurrentSchedulesByIDsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []int64                `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCurrentSchedulesByIDsRequest) Reset() {
+	*x = GetCurrentSchedulesByIDsRequest{}
+	mi := &file_rota_v1_rota_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCurrentSchedulesByIDsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCurrentSchedulesByIDsRequest) ProtoMessage() {}
+
+func (x *GetCurrentSchedulesByIDsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rota_v1_rota_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCurrentSchedulesByIDsRequest.ProtoReflect.Descriptor instead.
+func (*GetCurrentSchedulesByIDsRequest) Descriptor() ([]byte, []int) {
+	return file_rota_v1_rota_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetCurrentSchedulesByIDsRequest) GetIds() []int64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+// 批量查询当前排班响应
+type Schedules struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Schedules     []*Schedule            `protobuf:"bytes,1,rep,name=schedules,proto3" json:"schedules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Schedules) Reset() {
+	*x = Schedules{}
+	mi := &file_rota_v1_rota_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Schedules) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Schedules) ProtoMessage() {}
+
+func (x *Schedules) ProtoReflect() protoreflect.Message {
+	mi := &file_rota_v1_rota_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Schedules.ProtoReflect.Descriptor instead.
+func (*Schedules) Descriptor() ([]byte, []int) {
+	return file_rota_v1_rota_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Schedules) GetSchedules() []*Schedule {
+	if x != nil {
+		return x.Schedules
+	}
+	return nil
+}
+
 // 值班组
 type RotaGroup struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -81,7 +171,7 @@ type RotaGroup struct {
 
 func (x *RotaGroup) Reset() {
 	*x = RotaGroup{}
-	mi := &file_rota_v1_rota_proto_msgTypes[1]
+	mi := &file_rota_v1_rota_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -93,7 +183,7 @@ func (x *RotaGroup) String() string {
 func (*RotaGroup) ProtoMessage() {}
 
 func (x *RotaGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_rota_v1_rota_proto_msgTypes[1]
+	mi := &file_rota_v1_rota_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -106,7 +196,7 @@ func (x *RotaGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotaGroup.ProtoReflect.Descriptor instead.
 func (*RotaGroup) Descriptor() ([]byte, []int) {
-	return file_rota_v1_rota_proto_rawDescGZIP(), []int{1}
+	return file_rota_v1_rota_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *RotaGroup) GetId() int64 {
@@ -147,7 +237,7 @@ type Schedule struct {
 
 func (x *Schedule) Reset() {
 	*x = Schedule{}
-	mi := &file_rota_v1_rota_proto_msgTypes[2]
+	mi := &file_rota_v1_rota_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -159,7 +249,7 @@ func (x *Schedule) String() string {
 func (*Schedule) ProtoMessage() {}
 
 func (x *Schedule) ProtoReflect() protoreflect.Message {
-	mi := &file_rota_v1_rota_proto_msgTypes[2]
+	mi := &file_rota_v1_rota_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +262,7 @@ func (x *Schedule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Schedule.ProtoReflect.Descriptor instead.
 func (*Schedule) Descriptor() ([]byte, []int) {
-	return file_rota_v1_rota_proto_rawDescGZIP(), []int{2}
+	return file_rota_v1_rota_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Schedule) GetTitle() string {
@@ -209,7 +299,11 @@ const file_rota_v1_rota_proto_rawDesc = "" +
 	"\n" +
 	"\x12rota/v1/rota.proto\x12\arota.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"+\n" +
 	"\x19GetCurrentScheduleRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"I\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"3\n" +
+	"\x1fGetCurrentSchedulesByIDsRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x03R\x03ids\"<\n" +
+	"\tSchedules\x12/\n" +
+	"\tschedules\x18\x01 \x03(\v2\x11.rota.v1.ScheduleR\tschedules\"I\n" +
 	"\tRotaGroup\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -220,9 +314,10 @@ const file_rota_v1_rota_proto_rawDesc = "" +
 	"start_time\x18\x02 \x01(\x03R\tstartTime\x12\x19\n" +
 	"\bend_time\x18\x03 \x01(\x03R\aendTime\x121\n" +
 	"\n" +
-	"rota_group\x18\x04 \x01(\v2\x12.rota.v1.RotaGroupR\trotaGroup2\\\n" +
+	"rota_group\x18\x04 \x01(\v2\x12.rota.v1.RotaGroupR\trotaGroup2\xb6\x01\n" +
 	"\rOnCallService\x12K\n" +
-	"\x12GetCurrentSchedule\x12\".rota.v1.GetCurrentScheduleRequest\x1a\x11.rota.v1.ScheduleB\x8d\x01\n" +
+	"\x12GetCurrentSchedule\x12\".rota.v1.GetCurrentScheduleRequest\x1a\x11.rota.v1.Schedule\x12X\n" +
+	"\x18GetCurrentSchedulesByIDs\x12(.rota.v1.GetCurrentSchedulesByIDsRequest\x1a\x12.rota.v1.SchedulesB\x8d\x01\n" +
 	"\vcom.rota.v1B\tRotaProtoP\x01Z6github.com/Duke1616/ecmdb/api/proto/gen/rota/v1;rotav1\xa2\x02\x03RXX\xaa\x02\aRota.V1\xca\x02\aRota\\V1\xe2\x02\x13Rota\\V1\\GPBMetadata\xea\x02\bRota::V1b\x06proto3"
 
 var (
@@ -237,21 +332,26 @@ func file_rota_v1_rota_proto_rawDescGZIP() []byte {
 	return file_rota_v1_rota_proto_rawDescData
 }
 
-var file_rota_v1_rota_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_rota_v1_rota_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_rota_v1_rota_proto_goTypes = []any{
-	(*GetCurrentScheduleRequest)(nil), // 0: rota.v1.GetCurrentScheduleRequest
-	(*RotaGroup)(nil),                 // 1: rota.v1.RotaGroup
-	(*Schedule)(nil),                  // 2: rota.v1.Schedule
+	(*GetCurrentScheduleRequest)(nil),       // 0: rota.v1.GetCurrentScheduleRequest
+	(*GetCurrentSchedulesByIDsRequest)(nil), // 1: rota.v1.GetCurrentSchedulesByIDsRequest
+	(*Schedules)(nil),                       // 2: rota.v1.Schedules
+	(*RotaGroup)(nil),                       // 3: rota.v1.RotaGroup
+	(*Schedule)(nil),                        // 4: rota.v1.Schedule
 }
 var file_rota_v1_rota_proto_depIdxs = []int32{
-	1, // 0: rota.v1.Schedule.rota_group:type_name -> rota.v1.RotaGroup
-	0, // 1: rota.v1.OnCallService.GetCurrentSchedule:input_type -> rota.v1.GetCurrentScheduleRequest
-	2, // 2: rota.v1.OnCallService.GetCurrentSchedule:output_type -> rota.v1.Schedule
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: rota.v1.Schedules.schedules:type_name -> rota.v1.Schedule
+	3, // 1: rota.v1.Schedule.rota_group:type_name -> rota.v1.RotaGroup
+	0, // 2: rota.v1.OnCallService.GetCurrentSchedule:input_type -> rota.v1.GetCurrentScheduleRequest
+	1, // 3: rota.v1.OnCallService.GetCurrentSchedulesByIDs:input_type -> rota.v1.GetCurrentSchedulesByIDsRequest
+	4, // 4: rota.v1.OnCallService.GetCurrentSchedule:output_type -> rota.v1.Schedule
+	2, // 5: rota.v1.OnCallService.GetCurrentSchedulesByIDs:output_type -> rota.v1.Schedules
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_rota_v1_rota_proto_init() }
@@ -265,7 +365,7 @@ func file_rota_v1_rota_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rota_v1_rota_proto_rawDesc), len(file_rota_v1_rota_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

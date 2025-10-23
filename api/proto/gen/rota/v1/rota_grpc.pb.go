@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OnCallService_GetCurrentSchedule_FullMethodName = "/rota.v1.OnCallService/GetCurrentSchedule"
+	OnCallService_GetCurrentSchedule_FullMethodName       = "/rota.v1.OnCallService/GetCurrentSchedule"
+	OnCallService_GetCurrentSchedulesByIDs_FullMethodName = "/rota.v1.OnCallService/GetCurrentSchedulesByIDs"
 )
 
 // OnCallServiceClient is the client API for OnCallService service.
@@ -28,8 +29,10 @@ const (
 //
 // 排班服务定义 on call
 type OnCallServiceClient interface {
-	// 查找多个用户名对应的用户信息
+	// 查找单个排班的当前排班信息
 	GetCurrentSchedule(ctx context.Context, in *GetCurrentScheduleRequest, opts ...grpc.CallOption) (*Schedule, error)
+	// 批量查找多个排班的当前排班信息
+	GetCurrentSchedulesByIDs(ctx context.Context, in *GetCurrentSchedulesByIDsRequest, opts ...grpc.CallOption) (*Schedules, error)
 }
 
 type onCallServiceClient struct {
@@ -50,14 +53,26 @@ func (c *onCallServiceClient) GetCurrentSchedule(ctx context.Context, in *GetCur
 	return out, nil
 }
 
+func (c *onCallServiceClient) GetCurrentSchedulesByIDs(ctx context.Context, in *GetCurrentSchedulesByIDsRequest, opts ...grpc.CallOption) (*Schedules, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Schedules)
+	err := c.cc.Invoke(ctx, OnCallService_GetCurrentSchedulesByIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OnCallServiceServer is the server API for OnCallService service.
 // All implementations must embed UnimplementedOnCallServiceServer
 // for forward compatibility.
 //
 // 排班服务定义 on call
 type OnCallServiceServer interface {
-	// 查找多个用户名对应的用户信息
+	// 查找单个排班的当前排班信息
 	GetCurrentSchedule(context.Context, *GetCurrentScheduleRequest) (*Schedule, error)
+	// 批量查找多个排班的当前排班信息
+	GetCurrentSchedulesByIDs(context.Context, *GetCurrentSchedulesByIDsRequest) (*Schedules, error)
 	mustEmbedUnimplementedOnCallServiceServer()
 }
 
@@ -70,6 +85,9 @@ type UnimplementedOnCallServiceServer struct{}
 
 func (UnimplementedOnCallServiceServer) GetCurrentSchedule(context.Context, *GetCurrentScheduleRequest) (*Schedule, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentSchedule not implemented")
+}
+func (UnimplementedOnCallServiceServer) GetCurrentSchedulesByIDs(context.Context, *GetCurrentSchedulesByIDsRequest) (*Schedules, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentSchedulesByIDs not implemented")
 }
 func (UnimplementedOnCallServiceServer) mustEmbedUnimplementedOnCallServiceServer() {}
 func (UnimplementedOnCallServiceServer) testEmbeddedByValue()                       {}
@@ -110,6 +128,24 @@ func _OnCallService_GetCurrentSchedule_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OnCallService_GetCurrentSchedulesByIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCurrentSchedulesByIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OnCallServiceServer).GetCurrentSchedulesByIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OnCallService_GetCurrentSchedulesByIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OnCallServiceServer).GetCurrentSchedulesByIDs(ctx, req.(*GetCurrentSchedulesByIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OnCallService_ServiceDesc is the grpc.ServiceDesc for OnCallService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -120,6 +156,10 @@ var OnCallService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCurrentSchedule",
 			Handler:    _OnCallService_GetCurrentSchedule_Handler,
+		},
+		{
+			MethodName: "GetCurrentSchedulesByIDs",
+			Handler:    _OnCallService_GetCurrentSchedulesByIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

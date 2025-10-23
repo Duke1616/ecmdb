@@ -192,6 +192,51 @@ func (x *FindByDepartmentIdReq) GetDepartmentId() int64 {
 	return 0
 }
 
+// 批量查找部门用户请求
+type FindByDepartmentIdsReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DepartmentIds []int64                `protobuf:"varint,1,rep,packed,name=department_ids,json=departmentIds,proto3" json:"department_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FindByDepartmentIdsReq) Reset() {
+	*x = FindByDepartmentIdsReq{}
+	mi := &file_user_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FindByDepartmentIdsReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FindByDepartmentIdsReq) ProtoMessage() {}
+
+func (x *FindByDepartmentIdsReq) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FindByDepartmentIdsReq.ProtoReflect.Descriptor instead.
+func (*FindByDepartmentIdsReq) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FindByDepartmentIdsReq) GetDepartmentIds() []int64 {
+	if x != nil {
+		return x.DepartmentIds
+	}
+	return nil
+}
+
 // 查找用户请求
 type FindByIdsReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -202,7 +247,7 @@ type FindByIdsReq struct {
 
 func (x *FindByIdsReq) Reset() {
 	*x = FindByIdsReq{}
-	mi := &file_user_v1_user_proto_msgTypes[3]
+	mi := &file_user_v1_user_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -214,7 +259,7 @@ func (x *FindByIdsReq) String() string {
 func (*FindByIdsReq) ProtoMessage() {}
 
 func (x *FindByIdsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[3]
+	mi := &file_user_v1_user_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -227,7 +272,7 @@ func (x *FindByIdsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindByIdsReq.ProtoReflect.Descriptor instead.
 func (*FindByIdsReq) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{3}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *FindByIdsReq) GetIds() []int64 {
@@ -247,7 +292,7 @@ type RetrieveUsers struct {
 
 func (x *RetrieveUsers) Reset() {
 	*x = RetrieveUsers{}
-	mi := &file_user_v1_user_proto_msgTypes[4]
+	mi := &file_user_v1_user_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -259,7 +304,7 @@ func (x *RetrieveUsers) String() string {
 func (*RetrieveUsers) ProtoMessage() {}
 
 func (x *RetrieveUsers) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[4]
+	mi := &file_user_v1_user_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -272,7 +317,7 @@ func (x *RetrieveUsers) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetrieveUsers.ProtoReflect.Descriptor instead.
 func (*RetrieveUsers) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{4}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RetrieveUsers) GetUsers() []*User {
@@ -297,15 +342,18 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x12FindByUsernamesReq\x12\x1c\n" +
 	"\tusernames\x18\x01 \x03(\tR\tusernames\"<\n" +
 	"\x15FindByDepartmentIdReq\x12#\n" +
-	"\rdepartment_id\x18\x01 \x01(\x03R\fdepartmentId\" \n" +
+	"\rdepartment_id\x18\x01 \x01(\x03R\fdepartmentId\"?\n" +
+	"\x16FindByDepartmentIdsReq\x12%\n" +
+	"\x0edepartment_ids\x18\x01 \x03(\x03R\rdepartmentIds\" \n" +
 	"\fFindByIdsReq\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\x03R\x03ids\"4\n" +
 	"\rRetrieveUsers\x12#\n" +
-	"\x05users\x18\x01 \x03(\v2\r.user.v1.UserR\x05users2\xdf\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\r.user.v1.UserR\x05users2\xaf\x02\n" +
 	"\vUserService\x12F\n" +
 	"\x0fFindByUsernames\x12\x1b.user.v1.FindByUsernamesReq\x1a\x16.user.v1.RetrieveUsers\x12:\n" +
 	"\tFindByIds\x12\x15.user.v1.FindByIdsReq\x1a\x16.user.v1.RetrieveUsers\x12L\n" +
-	"\x12FindByDepartmentId\x12\x1e.user.v1.FindByDepartmentIdReq\x1a\x16.user.v1.RetrieveUsersB\x8d\x01\n" +
+	"\x12FindByDepartmentId\x12\x1e.user.v1.FindByDepartmentIdReq\x1a\x16.user.v1.RetrieveUsers\x12N\n" +
+	"\x13FindByDepartmentIds\x12\x1f.user.v1.FindByDepartmentIdsReq\x1a\x16.user.v1.RetrieveUsersB\x8d\x01\n" +
 	"\vcom.user.v1B\tUserProtoP\x01Z6github.com/Duke1616/ecmdb/api/proto/gen/user/v1;userv1\xa2\x02\x03UXX\xaa\x02\aUser.V1\xca\x02\aUser\\V1\xe2\x02\x13User\\V1\\GPBMetadata\xea\x02\bUser::V1b\x06proto3"
 
 var (
@@ -320,24 +368,27 @@ func file_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_user_v1_user_proto_rawDescData
 }
 
-var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_user_v1_user_proto_goTypes = []any{
-	(*User)(nil),                  // 0: user.v1.User
-	(*FindByUsernamesReq)(nil),    // 1: user.v1.FindByUsernamesReq
-	(*FindByDepartmentIdReq)(nil), // 2: user.v1.FindByDepartmentIdReq
-	(*FindByIdsReq)(nil),          // 3: user.v1.FindByIdsReq
-	(*RetrieveUsers)(nil),         // 4: user.v1.RetrieveUsers
+	(*User)(nil),                   // 0: user.v1.User
+	(*FindByUsernamesReq)(nil),     // 1: user.v1.FindByUsernamesReq
+	(*FindByDepartmentIdReq)(nil),  // 2: user.v1.FindByDepartmentIdReq
+	(*FindByDepartmentIdsReq)(nil), // 3: user.v1.FindByDepartmentIdsReq
+	(*FindByIdsReq)(nil),           // 4: user.v1.FindByIdsReq
+	(*RetrieveUsers)(nil),          // 5: user.v1.RetrieveUsers
 }
 var file_user_v1_user_proto_depIdxs = []int32{
 	0, // 0: user.v1.RetrieveUsers.users:type_name -> user.v1.User
 	1, // 1: user.v1.UserService.FindByUsernames:input_type -> user.v1.FindByUsernamesReq
-	3, // 2: user.v1.UserService.FindByIds:input_type -> user.v1.FindByIdsReq
+	4, // 2: user.v1.UserService.FindByIds:input_type -> user.v1.FindByIdsReq
 	2, // 3: user.v1.UserService.FindByDepartmentId:input_type -> user.v1.FindByDepartmentIdReq
-	4, // 4: user.v1.UserService.FindByUsernames:output_type -> user.v1.RetrieveUsers
-	4, // 5: user.v1.UserService.FindByIds:output_type -> user.v1.RetrieveUsers
-	4, // 6: user.v1.UserService.FindByDepartmentId:output_type -> user.v1.RetrieveUsers
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	3, // 4: user.v1.UserService.FindByDepartmentIds:input_type -> user.v1.FindByDepartmentIdsReq
+	5, // 5: user.v1.UserService.FindByUsernames:output_type -> user.v1.RetrieveUsers
+	5, // 6: user.v1.UserService.FindByIds:output_type -> user.v1.RetrieveUsers
+	5, // 7: user.v1.UserService.FindByDepartmentId:output_type -> user.v1.RetrieveUsers
+	5, // 8: user.v1.UserService.FindByDepartmentIds:output_type -> user.v1.RetrieveUsers
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -354,7 +405,7 @@ func file_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

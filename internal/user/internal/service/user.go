@@ -48,6 +48,9 @@ type Service interface {
 	// FindByDepartmentId 根据部门ID 查询用户
 	FindByDepartmentId(ctx context.Context, offset, limit int64, departmentId int64) ([]domain.User, int64, error)
 
+	// FindByDepartmentIds 根据部门IDs 查询用户
+	FindByDepartmentIds(ctx context.Context, departmentIds []int64) ([]domain.User, error)
+
 	// FindByUsername 根据用户名获取用户
 	FindByUsername(ctx context.Context, username string) (domain.User, error)
 
@@ -129,6 +132,10 @@ func (s *service) FindByDepartmentId(ctx context.Context, offset, limit int64, d
 		return us, total, err
 	}
 	return us, total, nil
+}
+
+func (s *service) FindByDepartmentIds(ctx context.Context, departmentIds []int64) ([]domain.User, error) {
+	return s.repo.FindByDepartmentIds(ctx, departmentIds)
 }
 
 func (s *service) FindByUsernames(ctx context.Context, uns []string) ([]domain.User, error) {

@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_FindByUsernames_FullMethodName    = "/user.v1.UserService/FindByUsernames"
-	UserService_FindByIds_FullMethodName          = "/user.v1.UserService/FindByIds"
-	UserService_FindByDepartmentId_FullMethodName = "/user.v1.UserService/FindByDepartmentId"
+	UserService_FindByUsernames_FullMethodName     = "/user.v1.UserService/FindByUsernames"
+	UserService_FindByIds_FullMethodName           = "/user.v1.UserService/FindByIds"
+	UserService_FindByDepartmentId_FullMethodName  = "/user.v1.UserService/FindByDepartmentId"
+	UserService_FindByDepartmentIds_FullMethodName = "/user.v1.UserService/FindByDepartmentIds"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -36,6 +37,8 @@ type UserServiceClient interface {
 	FindByIds(ctx context.Context, in *FindByIdsReq, opts ...grpc.CallOption) (*RetrieveUsers, error)
 	// 通过部门查询用户
 	FindByDepartmentId(ctx context.Context, in *FindByDepartmentIdReq, opts ...grpc.CallOption) (*RetrieveUsers, error)
+	// 批量通过部门IDs查询用户
+	FindByDepartmentIds(ctx context.Context, in *FindByDepartmentIdsReq, opts ...grpc.CallOption) (*RetrieveUsers, error)
 }
 
 type userServiceClient struct {
@@ -76,6 +79,16 @@ func (c *userServiceClient) FindByDepartmentId(ctx context.Context, in *FindByDe
 	return out, nil
 }
 
+func (c *userServiceClient) FindByDepartmentIds(ctx context.Context, in *FindByDepartmentIdsReq, opts ...grpc.CallOption) (*RetrieveUsers, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RetrieveUsers)
+	err := c.cc.Invoke(ctx, UserService_FindByDepartmentIds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -88,6 +101,8 @@ type UserServiceServer interface {
 	FindByIds(context.Context, *FindByIdsReq) (*RetrieveUsers, error)
 	// 通过部门查询用户
 	FindByDepartmentId(context.Context, *FindByDepartmentIdReq) (*RetrieveUsers, error)
+	// 批量通过部门IDs查询用户
+	FindByDepartmentIds(context.Context, *FindByDepartmentIdsReq) (*RetrieveUsers, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -106,6 +121,9 @@ func (UnimplementedUserServiceServer) FindByIds(context.Context, *FindByIdsReq) 
 }
 func (UnimplementedUserServiceServer) FindByDepartmentId(context.Context, *FindByDepartmentIdReq) (*RetrieveUsers, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FindByDepartmentId not implemented")
+}
+func (UnimplementedUserServiceServer) FindByDepartmentIds(context.Context, *FindByDepartmentIdsReq) (*RetrieveUsers, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindByDepartmentIds not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -182,6 +200,24 @@ func _UserService_FindByDepartmentId_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_FindByDepartmentIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindByDepartmentIdsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).FindByDepartmentIds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_FindByDepartmentIds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).FindByDepartmentIds(ctx, req.(*FindByDepartmentIdsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -200,6 +236,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FindByDepartmentId",
 			Handler:    _UserService_FindByDepartmentId_Handler,
+		},
+		{
+			MethodName: "FindByDepartmentIds",
+			Handler:    _UserService_FindByDepartmentIds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

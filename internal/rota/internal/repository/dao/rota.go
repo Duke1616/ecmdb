@@ -21,6 +21,7 @@ type RotaDao interface {
 	Update(ctx context.Context, req Rota) (int64, error)
 	Detail(ctx context.Context, id int64) (Rota, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	FindByIDs(ctx context.Context, ids []int64) ([]Rota, error)
 
 	FindOrAddSchedulingRule(ctx context.Context, id int64, rr RotaRule) (int64, error)
 	UpdateSchedulingRule(ctx context.Context, id int64, rotaRules []RotaRule) (int64, error)
@@ -115,6 +116,26 @@ func (dao *rotaDao) Detail(ctx context.Context, id int64) (Rota, error) {
 	}
 
 	return rota, nil
+}
+
+func (dao *rotaDao) FindByIDs(ctx context.Context, ids []int64) ([]Rota, error) {
+	col := dao.db.Collection(RotaCollection)
+	filter := bson.M{"id": bson.M{"$in": ids}}
+
+	cursor, err := col.Find(ctx, filter)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Rota
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *rotaDao) List(ctx context.Context, offset, limit int64) ([]Rota, error) {

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitFeishu() *lark.Client {
+func InitLarkClient() *lark.Client {
 	type Config struct {
 		AppId     string `mapstructure:"appId"`
 		AppSecret string `mapstructure:"appSecret"`

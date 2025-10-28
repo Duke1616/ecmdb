@@ -28,12 +28,16 @@ type User struct {
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// 用户名
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	// 用户名
+	DisplayName string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	// 飞书用户ID
-	LarkUserId string `protobuf:"bytes,3,opt,name=lark_user_id,json=larkUserId,proto3" json:"lark_user_id,omitempty"`
+	LarkUserId string `protobuf:"bytes,4,opt,name=lark_user_id,json=larkUserId,proto3" json:"lark_user_id,omitempty"`
 	// 企业微信用户ID
-	WechatUserId string `protobuf:"bytes,4,opt,name=wechat_user_id,json=wechatUserId,proto3" json:"wechat_user_id,omitempty"`
+	WechatUserId string `protobuf:"bytes,5,opt,name=wechat_user_id,json=wechatUserId,proto3" json:"wechat_user_id,omitempty"`
 	// 用户邮箱
-	Email         string `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
+	Email string `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
+	// 用户手机号
+	Phone         string `protobuf:"bytes,7,opt,name=phone,proto3" json:"phone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -82,6 +86,13 @@ func (x *User) GetUsername() string {
 	return ""
 }
 
+func (x *User) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
 func (x *User) GetLarkUserId() string {
 	if x != nil {
 		return x.LarkUserId
@@ -99,6 +110,13 @@ func (x *User) GetWechatUserId() string {
 func (x *User) GetEmail() string {
 	if x != nil {
 		return x.Email
+	}
+	return ""
+}
+
+func (x *User) GetPhone() string {
+	if x != nil {
+		return x.Phone
 	}
 	return ""
 }
@@ -331,14 +349,16 @@ var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x90\x01\n" +
+	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc9\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12 \n" +
-	"\flark_user_id\x18\x03 \x01(\tR\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12 \n" +
+	"\flark_user_id\x18\x04 \x01(\tR\n" +
 	"larkUserId\x12$\n" +
-	"\x0ewechat_user_id\x18\x04 \x01(\tR\fwechatUserId\x12\x14\n" +
-	"\x05email\x18\x05 \x01(\tR\x05email\"2\n" +
+	"\x0ewechat_user_id\x18\x05 \x01(\tR\fwechatUserId\x12\x14\n" +
+	"\x05email\x18\x06 \x01(\tR\x05email\x12\x14\n" +
+	"\x05phone\x18\a \x01(\tR\x05phone\"2\n" +
 	"\x12FindByUsernamesReq\x12\x1c\n" +
 	"\tusernames\x18\x01 \x03(\tR\tusernames\"<\n" +
 	"\x15FindByDepartmentIdReq\x12#\n" +

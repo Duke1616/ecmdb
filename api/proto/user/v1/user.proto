@@ -10,12 +10,16 @@ message User {
   int64 id = 1;
   // 用户名
   string username  = 2;
+  // 用户名
+  string display_name  = 3;
   // 飞书用户ID
-  string lark_user_id = 3;
+  string lark_user_id = 4;
   // 企业微信用户ID
-  string wechat_user_id = 4;
+  string wechat_user_id = 5;
   // 用户邮箱
-  string email = 5;
+  string email = 6;
+  // 用户手机号
+  string phone = 7;
 }
 
 // 查找用户请求

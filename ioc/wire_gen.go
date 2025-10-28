@@ -132,7 +132,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	handler8 := runnerModule.Hdl
-	larkClient := InitFeishu()
+	larkClient := InitLarkClient()
 	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient)
 	if err != nil {
 		return nil, err
@@ -218,7 +218,7 @@ func InitApp() (*App, error) {
 // wire.go:
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRedisSearch, InitEtcdClient, InitWorkWx, InitFeishu, InitModuleCrypto)
+	InitRedisSearch, InitEtcdClient, InitWorkWx, InitLarkClient, InitModuleCrypto)
 
 func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.NotificationServiceClient {
 	type Config struct {

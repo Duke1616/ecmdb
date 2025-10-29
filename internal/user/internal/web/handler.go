@@ -179,7 +179,6 @@ func (h *Handler) LdapRefreshCache(ctx *gin.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) LoginSystem(ctx *gin.Context, req LoginSystemReq) (ginx.Result, error) {
-	fmt.Print(req.Username, "查询用户")
 	user, err := h.svc.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		return userOrPassErrorResult, err
@@ -400,7 +399,17 @@ func (h *Handler) RefreshAccessToken(ctx *gin.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) ListUser(ctx *gin.Context, req Page) (ginx.Result, error) {
-	rts, total, err := h.svc.ListUser(ctx, req.Offset, req.Limit)
+	// 设置分页默认值
+	offset := req.Offset
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10 // 默认每页10条
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	rts, total, err := h.svc.ListUser(ctx, offset, limit)
 	if err != nil {
 		return systemErrorResult, err
 	}

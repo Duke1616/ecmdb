@@ -38,7 +38,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/list/pipeline", ginx.Wrap(h.Pipeline))
 
 	g.POST("/by_ids", ginx.WrapBody[FindByTemplateIds](h.FindByTemplateIds))
-
 	// 根据流程ID，获取所有已经被模版，主要为了处理模版
 	g.POST("/get_by_workflow_id", ginx.WrapBody[GetTemplatesByWorkFlowIdReq](h.GetTemplatesByWorkflowId))
 

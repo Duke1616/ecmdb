@@ -64,6 +64,8 @@ func (s Provide) IsAlert() bool {
 
 type Order struct {
 	Id               int64
+	BizID            int64  // 业务ID
+	Key              string // 业务唯一 Key
 	TemplateId       int64
 	WorkflowId       int64
 	Data             map[string]interface{}

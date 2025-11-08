@@ -11,6 +11,8 @@ import (
 
 func InitHandler(attributeModule *attribute.Module, relationModule *relation.Module) (*resource.Handler, error) {
 	wire.Build(InitMongoDB,
+		InitMQ,
+		InitCryptoRegistry,
 		resource.InitModule,
 		wire.FieldsOf(new(*resource.Module), "Hdl"),
 	)

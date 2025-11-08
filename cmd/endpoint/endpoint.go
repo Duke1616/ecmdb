@@ -24,7 +24,7 @@ var Cmd = &cobra.Command{
 			panic(err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 		defer cancel()
 		err = initEndpoint(ctx, app.Web, app.Svc)
 		if err != nil {

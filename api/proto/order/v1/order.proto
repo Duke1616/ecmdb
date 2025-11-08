@@ -9,14 +9,21 @@ import "google/protobuf/struct.proto";
 option go_package = "github.com/Duke1616/ecmdb/api/gen/v1;order";
 
 message CreateOrderRequest {
-  // 提交工单信息
-  Order order = 1;
-  // 消息通知配置
-  NotificationConf notification_conf = 2;
+  // 业务ID
+  int64 biz_id = 1;
+  // 业务唯一Key
+  string key = 2;
+  // 模版ID
+  int64 template_id = 3;
+  // 工单来源
+  Provider Provider = 4;
+  // 创建人
+  string CreateBy = 5;
+  // 工单参数
+  google.protobuf.Struct data = 6;
 }
 
-
-// 工单类型来源
+// 工单类型
 enum Provider {
   // 未指定
   PROVIDER_UNSPECIFIED = 0;
@@ -24,42 +31,6 @@ enum Provider {
   SYSTEM = 1;
   // WECHAT 企业微信
   WECHAT = 2;
-  // ALERT 告警平台
-  ALERT = 3;
-}
-
-// 渠道类型枚举
-enum Channel {
-  // 未指定渠道
-  CHANNEL_UNSPECIFIED = 0;
-  // 飞书卡片
-  FEISHU_CARD = 1;
-  // 邮件
-  EMAIL = 2;
-  // 站内信
-  IN_APP = 3;
-}
-
-message Order {
-  // 模版ID
-  int64 template_id = 1;
-  // 流程ID
-  int64 workflow_id  = 2;
-  // 工单参数
-  google.protobuf.Struct data = 3;
-  // 工单来源
-  Provider Provider = 4;
-  // 创建人
-  string CreateBy = 5;
-}
-
-message NotificationConf {
-  // 消息通知模版
-  int64 template_id = 1;
-  // 模版传递参数
-  google.protobuf.Struct template_params = 2;
-  // 消息通知渠道
-  Channel channel  = 3;
 }
 
 message Response {}

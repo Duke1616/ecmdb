@@ -2,11 +2,13 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -15,6 +17,9 @@ const (
 )
 
 type OrderDAO interface {
+	// CreateBizOrder TODO 创建业务工单
+	CreateBizOrder(ctx context.Context, order Order) (Order, error)
+
 	CreateOrder(ctx context.Context, r Order) (int64, error)
 	DetailByProcessInstId(ctx context.Context, instanceId int) (Order, error)
 	Detail(ctx context.Context, id int64) (Order, error)
@@ -23,6 +28,8 @@ type OrderDAO interface {
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
 	ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]Order, error)
 	CountOrder(ctx context.Context, userId string, status []int) (int64, error)
+	// FindByBizIdAndKey 根据 BizID 和 Key 查询工单
+	FindByBizIdAndKey(ctx context.Context, bizId int64, key string, status []uint8) (Order, error)
 }
 
 func NewOrderDAO(db *mongox.Mongo) OrderDAO {
@@ -33,6 +40,21 @@ func NewOrderDAO(db *mongox.Mongo) OrderDAO {
 
 type orderDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *orderDAO) CreateBizOrder(ctx context.Context, order Order) (Order, error) {
+	now := time.Now()
+	order.Ctime, order.Utime = now.UnixMilli(), now.UnixMilli()
+	order.Id = dao.db.GetIdGenerator(OrderCollection)
+	col := dao.db.Collection(OrderCollection)
+
+	_, err := col.InsertOne(ctx, order)
+
+	if err != nil {
+		return order, fmt.Errorf("插入数据错误: %w", err)
+	}
+
+	return order, nil
 }
 
 func (dao *orderDAO) Detail(ctx context.Context, id int64) (Order, error) {
@@ -170,8 +192,37 @@ func (dao *orderDAO) CountOrder(ctx context.Context, userId string, status []int
 	return count, nil
 }
 
+func (dao *orderDAO) FindByBizIdAndKey(ctx context.Context, bizId int64, key string, status []uint8) (Order, error) {
+	col := dao.db.Collection(OrderCollection)
+	filter := bson.M{
+		"biz_id": bizId,
+		"key":    key,
+	}
+	if len(status) > 0 {
+		filter["status"] = bson.M{"$in": status}
+	}
+
+	// 按创建时间倒序，取最新的一个
+	opts := &options.FindOneOptions{
+		Sort: bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	var result Order
+	if err := col.FindOne(ctx, filter, opts).Decode(&result); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			// 没有找到记录，返回空 Order
+			return Order{}, nil
+		}
+		return Order{}, fmt.Errorf("查询工单失败: %w", err)
+	}
+
+	return result, nil
+}
+
 type Order struct {
 	Id                int64                  `bson:"id"`
+	BizID             int64                  `bson:"biz_id"` // 业务ID
+	Key               string                 `bson:"key"`    // 业务唯一 Key
 	TemplateId        int64                  `bson:"template_id"`
 	WorkflowId        int64                  `bson:"workflow_id"`
 	ProcessInstanceId int                    `bson:"process_instance_id"`

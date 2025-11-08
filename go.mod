@@ -5,7 +5,7 @@ go 1.24.1
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
 	github.com/Duke1616/enotify v0.1.18
-	github.com/Duke1616/vuefinder-go v1.0.4
+	github.com/Duke1616/vuefinder-go v1.0.6
 	github.com/IBM/sarama v1.43.3
 	github.com/RediSearch/redisearch-go/v2 v2.1.1
 	github.com/casbin/casbin/v2 v2.98.0
@@ -26,7 +26,7 @@ require (
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/gotomicro/ego v1.2.2
 	github.com/larksuite/oapi-sdk-go/v3 v3.3.2
 	github.com/minio/minio-go/v7 v7.0.81
@@ -34,7 +34,7 @@ require (
 	github.com/purpleclay/gitz v0.9.0
 	github.com/redis/go-redis/v9 v9.12.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.10.0
 	github.com/teambition/rrule-go v1.8.2
@@ -147,7 +147,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect

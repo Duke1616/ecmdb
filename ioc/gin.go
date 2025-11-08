@@ -111,8 +111,8 @@ func InitGinMiddlewares() []gin.HandlerFunc {
 func corsHdl() gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowOrigins:  []string{"*"},
-		AllowMethods:  []string{"POST", "GET"},
-		AllowHeaders:  []string{"Content-Type", "Authorization"},
+		AllowMethods:  []string{"POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:  []string{"Content-Type", "Authorization", "X-Finder-Id", "X-Finder-ID"},
 		ExposeHeaders: []string{"X-Access-Token"},
 		// 是否允许你带 cookie 之类的东西
 		AllowCredentials: true,

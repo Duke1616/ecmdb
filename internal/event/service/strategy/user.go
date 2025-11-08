@@ -32,7 +32,7 @@ type UserNotification struct {
 	engineSvc       engineSvc.Service
 	resultSvc       FetcherResult
 	userSvc         user.Service
-	departMentSvc   department.Service
+	departmentSvc   department.Service
 	templateSvc     templateSvc.Service
 	orderSvc        order.Service
 	notificationSvc notificationv1.NotificationServiceClient
@@ -44,7 +44,7 @@ type UserNotification struct {
 }
 
 func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Service, orderSvc order.Service,
-	userSvc user.Service, resultSvc FetcherResult, departMentSvc department.Service,
+	userSvc user.Service, resultSvc FetcherResult, departmentSvc department.Service,
 	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient) (*UserNotification, error) {
 
 	return &UserNotification{
@@ -53,7 +53,7 @@ func NewUserNotification(engineSvc engineSvc.Service, templateSvc templateSvc.Se
 		templateSvc:     templateSvc,
 		orderSvc:        orderSvc,
 		userSvc:         userSvc,
-		departMentSvc:   departMentSvc,
+		departmentSvc:   departmentSvc,
 		resultSvc:       resultSvc,
 		notificationSvc: notificationSvc,
 		logger:          elog.DefaultLogger,
@@ -523,7 +523,7 @@ func (n *UserNotification) resolveDepartment(ctx context.Context, instanceId int
 		return department.Department{}, fmt.Errorf("用户所属组为空")
 	}
 
-	depart, err := n.departMentSvc.FindById(ctx, user.DepartmentId)
+	depart, err := n.departmentSvc.FindById(ctx, user.DepartmentId)
 	if err != nil {
 		return department.Department{}, err
 	}

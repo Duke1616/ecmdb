@@ -9,6 +9,8 @@ import (
 )
 
 type OrderRepository interface {
+	CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error)
+
 	CreateOrder(ctx context.Context, req domain.Order) (int64, error)
 	DetailByProcessInstId(ctx context.Context, instanceId int) (domain.Order, error)
 	Detail(ctx context.Context, id int64) (domain.Order, error)
@@ -17,6 +19,8 @@ type OrderRepository interface {
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
 	ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]domain.Order, error)
 	CountOrder(ctx context.Context, userId string, status []int) (int64, error)
+	// FindByBizIdAndKey 根据 BizID 和 Key 查询工单
+	FindByBizIdAndKey(ctx context.Context, bizId int64, key string, status []domain.Status) (domain.Order, error)
 }
 
 func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
@@ -27,6 +31,11 @@ func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
 
 type orderRepository struct {
 	dao dao.OrderDAO
+}
+
+func (repo *orderRepository) CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error) {
+	resp, err := repo.dao.CreateBizOrder(ctx, repo.toEntity(order))
+	return repo.toDomain(resp), err
 }
 
 func (repo *orderRepository) Detail(ctx context.Context, id int64) (domain.Order, error) {
@@ -69,8 +78,18 @@ func (repo *orderRepository) CountOrder(ctx context.Context, userId string, stat
 	return repo.dao.CountOrder(ctx, userId, status)
 }
 
+func (repo *orderRepository) FindByBizIdAndKey(ctx context.Context, bizId int64, key string, status []domain.Status) (domain.Order, error) {
+	statusUint8 := slice.Map(status, func(idx int, src domain.Status) uint8 {
+		return src.ToUint8()
+	})
+	order, err := repo.dao.FindByBizIdAndKey(ctx, bizId, key, statusUint8)
+	return repo.toDomain(order), err
+}
+
 func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 	return dao.Order{
+		BizID:      req.BizID,
+		Key:        req.Key,
 		TemplateId: req.TemplateId,
 		Status:     req.Status.ToUint8(),
 		Provide:    req.Provide.ToUint8(),
@@ -88,6 +107,8 @@ func (repo *orderRepository) toEntity(req domain.Order) dao.Order {
 func (repo *orderRepository) toDomain(req dao.Order) domain.Order {
 	return domain.Order{
 		Id:         req.Id,
+		BizID:      req.BizID,
+		Key:        req.Key,
 		TemplateId: req.TemplateId,
 		Status:     domain.Status(req.Status),
 		Provide:    domain.Provide(req.Provide),

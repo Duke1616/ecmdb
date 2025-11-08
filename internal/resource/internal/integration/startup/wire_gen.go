@@ -17,7 +17,9 @@ import (
 
 func InitHandler(attributeModule *attribute.Module, relationModule *relation.Module) (*web.Handler, error) {
 	mongo := InitMongoDB()
-	module, err := resource.InitModule(mongo, attributeModule, relationModule)
+	mq := InitMQ()
+	cryptoRegistry := InitCryptoRegistry()
+	module, err := resource.InitModule(mongo, attributeModule, relationModule, mq, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}

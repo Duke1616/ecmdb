@@ -67,6 +67,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 注册 FinderWeb 路由，实现 SFTP 能力
 	h.finderWeb.RegisterRoutes(server)
+	h.finderWeb.RegisterUploadRoute(server)
 }
 
 func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error) {

@@ -24,7 +24,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 工单类型来源
+// 工单类型
 type Provider int32
 
 const (
@@ -34,8 +34,6 @@ const (
 	Provider_SYSTEM Provider = 1
 	// WECHAT 企业微信
 	Provider_WECHAT Provider = 2
-	// ALERT 告警平台
-	Provider_ALERT Provider = 3
 )
 
 // Enum value maps for Provider.
@@ -44,13 +42,11 @@ var (
 		0: "PROVIDER_UNSPECIFIED",
 		1: "SYSTEM",
 		2: "WECHAT",
-		3: "ALERT",
 	}
 	Provider_value = map[string]int32{
 		"PROVIDER_UNSPECIFIED": 0,
 		"SYSTEM":               1,
 		"WECHAT":               2,
-		"ALERT":                3,
 	}
 )
 
@@ -81,71 +77,22 @@ func (Provider) EnumDescriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{0}
 }
 
-// 渠道类型枚举
-type Channel int32
-
-const (
-	// 未指定渠道
-	Channel_CHANNEL_UNSPECIFIED Channel = 0
-	// 飞书卡片
-	Channel_FEISHU_CARD Channel = 1
-	// 邮件
-	Channel_EMAIL Channel = 2
-	// 站内信
-	Channel_IN_APP Channel = 3
-)
-
-// Enum value maps for Channel.
-var (
-	Channel_name = map[int32]string{
-		0: "CHANNEL_UNSPECIFIED",
-		1: "FEISHU_CARD",
-		2: "EMAIL",
-		3: "IN_APP",
-	}
-	Channel_value = map[string]int32{
-		"CHANNEL_UNSPECIFIED": 0,
-		"FEISHU_CARD":         1,
-		"EMAIL":               2,
-		"IN_APP":              3,
-	}
-)
-
-func (x Channel) Enum() *Channel {
-	p := new(Channel)
-	*p = x
-	return p
-}
-
-func (x Channel) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (Channel) Descriptor() protoreflect.EnumDescriptor {
-	return file_order_v1_order_proto_enumTypes[1].Descriptor()
-}
-
-func (Channel) Type() protoreflect.EnumType {
-	return &file_order_v1_order_proto_enumTypes[1]
-}
-
-func (x Channel) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Channel.Descriptor instead.
-func (Channel) EnumDescriptor() ([]byte, []int) {
-	return file_order_v1_order_proto_rawDescGZIP(), []int{1}
-}
-
 type CreateOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 提交工单信息
-	Order *Order `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
-	// 消息通知配置
-	NotificationConf *NotificationConf `protobuf:"bytes,2,opt,name=notification_conf,json=notificationConf,proto3" json:"notification_conf,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// 业务ID
+	BizId int64 `protobuf:"varint,1,opt,name=biz_id,json=bizId,proto3" json:"biz_id,omitempty"`
+	// 业务唯一Key
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// 模版ID
+	TemplateId int64 `protobuf:"varint,3,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
+	// 工单来源
+	Provider Provider `protobuf:"varint,4,opt,name=Provider,proto3,enum=order.v1.Provider" json:"Provider,omitempty"`
+	// 创建人
+	CreateBy string `protobuf:"bytes,5,opt,name=CreateBy,proto3" json:"CreateBy,omitempty"`
+	// 工单参数
+	Data          *structpb.Struct `protobuf:"bytes,6,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateOrderRequest) Reset() {
@@ -178,162 +125,46 @@ func (*CreateOrderRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CreateOrderRequest) GetOrder() *Order {
+func (x *CreateOrderRequest) GetBizId() int64 {
 	if x != nil {
-		return x.Order
+		return x.BizId
 	}
-	return nil
+	return 0
 }
 
-func (x *CreateOrderRequest) GetNotificationConf() *NotificationConf {
+func (x *CreateOrderRequest) GetKey() string {
 	if x != nil {
-		return x.NotificationConf
+		return x.Key
 	}
-	return nil
+	return ""
 }
 
-type Order struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// 模版ID
-	TemplateId int64 `protobuf:"varint,1,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
-	// 流程ID
-	WorkflowId int64 `protobuf:"varint,2,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
-	// 工单参数
-	Data *structpb.Struct `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	// 工单来源
-	Provider Provider `protobuf:"varint,4,opt,name=Provider,proto3,enum=order.v1.Provider" json:"Provider,omitempty"`
-	// 创建人
-	CreateBy      string `protobuf:"bytes,5,opt,name=CreateBy,proto3" json:"CreateBy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Order) Reset() {
-	*x = Order{}
-	mi := &file_order_v1_order_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Order) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Order) ProtoMessage() {}
-
-func (x *Order) ProtoReflect() protoreflect.Message {
-	mi := &file_order_v1_order_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Order.ProtoReflect.Descriptor instead.
-func (*Order) Descriptor() ([]byte, []int) {
-	return file_order_v1_order_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *Order) GetTemplateId() int64 {
+func (x *CreateOrderRequest) GetTemplateId() int64 {
 	if x != nil {
 		return x.TemplateId
 	}
 	return 0
 }
 
-func (x *Order) GetWorkflowId() int64 {
-	if x != nil {
-		return x.WorkflowId
-	}
-	return 0
-}
-
-func (x *Order) GetData() *structpb.Struct {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-func (x *Order) GetProvider() Provider {
+func (x *CreateOrderRequest) GetProvider() Provider {
 	if x != nil {
 		return x.Provider
 	}
 	return Provider_PROVIDER_UNSPECIFIED
 }
 
-func (x *Order) GetCreateBy() string {
+func (x *CreateOrderRequest) GetCreateBy() string {
 	if x != nil {
 		return x.CreateBy
 	}
 	return ""
 }
 
-type NotificationConf struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// 消息通知模版
-	TemplateId int64 `protobuf:"varint,1,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
-	// 模版传递参数
-	TemplateParams *structpb.Struct `protobuf:"bytes,2,opt,name=template_params,json=templateParams,proto3" json:"template_params,omitempty"`
-	// 消息通知渠道
-	Channel       Channel `protobuf:"varint,3,opt,name=channel,proto3,enum=order.v1.Channel" json:"channel,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NotificationConf) Reset() {
-	*x = NotificationConf{}
-	mi := &file_order_v1_order_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NotificationConf) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NotificationConf) ProtoMessage() {}
-
-func (x *NotificationConf) ProtoReflect() protoreflect.Message {
-	mi := &file_order_v1_order_proto_msgTypes[2]
+func (x *CreateOrderRequest) GetData() *structpb.Struct {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NotificationConf.ProtoReflect.Descriptor instead.
-func (*NotificationConf) Descriptor() ([]byte, []int) {
-	return file_order_v1_order_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *NotificationConf) GetTemplateId() int64 {
-	if x != nil {
-		return x.TemplateId
-	}
-	return 0
-}
-
-func (x *NotificationConf) GetTemplateParams() *structpb.Struct {
-	if x != nil {
-		return x.TemplateParams
+		return x.Data
 	}
 	return nil
-}
-
-func (x *NotificationConf) GetChannel() Channel {
-	if x != nil {
-		return x.Channel
-	}
-	return Channel_CHANNEL_UNSPECIFIED
 }
 
 type Response struct {
@@ -344,7 +175,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_order_v1_order_proto_msgTypes[3]
+	mi := &file_order_v1_order_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -356,7 +187,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_order_v1_order_proto_msgTypes[3]
+	mi := &file_order_v1_order_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -369,45 +200,30 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_order_v1_order_proto_rawDescGZIP(), []int{3}
+	return file_order_v1_order_proto_rawDescGZIP(), []int{1}
 }
 
 var File_order_v1_order_proto protoreflect.FileDescriptor
 
 const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19google/protobuf/any.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x84\x01\n" +
-	"\x12CreateOrderRequest\x12%\n" +
-	"\x05order\x18\x01 \x01(\v2\x0f.order.v1.OrderR\x05order\x12G\n" +
-	"\x11notification_conf\x18\x02 \x01(\v2\x1a.order.v1.NotificationConfR\x10notificationConf\"\xc2\x01\n" +
-	"\x05Order\x12\x1f\n" +
-	"\vtemplate_id\x18\x01 \x01(\x03R\n" +
-	"templateId\x12\x1f\n" +
-	"\vworkflow_id\x18\x02 \x01(\x03R\n" +
-	"workflowId\x12+\n" +
-	"\x04data\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04data\x12.\n" +
+	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19google/protobuf/any.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xd7\x01\n" +
+	"\x12CreateOrderRequest\x12\x15\n" +
+	"\x06biz_id\x18\x01 \x01(\x03R\x05bizId\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12\x1f\n" +
+	"\vtemplate_id\x18\x03 \x01(\x03R\n" +
+	"templateId\x12.\n" +
 	"\bProvider\x18\x04 \x01(\x0e2\x12.order.v1.ProviderR\bProvider\x12\x1a\n" +
-	"\bCreateBy\x18\x05 \x01(\tR\bCreateBy\"\xa2\x01\n" +
-	"\x10NotificationConf\x12\x1f\n" +
-	"\vtemplate_id\x18\x01 \x01(\x03R\n" +
-	"templateId\x12@\n" +
-	"\x0ftemplate_params\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x0etemplateParams\x12+\n" +
-	"\achannel\x18\x03 \x01(\x0e2\x11.order.v1.ChannelR\achannel\"\n" +
+	"\bCreateBy\x18\x05 \x01(\tR\bCreateBy\x12+\n" +
+	"\x04data\x18\x06 \x01(\v2\x17.google.protobuf.StructR\x04data\"\n" +
 	"\n" +
-	"\bResponse*G\n" +
+	"\bResponse*<\n" +
 	"\bProvider\x12\x18\n" +
 	"\x14PROVIDER_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
 	"\x06SYSTEM\x10\x01\x12\n" +
 	"\n" +
-	"\x06WECHAT\x10\x02\x12\t\n" +
-	"\x05ALERT\x10\x03*J\n" +
-	"\aChannel\x12\x17\n" +
-	"\x13CHANNEL_UNSPECIFIED\x10\x00\x12\x0f\n" +
-	"\vFEISHU_CARD\x10\x01\x12\t\n" +
-	"\x05EMAIL\x10\x02\x12\n" +
-	"\n" +
-	"\x06IN_APP\x10\x032W\n" +
+	"\x06WECHAT\x10\x022W\n" +
 	"\x10WorkOrderService\x12C\n" +
 	"\x0fCreateWorkOrder\x12\x1c.order.v1.CreateOrderRequest\x1a\x12.order.v1.ResponseB\x95\x01\n" +
 	"\fcom.order.v1B\n" +
@@ -425,31 +241,24 @@ func file_order_v1_order_proto_rawDescGZIP() []byte {
 	return file_order_v1_order_proto_rawDescData
 }
 
-var file_order_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_order_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_order_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_order_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_order_v1_order_proto_goTypes = []any{
 	(Provider)(0),              // 0: order.v1.Provider
-	(Channel)(0),               // 1: order.v1.Channel
-	(*CreateOrderRequest)(nil), // 2: order.v1.CreateOrderRequest
-	(*Order)(nil),              // 3: order.v1.Order
-	(*NotificationConf)(nil),   // 4: order.v1.NotificationConf
-	(*Response)(nil),           // 5: order.v1.Response
-	(*structpb.Struct)(nil),    // 6: google.protobuf.Struct
+	(*CreateOrderRequest)(nil), // 1: order.v1.CreateOrderRequest
+	(*Response)(nil),           // 2: order.v1.Response
+	(*structpb.Struct)(nil),    // 3: google.protobuf.Struct
 }
 var file_order_v1_order_proto_depIdxs = []int32{
-	3, // 0: order.v1.CreateOrderRequest.order:type_name -> order.v1.Order
-	4, // 1: order.v1.CreateOrderRequest.notification_conf:type_name -> order.v1.NotificationConf
-	6, // 2: order.v1.Order.data:type_name -> google.protobuf.Struct
-	0, // 3: order.v1.Order.Provider:type_name -> order.v1.Provider
-	6, // 4: order.v1.NotificationConf.template_params:type_name -> google.protobuf.Struct
-	1, // 5: order.v1.NotificationConf.channel:type_name -> order.v1.Channel
-	2, // 6: order.v1.WorkOrderService.CreateWorkOrder:input_type -> order.v1.CreateOrderRequest
-	5, // 7: order.v1.WorkOrderService.CreateWorkOrder:output_type -> order.v1.Response
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	0, // 0: order.v1.CreateOrderRequest.Provider:type_name -> order.v1.Provider
+	3, // 1: order.v1.CreateOrderRequest.data:type_name -> google.protobuf.Struct
+	1, // 2: order.v1.WorkOrderService.CreateWorkOrder:input_type -> order.v1.CreateOrderRequest
+	2, // 3: order.v1.WorkOrderService.CreateWorkOrder:output_type -> order.v1.Response
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_order_v1_order_proto_init() }
@@ -462,8 +271,8 @@ func file_order_v1_order_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_order_v1_order_proto_rawDesc), len(file_order_v1_order_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   4,
+			NumEnums:      1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

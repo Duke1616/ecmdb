@@ -19,6 +19,8 @@ import (
 )
 
 type Service interface {
+	CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error)
+
 	// CreateOrder 创建工单
 	CreateOrder(ctx context.Context, req domain.Order) error
 
@@ -33,7 +35,7 @@ type Service interface {
 
 	// RegisterProcessInstanceId 注册流程引擎ID
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int) error
-	
+
 	// ListOrderByProcessInstanceIds 获取代办流程
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]domain.Order, error)
 
@@ -49,6 +51,53 @@ type service struct {
 	templateSvc template.Service
 	producer    event.CreateProcessEventProducer
 	l           *elog.Component
+}
+
+func (s *service) CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error) {
+	if err := order.Validate(); err != nil {
+		return domain.Order{}, err
+	}
+
+	// 如果是告警转工单，且 Key 和 BizID 不为空，检查是否已有相同 Key 和 BizID 的进行中工单
+	if order.Provide.IsAlert() && order.Key != "" && order.BizID > 0 {
+		existingOrder, err := s.repo.FindByBizIdAndKey(ctx, order.BizID, order.Key, []domain.Status{domain.START, domain.PROCESS})
+		if err != nil {
+			s.l.Warn("查询已有工单失败",
+				elog.FieldErr(err),
+				elog.Int64("bizId", order.BizID),
+				elog.String("key", order.Key))
+		} else if existingOrder.Id > 0 {
+			// 找到已有工单，返回已有工单，并发送追加告警通知
+			s.l.Info("找到已有工单，追加告警",
+				elog.Int64("existingOrderId", existingOrder.Id),
+				elog.Int64("bizId", order.BizID),
+				elog.String("key", order.Key))
+			
+			// 异步发送追加告警通知（不阻塞主流程）
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						s.l.Error("发送追加告警通知发生panic", elog.Any("recover", r))
+					}
+				}()
+				if err := s.sendAppendAlertNotification(ctx, existingOrder, order); err != nil {
+					s.l.Error("发送追加告警通知失败",
+						elog.FieldErr(err),
+						elog.Int64("orderId", existingOrder.Id))
+				}
+			}()
+			
+			return existingOrder, nil
+		}
+	}
+
+	// 创建新工单
+	bizOrder, err := s.repo.CreateBizOrder(ctx, order)
+	if err != nil {
+		return domain.Order{}, err
+	}
+
+	return bizOrder, s.sendGenerateFlowEvent(ctx, order, bizOrder.Id, "TODO")
 }
 
 func (s *service) Detail(ctx context.Context, id int64) (domain.Order, error) {
@@ -111,6 +160,7 @@ func (s *service) CreateOrder(ctx context.Context, req domain.Order) error {
 		return err
 	})
 
+	// TODO 这个地方我是利用了模版名称去做比对，现在想想设计的并不好
 	eg.Go(func() error {
 		var err error
 		dTm, err = s.templateSvc.DetailTemplate(ctx, req.TemplateId)
@@ -233,6 +283,41 @@ func (s *service) variables(req domain.Order) ([]event.Variables, error) {
 	}
 
 	return data, nil
+}
+
+// sendAppendAlertNotification 发送追加告警通知
+// 当新告警追加到已有工单时，通知相关处理人
+func (s *service) sendAppendAlertNotification(ctx context.Context, existingOrder domain.Order, newAlert domain.Order) error {
+	// 如果工单还没有流程实例（流程还未启动），则无法获取任务信息，暂不发送通知
+	if existingOrder.Process.InstanceId == 0 {
+		s.l.Info("工单流程未启动，暂不发送追加告警通知",
+			elog.Int64("orderId", existingOrder.Id))
+		return nil
+	}
+
+	// TODO: 如果工单有流程实例，需要获取当前节点的任务信息，然后发送通知
+	// 由于需要获取任务信息需要依赖 engine service，这里先记录日志
+	// 后续可以通过事件或其他方式实现完整的通知功能
+	s.l.Info("追加告警到已有工单",
+		elog.Int64("orderId", existingOrder.Id),
+		elog.Int("processInstanceId", existingOrder.Process.InstanceId),
+		elog.Int64("newAlertBizId", newAlert.BizID),
+		elog.String("newAlertKey", newAlert.Key))
+
+	// 如果工单配置了通知信息，可以在这里发送通知
+	// 目前先记录日志，后续可以根据实际需求完善
+	if existingOrder.NotificationConf.TemplateID > 0 {
+		s.l.Info("工单配置了通知信息，可以发送追加告警通知",
+			elog.Int64("templateId", existingOrder.NotificationConf.TemplateID),
+			elog.String("channel", existingOrder.NotificationConf.Channel.String()))
+		// TODO: 实现具体的通知发送逻辑
+		// 需要：
+		// 1. 获取流程实例的当前节点任务（需要 engine service）
+		// 2. 获取任务的用户信息（需要 user service）
+		// 3. 调用 notification service 发送通知
+	}
+
+	return nil
 }
 
 func wechatOaData(data map[string]interface{}) (workwx.OAApprovalDetail, error) {

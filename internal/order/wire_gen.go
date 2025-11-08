@@ -40,7 +40,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	service4 := userModule.Svc
 	service5 := workflowModule.Svc
 	handler := web.NewHandler(service2, service3, service4, service5)
-	workOrderServer := grpc.NewWorkOrderServer(service2)
+	workOrderServer := grpc.NewWorkOrderServer(service2, serviceService)
 	wechatOrderConsumer := initWechatConsumer(service2, serviceService, service4, q)
 	processEventConsumer := InitProcessConsumer(q, service5, service2)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, service2)

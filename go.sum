@@ -59,8 +59,8 @@ github.com/Duke1616/easy-workflow v1.0.3 h1:K2wzeC8RUZqAYHHLFuu0fdcyKD1xITtCJo2n
 github.com/Duke1616/easy-workflow v1.0.3/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
 github.com/Duke1616/enotify v0.1.18 h1:afciLWrYztMVGBnKZ8ZZjRbIIBig+v1Yx9J0dQA5I/Q=
 github.com/Duke1616/enotify v0.1.18/go.mod h1:2+OiQ6PGDy2dcE6vwXLBV+kM9cPP9XYOusPIo9UY4xY=
-github.com/Duke1616/vuefinder-go v1.0.9 h1:Q4o1aKrlaqBFyG/zEtAETfk4kRuJdcSuhyss1Ylt6nQ=
-github.com/Duke1616/vuefinder-go v1.0.9/go.mod h1:SKdWxjsLHG5VFmDJL6pBtah5MdfJSit3IB8bW6dgr28=
+github.com/Duke1616/vuefinder-go v1.1.0 h1:4QAxNo8filt8lU0orUk/88MN7hWsPWPBAip7dmKmAuA=
+github.com/Duke1616/vuefinder-go v1.1.0/go.mod h1:SKdWxjsLHG5VFmDJL6pBtah5MdfJSit3IB8bW6dgr28=
 github.com/IBM/sarama v1.43.3 h1:Yj6L2IaNvb2mRBop39N7mmJAHBVY3dTPncr3qGVkxPA=
 github.com/IBM/sarama v1.43.3/go.mod h1:FVIRaLrhK3Cla/9FfRF5X9Zua2KpS3SYIXxhac1H+FQ=
 github.com/RediSearch/redisearch-go/v2 v2.1.1 h1:cCn3i40uLsVD8cxwrdrGfhdAgbR5Cld9q11eYyVOwpM=

@@ -17,7 +17,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/term"
 	"github.com/Duke1616/ecmdb/pkg/term/guacx"
 	"github.com/Duke1616/ecmdb/pkg/term/sshx"
-	"github.com/Duke1616/vuefinder-go/pkg/finder"
+	sftpFinder "github.com/Duke1616/vuefinder-go/pkg/provider/sftp"
 	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -148,7 +148,7 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 		}
 
 		// 添加 sftp 信息
-		h.finderWeb.SetFinder(req.ResourceId, finder.NewSftpFinder(sftpClient))
+		h.finderWeb.SetFinder(req.ResourceId, sftpFinder.NewSftpFinder(sftpClient))
 	}
 
 	return ginx.Result{

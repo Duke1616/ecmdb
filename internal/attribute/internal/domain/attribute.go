@@ -13,6 +13,7 @@ type Attribute struct {
 	Link      bool
 	Index     int64
 	Option    interface{}
+	Builtin   bool
 }
 
 type AttributeGroup struct {

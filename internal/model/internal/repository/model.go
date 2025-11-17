@@ -87,6 +87,7 @@ func (repo *modelRepository) DeleteByUid(ctx context.Context, modelUid string) (
 func (repo *modelRepository) toEntity(req domain.Model) dao.Model {
 	return dao.Model{
 		ModelGroupId: req.GroupId,
+		Builtin:      req.Builtin,
 		Name:         req.Name,
 		UID:          req.UID,
 		Icon:         req.Icon,
@@ -97,6 +98,7 @@ func (repo *modelRepository) toDomain(modelDao dao.Model) domain.Model {
 	return domain.Model{
 		ID:      modelDao.Id,
 		GroupId: modelDao.ModelGroupId,
+		Builtin: modelDao.Builtin,
 		Name:    modelDao.Name,
 		UID:     modelDao.UID,
 		Icon:    modelDao.Icon,

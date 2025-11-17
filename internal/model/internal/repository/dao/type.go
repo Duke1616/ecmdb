@@ -11,6 +11,7 @@ type Model struct {
 	Name         string `bson:"name"`
 	UID          string `bson:"uid"`
 	Icon         string `bson:"icon"`
+	Builtin      bool   `bson:"builtin"`
 	Ctime        int64  `bson:"ctime"`
 	Utime        int64  `bson:"utime"`
 }

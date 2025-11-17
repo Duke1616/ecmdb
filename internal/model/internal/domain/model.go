@@ -8,6 +8,7 @@ type Model struct {
 	Name    string
 	UID     string
 	Icon    string
+	Builtin bool
 	Ctime   time.Time
 	Utime   time.Time
 }

@@ -57,9 +57,10 @@ type Model struct {
 	UID  string `json:"uid"`
 	Icon string `json:"icon"`
 	// 记录模型下面有多少资产
-	Total int    `json:"total"`
-	Ctime string `json:"ctime"`
-	Utime string `json:"utime"`
+	Total   int    `json:"total"`
+	Ctime   string `json:"ctime"`
+	Utime   string `json:"utime"`
+	Builtin bool   `json:"builtin"`
 }
 
 type ModelRelation struct {
@@ -96,9 +97,10 @@ type ModelLine struct {
 
 func toModelVo(m domain.Model) Model {
 	return Model{
-		Name:  m.Name,
-		UID:   m.UID,
-		Ctime: m.Utime.Format(time.DateTime),
-		Utime: m.Utime.Format(time.DateTime),
+		Name:    m.Name,
+		UID:     m.UID,
+		Ctime:   m.Utime.Format(time.DateTime),
+		Utime:   m.Utime.Format(time.DateTime),
+		Builtin: m.Builtin,
 	}
 }

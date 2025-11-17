@@ -59,6 +59,7 @@ type Attribute struct {
 	Display   bool        `json:"display"`
 	Option    interface{} `json:"option"`
 	Index     int64       `json:"index"`
+	Builtin   bool        `json:"builtin"`
 }
 
 type AttributeGroup struct {
@@ -128,5 +129,6 @@ func toAttributeVo(attr domain.Attribute) Attribute {
 		Option:    attr.Option,
 		Secure:    attr.Secure,
 		Index:     attr.Index,
+		Builtin:   attr.Builtin,
 	}
 }

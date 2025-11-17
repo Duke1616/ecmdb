@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ginx/gctx"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
@@ -42,7 +43,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 模型 - 基础操作
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
-	g.POST("/detail", ginx.WrapBody[DetailModelReq](h.DetailModel))
+	g.GET("/detail/:id", ginx.Wrap(h.DetailModel))
 	g.POST("/list", ginx.WrapBody[Page](h.ListModels))
 	g.POST("/delete", ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid))
 	g.POST("/by_group", ginx.WrapBody[Page](h.ListModelsByGroup))
@@ -105,14 +106,20 @@ func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result
 	}, nil
 }
 
-func (h *Handler) DetailModel(ctx *gin.Context, req DetailModelReq) (ginx.Result, error) {
-	m, err := h.svc.FindModelById(ctx, req.ID)
+func (h *Handler) DetailModel(ctx *gin.Context) (ginx.Result, error) {
+	g := gctx.Context{Context: ctx}
+	id, err := g.Param("id").AsInt64()
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	modelResp, err := h.svc.FindModelById(ctx, id)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: m,
+		Data: h.toVo(modelResp),
 		Msg:  "模型查找成功",
 	}, nil
 }
@@ -305,6 +312,16 @@ func (h *Handler) FindModelsGraph(ctx *gin.Context, req Page) (ginx.Result, erro
 			RootId: "virtual",
 		},
 	}, nil
+}
+
+func (h *Handler) toVo(src domain.Model) Model {
+	return Model{
+		Id:      src.ID,
+		Name:    src.Name,
+		Icon:    src.Icon,
+		UID:     src.UID,
+		Builtin: src.Builtin,
+	}
 }
 
 func (h *Handler) toModelGroupVo(m domain.ModelGroup) ModelGroup {

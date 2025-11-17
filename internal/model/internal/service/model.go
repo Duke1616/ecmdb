@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository"
@@ -87,9 +88,23 @@ func (s *service) ListModelByGroupIds(ctx context.Context, mgids []int64) ([]dom
 }
 
 func (s *service) DeleteById(ctx context.Context, id int64) (int64, error) {
+	m, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if m.Builtin {
+		return 0, fmt.Errorf("内置模型不允许删除")
+	}
 	return s.repo.DeleteById(ctx, id)
 }
 
 func (s *service) DeleteByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	models, err := s.repo.GetByUids(ctx, []string{modelUid})
+	if err != nil {
+		return 0, err
+	}
+	if len(models) > 0 && models[0].Builtin {
+		return 0, fmt.Errorf("内置模型不允许删除")
+	}
 	return s.repo.DeleteByUid(ctx, modelUid)
 }

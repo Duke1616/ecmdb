@@ -297,6 +297,7 @@ type Attribute struct {
 	Index     int64       `bson:"index"`      // 字段前端展示顺序
 	Secure    bool        `bson:"secure"`     // 是否字段安全、脱敏、加密
 	Link      bool        `bson:"link"`       // 是否外链
+	Builtin   bool        `bson:"builtin"`    // 是否内置属性
 	Option    interface{} `bson:"option"`     // TODO: 为了后续扩展，不同类型的 option 可能不同
 	Ctime     int64       `bson:"ctime"`
 	Utime     int64       `bson:"utime"`

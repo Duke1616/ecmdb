@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
@@ -152,6 +153,13 @@ func (s *service) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string,
 }
 
 func (s *service) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
+	attr, err := s.repo.DetailAttribute(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if attr.Builtin {
+		return 0, fmt.Errorf("内置属性不允许删除")
+	}
 	return s.repo.DeleteAttribute(ctx, id)
 }
 
@@ -201,5 +209,6 @@ func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
 		FieldUid:  "name",
 		GroupId:   groupId,
 		Secure:    false,
+		Builtin:   true,
 	}
 }

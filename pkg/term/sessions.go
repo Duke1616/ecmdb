@@ -3,17 +3,15 @@ package term
 import (
 	"fmt"
 	"sync"
-
-	"golang.org/x/crypto/ssh"
 )
 
 type Sessions struct {
-	SshClient *ssh.Client
+	Session Session
 }
 
-func NewSessions(sshClient *ssh.Client) *Sessions {
+func NewSessions(sess Session) *Sessions {
 	return &Sessions{
-		SshClient: sshClient,
+		Session: sess,
 	}
 }
 

@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
-	"github.com/Duke1616/ecmdb/internal/tools/web"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/term"
 	"github.com/Duke1616/ecmdb/pkg/term/guacx"
@@ -30,7 +28,6 @@ type Handler struct {
 	resourceSvc  resource.EncryptedSvc
 	attributeSvc attribute.Service
 	session      *term.SessionPool
-	finder       web.Handler
 	timeout      time.Duration
 	finderWeb    *finderWeb.Handler
 }
@@ -71,78 +68,30 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 }
 
 func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error) {
-	if req.Type == "RDP" {
-		return ginx.Result{
-			Msg: "不支持RDP协议",
-		}, fmt.Errorf("暂不支持 RDP 协议")
-	}
-
-	if req.Type == "VNC" {
-		return ginx.Result{
-			Msg: "不支持VNC协议",
-		}, fmt.Errorf("暂不支持 VNC 协议")
-	}
-
-	// 获取指定资产关联网关数据
-	hostResource, gatewayRs, err := h.queryResource(ctx, req.ResourceId)
-
-	fmt.Println(hostResource)
-	if err != nil {
-		return ginx.Result{
-			Msg: "获取基本连接信息失败",
-		}, err
-	}
-
-	// 组合所有网关
-	var multiGateways = make([]*sshx.GatewayConfig, 0)
-	for _, item := range gatewayRs {
-		gateway := &sshx.GatewayConfig{
-			Username:   sshx.GetStringField(item.Data, "username", ""),
-			Host:       sshx.GetStringField(item.Data, "host", ""),
-			PrivateKey: sshx.GetStringField(item.Data, "private_key", ""),
-			Port:       sshx.GetIntField(item.Data, "port", 22),
-			Password:   sshx.GetStringField(item.Data, "password", "default_password"),
-			AuthType:   sshx.GetStringField(item.Data, "auth_type", "passwd"),
-			Passphrase: sshx.GetStringField(item.Data, "password", "default_password"),
-			Sort:       sshx.GetIntField(item.Data, "sort", 0),
+	switch req.Type {
+	case ConnectTypeRDP:
+		return ginx.Result{Msg: "不支持RDP协议"}, fmt.Errorf("暂不支持 RDP 协议")
+	case ConnectTypeVNC:
+		return ginx.Result{Msg: "不支持VNC协议"}, fmt.Errorf("暂不支持 VNC 协议")
+	case ConnectTypeSSH:
+		_, err := h.connectSSh(ctx, req.ResourceId)
+		if err != nil {
+			return ginx.Result{}, err
 		}
-		multiGateways = append(multiGateways, gateway)
-	}
-
-	// 组合真实的目标节点
-	multiGateways = append(multiGateways, &sshx.GatewayConfig{
-		AuthType:   sshx.GetStringField(hostResource.Data, "auth_type", ""),
-		Host:       sshx.GetStringField(hostResource.Data, "ip", ""),
-		Port:       sshx.GetIntField(hostResource.Data, "port", 22),
-		Username:   sshx.GetStringField(hostResource.Data, "username", ""),
-		Password:   sshx.GetStringField(hostResource.Data, "password", ""),
-		PrivateKey: sshx.GetStringField(hostResource.Data, "private_key", ""),
-		Passphrase: sshx.GetStringField(hostResource.Data, "password", "passwd"),
-		Sort:       len(multiGateways) + 1,
-	})
-
-	// 连接网关和目标节点
-	manager := sshx.NewMultiGatewayManager(multiGateways)
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), h.timeout)
-	defer cancel()
-
-	client, err := manager.Connect(ctxWithTimeout)
-	if err != nil {
-		// 检查是否是超时错误
-		if errors.Is(err, context.DeadlineExceeded) {
-			return ginx.Result{Msg: "连接超时，请重试"}, err
+	case ConnectTypeWebSftp:
+		sess, err := h.connectSSh(ctx, req.ResourceId)
+		if err != nil {
+			return ginx.Result{}, err
 		}
-		return ginx.Result{Msg: "连接服务器失败"}, err
-	}
 
-	// 每次连接都重新替换Session
-	h.session.SetSession(req.ResourceId, term.NewSessions(client))
+		// 通过能力接口获取 SFTP client
+		fileCapable, ok := sess.(term.FileCapable)
+		if !ok {
+			return ginx.Result{Msg: "当前会话不支持 SFTP"}, fmt.Errorf("session does not implement FileCapable")
+		}
 
-	// 如果传递类型是 Sftp 才进行保存
-	if req.Type == "Web Sftp" {
-		// sftp client
 		var sftpClient *sftp.Client
-		sftpClient, err = sftp.NewClient(client)
+		sftpClient, err = fileCapable.NewSFTP()
 		if err != nil {
 			return ginx.Result{}, err
 		}
@@ -154,6 +103,61 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	return ginx.Result{
 		Msg: "SSH 连接成功",
 	}, nil
+}
+
+func (h *Handler) connectSSh(ctx context.Context, resourceId int64) (term.Session, error) {
+	// 获取指定资产关联网关数据
+	hostResource, gatewayRs, err := h.queryResource(ctx, resourceId)
+	if err != nil {
+		return nil, fmt.Errorf("获取基本连接信息失败")
+	}
+
+	// 组合所有网关为通用 GatewayChain
+	var chain term.GatewayChain
+	for _, item := range gatewayRs {
+		endpoint := term.Endpoint{
+			Username:   sshx.GetStringField(item.Data, "username", ""),
+			Host:       sshx.GetStringField(item.Data, "host", ""),
+			PrivateKey: sshx.GetStringField(item.Data, "private_key", ""),
+			Port:       sshx.GetIntField(item.Data, "port", 22),
+			Password:   sshx.GetStringField(item.Data, "password", "default_password"),
+			AuthType:   sshx.GetStringField(item.Data, "auth_type", "passwd"),
+			Passphrase: sshx.GetStringField(item.Data, "password", "default_password"),
+			Sort:       sshx.GetIntField(item.Data, "sort", 0),
+		}
+		chain = append(chain, endpoint)
+	}
+
+	// 组合真实的目标节点
+	chain = append(chain, term.Endpoint{
+		AuthType:   sshx.GetStringField(hostResource.Data, "auth_type", ""),
+		Host:       sshx.GetStringField(hostResource.Data, "ip", ""),
+		Port:       sshx.GetIntField(hostResource.Data, "port", 22),
+		Username:   sshx.GetStringField(hostResource.Data, "username", ""),
+		Password:   sshx.GetStringField(hostResource.Data, "password", ""),
+		PrivateKey: sshx.GetStringField(hostResource.Data, "private_key", ""),
+		Passphrase: sshx.GetStringField(hostResource.Data, "password", "passwd"),
+		Sort:       len(chain) + 1,
+	})
+
+	// 通过插件连接网关和目标节点
+	connector, ok := term.GetConnector("ssh")
+	if !ok {
+		return nil, fmt.Errorf("ssh connector not registered")
+	}
+
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), h.timeout)
+	defer cancel()
+
+	sess, err := connector.Connect(ctxWithTimeout, chain, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ssh connector fail")
+	}
+
+	// 每次连接都重新替换Session
+	h.session.SetSession(resourceId, term.NewSessions(sess))
+
+	return sess, nil
 }
 
 func (h *Handler) SshSessionTunnel(ctx *gin.Context) error {
@@ -181,9 +185,8 @@ func (h *Handler) SshSessionTunnel(ctx *gin.Context) error {
 
 func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, rowsInt int) error {
 	var (
-		err     error
-		conn    *websocket.Conn
-		sshConn *sshx.SSHConnect
+		err  error
+		conn *websocket.Conn
 	)
 
 	// 升级 WebSocket 连接
@@ -193,21 +196,29 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 	}
 	defer conn.Close()
 
-	// 获取 SSH Client
-	sess, err := h.session.GetSession(resourceIdInt)
+	// 获取抽象 Session
+	sessionWrapper, err := h.session.GetSession(resourceIdInt)
 	if err != nil {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return err
 	}
 
-	// 创建Session
-	if sshConn, err = sshx.NewSSHConnect(sess.SshClient, conn, rowsInt, colsInt); err != nil {
+	sess := sessionWrapper.Session
+	shellCapable, ok := sess.(term.ShellCapable)
+	if !ok {
+		_ = conn.WriteMessage(websocket.TextMessage, []byte("session not support shell"))
+		return fmt.Errorf("session does not implement ShellCapable")
+	}
+
+	// 创建终端会话
+	terminalSession, err := shellCapable.NewTerminal(conn, rowsInt, colsInt)
+	if err != nil {
 		return err
 	}
 
-	// 监听 SSH 执行写入 websocket
-	sshConn.Start()
-	defer sshConn.Stop()
+	// 监听终端输出写入 websocket
+	terminalSession.Start()
+	defer terminalSession.Stop()
 
 	// 接收 websocket 信息处理
 	for {
@@ -232,17 +243,15 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 
 			switch msg.Operation {
 			case "resize":
-				if err = sshConn.WindowChange(msg.Rows, msg.Cols); err != nil {
+				if err = terminalSession.Resize(msg.Rows, msg.Cols); err != nil {
 					return err
 				}
 			case "stdin":
-				_, err = sshConn.StdinPipe.Write([]byte(msg.Data))
-				if err != nil {
+				if err = terminalSession.Write([]byte(msg.Data)); err != nil {
 					return err
 				}
 			case "ping":
-				_, _, err = sess.SshClient.Conn.SendRequest("PING", true, nil)
-				if err != nil {
+				if err = terminalSession.Ping(); err != nil {
 					return err
 				}
 			}

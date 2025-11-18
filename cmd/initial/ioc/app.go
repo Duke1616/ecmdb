@@ -2,9 +2,12 @@ package ioc
 
 import (
 	"github.com/Duke1616/ecmdb/cmd/initial/version"
+	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/menu"
+	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/permission"
 	"github.com/Duke1616/ecmdb/internal/policy"
+	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
@@ -18,6 +21,11 @@ type App struct {
 	PermissionSvc permission.Service
 	policySvc     policy.Service
 	VerSvc        version.Service
+	ModelSvc      model.Service
+	AttributeSvc  attribute.Service
+	RelationRMSvc relation.RMSvc
+	RelationRRSvc relation.RRSvc
+	RelationRTSvc relation.RTSvc
 	GormDB        *gorm.DB
 	DB            *mongox.Mongo
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/ekit/slice"
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,21 +16,40 @@ import (
 const AttributeCollection = "c_attribute"
 
 type AttributeDAO interface {
+	// CreateAttribute 创建模型属性字段
 	CreateAttribute(ctx context.Context, ab Attribute) (int64, error)
+
+	// BatchCreateAttribute 批量创建模型属性字段
+	BatchCreateAttribute(ctx context.Context, attrs []Attribute) error
+
+	// SearchAttributeByModelUID 根据模型唯一值，排除安全字段
 	SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error)
-	SearchAllAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error)
+
+	// SearchAttributeFieldsBySecure 根据模型唯一值，仅展示安全字段
 	SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) ([]Attribute, error)
-	ListAttribute(ctx context.Context, modelUid string) ([]Attribute, error)
+
+	// ListAttributes 根据模型唯一值，搜索所有字段
+	ListAttributes(ctx context.Context, modelUid string) ([]Attribute, error)
+
+	// Count 根据模型唯一值，查看字段数量
 	Count(ctx context.Context, modelUid string) (int64, error)
 
+	// UpdateFieldIndex 自定义展示字段
 	UpdateFieldIndex(ctx context.Context, modelUid string, customField []string) (int64, error)
+
+	// UpdateFieldIndexReverse 变更顺序
 	UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error)
 
+	// DeleteAttribute 根据 ID 删除模型字段
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 
+	// ListAttributePipeline 根据模型字段分组，进行聚合返回
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error)
+
+	// UpdateAttribute 修改属性
 	UpdateAttribute(ctx context.Context, attribute Attribute) (int64, error)
 
+	// DetailAttribute 根据 ID 查看详情属性
 	DetailAttribute(ctx context.Context, id int64) (Attribute, error)
 }
 
@@ -44,32 +64,6 @@ func (dao *attributeDAO) DetailAttribute(ctx context.Context, id int64) (Attribu
 	var result Attribute
 	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
 		return Attribute{}, fmt.Errorf("解码错误，%w", err)
-	}
-
-	return result, nil
-}
-
-func (dao *attributeDAO) SearchAllAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {
-	col := dao.db.Collection(AttributeCollection)
-	filter := bson.M{}
-	filter["model_uid"] = modelUid
-
-	opt := &options.FindOptions{
-		Sort: bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	cursor, err := col.Find(ctx, filter, opt)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []Attribute
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
 	return result, nil
@@ -104,18 +98,50 @@ func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
 }
 
 func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (int64, error) {
-	attr.Id = dao.db.GetIdGenerator(AttributeCollection)
-
-	col := dao.db.Collection(AttributeCollection)
 	now := time.Now()
 	attr.Ctime, attr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	_, err := col.InsertOne(ctx, attr)
+	// 直接插入数据，并自增ID
+	_, err := dao.db.InsertOneWithAutoID(ctx, AttributeCollection, &attr)
+
 	if err != nil {
-		return 0, fmt.Errorf("插入数据错误: %w", err)
+		if mongox.IsUniqueConstraintError(err) {
+			return 0, fmt.Errorf("模型插入: %w", errs.ErrUniqueDuplicate)
+		}
+		return 0, err
 	}
 
 	return attr.Id, nil
+}
+
+func (dao *attributeDAO) BatchCreateAttribute(ctx context.Context, attrs []Attribute) error {
+	if len(attrs) == 0 {
+		return nil
+	}
+
+	col := dao.db.Collection(AttributeCollection)
+	now := time.Now().UnixMilli()
+
+	// 批量获取起始 ID（一次数据库调用）
+	startID, err := dao.db.GetBatchIdGenerator(AttributeCollection, len(attrs))
+	if err != nil {
+		return fmt.Errorf("获取批量 ID 错误: %w", err)
+	}
+
+	// 为每个属性设置 ID 和时间戳
+	docs := make([]interface{}, len(attrs))
+	for i := range attrs {
+		attrs[i].Id = startID + int64(i)
+		attrs[i].Ctime, attrs[i].Utime = now, now
+		docs[i] = attrs[i]
+	}
+
+	_, err = col.InsertMany(ctx, docs)
+	if err != nil {
+		return fmt.Errorf("批量插入数据错误: %w", err)
+	}
+
+	return nil
 }
 
 func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {
@@ -145,7 +171,7 @@ func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid
 	return result, nil
 }
 
-func (dao *attributeDAO) ListAttribute(ctx context.Context, modelUid string) ([]Attribute, error) {
+func (dao *attributeDAO) ListAttributes(ctx context.Context, modelUid string) ([]Attribute, error) {
 	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"model_uid": modelUid}
 	opts := &options.FindOptions{}
@@ -307,4 +333,12 @@ type AttributePipeline struct {
 	GroupId    int64       `bson:"_id"`
 	Total      int         `bson:"total"`
 	Attributes []Attribute `bson:"attributes"`
+}
+
+func (a *Attribute) SetID(id int64) {
+	a.Id = id
+}
+
+func (a *Attribute) GetID() int64 {
+	return a.Id
 }

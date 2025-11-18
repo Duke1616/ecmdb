@@ -13,4 +13,6 @@ type Service = service.Service
 
 type Attribute = domain.Attribute
 
+type AttributeGroup = domain.AttributeGroup
+
 type Event = event.FieldSecureAttrChange

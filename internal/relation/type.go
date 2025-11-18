@@ -21,4 +21,8 @@ type RTHandler = web.RelationTypeHandler
 
 type ModelDiagram = domain.ModelDiagram
 
+type ModelRelation = domain.ModelRelation
+
+type RelationType = domain.RelationType
+
 type ResourceRelation = domain.ResourceRelation

@@ -3,6 +3,8 @@
 package model
 
 import (
+	"sync"
+
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository/dao"
@@ -22,12 +24,29 @@ var ProviderSet = wire.NewSet(
 func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribute.Module, resourceSvc *resource.Module) (*Module, error) {
 	wire.Build(
 		ProviderSet,
+		InitModelDAO,
 		wire.FieldsOf(new(*relation.Module), "RMSvc"),
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
 		wire.FieldsOf(new(*resource.Module), "EncryptedSvc"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
+}
+
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongox.Mongo) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitModelDAO(db *mongox.Mongo) dao.ModelDAO {
+	InitCollectionOnce(db)
+	return dao.NewModelDAO(db)
 }
 
 var initMGProvider = wire.NewSet(
@@ -38,5 +57,4 @@ var initMGProvider = wire.NewSet(
 
 var initModelProvider = wire.NewSet(
 	service.NewModelService,
-	repository.NewModelRepository,
-	dao.NewModelDAO)
+	repository.NewModelRepository)

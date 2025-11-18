@@ -10,21 +10,40 @@ import (
 )
 
 type AttributeRepository interface {
+	// CreateAttribute 创建模型属性字段
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
+
+	// BatchCreateAttribute 批量创建模型属性字段
+	BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error
+
+	// SearchAttributeFieldsByModelUid 根据模型唯一值，排除安全字段
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
-	SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
+
+	// SearchAttributeFieldsBySecure 根据模型唯一值，仅展示安全字段
 	SearchAttributeFieldsBySecure(ctx context.Context, modelUid []string) (map[string][]string, error)
+
+	// ListAttributes 根据模型唯一值，搜索所有字段
 	ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error)
+
+	// Total 根据模型唯一值，查看字段数量
 	Total(ctx context.Context, modelUID string) (int64, error)
 
+	// DeleteAttribute 根据 ID 删除模型字段
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 
+	// CustomAttributeFieldColumns 自定义展示字段
 	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+
+	// CustomAttributeFieldColumnsReverse 变更顺序
 	CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error)
 
+	// ListAttributePipeline 根据模型字段分组，进行聚合返回
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error)
+
+	// UpdateAttribute 修改属性
 	UpdateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
 
+	// DetailAttribute 根据 ID 查看详情属性
 	DetailAttribute(ctx context.Context, id int64) (domain.Attribute, error)
 }
 
@@ -43,16 +62,15 @@ func NewAttributeRepository(dao dao.AttributeDAO) AttributeRepository {
 	}
 }
 
-func (repo *attributeRepository) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
-	attrs, err := repo.dao.SearchAllAttributeByModelUID(ctx, modelUid)
-
-	return slice.Map(attrs, func(idx int, src dao.Attribute) string {
-		return src.FieldUid
-	}), err
-}
-
 func (repo *attributeRepository) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
 	return repo.dao.CreateAttribute(ctx, repo.toEntity(req))
+}
+
+func (repo *attributeRepository) BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error {
+	daoAttrs := slice.Map(attrs, func(idx int, src domain.Attribute) dao.Attribute {
+		return repo.toEntity(src)
+	})
+	return repo.dao.BatchCreateAttribute(ctx, daoAttrs)
 }
 
 func (repo *attributeRepository) UpdateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
@@ -69,7 +87,7 @@ func (repo *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Con
 }
 
 func (repo *attributeRepository) ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
-	attrs, err := repo.dao.ListAttribute(ctx, modelUID)
+	attrs, err := repo.dao.ListAttributes(ctx, modelUID)
 
 	return slice.Map(attrs, func(idx int, src dao.Attribute) domain.Attribute {
 		return repo.toDomain(src)

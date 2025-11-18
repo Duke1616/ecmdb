@@ -11,9 +11,16 @@ import (
 )
 
 type ModelGroupDAO interface {
+	// CreateModelGroup 创建模型分组
 	CreateModelGroup(ctx context.Context, mg ModelGroup) (int64, error)
+
+	// List 模型列表，支持分页
 	List(ctx context.Context, offset, limit int64) ([]ModelGroup, error)
+
+	// Count 模型分组数量
 	Count(ctx context.Context) (int64, error)
+
+	// Delete 删除分组
 	Delete(ctx context.Context, id int64) (int64, error)
 }
 

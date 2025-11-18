@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/event"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
@@ -16,6 +17,9 @@ import (
 type Service interface {
 	// CreateAttribute 创建模型字段
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
+
+	// BatchCreateAttribute 批量创建模型字段
+	BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error
 
 	// SearchAttributeFieldsByModelUid 查询模型下的所有字段信息，不包含安全字段，内部使用
 	SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error)
@@ -98,11 +102,22 @@ func NewService(repo repository.AttributeRepository, groupRepo repository.Attrib
 }
 
 func (s *service) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
-	return s.repo.SearchAllAttributeFieldsByModelUid(ctx, modelUid)
+	attrs, err := s.repo.ListAttributes(ctx, modelUid)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.Map(attrs, func(idx int, src domain.Attribute) string {
+		return src.FieldUid
+	}), nil
 }
 
 func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
 	return s.repo.CreateAttribute(ctx, req)
+}
+
+func (s *service) BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error {
+	return s.repo.BatchCreateAttribute(ctx, attrs)
 }
 
 func (s *service) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {

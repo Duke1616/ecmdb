@@ -16,12 +16,13 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/google/wire"
+	"sync"
 )
 
 // Injectors from wire.go:
 
 func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribute.Module, resourceSvc *resource.Module) (*Module, error) {
-	modelDAO := dao.NewModelDAO(db)
+	modelDAO := InitModelDAO(db)
 	modelRepository := repository.NewModelRepository(modelDAO)
 	serviceService := service.NewModelService(modelRepository)
 	modelGroupDAO := dao.NewModelGroupDAO(db)
@@ -43,6 +44,22 @@ func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribu
 var ProviderSet = wire.NewSet(web.NewHandler, initMGProvider,
 	initModelProvider)
 
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongox.Mongo) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitModelDAO(db *mongox.Mongo) dao.ModelDAO {
+	InitCollectionOnce(db)
+	return dao.NewModelDAO(db)
+}
+
 var initMGProvider = wire.NewSet(service.NewMGService, repository.NewMGRepository, dao.NewModelGroupDAO)
 
-var initModelProvider = wire.NewSet(service.NewModelService, repository.NewModelRepository, dao.NewModelDAO)
+var initModelProvider = wire.NewSet(service.NewModelService, repository.NewModelRepository)

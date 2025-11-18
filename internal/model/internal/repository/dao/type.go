@@ -22,3 +22,11 @@ type ModelGroup struct {
 	Ctime int64  `bson:"ctime"`
 	Utime int64  `bson:"utime"`
 }
+
+func (a *Model) SetID(id int64) {
+	a.Id = id
+}
+
+func (a *Model) GetID() int64 {
+	return a.Id
+}

@@ -6,21 +6,38 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type ModelDAO interface {
+	// Create 创建模型
 	Create(ctx context.Context, m Model) (int64, error)
+
+	// GetById 根据 ID 获取模型详情
 	GetById(ctx context.Context, id int64) (Model, error)
+
+	// GetByUids 根据模型唯一标识组，获取模型组
 	GetByUids(ctx context.Context, uids []string) ([]Model, error)
+
+	// List 获取模型列表，支持分页
 	List(ctx context.Context, offset, limit int64) ([]Model, error)
+
+	// Count 获取模型数量
 	Count(ctx context.Context) (int64, error)
+
+	// ListAll 获取所有模型，不分页
 	ListAll(ctx context.Context) ([]Model, error)
 
+	// ListByGroupIds 获取指定组下的模型
 	ListByGroupIds(ctx context.Context, mgids []int64) ([]Model, error)
+
+	// DeleteById 根据ID删除模型
 	DeleteById(ctx context.Context, id int64) (int64, error)
+
+	// DeleteByUid 根据唯一标识删除模型
 	DeleteByUid(ctx context.Context, modelUid string) (int64, error)
 }
 
@@ -84,12 +101,15 @@ func (dao *modelDAO) ListByGroupIds(ctx context.Context, mgids []int64) ([]Model
 func (dao *modelDAO) Create(ctx context.Context, m Model) (int64, error) {
 	now := time.Now()
 	m.Ctime, m.Utime = now.UnixMilli(), now.UnixMilli()
-	m.Id = dao.db.GetIdGenerator(ModelCollection)
-	col := dao.db.Collection(ModelCollection)
 
-	_, err := col.InsertOne(ctx, m)
+	// 直接插入数据，并自增ID
+	_, err := dao.db.InsertOneWithAutoID(ctx, ModelCollection, &m)
+
 	if err != nil {
-		return 0, fmt.Errorf("插入数据错误: %w", err)
+		if mongox.IsUniqueConstraintError(err) {
+			return 0, fmt.Errorf("模型插入: %w", errs.ErrUniqueDuplicate)
+		}
+		return 0, err
 	}
 
 	return m.Id, nil

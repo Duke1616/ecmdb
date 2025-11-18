@@ -22,6 +22,9 @@ type Service interface {
 	// GetByUids 根据唯一标识检索模型列表
 	GetByUids(ctx context.Context, uids []string) ([]domain.Model, error)
 
+	// GetByUid 根据唯一标识获取模型详情
+	GetByUid(ctx context.Context, uid string) (domain.Model, error)
+
 	// DeleteById 根据ID删除指定模型
 	DeleteById(ctx context.Context, id int64) (int64, error)
 
@@ -37,6 +40,10 @@ type Service interface {
 
 type service struct {
 	repo repository.ModelRepository
+}
+
+func (s *service) GetByUid(ctx context.Context, uid string) (domain.Model, error) {
+	return s.repo.GetByUid(ctx, uid)
 }
 
 func (s *service) GetByUids(ctx context.Context, uids []string) ([]domain.Model, error) {

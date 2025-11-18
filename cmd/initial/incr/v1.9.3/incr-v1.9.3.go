@@ -2,11 +2,13 @@ package v193
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Duke1616/ecmdb/cmd/initial/backup"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/gotomicro/ego/core/elog"
@@ -124,27 +126,28 @@ func (i *incrV193) createHostModel(ctx context.Context) error {
 	i.logger.Info("开始创建主机模型")
 
 	// 检查模型是否已存在
-	models, err := i.App.ModelSvc.GetByUids(ctx, []string{"host"})
-	if err != nil {
+	modelResp, err := i.App.ModelSvc.GetByUid(ctx, "host")
+	if err != nil && !errors.Is(err, errs.ErrNotFound) {
+		// 如果不是"未找到"错误，则返回错误
 		return err
 	}
-	if len(models) > 0 {
+
+	if modelResp.ID != 0 {
 		i.logger.Info("主机模型已存在，跳过创建")
 		return nil
 	}
 
 	// 创建主机模型
-	_, err = i.App.ModelSvc.Create(ctx, model.Model{
+	if _, err = i.App.ModelSvc.Create(ctx, model.Model{
 		Name:    "主机",
 		UID:     "host",
 		Icon:    "icon-host",
 		Builtin: true,
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
-	i.logger.Info("主机模型创建成功")
 
+	i.logger.Info("主机模型创建成功")
 	// 创建字段分组
 	groupId, err := i.App.AttributeSvc.CreateAttributeGroup(ctx, attribute.AttributeGroup{
 		Name:     "基础属性",
@@ -244,10 +247,15 @@ func (i *incrV193) createHostModel(ctx context.Context) error {
 	}
 
 	// 批量创建字段
-	err = i.App.AttributeSvc.BatchCreateAttribute(ctx, hostFields)
-	if err != nil {
-		return err
+	if err = i.App.AttributeSvc.BatchCreateAttribute(ctx, hostFields); err != nil {
+		// 如果是唯一键冲突（字段已存在），记录警告并继续
+		if errors.Is(err, errs.ErrUniqueDuplicate) {
+			i.logger.Warn("主机模型字段已存在，跳过创建", elog.FieldErr(err))
+		} else {
+			return err
+		}
 	}
+
 	i.logger.Info("主机模型字段创建成功")
 
 	return nil
@@ -258,23 +266,24 @@ func (i *incrV193) createAuthGatewayModel(ctx context.Context) error {
 	i.logger.Info("开始创建登陆网关模型")
 
 	// 检查模型是否已存在
-	models, err := i.App.ModelSvc.GetByUids(ctx, []string{"AuthGateway"})
-	if err != nil {
+	modelResp, err := i.App.ModelSvc.GetByUid(ctx, "AuthGateway")
+	if err != nil && !errors.Is(err, errs.ErrNotFound) {
+		// 如果不是"未找到"错误，则返回错误
 		return err
 	}
-	if len(models) > 0 {
+
+	if modelResp.ID != 0 {
 		i.logger.Info("登陆网关模型已存在，跳过创建")
 		return nil
 	}
 
 	// 创建登陆网关模型
-	_, err = i.App.ModelSvc.Create(ctx, model.Model{
+	if _, err = i.App.ModelSvc.Create(ctx, model.Model{
 		Name:    "登陆网关",
 		UID:     "AuthGateway",
 		Icon:    "icon-gateway",
 		Builtin: true,
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 	i.logger.Info("登陆网关模型创建成功")
@@ -390,10 +399,15 @@ func (i *incrV193) createAuthGatewayModel(ctx context.Context) error {
 	}
 
 	// 批量创建字段
-	err = i.App.AttributeSvc.BatchCreateAttribute(ctx, gatewayFields)
-	if err != nil {
-		return err
+	if err = i.App.AttributeSvc.BatchCreateAttribute(ctx, gatewayFields); err != nil {
+		// 如果是唯一键冲突（字段已存在），记录警告并继续
+		if errors.Is(err, errs.ErrUniqueDuplicate) {
+			i.logger.Warn("登陆网关模型字段已存在，跳过创建", elog.FieldErr(err))
+		} else {
+			return err
+		}
 	}
+
 	i.logger.Info("登陆网关模型字段创建成功")
 
 	return nil
@@ -402,21 +416,43 @@ func (i *incrV193) createAuthGatewayModel(ctx context.Context) error {
 // createRelationType 创建关联类型
 func (i *incrV193) createRelationType(ctx context.Context) error {
 	i.logger.Info("开始创建关联类型")
-
-	// 创建 default 关联类型
-	_, err := i.App.RelationRTSvc.Create(ctx, relation.RelationType{
-		Name:           "默认",
-		UID:            "default",
-		SourceDescribe: "源",
-		TargetDescribe: "目标",
-	})
-	if err != nil {
-		// 如果已存在则忽略错误
-		i.logger.Warn("关联类型可能已存在", elog.FieldErr(err))
-	} else {
-		i.logger.Info("关联类型创建成功")
+	rts := []relation.RelationType{
+		{
+			Name:           "默认关联",
+			UID:            "default",
+			SourceDescribe: "关联",
+			TargetDescribe: "关联",
+		},
+		{
+			Name:           "运行",
+			UID:            "run",
+			SourceDescribe: "运行于",
+			TargetDescribe: "运行",
+		},
+		{
+			Name:           "组成",
+			UID:            "group",
+			SourceDescribe: "组成",
+			TargetDescribe: "组成于",
+		},
+		{
+			Name:           "属于",
+			UID:            "belong",
+			SourceDescribe: "属于",
+			TargetDescribe: "包含",
+		},
 	}
 
+	if err := i.App.RelationRTSvc.BatchCreate(ctx, rts); err != nil {
+		// 只在唯一键冲突时忽略错误
+		if errors.Is(err, errs.ErrUniqueDuplicate) {
+			i.logger.Warn("关联类型已存在，跳过创建", elog.FieldErr(err))
+		} else {
+			return err
+		}
+	}
+
+	i.logger.Info("关联类型创建成功")
 	return nil
 }
 
@@ -425,18 +461,22 @@ func (i *incrV193) createModelRelation(ctx context.Context) error {
 	i.logger.Info("开始创建模型关联关系")
 
 	// 创建 AuthGateway -> host 的关联关系
-	_, err := i.App.RelationRMSvc.CreateModelRelation(ctx, relation.ModelRelation{
+	if _, err := i.App.RelationRMSvc.CreateModelRelation(ctx, relation.ModelRelation{
 		SourceModelUID:  "AuthGateway",
 		TargetModelUID:  "host",
 		RelationTypeUID: "default",
 		RelationName:    "AuthGateway_default_host",
 		Mapping:         "one_to_many",
-	})
-	if err != nil {
-		i.logger.Warn("模型关联关系可能已存在", elog.FieldErr(err))
-	} else {
-		i.logger.Info("模型关联关系创建成功")
+	}); err != nil {
+		// 只在唯一键冲突时忽略错误
+		if errors.Is(err, errs.ErrUniqueDuplicate) {
+			i.logger.Warn("模型关联关系已存在，跳过创建", elog.FieldErr(err))
+		} else {
+			return err
+		}
 	}
+
+	i.logger.Info("模型关联关系创建成功")
 
 	return nil
 }

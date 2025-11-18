@@ -12,6 +12,7 @@ import (
 type ModelRepository interface {
 	Create(ctx context.Context, req domain.Model) (int64, error)
 	FindById(ctx context.Context, id int64) (domain.Model, error)
+	GetByUid(ctx context.Context, uid string) (domain.Model, error)
 	GetByUids(ctx context.Context, uids []string) ([]domain.Model, error)
 	List(ctx context.Context, offset, limit int64) ([]domain.Model, error)
 	ListAll(ctx context.Context) ([]domain.Model, error)
@@ -29,6 +30,11 @@ func NewModelRepository(dao dao.ModelDAO) ModelRepository {
 
 type modelRepository struct {
 	dao dao.ModelDAO
+}
+
+func (repo *modelRepository) GetByUid(ctx context.Context, uid string) (domain.Model, error) {
+	model, err := repo.dao.GetByUid(ctx, uid)
+	return repo.toDomain(model), err
 }
 
 func (repo *modelRepository) GetByUids(ctx context.Context, uids []string) ([]domain.Model, error) {

@@ -22,6 +22,9 @@ type ModelDAO interface {
 	// GetByUids 根据模型唯一标识组，获取模型组
 	GetByUids(ctx context.Context, uids []string) ([]Model, error)
 
+	// GetByUid 根据唯一标识获取模型详情
+	GetByUid(ctx context.Context, uid string) (Model, error)
+
 	// List 获取模型列表，支持分页
 	List(ctx context.Context, offset, limit int64) ([]Model, error)
 
@@ -49,6 +52,21 @@ func NewModelDAO(db *mongox.Mongo) ModelDAO {
 
 type modelDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *modelDAO) GetByUid(ctx context.Context, uid string) (Model, error) {
+	col := dao.db.Collection(ModelCollection)
+	filter := bson.M{"uid": uid}
+
+	var m Model
+	if err := col.FindOne(ctx, filter).Decode(&m); err != nil {
+		if mongox.IsNotFoundError(err) {
+			return Model{}, fmt.Errorf("模型查询: %w", errs.ErrNotFound)
+		}
+		return Model{}, fmt.Errorf("解码错误: %w", err)
+	}
+
+	return m, nil
 }
 
 func (dao *modelDAO) GetByUids(ctx context.Context, uids []string) ([]Model, error) {
@@ -121,6 +139,9 @@ func (dao *modelDAO) GetById(ctx context.Context, id int64) (Model, error) {
 
 	var m Model
 	if err := col.FindOne(ctx, filter).Decode(&m); err != nil {
+		if mongox.IsNotFoundError(err) {
+			return Model{}, fmt.Errorf("模型查询: %w", errs.ErrNotFound)
+		}
 		return Model{}, fmt.Errorf("解码错误: %w", err)
 	}
 

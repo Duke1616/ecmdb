@@ -34,3 +34,13 @@ func IsUniqueConstraintError(err error) bool {
 
 	return false
 }
+
+// IsNotFoundError 检查是否是数据不存在错误
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// 判断是否是 mongo.ErrNoDocuments
+	return errors.Is(err, mongo.ErrNoDocuments)
+}

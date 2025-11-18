@@ -63,7 +63,10 @@ func (dao *attributeDAO) DetailAttribute(ctx context.Context, id int64) (Attribu
 
 	var result Attribute
 	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
-		return Attribute{}, fmt.Errorf("解码错误，%w", err)
+		if mongox.IsNotFoundError(err) {
+			return Attribute{}, fmt.Errorf("属性查询: %w", errs.ErrNotFound)
+		}
+		return Attribute{}, fmt.Errorf("解码错误: %w", err)
 	}
 
 	return result, nil
@@ -138,6 +141,9 @@ func (dao *attributeDAO) BatchCreateAttribute(ctx context.Context, attrs []Attri
 
 	_, err = col.InsertMany(ctx, docs)
 	if err != nil {
+		if mongox.IsUniqueConstraintError(err) {
+			return fmt.Errorf("批量插入模型属性: %w", errs.ErrUniqueDuplicate)
+		}
 		return fmt.Errorf("批量插入数据错误: %w", err)
 	}
 

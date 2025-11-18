@@ -9,7 +9,13 @@ import (
 )
 
 type RelationTypeService interface {
+	// Create 创建关联类型
 	Create(ctx context.Context, req domain.RelationType) (int64, error)
+
+	// BatchCreate 批量创建
+	BatchCreate(ctx context.Context, rts []domain.RelationType) error
+
+	// List 获取关联类型列表
 	List(ctx context.Context, offset, limit int64) ([]domain.RelationType, int64, error)
 }
 
@@ -21,6 +27,10 @@ func NewRelationTypeService(repo repository.RelationTypeRepository) RelationType
 	return &service{
 		repo: repo,
 	}
+}
+
+func (s *service) BatchCreate(ctx context.Context, rts []domain.RelationType) error {
+	return s.repo.BatchCreate(ctx, rts)
 }
 
 func (s *service) Create(ctx context.Context, req domain.RelationType) (int64, error) {

@@ -10,8 +10,16 @@ import (
 )
 
 type RelationTypeRepository interface {
+	// Create 创建关联类型
 	Create(ctx context.Context, req domain.RelationType) (int64, error)
+
+	// BatchCreate 批量创建
+	BatchCreate(ctx context.Context, rts []domain.RelationType) error
+
+	// List 关联列表
 	List(ctx context.Context, offset, limit int64) ([]domain.RelationType, error)
+
+	// Total 数量
 	Total(ctx context.Context) (int64, error)
 }
 
@@ -23,6 +31,12 @@ func NewRelationTypeRepository(dao dao.RelationTypeDAO) RelationTypeRepository {
 
 type relationRepository struct {
 	dao dao.RelationTypeDAO
+}
+
+func (r *relationRepository) BatchCreate(ctx context.Context, rts []domain.RelationType) error {
+	return r.dao.BatchCreate(ctx, slice.Map(rts, func(idx int, src domain.RelationType) dao.RelationType {
+		return r.toEntity(src)
+	}))
 }
 
 func (r *relationRepository) Create(ctx context.Context, req domain.RelationType) (int64, error) {

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
@@ -16,6 +15,12 @@ type RelationModelRepository interface {
 
 	// DeleteModelRelation 删除模型关联关系
 	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
+
+	// BatchCreate 批量创建模型关联关系
+	BatchCreate(ctx context.Context, relations []domain.ModelRelation) error
+
+	// GetByRelationNames 根据唯一标识获取数据
+	GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error)
 
 	// ListRelationByModelUid 根据模型 UID 获取。支持分页
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error)
@@ -35,6 +40,20 @@ func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepositor
 
 type modelRepository struct {
 	dao dao.RelationModelDAO
+}
+
+func (r *modelRepository) BatchCreate(ctx context.Context, relations []domain.ModelRelation) error {
+	return r.dao.BatchCreate(ctx, slice.Map(relations, func(idx int, src domain.ModelRelation) dao.ModelRelation {
+		return r.toEntity(src)
+	}))
+}
+
+func (r *modelRepository) GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error) {
+	rms, err := r.dao.GetByRelationNames(ctx, names)
+
+	return slice.Map(rms, func(idx int, src dao.ModelRelation) domain.ModelRelation {
+		return r.toDomain(src)
+	}), err
 }
 
 func (r *modelRepository) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
@@ -69,7 +88,7 @@ func (r *modelRepository) toEntity(req domain.ModelRelation) dao.ModelRelation {
 	return dao.ModelRelation{
 		SourceModelUid:  req.SourceModelUID,
 		TargetModelUid:  req.TargetModelUID,
-		RelationName:    fmt.Sprintf("%s_%s_%s", req.SourceModelUID, req.RelationTypeUID, req.TargetModelUID),
+		RelationName:    req.RelationName,
 		RelationTypeUid: req.RelationTypeUID,
 		Mapping:         req.Mapping,
 	}

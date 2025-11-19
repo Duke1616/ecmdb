@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -16,6 +17,12 @@ type RelationModelDAO interface {
 
 	// DeleteModelRelation 删除模型关联关系
 	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
+
+	// BatchCreate 批量创建模型关联关系
+	BatchCreate(ctx context.Context, relations []ModelRelation) error
+
+	// GetByRelationNames 根据唯一标识获取数据
+	GetByRelationNames(ctx context.Context, names []string) ([]ModelRelation, error)
 
 	// ListRelationByModelUid 根据模型 UID 获取。支持分页
 	ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error)
@@ -37,15 +44,73 @@ type modelDAO struct {
 	db *mongox.Mongo
 }
 
-func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
-	mr.Id = dao.db.GetIdGenerator(ModelRelationCollection)
+func (dao *modelDAO) BatchCreate(ctx context.Context, relations []ModelRelation) error {
+	if len(relations) == 0 {
+		return nil
+	}
+
 	col := dao.db.Collection(ModelRelationCollection)
+	now := time.Now().UnixMilli()
+
+	// 批量获取起始 ID（一次数据库调用）
+	startID, err := dao.db.GetBatchIdGenerator(ModelRelationCollection, len(relations))
+	if err != nil {
+		return fmt.Errorf("获取批量 ID 错误: %w", err)
+	}
+
+	// 为每个属性设置 ID 和时间戳
+	docs := make([]interface{}, len(relations))
+	for i := range relations {
+		relations[i].Id = startID + int64(i)
+		relations[i].Ctime, relations[i].Utime = now, now
+		docs[i] = relations[i]
+	}
+
+	_, err = col.InsertMany(ctx, docs)
+	if err != nil {
+		if mongox.IsUniqueConstraintError(err) {
+			return fmt.Errorf("批量插入关联类型: %w", errs.ErrUniqueDuplicate)
+		}
+		return fmt.Errorf("批量插入数据错误: %w", err)
+	}
+
+	return nil
+}
+
+func (dao *modelDAO) GetByRelationNames(ctx context.Context, names []string) ([]ModelRelation, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+	filter := bson.M{}
+	filter["relation_name"] = bson.M{"$in": names}
+	opts := &options.FindOptions{}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []ModelRelation
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
 	now := time.Now()
 	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	_, err := col.InsertOne(ctx, mr)
+	// 直接插入数据，并自增ID
+	_, err := dao.db.InsertOneWithAutoID(ctx, ModelRelationCollection, &mr)
+
 	if err != nil {
-		return 0, fmt.Errorf("插入数据错误: %w", err)
+		if mongox.IsUniqueConstraintError(err) {
+			return 0, fmt.Errorf("模型关联关系插入: %w", errs.ErrUniqueDuplicate)
+		}
+		return 0, err
 	}
 
 	return mr.Id, nil
@@ -145,4 +210,12 @@ type ModelRelation struct {
 	Mapping         string `bson:"mapping"`
 	Ctime           int64  `bson:"ctime"`
 	Utime           int64  `bson:"utime"`
+}
+
+func (a *ModelRelation) SetID(id int64) {
+	a.Id = id
+}
+
+func (a *ModelRelation) GetID() int64 {
+	return a.Id
 }

@@ -13,8 +13,14 @@ type RelationModelService interface {
 	// CreateModelRelation 创建模型关联关系
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
 
+	// BatchCreate 批量创建模型关联关系
+	BatchCreate(ctx context.Context, relations []domain.ModelRelation) error
+
 	// DeleteModelRelation 删除模型关联关系
 	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
+
+	// GetByRelationNames 根据唯一标识获取数据
+	GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error)
 
 	// ListModelUidRelation 根据模型 UID 获取。支持分页
 	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) (
@@ -41,7 +47,16 @@ func NewRelationModelService(repo repository.RelationModelRepository) RelationMo
 	}
 }
 
+func (s *modelService) BatchCreate(ctx context.Context, relations []domain.ModelRelation) error {
+	return s.repo.BatchCreate(ctx, relations)
+}
+
+func (s *modelService) GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error) {
+	return s.repo.GetByRelationNames(ctx, names)
+}
+
 func (s *modelService) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	req.RelationName = req.RM()
 	return s.repo.CreateModelRelation(ctx, req)
 }
 

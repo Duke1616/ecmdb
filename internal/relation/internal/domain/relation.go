@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -19,6 +20,10 @@ type ModelRelation struct {
 	Mapping         string // 关联关系
 	Ctime           time.Time
 	Utime           time.Time
+}
+
+func (m *ModelRelation) RM() string {
+	return fmt.Sprintf("%s_%s_%s", m.SourceModelUID, m.RelationTypeUID, m.TargetModelUID)
 }
 
 // ModelDiagram 拓补图模型关联节点信息

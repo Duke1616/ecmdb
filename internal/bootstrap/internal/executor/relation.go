@@ -2,9 +2,7 @@ package executor
 
 import (
 	"context"
-	"errors"
 
-	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
@@ -52,7 +50,7 @@ func (e *relationExecutor) ExecuteRelationTypes(ctx context.Context, relationTyp
 	if err != nil {
 		return err
 	}
-	
+
 	// 创建已存在分组的名称映射，用于快速查找
 	existingMap := make(map[string]struct{})
 	for _, group := range existingRts {
@@ -82,23 +80,32 @@ func (e *relationExecutor) ExecuteModelRelations(ctx context.Context, modelRelat
 		return nil
 	}
 
-	e.logger.Info("开始创建模型关联关系", elog.Int("数量", len(modelRelations)))
+	rms := slice.Map(modelRelations, func(idx int, src relation.ModelRelation) string {
+		return src.RM()
+	})
 
-	for _, mr := range modelRelations {
-		_, err := e.relationRMSvc.CreateModelRelation(ctx, mr)
-		if err != nil {
-			// 只在唯一键冲突时忽略错误
-			if errors.Is(err, errs.ErrUniqueDuplicate) {
-				e.logger.Warn("模型关联关系已存在，跳过创建",
-					elog.String("关系名称", mr.RelationName),
-					elog.FieldErr(err))
-			} else {
-				e.logger.Error("创建模型关联关系失败",
-					elog.String("关系名称", mr.RelationName),
-					elog.FieldErr(err))
-				return err
-			}
-		}
+	existingRMs, err := e.relationRMSvc.GetByRelationNames(ctx, rms)
+	if err != nil {
+		return err
+	}
+
+	// 创建已存在分组的名称映射，用于快速查找
+	existingMap := make(map[string]struct{})
+	for i := range existingRMs {
+		existingMap[existingRMs[i].RelationName] = struct{}{}
+	}
+
+	// 使用 FilterMap 找出需要创建的分组（数据库中不存在的）
+	rmsToCreate := slice.FilterMap(modelRelations, func(idx int, src relation.ModelRelation) (relation.ModelRelation, bool) {
+		// 如果分组不存在于数据库中，返回 true
+		_, exists := existingMap[src.RelationName]
+		return src, !exists
+	})
+
+	// 如果没有需要创建的分组，直接返回已存在的分组
+	if len(rmsToCreate) == 0 {
+		e.logger.Info("所有关联类型已存在，无需创建")
+		return nil
 	}
 
 	e.logger.Info("模型关联关系创建成功")

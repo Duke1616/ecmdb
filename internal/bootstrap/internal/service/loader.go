@@ -105,8 +105,8 @@ func (l *loader) LoadFromConfig(ctx context.Context, cfg *structure.Config) erro
 
 // loadModel 加载单个模型及其属性
 func (l *loader) loadModel(ctx context.Context, modelCfg structure.ModelConfig) error {
-	l.logger.Info("开始加载模型", elog.String("模型UID", modelCfg.UID))
-	if modelCfg.GroupName != "" {
+	l.logger.Info("开始加载模型", elog.String("模型UID", modelCfg.UID), elog.String("模型组", modelCfg.GroupName))
+	if modelCfg.GroupName == "" {
 		return fmt.Errorf("模型组传递不能为空")
 	}
 

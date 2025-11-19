@@ -52,7 +52,7 @@ func (e *relationExecutor) ExecuteRelationTypes(ctx context.Context, relationTyp
 	if err != nil {
 		return err
 	}
-
+	
 	// 创建已存在分组的名称映射，用于快速查找
 	existingMap := make(map[string]struct{})
 	for _, group := range existingRts {
@@ -62,7 +62,7 @@ func (e *relationExecutor) ExecuteRelationTypes(ctx context.Context, relationTyp
 	// 使用 FilterMap 找出需要创建的分组（数据库中不存在的）
 	rtsToCreate := slice.FilterMap(relationTypes, func(idx int, src relation.RelationType) (relation.RelationType, bool) {
 		// 如果分组不存在于数据库中，返回 true
-		_, exists := existingMap[src.Name]
+		_, exists := existingMap[src.UID]
 		return src, !exists
 	})
 

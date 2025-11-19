@@ -42,11 +42,11 @@ func (dao *attributeGroupDAO) BatchCreateAttributeGroup(ctx context.Context, ags
 		return nil, nil
 	}
 
-	col := dao.db.Collection(AttributeCollection)
+	col := dao.db.Collection(AttributeGroupCollection)
 	now := time.Now().UnixMilli()
 
 	// 批量获取起始 ID（一次数据库调用）
-	startID, err := dao.db.GetBatchIdGenerator(AttributeCollection, len(ags))
+	startID, err := dao.db.GetBatchIdGenerator(AttributeGroupCollection, len(ags))
 	if err != nil {
 		return nil, fmt.Errorf("获取批量 ID 错误: %w", err)
 	}

@@ -47,7 +47,7 @@ func (e *modelGroupExecutor) Execute(ctx context.Context, groups []model.ModelGr
 	names := slice.Map(groups, func(idx int, src model.ModelGroup) string {
 		return src.Name
 	})
-
+	
 	// 查询数据库中是否存在
 	existingGroups, err := e.modelGroupSvc.GetByNames(ctx, names)
 	if err != nil {

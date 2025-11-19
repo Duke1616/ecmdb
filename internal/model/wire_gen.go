@@ -33,8 +33,9 @@ func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribu
 	encryptedSvc := resourceSvc.EncryptedSvc
 	handler := web.NewHandler(serviceService, mgService, relationModelService, service2, encryptedSvc)
 	module := &Module{
-		Svc: serviceService,
-		Hdl: handler,
+		Svc:   serviceService,
+		MGSvc: mgService,
+		Hdl:   handler,
 	}
 	return module, nil
 }

@@ -39,8 +39,7 @@ func NewMGService(repo repository.MGRepository) MGService {
 }
 
 func (s *groupService) GetByName(ctx context.Context, name string) (domain.ModelGroup, error) {
-	//TODO implement me
-	panic("implement me")
+	return s.repo.GetByName(ctx, name)
 }
 
 func (s *groupService) BatchCreate(ctx context.Context, req []domain.ModelGroup) ([]domain.ModelGroup, error) {

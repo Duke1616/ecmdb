@@ -108,6 +108,5 @@ func (e *relationExecutor) ExecuteModelRelations(ctx context.Context, modelRelat
 		return nil
 	}
 
-	e.logger.Info("模型关联关系创建成功")
-	return nil
+	return e.relationRMSvc.BatchCreate(ctx, rmsToCreate)
 }

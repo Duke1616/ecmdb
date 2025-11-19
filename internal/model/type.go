@@ -10,4 +10,8 @@ type Handler = web.Handler
 
 type Model = domain.Model
 
+type ModelGroup = domain.ModelGroup
+
 type Service = service.Service
+
+type MGService = service.MGService

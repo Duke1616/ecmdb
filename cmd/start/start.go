@@ -27,7 +27,7 @@ var Cmd = &cobra.Command{
 				panic(err)
 			}
 		}()
-		
+
 		err = app.Grpc.Serve()
 		panic(err)
 	},
@@ -41,7 +41,7 @@ func initCronjob(jobs []*ecron.Component) {
 
 	var cfg Config
 	if err := viper.UnmarshalKey("cronjob", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	if !cfg.Enabled {

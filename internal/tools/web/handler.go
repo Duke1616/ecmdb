@@ -24,7 +24,7 @@ func NewHandler(svc service.Service) *Handler {
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	g := server.Group("/api/tools")
+	g := server.Group("/api/structure")
 	g.POST("/upload", h.Upload)
 	g.GET("/download/:filename", h.Download)
 

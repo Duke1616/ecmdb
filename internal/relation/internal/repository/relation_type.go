@@ -16,6 +16,9 @@ type RelationTypeRepository interface {
 	// BatchCreate 批量创建
 	BatchCreate(ctx context.Context, rts []domain.RelationType) error
 
+	// GetByUids 根据 UID 获取关联类型
+	GetByUids(ctx context.Context, uids []string) ([]domain.RelationType, error)
+
 	// List 关联列表
 	List(ctx context.Context, offset, limit int64) ([]domain.RelationType, error)
 
@@ -31,6 +34,13 @@ func NewRelationTypeRepository(dao dao.RelationTypeDAO) RelationTypeRepository {
 
 type relationRepository struct {
 	dao dao.RelationTypeDAO
+}
+
+func (r *relationRepository) GetByUids(ctx context.Context, uids []string) ([]domain.RelationType, error) {
+	rts, err := r.dao.GetByUids(ctx, uids)
+	return slice.Map(rts, func(idx int, src dao.RelationType) domain.RelationType {
+		return r.toDomain(src)
+	}), err
 }
 
 func (r *relationRepository) BatchCreate(ctx context.Context, rts []domain.RelationType) error {

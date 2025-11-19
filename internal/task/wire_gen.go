@@ -102,7 +102,7 @@ func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSv
 
 	var cfg Config
 	if err := viper.UnmarshalKey("cronjob", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	if !cfg.Enabled {

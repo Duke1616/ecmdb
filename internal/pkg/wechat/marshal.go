@@ -10,7 +10,7 @@ import (
 func Marshal(oaDetail workwx.OAApprovalDetail) (map[string]interface{}, error) {
 	evtData, err := json.Marshal(oaDetail)
 	if err != nil {
-		fmt.Println("Error marshalling struct:", err)
+		fmt.Println("Error marshalling structure:", err)
 	}
 
 	var data map[string]interface{}

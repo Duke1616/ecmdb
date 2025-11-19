@@ -17,7 +17,7 @@ func InitMinioClient() *minio.Client {
 	}
 	var cfg Config
 	if err := viper.UnmarshalKey("minio", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	// 初始化 Minio 客户端

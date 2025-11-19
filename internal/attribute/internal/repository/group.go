@@ -9,8 +9,16 @@ import (
 )
 
 type AttributeGroupRepository interface {
+	// CreateAttributeGroup 创建属性组
 	CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error)
+
+	// BatchCreateAttributeGroup 批量创建组
+	BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error)
+
+	// ListAttributeGroup 根据模型唯一标识，获取组信息
 	ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error)
+
+	// ListAttributeGroupByIds 根据 IDS 获取组信息
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
 }
 
@@ -42,6 +50,16 @@ func (a *attributeGroupRepository) ListAttributeGroupByIds(ctx context.Context, 
 
 func (a *attributeGroupRepository) CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error) {
 	return a.dao.CreateAttributeGroup(ctx, a.toEntity(req))
+}
+
+func (a *attributeGroupRepository) BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
+	agsResp, err := a.dao.BatchCreateAttributeGroup(ctx, slice.Map(ags, func(idx int, src domain.AttributeGroup) dao.AttributeGroup {
+		return a.toEntity(src)
+	}))
+
+	return slice.Map(agsResp, func(idx int, src dao.AttributeGroup) domain.AttributeGroup {
+		return a.toDomain(src)
+	}), err
 }
 
 func (a *attributeGroupRepository) toEntity(req domain.AttributeGroup) dao.AttributeGroup {

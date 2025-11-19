@@ -1,6 +1,7 @@
 package model
 
 type Module struct {
-	Svc Service
-	Hdl *Handler
+	Svc   Service
+	MGSvc MGService
+	Hdl   *Handler
 }

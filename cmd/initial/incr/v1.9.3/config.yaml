@@ -1,0 +1,179 @@
+# v1.9.3 版本配置
+# 创建主机模型和登陆网关模型及其关联
+
+# 关联类型定义
+relation_types:
+  - uid: "default"
+    name: "默认关联"
+    source_describe: "关联"
+    target_describe: "关联"
+  - uid: "run"
+    name: "运行"
+    source_describe: "运行于"
+    target_describe: "运行"
+  - uid: "group"
+    name: "组成"
+    source_describe: "组成"
+    target_describe: "组成于"
+  - uid: "belong"
+    name: "属于"
+    source_describe: "属于"
+    target_describe: "包含"
+
+# 模型分组
+model_groups:
+  - name: "主机模型"
+  - name: "网关模型"
+
+# 模型定义
+models:
+  # 主机模型
+  - uid: "host"
+    name: "主机"
+    icon: "icon-host"
+    group_name: "主机模型"
+    builtin: true
+    attributes:
+      groups:
+        - name: "基础属性"
+          index: 0
+          fields:
+            - uid: "name"
+              name: "名称"
+              type: "string"
+              required: true
+              display: true
+              builtin: true
+              index: 0
+            - uid: "ip"
+              name: "IP地址"
+              type: "string"
+              required: true
+              display: true
+              builtin: true
+              index: 1
+            - uid: "port"
+              name: "端口"
+              type: "string"
+              required: false
+              display: true
+              builtin: true
+              index: 2
+            - uid: "username"
+              name: "用户名"
+              type: "string"
+              required: false
+              display: true
+              builtin: true
+              index: 3
+            - uid: "auth_type"
+              name: "认证类型"
+              type: "list"
+              option: ["passwd", "publickey", "passphrase"]
+              required: true
+              display: true
+              builtin: true
+              index: 6
+        - name: "加密属性"
+          index: 2
+          fields:
+            - uid: "password"
+              name: "密码"
+              type: "string"
+              required: false
+              display: false
+              secure: true
+              builtin: true
+              index: 1
+            - uid: "private_key"
+              name: "私钥"
+              type: "multiline"
+              required: false
+              display: false
+              secure: true
+              builtin: true
+              index: 2
+  # 登陆网关模型
+  - uid: "AuthGateway"
+    name: "登陆网关"
+    icon: "icon-gateway"
+    group_name: "网关模型"
+    builtin: true
+    attributes:
+      groups:
+        - name: "基础属性"
+          index: 0
+          fields:
+            - uid: "name"
+              name: "名称"
+              type: "string"
+              required: true
+              display: true
+              builtin: true
+              index: 0
+            - uid: "host"
+              name: "地址"
+              type: "string"
+              required: true
+              display: true
+              builtin: true
+              index: 1
+            - uid: "port"
+              name: "端口"
+              type: "string"
+              required: false
+              display: true
+              builtin: true
+              index: 2
+            - uid: "username"
+              name: "用户名"
+              type: "string"
+              required: false
+              display: true
+              builtin: true
+              index: 3
+        - name: "分类属性"
+          index: 1
+          fields:
+            - uid: "auth_type"
+              name: "认证类型"
+              type: "list"
+              option: ["passwd", "publickey", "passphrase"]
+              required: false
+              display: true
+              builtin: true
+              index: 1
+            - uid: "sort"
+              name: "排序"
+              type: "string"
+              required: false
+              display: true
+              builtin: true
+              index: 2
+        - name: "加密属性"
+          index: 2
+          fields:
+             - uid: "password"
+               name: "密码"
+               type: "string"
+               required: false
+               display: false
+               secure: true
+               builtin: true
+               index: 1
+             - uid: "private_key"
+               name: "私钥"
+               type: "multiline"
+               required: false
+               display: false
+               secure: true
+               builtin: true
+               index: 2
+
+# 模型关联关系
+model_relations:
+  - source_model_uid: "AuthGateway"
+    target_model_uid: "host"
+    relation_type_uid: "default"
+    relation_name: "AuthGateway_default_host"
+    mapping: "one_to_many"

@@ -18,6 +18,9 @@ type RelationTypeDAO interface {
 	// BatchCreate 批量创建
 	BatchCreate(ctx context.Context, rts []RelationType) error
 
+	// GetByUids 根据 UID 获取关联类型
+	GetByUids(ctx context.Context, uids []string) ([]RelationType, error)
+
 	// List 关联列表
 	List(ctx context.Context, offset, limit int64) ([]RelationType, error)
 
@@ -33,6 +36,28 @@ func NewRelationTypeDAO(db *mongox.Mongo) RelationTypeDAO {
 
 type relationDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *relationDAO) GetByUids(ctx context.Context, uids []string) ([]RelationType, error) {
+	col := dao.db.Collection(RelationTypeCollection)
+	filter := bson.M{}
+	filter["uid"] = bson.M{"$in": uids}
+	opts := &options.FindOptions{}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []RelationType
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }
 
 func (dao *relationDAO) BatchCreate(ctx context.Context, rts []RelationType) error {

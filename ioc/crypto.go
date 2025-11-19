@@ -22,7 +22,7 @@ func InitModuleCrypto() *cryptox.CryptoRegistry {
 	var cfg Config
 
 	if err := viper.UnmarshalKey("encryption", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	// 验证配置

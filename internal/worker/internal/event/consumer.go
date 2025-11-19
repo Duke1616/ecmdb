@@ -11,7 +11,7 @@ package event
 //	"log/slog"
 //)
 //
-//type TaskWorkerConsumer struct {
+//type TaskWorkerConsumer structure {
 //	svc      service.Service
 //	consumer mq.Consumer
 //}

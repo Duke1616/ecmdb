@@ -9,6 +9,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/cmd/initial/version"
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/bootstrap"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
@@ -81,11 +82,11 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	service5 := modelModule.Svc
-	service6 := attributeModule.Svc
-	relationModelService := relationModule.RMSvc
-	relationResourceService := relationModule.RRSvc
-	relationTypeService := relationModule.RTSvc
+	bootstrapModule, err := bootstrap.InitModule(modelModule, attributeModule, relationModule)
+	if err != nil {
+		return nil, err
+	}
+	loader := bootstrapModule.Svc
 	app := &App{
 		UserSvc:       service,
 		RoleSvc:       serviceService,
@@ -93,11 +94,7 @@ func InitApp() (*App, error) {
 		PermissionSvc: service3,
 		policySvc:     service4,
 		VerSvc:        versionService,
-		ModelSvc:      service5,
-		AttributeSvc:  service6,
-		RelationRMSvc: relationModelService,
-		RelationRRSvc: relationResourceService,
-		RelationRTSvc: relationTypeService,
+		BootstrapSvc:  loader,
 		GormDB:        db,
 		DB:            mongo,
 	}

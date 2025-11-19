@@ -56,12 +56,19 @@ type Service interface {
 
 	// ListAttributeGroupByIds 返回每个组下面的属性
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
+
+	// BatchCreateAttributeGroup 批量创建组
+	BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error)
 }
 
 type service struct {
 	repo      repository.AttributeRepository
 	producer  event.FieldSecureAttrChangeEventProducer
 	groupRepo repository.AttributeGroupRepository
+}
+
+func (s *service) BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
+	return s.groupRepo.BatchCreateAttributeGroup(ctx, ags)
 }
 
 func (s *service) UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error) {

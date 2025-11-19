@@ -19,7 +19,7 @@ func InitMySQLDB() *gorm.DB {
 	}
 	var cfg Config
 	if err := viper.UnmarshalKey("mysql", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	type DataBaseConnConfigurator struct {

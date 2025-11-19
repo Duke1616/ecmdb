@@ -33,7 +33,7 @@ func InitMongoDB() *mongox.Mongo {
 
 	var cfg Config
 	if err := viper.UnmarshalKey("mongodb", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 	dsn := strings.Split(cfg.DSN, "//")
 	uri := fmt.Sprintf("%s//%s:%s@%s", dsn[0], cfg.Username, cfg.Password, dsn[1])

@@ -107,7 +107,7 @@ func getLogicFlowUrl() string {
 
 	var cfg Config
 	if err := viper.UnmarshalKey("frontend", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	return cfg.LogicFlowUrl

@@ -10,6 +10,18 @@ import (
 )
 
 func InitIndexes(db *mongox.Mongo) error {
+	if err := initAttrIndex(db); err != nil {
+		return err
+	}
+
+	if err := initAttrGroupIndex(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func initAttrIndex(db *mongox.Mongo) error {
 	col := db.Collection(AttributeCollection)
 
 	indexes := []mongo.IndexModel{
@@ -22,6 +34,24 @@ func InitIndexes(db *mongox.Mongo) error {
 		},
 		{
 			Keys: bson.M{"model_uid": -1},
+		},
+	}
+
+	_, err := col.Indexes().CreateMany(context.Background(), indexes)
+
+	return err
+}
+
+func initAttrGroupIndex(db *mongox.Mongo) error {
+	col := db.Collection(AttributeGroupCollection)
+
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{"model_uid", -1},
+				{"name", -1},
+			},
+			Options: options.Index().SetUnique(true),
 		},
 	}
 

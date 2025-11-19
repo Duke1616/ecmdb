@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr/v1.5.0"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr/v1.9.2"
+	v193 "github.com/Duke1616/ecmdb/cmd/initial/incr/v1.9.3"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr/version"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ func registerIncr(incr incr.InitialIncr) {
 func RegisterIncr(app *ioc.App) {
 	registerIncr(v150.NewIncrV150(app))
 	registerIncr(v192.NewIncrV192(app))
+	registerIncr(v193.NewIncrV193(app))
 }
 
 // RunIncrementalOperationsToVersion 执行到指定版本的增量操作

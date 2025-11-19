@@ -5,6 +5,7 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/cmd/initial/version"
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/bootstrap"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
@@ -41,15 +42,15 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*policy.Module), "Svc"),
 		// 关联关系模块（无依赖，最先初始化）
 		relation.InitModule,
-		wire.FieldsOf(new(*relation.Module), "RMSvc", "RRSvc", "RTSvc"),
 		// 字段模块（依赖 MQ）
 		attribute.InitModule,
-		wire.FieldsOf(new(*attribute.Module), "Svc"),
 		// 资源模块（model 依赖它）
 		resource.InitModule,
 		// 模型模块（依赖 relation、attribute、resource）
 		model.InitModule,
-		wire.FieldsOf(new(*model.Module), "Svc"),
+		// Bootstrap 模块（依赖 model、attribute、relation，统一管理 CMDB 相关服务）
+		bootstrap.InitModule,
+		wire.FieldsOf(new(*bootstrap.Module), "Svc"),
 	)
 	return new(App), nil
 }

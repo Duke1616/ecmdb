@@ -47,7 +47,7 @@ func initMQ() (mq.MQ, error) {
 
 	var cfg Config
 	if err := viper.UnmarshalKey("kafka", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	qq, err := kafka.NewMQ(cfg.Network, cfg.Addresses)

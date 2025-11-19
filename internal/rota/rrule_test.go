@@ -153,11 +153,11 @@ func TestEa(*testing.T) {
 	iface2.SetValue(40)
 
 	// 打印原始结构体的值
-	fmt.Println("Original struct value:", s.value) // 输出: Original struct value: 20
-	fmt.Println("Original struct value:", t.value)
+	fmt.Println("Original structure value:", s.value) // 输出: Original structure value: 20
+	fmt.Println("Original structure value:", t.value)
 
 	// 打印接口中的值
 	fmt.Println("Interface value:", iface1.GetValue()) // 输出: Interface value: 20
-	fmt.Println("Original struct value:", iface2.GetValue())
+	fmt.Println("Original structure value:", iface2.GetValue())
 
 }

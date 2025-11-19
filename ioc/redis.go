@@ -17,7 +17,7 @@ func InitRedis() redis.Cmdable {
 	var cfg Config
 
 	if err := viper.UnmarshalKey("redis", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	cmd := redis.NewClient(&redis.Options{

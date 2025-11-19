@@ -13,7 +13,7 @@ func InitLdapConfig() ldapx.Config {
 
 	// 使用 Unmarshal 函数将配置数据解析到结构体中
 	if err := viper.UnmarshalKey("ldap", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	return cfg

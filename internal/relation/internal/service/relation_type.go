@@ -12,6 +12,9 @@ type RelationTypeService interface {
 	// Create 创建关联类型
 	Create(ctx context.Context, req domain.RelationType) (int64, error)
 
+	// GetByUids 根据 UID 获取关联类型
+	GetByUids(ctx context.Context, uids []string) ([]domain.RelationType, error)
+
 	// BatchCreate 批量创建
 	BatchCreate(ctx context.Context, rts []domain.RelationType) error
 
@@ -27,6 +30,10 @@ func NewRelationTypeService(repo repository.RelationTypeRepository) RelationType
 	return &service{
 		repo: repo,
 	}
+}
+
+func (s *service) GetByUids(ctx context.Context, uids []string) ([]domain.RelationType, error) {
+	return s.repo.GetByUids(ctx, uids)
 }
 
 func (s *service) BatchCreate(ctx context.Context, rts []domain.RelationType) error {

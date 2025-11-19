@@ -14,7 +14,7 @@ func InitEtcdClient() *clientv3.Client {
 
 	// Unmarshal etcd configuration from viper
 	if err := viper.UnmarshalKey("etcd", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	// Set connection timeout (e.g., 5 seconds)

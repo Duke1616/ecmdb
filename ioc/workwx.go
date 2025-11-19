@@ -19,7 +19,7 @@ func InitWorkWx() *workwx.WorkwxApp {
 
 	var cfg Config
 	if err := viper.UnmarshalKey("wechat", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	workApp := workwx.New(cfg.CorpID).WithApp(cfg.CorpSecret, cfg.AgentID)

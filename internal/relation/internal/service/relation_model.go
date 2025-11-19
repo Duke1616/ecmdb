@@ -10,9 +10,17 @@ import (
 
 //go:generate mockgen -source=./relation_model.go -destination=../../mocks/relation_model.mock.go -package=relationmocks -typed RelationModelService
 type RelationModelService interface {
+	// CreateModelRelation 创建模型关联关系
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
+
+	// DeleteModelRelation 删除模型关联关系
 	DeleteModelRelation(ctx context.Context, id int64) (int64, error)
-	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error)
+
+	// ListModelUidRelation 根据模型 UID 获取。支持分页
+	ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) (
+		[]domain.ModelRelation, int64, error)
+
+	// CountByModelUid 根据模型 UID 获取数量
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// FindModelDiagramBySrcUids 查询模型关联关系，绘制拓扑图

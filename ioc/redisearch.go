@@ -17,7 +17,7 @@ func InitRedisSearch() *redisearch.Client {
 
 	var cfg Config
 	if err := viper.UnmarshalKey("redis", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into struct: %v", err))
+		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
 	pool := &redis.Pool{Dial: func() (redis.Conn, error) {

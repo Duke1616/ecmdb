@@ -1315,7 +1315,7 @@
     "_id": "66bdbfbdce7b5a67a43e8ca8",
     "component": "",
     "ctime": "1723711421483",
-    "endpoints": "[ { \"path\" : \"/api/attribute/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/model/detail/:id\", \"method\" : \"GET\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/attribute/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "115",
     "meta": "{ \"title\" : \"属性列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"cmdb\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "model_list",
@@ -1325,7 +1325,7 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1763371887424"
   },
   {
     "_id": "66bdc028ce7b5a67a43e8ca9",

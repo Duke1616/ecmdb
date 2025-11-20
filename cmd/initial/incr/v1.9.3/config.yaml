@@ -30,7 +30,7 @@ models:
   # 主机模型
   - uid: "host"
     name: "主机"
-    icon: "icon-host"
+    icon: "monitor-host"
     group_name: "主机模型"
     builtin: true
     attributes:
@@ -96,7 +96,7 @@ models:
   # 登陆网关模型
   - uid: "AuthGateway"
     name: "登陆网关"
-    icon: "icon-gateway"
+    icon: "ops-oneterm-login"
     group_name: "网关模型"
     builtin: true
     attributes:

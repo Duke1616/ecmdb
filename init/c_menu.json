@@ -138,10 +138,10 @@
     "path": "/cmdb/system",
     "pid": "0",
     "redirect": "/cmdb/system/menu",
-    "sort": "10",
+    "sort": "11",
     "status": "1",
     "type": "1",
-    "utime": "1763105562829"
+    "utime": "1765535409584"
   },
   {
     "_id": "66baf1ce997ef9afad60c417",
@@ -1834,10 +1834,10 @@
     "path": "/cmdb/rota",
     "pid": "0",
     "redirect": "/cmdb/rota",
-    "sort": "9",
+    "sort": "10",
     "status": "1",
     "type": "1",
-    "utime": "1759057280186"
+    "utime": "1765535406202"
   },
   {
     "_id": "6735a6de821c391e24e27224",
@@ -2266,10 +2266,10 @@
     "path": "/alert/notify",
     "pid": "0",
     "redirect": "/alert/notify/template",
-    "sort": "8",
+    "sort": "9",
     "status": "1",
     "type": "1",
-    "utime": "1760519476105"
+    "utime": "1765535402520"
   },
   {
     "_id": "68d904d21fc47ae9102ccdde",
@@ -2277,7 +2277,7 @@
     "ctime": "1759053010447",
     "endpoints": "[ ]",
     "id": "175",
-    "meta": "{ \"title\" : \"通知模版\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"notify_template\" }",
+    "meta": "{ \"title\" : \"模版管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"notify_template\" }",
     "name": "notify-template",
     "path": "/alert/notify/template",
     "pid": "174",
@@ -2285,7 +2285,7 @@
     "sort": "0",
     "status": "1",
     "type": "2",
-    "utime": "1759053010447"
+    "utime": "1765536711153"
   },
   {
     "_id": "68d904fe1fc47ae9102ccddf",
@@ -2296,7 +2296,7 @@
     "meta": "{ \"title\" : \"新增模版\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "add_notify_template",
     "path": "",
-    "pid": "175",
+    "pid": "184",
     "redirect": "",
     "sort": "2",
     "status": "1",
@@ -2312,7 +2312,7 @@
     "meta": "{ \"title\" : \"修改模版\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "update_notify_template",
     "path": "",
-    "pid": "175",
+    "pid": "183",
     "redirect": "",
     "sort": "3",
     "status": "1",
@@ -2442,10 +2442,10 @@
     "path": "/alert/manager",
     "pid": "0",
     "redirect": "/alert/manager/current",
-    "sort": "7",
+    "sort": "8",
     "status": "1",
     "type": "1",
-    "utime": "1759057269547"
+    "utime": "1765535388180"
   },
   {
     "_id": "68d908961fc47ae9102ccde9",
@@ -4078,5 +4078,37 @@
     "status": "1",
     "type": "3",
     "utime": "1763106067555"
+  },
+  {
+    "_id": "693bee85d48e7fdc5bf41f5e",
+    "component": "Layouts",
+    "ctime": "1765535365223",
+    "endpoints": "[ ]",
+    "id": "288",
+    "meta": "{ \"title\" : \"时序指标\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"time_series\" }",
+    "name": "alert_time_series",
+    "path": "/alert/time_series",
+    "pid": "0",
+    "redirect": "/alert/time_series/query",
+    "sort": "7",
+    "status": "1",
+    "type": "1",
+    "utime": "1765535375607"
+  },
+  {
+    "_id": "693bef19d48e7fdc5bf41f5f",
+    "component": "/pages/alert/query/index.vue",
+    "ctime": "1765535513723",
+    "endpoints": "[ { \"path\" : \"/api/proxy/query_range\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "289",
+    "meta": "{ \"title\" : \"即时查询\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"search\" }",
+    "name": "alert_time_query",
+    "path": "/alert/time_series/query",
+    "pid": "288",
+    "redirect": "",
+    "sort": "1",
+    "status": "1",
+    "type": "2",
+    "utime": "1765535756781"
   }
 ]

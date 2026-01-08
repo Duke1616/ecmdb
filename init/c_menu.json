@@ -378,10 +378,10 @@
     "path": "api",
     "pid": "15",
     "redirect": "",
-    "sort": "5",
+    "sort": "7",
     "status": "1",
     "type": "2",
-    "utime": "1758901522298"
+    "utime": "1767851236435"
   },
   {
     "_id": "66bb0747997ef9afad60c42e",
@@ -394,10 +394,10 @@
     "path": "user",
     "pid": "15",
     "redirect": "",
-    "sort": "3",
+    "sort": "4",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1767851214265"
   },
   {
     "_id": "66bb0766997ef9afad60c42f",
@@ -421,10 +421,10 @@
     "ctime": "1723633298424",
     "endpoints": "[ { \"path\" : \"/api/permission/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "50",
-    "meta": "{ \"title\" : \"查看菜单权限列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "meta": "{ \"title\" : \"权限列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "get_menu_permission",
     "path": "",
-    "pid": "37",
+    "pid": "291",
     "redirect": "",
     "sort": "1",
     "status": "1",
@@ -437,10 +437,10 @@
     "ctime": "1723633320905",
     "endpoints": "[ { \"path\" : \"/api/permission/change\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "51",
-    "meta": "{ \"title\" : \"变更菜单权限\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "meta": "{ \"title\" : \"变更权限\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "change_menu_permission",
     "path": "",
-    "pid": "37",
+    "pid": "291",
     "redirect": "",
     "sort": "2",
     "status": "1",
@@ -458,10 +458,10 @@
     "path": "",
     "pid": "37",
     "redirect": "",
-    "sort": "3",
+    "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1767844831282"
   },
   {
     "_id": "66bc97f2241a9ddb3f030cdf",
@@ -474,10 +474,10 @@
     "path": "",
     "pid": "37",
     "redirect": "",
-    "sort": "4",
+    "sort": "3",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1767844833737"
   },
   {
     "_id": "66bda85a830ac80253f8d5e8",
@@ -554,10 +554,10 @@
     "path": "",
     "pid": "37",
     "redirect": "",
-    "sort": "5",
+    "sort": "4",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1767844836254"
   },
   {
     "_id": "66bdab9a01e0503b4042a986",
@@ -1530,10 +1530,10 @@
     "path": "",
     "pid": "37",
     "redirect": "",
-    "sort": "0",
+    "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1767844828411"
   },
   {
     "_id": "66bdc2b9ce7b5a67a43e8cb6",
@@ -1674,10 +1674,10 @@
     "path": "department",
     "pid": "15",
     "redirect": "",
-    "sort": "5",
+    "sort": "6",
     "status": "1",
     "type": "2",
-    "utime": "1759051102091"
+    "utime": "1767851233991"
   },
   {
     "_id": "66e29bbb6dfc3a8218d093a1",
@@ -2186,10 +2186,10 @@
     "path": "/alert/system/team",
     "pid": "15",
     "redirect": "",
-    "sort": "4",
+    "sort": "5",
     "status": "1",
     "type": "2",
-    "utime": "1759052087992"
+    "utime": "1767851216908"
   },
   {
     "_id": "68d8fe3c1fc47ae9102ccdd8",
@@ -4110,5 +4110,37 @@
     "status": "1",
     "type": "2",
     "utime": "1765535756781"
+  },
+  {
+    "_id": "695e2ee87977c41159284e1d",
+    "component": "",
+    "ctime": "1767780072955",
+    "endpoints": "[ { \"path\" : \"/api/query_history/clear\", \"method\" : \"DELETE\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/query_history/list\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/query_history/delete/:timestamp\", \"method\" : \"DELETE\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/query_history/add\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "290",
+    "meta": "{ \"title\" : \"历史记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "288",
+    "redirect": "",
+    "sort": "2",
+    "status": "1",
+    "type": "3",
+    "utime": "1767780093273"
+  },
+  {
+    "_id": "695f27e6b2592fbd21b88517",
+    "component": "/views/system/role/matrix.vue",
+    "ctime": "1767843814972",
+    "endpoints": "[ ]",
+    "id": "291",
+    "meta": "{ \"title\" : \"权限配置\", \"is_hidden\" : true, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "RolePermissionMatrix",
+    "path": "/system/role/permission-matrix/:roleCode",
+    "pid": "15",
+    "redirect": "",
+    "sort": "3",
+    "status": "1",
+    "type": "2",
+    "utime": "1767851211781"
   }
 ]

@@ -25,6 +25,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/presigned_upload", ginx.WrapBody[GenerateUploadURLReq](h.GenerateUploadURL))
 	// 导出模板
 	g.GET("/template/export/:model_uid", ginx.Wrap(h.ExportTemplate))
+	// 导入数据 (S3 模式)
+	g.POST("/import", ginx.WrapBody[ImportReq](h.Import))
+	// 导入数据 V2 (直接上传文件)
+	g.POST("/import/v2", ginx.Wrap(h.ImportV2))
 }
 
 // GenerateUploadURL 生成预签名上传 URL
@@ -68,4 +72,27 @@ func (h *Handler) ExportTemplate(ctx *gin.Context) (ginx.Result, error) {
 
 	// NOTE: 返回空 Result,因为已经通过 ctx.Data 直接发送了响应
 	return ginx.Result{}, nil
+}
+
+// Import 导入数据
+// NOTE: 前端先通过 GenerateUploadURL 上传文件到 S3,然后调用此接口传入 file_key 进行导入
+func (h *Handler) Import(ctx *gin.Context, req ImportReq) (ginx.Result, error) {
+	// 1. 从 S3 下载文件
+	fileData, err := h.storage.GetFile(ctx.Request.Context(), req.FileKey)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 2. 调用 Service 导入数据
+	importedCount, err := h.svc.Import(ctx.Request.Context(), req.ModelUID, fileData)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "导入成功",
+		Data: map[string]interface{}{
+			"imported_count": importedCount,
+		},
+	}, nil
 }

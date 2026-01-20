@@ -71,6 +71,37 @@ func (s *S3Storage) DeleteFile(ctx context.Context, fileKey string) error {
 	return nil
 }
 
+// GetFile 获取文件内容
+// NOTE: 用于 Excel 导入等场景,直接下载文件到内存
+func (s *S3Storage) GetFile(ctx context.Context, fileKey string) ([]byte, error) {
+	// 获取对象
+	object, err := s.client.GetObject(ctx, s.bucket, fileKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("获取 S3 文件失败: %w", err)
+	}
+	defer object.Close()
+
+	// 读取文件内容
+	var buf []byte
+	buf = make([]byte, 0, 1024*1024) // 预分配 1MB
+	tmpBuf := make([]byte, 4096)
+
+	for {
+		n, err := object.Read(tmpBuf)
+		if n > 0 {
+			buf = append(buf, tmpBuf[:n]...)
+		}
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			return nil, fmt.Errorf("读取 S3 文件内容失败: %w", err)
+		}
+	}
+
+	return buf, nil
+}
+
 // buildFileKey 构建完整的文件路径
 // NOTE: prefix 作为文件夹路径,例如 "exchange/" 会生成 "exchange/20060102_150405_filename.xlsx"
 func (s *S3Storage) buildFileKey(fileName string) string {

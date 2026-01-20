@@ -81,6 +81,11 @@ func (a *Attribute) ToExcelRow() []interface{} {
 func (a *Attribute) GetConstraintDescription() string {
 	constraints := []string{}
 
+	// 模型唯一索引列
+	if a.FieldUid == "name" {
+		constraints = append(constraints, "唯一索引")
+	}
+
 	// 必填约束
 	if a.Required {
 		constraints = append(constraints, "必填")

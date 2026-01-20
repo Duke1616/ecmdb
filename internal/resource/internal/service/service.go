@@ -14,6 +14,10 @@ type Service interface {
 	// CreateResource 创建资产
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
 
+	// BatchCreateOrUpdate 批量创建或修改资产
+	// 基于 model_uid + name 进行 upsert,适用于 Excel 导入等批量操作
+	BatchCreateOrUpdate(ctx context.Context, rs []domain.Resource) error
+
 	// FindResourceById 根据ID，获取资产信息
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 
@@ -58,6 +62,10 @@ type Service interface {
 
 type service struct {
 	repo repository.ResourceRepository
+}
+
+func (s *service) BatchCreateOrUpdate(ctx context.Context, rs []domain.Resource) error {
+	return s.repo.BatchCreateOrUpdate(ctx, rs)
 }
 
 func (s *service) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,

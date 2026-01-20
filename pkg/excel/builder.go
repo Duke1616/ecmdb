@@ -22,6 +22,13 @@ type Builder struct {
 // NewBuilder 创建 Excel 构建器
 func NewBuilder(sheetName string) *Builder {
 	file := excelize.NewFile()
+
+	// 重命名默认的 Sheet1 为自定义名称
+	defaultSheet := file.GetSheetName(0)
+	if defaultSheet != sheetName {
+		file.SetSheetName(defaultSheet, sheetName)
+	}
+
 	return &Builder{
 		file:      file,
 		sheetName: sheetName,

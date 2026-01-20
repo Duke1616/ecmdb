@@ -1,11 +1,11 @@
 //go:build wireinject
 
-package exchange
+package dataio
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/exchange/internal/service"
-	"github.com/Duke1616/ecmdb/internal/exchange/internal/web"
+	"github.com/Duke1616/ecmdb/internal/dataio/internal/service"
+	"github.com/Duke1616/ecmdb/internal/dataio/internal/web"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/storage"
@@ -15,7 +15,7 @@ import (
 // ProviderSet 数据交换模块依赖集合
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
-	service.NewExchangeService,
+	service.NewDataIOService,
 )
 
 func InitModule(attributeModule *attribute.Module, resourceModule *resource.Module, storage *storage.S3Storage,

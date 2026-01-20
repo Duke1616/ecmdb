@@ -4,12 +4,12 @@
 //go:build !wireinject
 // +build !wireinject
 
-package exchange
+package dataio
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/exchange/internal/service"
-	"github.com/Duke1616/ecmdb/internal/exchange/internal/web"
+	"github.com/Duke1616/ecmdb/internal/dataio/internal/service"
+	"github.com/Duke1616/ecmdb/internal/dataio/internal/web"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/storage"
@@ -22,8 +22,8 @@ func InitModule(attributeModule *attribute.Module, resourceModule *resource.Modu
 	serviceService := attributeModule.Svc
 	service2 := resourceModule.Svc
 	service3 := modelModule.Svc
-	iExchangeService := service.NewExchangeService(serviceService, service2, service3)
-	handler := web.NewHandler(iExchangeService, storage2)
+	iDataIOService := service.NewDataIOService(serviceService, service2, service3)
+	handler := web.NewHandler(iDataIOService, storage2)
 	module := &Module{
 		Hdl: handler,
 	}
@@ -33,4 +33,4 @@ func InitModule(attributeModule *attribute.Module, resourceModule *resource.Modu
 // wire.go:
 
 // ProviderSet 数据交换模块依赖集合
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewExchangeService)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewDataIOService)

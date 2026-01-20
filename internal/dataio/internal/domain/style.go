@@ -1,4 +1,4 @@
-package excel
+package domain
 
 import "github.com/xuri/excelize/v2"
 

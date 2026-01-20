@@ -2,9 +2,9 @@ package service
 
 import "context"
 
-// IExchangeService 数据交换服务接口
+// IDataIOService 数据交换服务接口
 // NOTE: 提供基于 Model-Attribute-Resource 架构的数据导入导出功能,支持 Excel 格式
-type IExchangeService interface {
+type IDataIOService interface {
 	// Import 批量导入资源实例 (Resource)
 	// modelUID: 模型唯一标识 (对应 Model.UID)
 	// fileData: Excel 文件的字节数据

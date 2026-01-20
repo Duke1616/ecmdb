@@ -1,18 +1,18 @@
 package web
 
 import (
-	"github.com/Duke1616/ecmdb/internal/exchange/internal/service"
+	"github.com/Duke1616/ecmdb/internal/dataio/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/storage"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	svc     service.IExchangeService
+	svc     service.IDataIOService
 	storage *storage.S3Storage
 }
 
-func NewHandler(svc service.IExchangeService, storage *storage.S3Storage) *Handler {
+func NewHandler(svc service.IDataIOService, storage *storage.S3Storage) *Handler {
 	return &Handler{
 		svc:     svc,
 		storage: storage,

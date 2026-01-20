@@ -7,9 +7,9 @@ import (
 	"sort"
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
+	"github.com/Duke1616/ecmdb/internal/dataio/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/resource"
-	"github.com/Duke1616/ecmdb/pkg/excel"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/sync/errgroup"
 )
@@ -43,21 +43,21 @@ func sortAttributesByPriority(attrs []attribute.Attribute) []attribute.Attribute
 	return sorted
 }
 
-// NOTE: exchangeService 实现数据交换功能,依赖三个模块的 Service
-type exchangeService struct {
+// NOTE: dataIOService 实现数据交换功能,依赖三个模块的 Service
+type dataIOService struct {
 	attrSvc  attribute.Service
 	resSvc   resource.Service
 	modelSvc model.Service
 }
 
-// NewExchangeService 创建数据交换服务实例
-func NewExchangeService(
+// NewDataIOService 创建数据交换服务实例
+func NewDataIOService(
 	attrSvc attribute.Service,
 	resSvc resource.Service,
 	modelSvc model.Service,
 
-) IExchangeService {
-	return &exchangeService{
+) IDataIOService {
+	return &dataIOService{
 		attrSvc:  attrSvc,
 		resSvc:   resSvc,
 		modelSvc: modelSvc,
@@ -65,7 +65,7 @@ func NewExchangeService(
 }
 
 // Import 批量导入资源实例 (Resource)
-func (s *exchangeService) Import(ctx context.Context, modelUID string, fileData []byte) (importedCount int, err error) {
+func (s *dataIOService) Import(ctx context.Context, modelUID string, fileData []byte) (importedCount int, err error) {
 	// 1. 解析 Excel 文件
 	f, err := excelize.OpenReader(bytes.NewReader(fileData))
 	if err != nil {
@@ -142,12 +142,12 @@ func (s *exchangeService) Import(ctx context.Context, modelUID string, fileData 
 }
 
 // Export 导出资源实例数据 (Resource)
-func (s *exchangeService) Export(ctx context.Context, modelUID string, filter interface{}) ([]byte, error) {
+func (s *dataIOService) Export(ctx context.Context, modelUID string, filter interface{}) ([]byte, error) {
 	return nil, nil
 }
 
 // ExportTemplate 导出空白导入模板
-func (s *exchangeService) ExportTemplate(ctx context.Context, modelUID string) ([]byte, error) {
+func (s *dataIOService) ExportTemplate(ctx context.Context, modelUID string) ([]byte, error) {
 	// 1. 获取数据
 	mdl, attrs, err := s.fetchModelAndAttributes(ctx, modelUID)
 	if err != nil {
@@ -169,7 +169,7 @@ func (s *exchangeService) ExportTemplate(ctx context.Context, modelUID string) (
 	}
 
 	// 5. 构建 Excel
-	builder := excel.NewBuilder(mdl.SheetName()).
+	builder := domain.NewBuilder(mdl.SheetName()).
 		With3RowHeaders(row1, row2, row3)
 	defer builder.Close()
 
@@ -184,7 +184,7 @@ func (s *exchangeService) ExportTemplate(ctx context.Context, modelUID string) (
 	return builder.ToBytes()
 }
 
-func (s *exchangeService) fetchModelAndAttributes(ctx context.Context, modelUID string) (model.Model, []attribute.Attribute, error) {
+func (s *dataIOService) fetchModelAndAttributes(ctx context.Context, modelUID string) (model.Model, []attribute.Attribute, error) {
 	var (
 		mdl   model.Model
 		attrs []attribute.Attribute

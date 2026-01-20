@@ -5,11 +5,11 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/dataio"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/exchange"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -42,7 +42,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 	departmentHdl *department.Handler, toolsHdl *tools.Handler, termHdl *terminal.Handler, rotaHdl *rota.Handler,
-	discoveryHdl *discovery.Handler, exchangeHdl *exchange.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
+	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	gin.SetMode(gin.ReleaseMode)
@@ -57,7 +57,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	orderHdl.PublicRoute(server)
 
 	// 临时权限
-	exchangeHdl.PrivateRoutes(server)
+	dataIOHdl.PrivateRoutes(server)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())

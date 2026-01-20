@@ -6,12 +6,12 @@ import (
 	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/dataio"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
-	"github.com/Duke1616/ecmdb/internal/exchange"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -100,8 +100,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*discovery.Module), "Hdl"),
 		tools.InitModule,
 		terminal.InitModule,
-		exchange.InitModule,
-		wire.FieldsOf(new(*exchange.Module), "Hdl"),
+		dataio.InitModule,
+		wire.FieldsOf(new(*dataio.Module), "Hdl"),
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		middleware.NewCheckLoginMiddlewareBuilder,
 		initCronJobs,

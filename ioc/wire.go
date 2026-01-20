@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event"
+	"github.com/Duke1616/ecmdb/internal/exchange"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -31,6 +32,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
+	"github.com/Duke1616/ecmdb/pkg/storage"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
 	etcdv3 "go.etcd.io/etcd/client/v3"
@@ -48,6 +50,7 @@ func InitApp() (*App, error) {
 		InitSession,
 		InitCasbin,
 		InitLdapConfig,
+		storage.NewS3Storage,
 		InitNotificationServiceClient,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
@@ -97,6 +100,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*discovery.Module), "Hdl"),
 		tools.InitModule,
 		terminal.InitModule,
+		exchange.InitModule,
+		wire.FieldsOf(new(*exchange.Module), "Hdl"),
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		middleware.NewCheckLoginMiddlewareBuilder,
 		initCronJobs,

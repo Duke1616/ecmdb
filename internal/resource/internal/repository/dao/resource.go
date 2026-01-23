@@ -66,6 +66,13 @@ type ResourceDAO interface {
 	// ListBeforeUtime 获取指定时间前的资产列表
 	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
 		offset, limit int64) ([]Resource, error)
+
+	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表
+	ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+		filterGroups []domain.FilterGroup) ([]Resource, error)
+
+	// TotalResourcesWithFilters 根据复杂筛选条件统计资产数量
+	TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error)
 }
 
 type resourceDAO struct {
@@ -558,4 +565,196 @@ func (dao *resourceDAO) BatchCreateOrUpdate(ctx context.Context, resources []Res
 	}
 
 	return nil
+}
+
+func (dao *resourceDAO) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]Resource, error) {
+	col := dao.db.Collection(ResourceCollection)
+
+	// 基础过滤条件
+	baseFilter := bson.M{"model_uid": modelUid}
+	if len(ids) > 0 {
+		baseFilter["id"] = bson.M{"$in": ids}
+	}
+
+	// 若没有筛选条件，直接使用基础条件
+	if len(filterGroups) == 0 {
+		projection := buildProjection(fields)
+		opts := &options.FindOptions{
+			Projection: projection,
+			Limit:      &limit,
+			Skip:       &offset,
+			Sort:       bson.D{{Key: "ctime", Value: -1}},
+		}
+		cursor, err := col.Find(ctx, baseFilter, opts)
+		if err != nil {
+			return nil, fmt.Errorf("查询错误: %w", err)
+		}
+
+		var result []Resource
+		if err = cursor.All(ctx, &result); err != nil {
+			return nil, fmt.Errorf("解码错误: %w", err)
+		}
+		if err = cursor.Err(); err != nil {
+			return nil, fmt.Errorf("游标遍历错误: %w", err)
+		}
+		return result, nil
+	}
+
+	// 构建复杂筛选条件 (Disjunctive Normal Form: (A AND B) OR (C AND D))
+	var orConditions []bson.M
+
+	for _, group := range filterGroups {
+		// 跳过空组
+		if len(group.Filters) == 0 {
+			continue
+		}
+
+		var andConditions []bson.M
+		for _, f := range group.Filters {
+			cond := buildBsonCondition(f)
+			if cond != nil {
+				andConditions = append(andConditions, cond)
+			}
+		}
+
+		if len(andConditions) > 0 {
+			if len(andConditions) == 1 {
+				orConditions = append(orConditions, andConditions[0])
+			} else {
+				orConditions = append(orConditions, bson.M{"$and": andConditions})
+			}
+		}
+	}
+
+	var finalFilter interface{} = baseFilter
+
+	// 如果有有效筛选组
+	if len(orConditions) > 0 {
+		// 如果只有一个 OR 分支，直接合并
+		if len(orConditions) == 1 {
+			// 将 OR 分支的条件与 model_uid (和 ids) 合并
+			// 注意: 这里使用 $and 确保安全，避免 key 冲突
+			finalFilter = bson.M{
+				"$and": []bson.M{
+					baseFilter,
+					orConditions[0],
+				},
+			}
+		} else {
+			// 多个 GROUP 之间是 OR 关系
+			finalFilter = bson.M{
+				"$and": []bson.M{
+					baseFilter,
+					{"$or": orConditions},
+				},
+			}
+		}
+	}
+
+	projection := buildProjection(fields)
+	opts := &options.FindOptions{
+		Projection: projection,
+		Limit:      &limit,
+		Skip:       &offset,
+		Sort:       bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	cursor, err := col.Find(ctx, finalFilter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误: %w", err)
+	}
+
+	var result []Resource
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func buildBsonCondition(f domain.FilterCondition) bson.M {
+	key := f.FieldUID
+	val := f.Value
+
+	// MongoDB 字段名匹配 (Data inline)
+	switch f.Operator {
+	case "eq":
+		return bson.M{key: val}
+	case "ne":
+		return bson.M{key: bson.M{"$ne": val}}
+	case "contains":
+		s, ok := val.(string)
+		if !ok {
+			return nil
+		}
+		return bson.M{key: bson.M{"$regex": primitive.Regex{Pattern: s, Options: "i"}}}
+	case "gt":
+		return bson.M{key: bson.M{"$gt": val}}
+	case "lt":
+		return bson.M{key: bson.M{"$lt": val}}
+	case "gte":
+		return bson.M{key: bson.M{"$gte": val}}
+	case "lte":
+		return bson.M{key: bson.M{"$lte": val}}
+	case "in":
+		return bson.M{key: bson.M{"$in": val}}
+	case "nin":
+		return bson.M{key: bson.M{"$nin": val}}
+	default:
+		return bson.M{key: val}
+	}
+}
+
+func (dao *resourceDAO) TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error) {
+	col := dao.db.Collection(ResourceCollection)
+	baseFilter := bson.M{"model_uid": modelUid}
+	if len(ids) > 0 {
+		baseFilter["id"] = bson.M{"$in": ids}
+	}
+
+	if len(filterGroups) == 0 {
+		return dao.db.Collection(ResourceCollection).CountDocuments(ctx, baseFilter)
+	}
+
+	var orConditions []bson.M
+	for _, group := range filterGroups {
+		if len(group.Filters) == 0 {
+			continue
+		}
+		var andConditions []bson.M
+		for _, f := range group.Filters {
+			cond := buildBsonCondition(f)
+			if cond != nil {
+				andConditions = append(andConditions, cond)
+			}
+		}
+		if len(andConditions) > 0 {
+			if len(andConditions) == 1 {
+				orConditions = append(orConditions, andConditions[0])
+			} else {
+				orConditions = append(orConditions, bson.M{"$and": andConditions})
+			}
+		}
+	}
+
+	var finalFilter interface{} = baseFilter
+	if len(orConditions) > 0 {
+		if len(orConditions) == 1 {
+			finalFilter = bson.M{
+				"$and": []bson.M{baseFilter, orConditions[0]},
+			}
+		} else {
+			finalFilter = bson.M{
+				"$and": []bson.M{baseFilter, {"$or": orConditions}},
+			}
+		}
+	}
+
+	count, err := col.CountDocuments(ctx, finalFilter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+	return count, nil
 }

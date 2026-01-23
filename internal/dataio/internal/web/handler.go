@@ -2,8 +2,10 @@ package web
 
 import (
 	"github.com/Duke1616/ecmdb/internal/dataio/internal/service"
+	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/storage"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +22,7 @@ func NewHandler(svc service.IDataIOService, storage *storage.S3Storage) *Handler
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	g := server.Group("/api/exchange")
+	g := server.Group("/api/dataio")
 	// 生成预签名上传 URL
 	g.POST("/presigned_upload", ginx.WrapBody[GenerateUploadURLReq](h.GenerateUploadURL))
 	// 导出模板
@@ -29,6 +31,60 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/import", ginx.WrapBody[ImportReq](h.Import))
 	// 导入数据 V2 (直接上传文件)
 	g.POST("/import/v2", ginx.Wrap(h.ImportV2))
+	// 导出数据
+	g.POST("/export", ginx.WrapBody[ExportReq](h.Export))
+}
+
+// ... (other methods)
+
+// Export 导出数据
+func (h *Handler) Export(ctx *gin.Context, req ExportReq) (ginx.Result, error) {
+	// 转换 FilterGroups
+	groups := slice.Map(req.FilterGroups, func(idx int, src ExportFilterGroup) resource.FilterGroup {
+		return resource.FilterGroup{
+			Filters: slice.Map(src.Filters, func(idx int, src ExportFilterCondition) resource.FilterCondition {
+				return resource.FilterCondition{
+					FieldUID: src.FieldUID,
+					Operator: resource.Operator(src.Operator),
+					Value:    src.Value,
+				}
+			}),
+		}
+	})
+
+	params := service.ExportParams{
+		ModelUID:     req.ModelUID,
+		Scope:        req.Scope.String(),
+		ResourceIDs:  req.ResourceIDs,
+		FilterGroups: groups,
+		Fields:       req.Fields,
+		FileName:     req.FileName,
+	}
+
+	// 调用 Service 导出数据
+	excelData, err := h.svc.Export(ctx.Request.Context(), params)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	fileName := req.FileName
+	if fileName == "" {
+		fileName = req.ModelUID + "_export.xlsx"
+	}
+	// 确保后缀
+	if len(fileName) < 5 || fileName[len(fileName)-5:] != ".xlsx" {
+		fileName += ".xlsx"
+	}
+
+	// 设置 HTTP 响应头
+	ctx.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Header("Content-Disposition", "attachment; filename="+fileName)
+	ctx.Header("Content-Transfer-Encoding", "binary")
+
+	// 直接写入 Excel 数据
+	ctx.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelData)
+
+	return ginx.Result{}, nil
 }
 
 // GenerateUploadURL 生成预签名上传 URL

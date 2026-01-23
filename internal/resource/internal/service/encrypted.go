@@ -369,3 +369,19 @@ func (s *EncryptedResourceService) BatchCreateOrUpdate(ctx context.Context, reso
 
 	return s.Service.BatchCreateOrUpdate(ctx, resources)
 }
+
+func (s *EncryptedResourceService) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+	filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error) {
+	rs, total, err := s.Service.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if len(rs) == 0 {
+		return rs, total, nil
+	}
+
+	// 批量解密资源数据
+	decodedRs, err := s.decryptResources(ctx, rs)
+	return decodedRs, total, err
+}

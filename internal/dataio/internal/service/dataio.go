@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/dataio/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/sync/errgroup"
 )
@@ -46,14 +47,14 @@ func sortAttributesByPriority(attrs []attribute.Attribute) []attribute.Attribute
 // NOTE: dataIOService 实现数据交换功能,依赖三个模块的 Service
 type dataIOService struct {
 	attrSvc  attribute.Service
-	resSvc   resource.Service
+	resSvc   resource.EncryptedSvc
 	modelSvc model.Service
 }
 
 // NewDataIOService 创建数据交换服务实例
 func NewDataIOService(
 	attrSvc attribute.Service,
-	resSvc resource.Service,
+	resSvc resource.EncryptedSvc,
 	modelSvc model.Service,
 
 ) IDataIOService {
@@ -142,8 +143,49 @@ func (s *dataIOService) Import(ctx context.Context, modelUID string, fileData []
 }
 
 // Export 导出资源实例数据 (Resource)
-func (s *dataIOService) Export(ctx context.Context, modelUID string, filter interface{}) ([]byte, error) {
-	return nil, nil
+func (s *dataIOService) Export(ctx context.Context, req ExportParams) ([]byte, error) {
+	// 1. 获取数据定义
+	mdl, attrs, err := s.fetchModelAndAttributes(ctx, req.ModelUID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. 处理字段过滤: 如果请求指定了字段, 则只保留这些字段
+	if len(req.Fields) > 0 {
+		reqFieldMap := slice.ToMap(req.Fields, func(f string) string { return f })
+		attrs = slice.FilterMap(attrs, func(idx int, src attribute.Attribute) (attribute.Attribute, bool) {
+			_, ok := reqFieldMap[src.FieldUid]
+			return src, ok
+		})
+	}
+
+	// 3. 对字段进行排序 (根据 fieldPriority)
+	sortedAttrs := sortAttributesByPriority(attrs)
+
+	// 4. 提取最终的 FieldUIDs 用于查询
+	dstFields := slice.Map(sortedAttrs, func(idx int, attr attribute.Attribute) string {
+		return attr.FieldUid
+	})
+
+	var allResources []resource.Resource
+	offset := int64(0)
+	limit := int64(100)
+
+	for {
+		resources, _, err1 := s.resSvc.ListResourcesWithFilters(ctx, dstFields, req.ModelUID, req.ResourceIDs, offset, limit, req.FilterGroups)
+		if err1 != nil {
+			return nil, fmt.Errorf("获取资源列表失败: %w", err)
+		}
+		allResources = append(allResources, resources...)
+
+		if len(resources) < int(limit) {
+			break
+		}
+		offset += limit
+	}
+
+	// 5. 构建 Excel
+	return s.buildExcel(mdl.SheetName(), sortedAttrs, allResources)
 }
 
 // ExportTemplate 导出空白导入模板
@@ -154,33 +196,60 @@ func (s *dataIOService) ExportTemplate(ctx context.Context, modelUID string) ([]
 		return nil, err
 	}
 
-	// 2. 按优先级排序字段(name 字段会自动排在第一列)
+	// 2. 按优先级排序字段
 	sortedAttrs := sortAttributesByPriority(attrs)
 
-	// 3. 构建 3 行表头数据
-	row1 := make([]string, len(sortedAttrs)) // 字段约束
-	row2 := make([]string, len(sortedAttrs)) // 字段 UID
-	row3 := make([]string, len(sortedAttrs)) // 字段名称
+	// 3. 构建 Excel (空数据)
+	return s.buildExcel(mdl.SheetName(), sortedAttrs, nil)
+}
 
-	for i, attr := range sortedAttrs {
+// buildExcel 构建 Excel 文件
+// NOTE: 通用方法,用于导出数据和导出模板
+func (s *dataIOService) buildExcel(sheetName string, attrs []attribute.Attribute, resources []resource.Resource) ([]byte, error) {
+	// 1. 构建 3 行表头数据
+	row1 := make([]string, len(attrs)) // 字段约束
+	row2 := make([]string, len(attrs)) // 字段 UID
+	row3 := make([]string, len(attrs)) // 字段名称
+
+	for i, attr := range attrs {
 		row1[i] = attr.GetConstraintDescription()
 		row2[i] = attr.FieldUid
 		row3[i] = attr.FieldName
 	}
 
-	// 5. 构建 Excel
-	builder := domain.NewBuilder(mdl.SheetName()).
+	// 2. 创建 Builder
+	builder := domain.NewBuilder(sheetName).
 		With3RowHeaders(row1, row2, row3)
 	defer builder.Close()
 
-	// 6. 添加数据验证(下拉列表)
-	for colIdx, attr := range sortedAttrs {
+	// 3. 填充数据
+	for _, res := range resources {
+		row := make([]interface{}, len(attrs))
+		for i, attr := range attrs {
+			if val, ok := res.Data[attr.FieldUid]; ok {
+				row[i] = val
+			} else {
+				row[i] = ""
+			}
+		}
+		builder.AddRow(row...)
+	}
+
+	// 4. 添加数据验证(下拉列表)
+	// NOTE: 如果是导出模板,验证范围预留 1000 行
+	// 如果是导出数据,验证范围覆盖所有数据行 + 100 行缓冲
+	validationRows := 1000
+	if len(resources) > 0 {
+		validationRows = len(resources) + 100
+	}
+
+	for colIdx, attr := range attrs {
 		if attr.NeedsValidation() {
-			builder.WithValidation(colIdx, attr.GetOptionStrings(), 4, 1000)
+			builder.WithValidation(colIdx, attr.GetOptionStrings(), 4, validationRows)
 		}
 	}
 
-	// 7. 导出
+	// 5. 导出字节数据
 	return builder.ToBytes()
 }
 

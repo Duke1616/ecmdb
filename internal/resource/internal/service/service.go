@@ -58,6 +58,10 @@ type Service interface {
 	// ListBeforeUtime 获取指定时间前的资产列表
 	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
 		offset, limit int64) ([]domain.Resource, error)
+
+	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表
+	ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+		filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error)
 }
 
 type service struct {
@@ -178,4 +182,30 @@ func (s *service) FindSecureData(ctx context.Context, id int64, fieldUid string)
 
 func (s *service) desensitization(ctx context.Context, modelUid string) ([]domain.Resource, error) {
 	return nil, nil
+}
+
+func (s *service) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+	filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error) {
+	var (
+		total     int64
+		resources []domain.Resource
+		eg        errgroup.Group
+	)
+
+	eg.Go(func() error {
+		var err error
+		resources, err = s.repo.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalResourcesWithFilters(ctx, modelUid, ids, filterGroups)
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
+		return resources, total, err
+	}
+	return resources, total, nil
 }

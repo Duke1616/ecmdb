@@ -61,6 +61,13 @@ type ResourceRepository interface {
 	// ListBeforeUtime 获取指定时间前的资产列表
 	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
 		offset, limit int64) ([]domain.Resource, error)
+
+	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表
+	ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+		filterGroups []domain.FilterGroup) ([]domain.Resource, error)
+
+	// TotalResourcesWithFilters 根据复杂筛选条件统计资产数量
+	TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error)
 }
 
 type resourceRepository struct {
@@ -190,4 +197,17 @@ func (repo *resourceRepository) BatchCreateOrUpdate(ctx context.Context, resourc
 	return repo.dao.BatchCreateOrUpdate(ctx, slice.Map(resources, func(idx int, src domain.Resource) dao.Resource {
 		return repo.toEntity(src)
 	}))
+}
+
+func (repo *resourceRepository) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+	filterGroups []domain.FilterGroup) ([]domain.Resource, error) {
+	rrs, err := repo.dao.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
+
+	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *resourceRepository) TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error) {
+	return repo.dao.TotalResourcesWithFilters(ctx, modelUid, ids, filterGroups)
 }

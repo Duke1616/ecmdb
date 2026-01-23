@@ -23,7 +23,7 @@ func InitModule(attributeModule *attribute.Module, resourceModule *resource.Modu
 	wire.Build(
 		ProviderSet,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
-		wire.FieldsOf(new(*resource.Module), "Svc"),
+		wire.FieldsOf(new(*resource.Module), "EncryptedSvc"),
 		wire.FieldsOf(new(*model.Module), "Svc"),
 		wire.Struct(new(Module), "*"),
 	)

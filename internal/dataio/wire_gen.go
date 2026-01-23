@@ -20,9 +20,9 @@ import (
 
 func InitModule(attributeModule *attribute.Module, resourceModule *resource.Module, storage2 *storage.S3Storage, modelModule *model.Module) (*Module, error) {
 	serviceService := attributeModule.Svc
-	service2 := resourceModule.Svc
-	service3 := modelModule.Svc
-	iDataIOService := service.NewDataIOService(serviceService, service2, service3)
+	encryptedSvc := resourceModule.EncryptedSvc
+	service2 := modelModule.Svc
+	iDataIOService := service.NewDataIOService(serviceService, encryptedSvc, service2)
 	handler := web.NewHandler(iDataIOService, storage2)
 	module := &Module{
 		Hdl: handler,

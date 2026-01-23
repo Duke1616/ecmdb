@@ -9,13 +9,13 @@ package tools
 import (
 	"github.com/Duke1616/ecmdb/internal/tools/service"
 	"github.com/Duke1616/ecmdb/internal/tools/web"
-	"github.com/minio/minio-go/v7"
+	"github.com/Duke1616/ecmdb/pkg/storage"
 )
 
 // Injectors from wire.go:
 
-func InitModule(minioClient *minio.Client) (*web.Handler, error) {
-	serviceService := service.NewService(minioClient)
+func InitModule(storage2 *storage.S3Storage) (*web.Handler, error) {
+	serviceService := service.NewService(storage2)
 	handler := web.NewHandler(serviceService)
 	return handler, nil
 }

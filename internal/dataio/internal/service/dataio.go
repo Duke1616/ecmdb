@@ -90,7 +90,7 @@ func (s *dataIOService) Import(ctx context.Context, modelUID string, fileData []
 		return 0, fmt.Errorf("读取 Excel 数据失败: %w", err)
 	}
 	if len(rows) < 4 {
-		return 0, fmt.Errorf("Excel 文件格式错误,至少需要 3 行表头 + 1 行数据")
+		return 0, fmt.Errorf("excel 文件格式错误,至少需要 3 行表头 + 1 行数据")
 	}
 
 	// 4. 解析第二行表头(FieldUid),建立列索引映射

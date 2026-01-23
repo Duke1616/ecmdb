@@ -175,7 +175,8 @@ func InitApp() (*App, error) {
 	handler17 := permissionModule.Hdl
 	handler18 := departmentModule.Hdl
 	minioClient := InitMinioClient()
-	handler19, err := tools.InitModule(minioClient)
+	s3Storage := storage.NewS3Storage(minioClient)
+	handler19, err := tools.InitModule(s3Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,6 @@ func InitApp() (*App, error) {
 	}
 	handler21 := rotaModule.Hdl
 	handler22 := discoveryModule.Hdl
-	s3Storage := storage.NewS3Storage(minioClient)
 	dataioModule, err := dataio.InitModule(attributeModule, resourceModule, s3Storage, modelModule)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package task.v1;
+
+option go_package = "task/v1;task";
+
+// TaskType 任务类型
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0; // 未指定
+  RECURRING = 1; // 定时任务(循环执行)
+  ONE_TIME = 2; // 一次性任务(执行一次后停止)
+}
+
+// TaskStatus 任务状态
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0; // 未指定
+  ACTIVE = 1; // 可调度
+  PREEMPTED = 2; // 已抢占
+  INACTIVE = 3; // 停止执行
+}
+
+// GrpcConfig gRPC配置
+message GrpcConfig {
+  string service_name = 1; // 服务名称
+  string auth_token = 2; // 认证 token
+  string handler_name = 3; // 执行节点支持的方法名称,如 shell、python、demo
+  map<string, string> params = 4; // 传递参数
+}
+
+// HTTPConfig HTTP配置
+message HTTPConfig {
+  string endpoint = 1; // HTTP 端点
+  map<string, string> params = 2; // 传递参数
+}
+
+// RetryConfig 重试配置
+message RetryConfig {
+  int32 max_retries = 1; // 最大重试次数
+  int64 initial_interval = 2; // 初始重试间隔(毫秒)
+  int64 max_interval = 3; // 最大重试间隔(毫秒)
+}
+
+// Task 任务定义
+message Task {
+  int64 id = 1; // 任务ID
+  string name = 2; // 任务名称
+  TaskType type = 3; // 任务类型
+  string cron_expr = 4; // cron 表达式(定时任务必填,一次性任务可选用于定时触发)
+  GrpcConfig grpc_config = 5; // gRPC 配置
+  HTTPConfig http_config = 6; // HTTP 配置
+  RetryConfig retry_config = 7; // 重试配置
+  int64 max_execution_seconds = 8; // 最大执行秒数,默认24小时
+  string schedule_node_id = 9; // 调度节点ID
+  map<string, string> schedule_params = 10; // 调度参数(如分页偏移量、处理进度等)
+  int64 next_time = 11; // 下次执行时间戳
+  TaskStatus status = 12; // 任务状态
+  int64 version = 13; // 版本号,用于乐观锁
+  int64 ctime = 14; // 创建时间戳
+  int64 utime = 15; // 更新时间戳
+}
+
+// CreateTaskRequest 创建任务请求
+message CreateTaskRequest {
+  string name = 1; // 任务名称
+  TaskType type = 2; // 任务类型: RECURRING-定时任务, ONE_TIME-一次性任务
+  string cron_expr = 3; // cron 表达式(定时任务必填,一次性任务可选用于定时触发)
+  GrpcConfig grpc_config = 4; // gRPC 配置
+  HTTPConfig http_config = 5; // HTTP 配置
+  RetryConfig retry_config = 6; // 重试配置
+  int64 max_execution_seconds = 7; // 最大执行秒数,默认24小时
+  map<string, string> schedule_params = 8; // 调度参数(如分页偏移量、处理进度等)
+}
+
+// CreateTaskResponse 创建任务响应
+message CreateTaskResponse {
+  int64 id = 1; // 创建的任务ID
+}
+
+// GetTaskRequest 获取任务请求
+message GetTaskRequest {
+  int64 id = 1; // 任务ID
+}
+
+// GetTaskResponse 获取任务响应
+message GetTaskResponse {
+  Task task = 1; // 任务信息
+}
+
+// UpdateTaskRequest 更新任务请求
+message UpdateTaskRequest {
+  int64 id = 1; // 任务ID
+  string name = 2; // 任务名称
+  TaskType type = 3; // 任务类型
+  string cron_expr = 4; // cron 表达式
+  GrpcConfig grpc_config = 5; // gRPC 配置
+  HTTPConfig http_config = 6; // HTTP 配置
+  RetryConfig retry_config = 7; // 重试配置
+  int64 max_execution_seconds = 8; // 最大执行秒数
+  map<string, string> schedule_params = 9; // 调度参数
+  TaskStatus status = 10; // 任务状态
+}
+
+// UpdateTaskResponse 更新任务响应
+message UpdateTaskResponse {
+  bool success = 1; // 是否成功
+}
+
+// DeleteTaskRequest 删除任务请求
+message DeleteTaskRequest {
+  int64 id = 1; // 任务ID
+}
+
+// DeleteTaskResponse 删除任务响应
+message DeleteTaskResponse {
+  bool success = 1; // 是否成功
+}
+
+// ListTasksRequest 列出任务请求
+message ListTasksRequest {
+  int32 page = 1; // 页码
+  int32 page_size = 2; // 每页数量
+  TaskStatus status = 3; // 按状态过滤(可选)
+  TaskType type = 4; // 按类型过滤(可选)
+}
+
+// ListTasksResponse 列出任务响应
+message ListTasksResponse {
+  repeated Task tasks = 1; // 任务列表
+  int64 total = 2; // 总数
+}
+
+// TaskService 任务管理服务
+service TaskService {
+  // 创建任务
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  // 获取任务
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  // 更新任务
+  rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
+  // 删除任务
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  // 列出任务
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+}

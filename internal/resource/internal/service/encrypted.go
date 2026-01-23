@@ -335,3 +335,53 @@ func (s *EncryptedResourceService) FindSecureData(ctx context.Context, id int64,
 
 	return decryptedData, nil
 }
+
+// BatchCreateOrUpdate 批量创建或更新资产,支持加密字段
+func (s *EncryptedResourceService) BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error {
+	if len(resources) == 0 {
+		return nil
+	}
+
+	// 收集所有模型UID
+	modelUIDs := s.buildModelUIDs(resources)
+
+	// 批量查询安全字段
+	secureFieldsMap, err := s.attrSvc.SearchAttributeFieldsBySecure(ctx, modelUIDs)
+	if err != nil {
+		return fmt.Errorf("failed to fetch secure fields: %w", err)
+	}
+
+	// 处理如果需要加密则进行加密处理
+	for i := range resources {
+		secureFields := secureFieldsMap[resources[i].ModelUID]
+		if len(secureFields) == 0 {
+			continue
+		}
+
+		encryptedData, err1 := s.encryptSensitiveFields(resources[i].Data, secureFieldsMap[resources[i].ModelUID])
+		if err1 != nil {
+			return fmt.Errorf("failed to encrypt sensitive fields: %w", err1)
+		}
+
+		// 更新处理后的值
+		resources[i].Data = encryptedData
+	}
+
+	return s.Service.BatchCreateOrUpdate(ctx, resources)
+}
+
+func (s *EncryptedResourceService) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+	filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error) {
+	rs, total, err := s.Service.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if len(rs) == 0 {
+		return rs, total, nil
+	}
+
+	// 批量解密资源数据
+	decodedRs, err := s.decryptResources(ctx, rs)
+	return decodedRs, total, err
+}

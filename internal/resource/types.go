@@ -13,3 +13,8 @@ type Service = service.Service
 type Resource = domain.Resource
 
 type EncryptedSvc = service.EncryptedSvc
+
+type Operator = domain.Operator
+type FilterGroup = domain.FilterGroup
+
+type FilterCondition = domain.FilterCondition

@@ -56,9 +56,6 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	toolsHdl.PublicRoutes(server)
 	orderHdl.PublicRoute(server)
 
-	// 临时权限
-	dataIOHdl.PrivateRoutes(server)
-
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
 
@@ -76,6 +73,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	rrHdl.PrivateRoute(server)
 	rtHdl.PrivateRoute(server)
 	termHdl.PrivateRoutes(server)
+	dataIOHdl.PrivateRoutes(server)
 
 	// 工单流程相关接口
 	workflowHdl.PrivateRoutes(server)

@@ -2,7 +2,9 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -65,7 +67,6 @@ func (s *S3Storage) DeleteFile(ctx context.Context, bucket string, fileKey strin
 // GetFile 获取文件内容
 // NOTE: 用于 Excel 导入等场景,直接下载文件到内存
 func (s *S3Storage) GetFile(ctx context.Context, bucket string, fileKey string) ([]byte, error) {
-	fmt.Println(bucket, fileKey)
 	// 获取对象
 	object, err := s.client.GetObject(ctx, bucket, fileKey, minio.GetObjectOptions{})
 	if err != nil {
@@ -79,15 +80,17 @@ func (s *S3Storage) GetFile(ctx context.Context, bucket string, fileKey string) 
 	tmpBuf := make([]byte, 4096)
 
 	for {
-		n, err := object.Read(tmpBuf)
+		n, err1 := object.Read(tmpBuf)
+		if err1 != nil && !errors.Is(err1, io.EOF) {
+			return nil, fmt.Errorf("读取 S3 文件内容失败: %w", err1)
+		}
+
 		if n > 0 {
 			buf = append(buf, tmpBuf[:n]...)
 		}
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			return nil, fmt.Errorf("读取 S3 文件内容失败: %w", err)
+
+		if err1 != nil {
+			break
 		}
 	}
 

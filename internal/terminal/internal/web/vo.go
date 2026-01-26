@@ -10,7 +10,7 @@ type CreateTunnelReq struct {
 type ConnectType string
 
 const (
-	ConnectTypeSSH     ConnectType = "SSH"
+	ConnectTypeSSH     ConnectType = "Web Shell"
 	ConnectTypeWebSftp ConnectType = "Web Sftp"
 	ConnectTypeRDP     ConnectType = "RDP"
 	ConnectTypeVNC     ConnectType = "VNC"

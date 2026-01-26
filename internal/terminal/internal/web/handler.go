@@ -98,6 +98,8 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 
 		// 添加 sftp 信息
 		h.finderWeb.SetFinder(req.ResourceId, sftpFinder.NewSftpFinder(sftpClient))
+	default:
+		return ginx.Result{Msg: fmt.Sprintf("不支持的连接类型: %s", req.Type)}, fmt.Errorf("unsupported connect type: %s", req.Type)
 	}
 
 	return ginx.Result{

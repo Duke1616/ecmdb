@@ -33,7 +33,7 @@ func (p *SessionPool) GetSession(id int64) (*Sessions, error) {
 
 	session, exists := p.sessions[id]
 	if !exists {
-		return nil, fmt.Errorf("session %d already exists", id)
+		return nil, fmt.Errorf("session %d not found", id)
 	}
 
 	return session, nil

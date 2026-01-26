@@ -1,17 +1,17 @@
 package web
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/Duke1616/ecmdb/internal/tools/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/gin-gonic/gin"
 )
+
+const DefaultBucket = "ecmdb"
 
 type Handler struct {
 	svc service.Service
@@ -24,7 +24,7 @@ func NewHandler(svc service.Service) *Handler {
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
-	g := server.Group("/api/structure")
+	g := server.Group("/api/tools")
 	g.POST("/upload", h.Upload)
 	g.GET("/download/:filename", h.Download)
 
@@ -111,42 +111,53 @@ func (h *Handler) Download(ctx *gin.Context) {
 }
 
 func (h *Handler) PutPresignedUrl(ctx *gin.Context, req PutPresignedUrl) (ginx.Result, error) {
-	// 获取当前日期并格式化为年月日
-	currentDate := time.Now()
-	dateDir := currentDate.Format("2006/01/02")
-
-	// 构建 MinIO 上的文件路径，包括日期目录结构
-	objectPath := fmt.Sprintf("%s/%s", dateDir, req.ObjectName)
-
-	url, err := h.svc.PutPresignedUrl(ctx, "ecmdb", objectPath)
+	bucket := h.bucket(req.Bucket)
+	key, url, err := h.svc.PutPresignedUrl(ctx, bucket, req.Prefix, req.ObjectName)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: url.String(),
+		Data: map[string]string{
+			"url":         url,
+			"bucket":      bucket,
+			"object_name": key,
+		},
+	}, nil
+}
+
+func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.Result, error) {
+	bucket := h.bucket(req.Bucket)
+	url, err := h.svc.GetPresignedUrl(ctx, bucket, req.ObjectName)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: map[string]string{
+			"url":    url,
+			"bucket": bucket,
+		},
 	}, nil
 }
 
 func (h *Handler) RemoveObject(ctx *gin.Context, req RemoveObjectReq) (ginx.Result, error) {
-	err := h.svc.RemoveObject(ctx, "ecmdb", req.ObjectName)
+	bucket := h.bucket(req.Bucket)
+	err := h.svc.RemoveObject(ctx, bucket, req.ObjectName)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Msg: "删除对象成功",
+		Data: true,
+		Msg:  "删除对象成功",
 	}, nil
-
 }
 
-func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.Result, error) {
-	url, err := h.svc.GetPresignedUrl(ctx, "ecmdb", req.ObjectName)
-	if err != nil {
-		return systemErrorResult, err
+func (h *Handler) bucket(bucket string) string {
+	if bucket == "" {
+		bucket = DefaultBucket
 	}
 
-	return ginx.Result{
-		Data: url.String(),
-	}, nil
+	return bucket
 }

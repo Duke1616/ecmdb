@@ -6,6 +6,7 @@ import (
 	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/dataio"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
@@ -31,6 +32,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
+	"github.com/Duke1616/ecmdb/pkg/storage"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
 	etcdv3 "go.etcd.io/etcd/client/v3"
@@ -48,6 +50,7 @@ func InitApp() (*App, error) {
 		InitSession,
 		InitCasbin,
 		InitLdapConfig,
+		storage.NewS3Storage,
 		InitNotificationServiceClient,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
@@ -97,6 +100,8 @@ func InitApp() (*App, error) {
 		wire.FieldsOf(new(*discovery.Module), "Hdl"),
 		tools.InitModule,
 		terminal.InitModule,
+		dataio.InitModule,
+		wire.FieldsOf(new(*dataio.Module), "Hdl"),
 		middleware.NewCheckPolicyMiddlewareBuilder,
 		middleware.NewCheckLoginMiddlewareBuilder,
 		initCronJobs,

@@ -10,29 +10,64 @@ import (
 
 //go:generate mockgen -source=repository.go -destination=../../mocks/repository.mock.go --package=resourcemocks ResourceRepository
 type ResourceRepository interface {
+	// CreateResource 创建资产
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
+
+	// FindResourceById 根据 ID 获取资产信息
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
+
+	// ListResource 获取指定模型的资产列表
 	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
+
+	// TotalByModelUid 获取指定模型的资产总数
 	TotalByModelUid(ctx context.Context, modelUid string) (int64, error)
+
+	// SetCustomField 设置指定资产的自定义字段值
 	SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error)
+
+	// ListResourcesByIds 根据 ID 列表批量获取资产
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
+
+	// DeleteResource 删除指定资产
 	DeleteResource(ctx context.Context, id int64) (int64, error)
+
+	// ListExcludeAndFilterResourceByIds 排除指定 ID 并根据条件过滤资产列表
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
 		ids []int64, filter domain.Condition) ([]domain.Resource, error)
+
+	// TotalExcludeAndFilterResourceByIds 排除指定 ID 并根据条件统计资产总数
 	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64, filter domain.Condition) (int64, error)
+
+	// Search 全局搜索资产
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
+	// FindSecureData 查找指定资产的加密字段数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 
+	// UpdateResource 更新资产数据
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 
+	// CountByModelUids 统计多个模型的资产数量
 	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
 
+	// BatchUpdateResources 批量更新资产
 	BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error)
+
+	// BatchCreateOrUpdate 批量创建或更新资产
+	// 基于 model_uid + name 进行 upsert,name 已存在则更新,不存在则创建
+	// NOTE: 使用 MongoDB BulkWrite 提升性能,适用于 Excel 导入等批量操作场景
+	BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error
 
 	// ListBeforeUtime 获取指定时间前的资产列表
 	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
 		offset, limit int64) ([]domain.Resource, error)
+
+	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表
+	ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+		filterGroups []domain.FilterGroup) ([]domain.Resource, error)
+
+	// TotalResourcesWithFilters 根据复杂筛选条件统计资产数量
+	TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error)
 }
 
 type resourceRepository struct {
@@ -155,4 +190,24 @@ func (repo *resourceRepository) toDomain(src dao.Resource) domain.Resource {
 		Data:     src.Data,
 		Name:     name,
 	}
+}
+
+// BatchCreateOrUpdate 批量创建或更新资产
+func (repo *resourceRepository) BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error {
+	return repo.dao.BatchCreateOrUpdate(ctx, slice.Map(resources, func(idx int, src domain.Resource) dao.Resource {
+		return repo.toEntity(src)
+	}))
+}
+
+func (repo *resourceRepository) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
+	filterGroups []domain.FilterGroup) ([]domain.Resource, error) {
+	rrs, err := repo.dao.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
+
+	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *resourceRepository) TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error) {
+	return repo.dao.TotalResourcesWithFilters(ctx, modelUid, ids, filterGroups)
 }

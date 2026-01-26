@@ -5,6 +5,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/dataio"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/endpoint"
@@ -41,7 +42,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 	departmentHdl *department.Handler, toolsHdl *tools.Handler, termHdl *terminal.Handler, rotaHdl *rota.Handler,
-	discoveryHdl *discovery.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
+	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
 ) *gin.Engine {
 	session.SetDefaultProvider(sp)
 	gin.SetMode(gin.ReleaseMode)
@@ -72,6 +73,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	rrHdl.PrivateRoute(server)
 	rtHdl.PrivateRoute(server)
 	termHdl.PrivateRoutes(server)
+	dataIOHdl.PrivateRoutes(server)
 
 	// 工单流程相关接口
 	workflowHdl.PrivateRoutes(server)

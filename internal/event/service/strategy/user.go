@@ -354,7 +354,6 @@ func (n *UserNotification) ccPass(ctx context.Context, tasks []model.Task) {
 			)
 		}
 	}
-	return
 }
 
 // getUsers 获取需要通知的用户信息
@@ -494,7 +493,7 @@ func (n *UserNotification) resolveRule(ctx context.Context, instanceId int, user
 	case easyflow.FOUNDER:
 		currentNode.UserIDs = append(currentNode.UserIDs, startUser.Username)
 	case easyflow.APPOINT:
-		if currentNode.UserIDs == nil || len(currentNode.UserIDs) == 0 {
+		if len(currentNode.UserIDs) == 0 {
 			// TODO 后续处理、如果触发这条线路，应该做错误消息提醒
 			n.logger.Error("没有指定的审批人，系统将自动插入流程管理员用户，防止流程中断报错")
 		}

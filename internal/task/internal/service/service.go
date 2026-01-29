@@ -26,7 +26,7 @@ import (
 
 type Service interface {
 	// CreateTask 创建任务
-	CreateTask(ctx context.Context, processInstId int, nodeId string) error
+	CreateTask(ctx context.Context, processInstId int, nodeId string) (int64, error)
 	// StartTask 启动任务
 	StartTask(ctx context.Context, processInstId int, nodeId string) error
 	RetryTask(ctx context.Context, id int64) error
@@ -145,15 +145,15 @@ func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.T
 	return ts, total, nil
 }
 
-func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId string) error {
-	_, err := s.repo.CreateTask(ctx, domain.Task{
+func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId string) (int64, error) {
+	taskId, err := s.repo.CreateTask(ctx, domain.Task{
 		ProcessInstId:   processInstId,
 		TriggerPosition: "任务等待",
 		CurrentNodeId:   nodeId,
 		Status:          domain.WAITING,
 	})
 
-	return err
+	return taskId, err
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,

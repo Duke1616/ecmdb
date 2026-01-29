@@ -112,7 +112,8 @@ func (l *logicFlow) Start(node Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 0, UserIDs: []string{"$starter"},
-		NodeEndEvents: []string{"EventStart"},
+		NodeEndEvents:    []string{"EventStart"},
+		TaskFinishEvents: l.getPassEvents(node.ID),
 	}
 
 	l.NodeList = append(l.NodeList, n)
@@ -140,9 +141,10 @@ func (l *logicFlow) Automation(node Node) {
 
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 1, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		UserIDs:         []string{AutomationApproval},
-		NodeStartEvents: []string{"EventAutomation"},
-		NodeEndEvents:   []string{"EventNotify"},
+		UserIDs:          []string{AutomationApproval},
+		NodeStartEvents:  []string{"EventAutomation"},
+		NodeEndEvents:    []string{"EventNotify"},
+		TaskFinishEvents: l.getPassEvents(node.ID),
 	}
 	l.NodeList = append(l.NodeList, n)
 }
@@ -151,15 +153,12 @@ func (l *logicFlow) Parallel(node Node) {
 	// 查看下级 node 节点 id
 	edgesDst := l.FindTargetNodeId(node.ID)
 	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
-		return src.TargetNodeId
+		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
 	})
 	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 1}
 
 	// 查看上级 node 节点 id
-	edgesSrc := l.FindSourceNodeId(node.ID)
-	preNodeIds := slice.Map(edgesSrc, func(idx int, src Edge) string {
-		return src.SourceNodeId
-	})
+	preNodeIds := l.findAndProxySrcNodes(node)
 
 	n := model.Node{NodeID: node.ID, NodeName: "并行网关",
 		NodeType: 2, GWConfig: gwParallel,
@@ -173,15 +172,11 @@ func (l *logicFlow) Inclusion(node Node) {
 	// 查看下级 node 节点 id
 	edgesDst := l.FindTargetNodeId(node.ID)
 	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
-		return src.TargetNodeId
+		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
 	})
 
 	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
-	// 查看上级 node 节点 id
-	edgesSrc := l.FindSourceNodeId(node.ID)
-	preNodeIds := slice.Map(edgesSrc, func(idx int, src Edge) string {
-		return src.SourceNodeId
-	})
+	preNodeIds := l.findAndProxySrcNodes(node)
 
 	n := model.Node{NodeID: node.ID, NodeName: "包容网关",
 		NodeType: 2, GWConfig: gwParallel,
@@ -198,9 +193,16 @@ func (l *logicFlow) Condition(node Node) {
 	// 组合 conditions 条件
 	conditions := slice.Map(edgesDst, func(idx int, src Edge) model.Condition {
 		property, _ := ToEdgeProperty(src)
+
+		// 如果没有设置表达式，默认设置为 1 = 1, 自动通过
+		expression := property.Expression
+		if expression == "" {
+			expression = "1 = 1"
+		}
+
 		return model.Condition{
-			Expression: property.Expression,
-			NodeID:     src.TargetNodeId,
+			Expression: expression,
+			NodeID:     l.getProxyTargetNodeId(node.ID, src.TargetNodeId),
 		}
 	})
 
@@ -228,29 +230,99 @@ func (l *logicFlow) User(node Node) {
 		IsCosigned = 1
 	}
 
-	// 判断下级节点是否为网关，如果是网关则需要注册事件
-	var taskFinishEvents []string
-	nodeId := l.ToTargetNode(node.ID)
-	if nodeId != "" {
-		info := l.GetNodeInfo(nodeId)
-		switch info.Type {
-		case "parallel":
-			taskFinishEvents = append(taskFinishEvents, "EventTaskParallelNodePass")
-		case "inclusion":
-			taskFinishEvents = append(taskFinishEvents, "EventTaskInclusionNodePass")
-		}
-	}
-
 	// 录入数据
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 1, UserIDs: property.Approved,
 		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
-		TaskFinishEvents: taskFinishEvents,
+		TaskFinishEvents: l.getPassEvents(node.ID),
 		NodeStartEvents:  []string{"EventNotify"},
 		IsCosigned:       IsCosigned,
 	}
 
 	l.NodeList = append(l.NodeList, n)
+}
+
+func (l *logicFlow) getPassEvents(nodeId string) []string {
+	var events []string
+	edges := l.FindTargetNodeId(nodeId)
+	existEvent := make(map[string]struct{})
+
+	for _, edge := range edges {
+		info := l.GetNodeInfo(edge.TargetNodeId)
+		switch info.Type {
+		case "parallel":
+			if _, ok := existEvent["EventTaskParallelNodePass"]; !ok {
+				events = append(events, "EventTaskParallelNodePass")
+				existEvent["EventTaskParallelNodePass"] = struct{}{}
+			}
+		case "inclusion":
+			if _, ok := existEvent["EventTaskInclusionNodePass"]; !ok {
+				events = append(events, "EventTaskInclusionNodePass")
+				existEvent["EventTaskInclusionNodePass"] = struct{}{}
+			}
+		}
+	}
+	return events
+}
+
+// createProxyWaitNode 创建代理等待节点（自动化节点）
+// eventNodeId: 实际需要接收事件通知的网关节点 ID (parallel/inclusion)
+func (l *logicFlow) createProxyWaitNode(prevNodeId, eventNodeId string) string {
+	proxyNodeId := "proxy_" + prevNodeId + "_" + eventNodeId
+	// 代理节点是一个通过型的自动化节点
+	// 它接收 prevNodeId 的输入，然后自己可以瞬间完成
+	// 完成时触发 eventNodeId 需要的事件
+	n := model.Node{
+		NodeID:           proxyNodeId,
+		NodeName:         "系统代理流转",
+		NodeType:         1, // User 节点
+		PrevNodeIDs:      []string{prevNodeId},
+		UserIDs:          []string{"sys_auto"},    // 标识为系统自动节点
+		NodeStartEvents:  []string{"EventNotify"}, // User节点启动时触发Notify
+		NodeEndEvents:    []string{},
+		TaskFinishEvents: l.getPassEvents(proxyNodeId), // 这会根据 proxyNodeId 查找下级
+	}
+
+	// 修正：l.getPassEvents 依赖 l.Edges。我们的代理节点不在 Edge 表里。
+	// 所以我们手动指定事件。
+	// 我们知道 eventNodeId 是 parallel 或 inclusion。
+	info := l.GetNodeInfo(eventNodeId)
+	if info.Type == "parallel" {
+		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
+	} else if info.Type == "inclusion" {
+		n.TaskFinishEvents = []string{"EventTaskInclusionNodePass"}
+	}
+
+	l.NodeList = append(l.NodeList, n)
+	return proxyNodeId
+}
+
+func (l *logicFlow) getProxyTargetNodeId(sourceId, targetId string) string {
+	// 只有当 Source 是 Gateway (Cond/Parallel/Inc) 且 Target 也是 Gateway (Parallel/Inc) 时
+	// 才使用了代理节点。
+	// 注意：Condition节点后面也可以接代理，只要Target是Parallel/Inc。
+	// Source节点的类型检查不需要在这里做，因为调用者本身就是 Condition/Parallel/Inclusion 方法。
+	// 我们只需要检查 Target 类型。
+
+	targetInfo := l.GetNodeInfo(targetId)
+	if targetInfo.Type == "parallel" || targetInfo.Type == "inclusion" {
+		return "proxy_" + sourceId + "_" + targetId
+	}
+	return targetId
+}
+
+func (l *logicFlow) findAndProxySrcNodes(node Node) []string {
+	edgesSrc := l.FindSourceNodeId(node.ID)
+	return slice.Map(edgesSrc, func(idx int, src Edge) string {
+		// 检查上级节点类型，如果是 Condition / Parallel / Inclusion，则通过中间节点桥接
+		srcNodeInfo := l.GetNodeInfo(src.SourceNodeId)
+		if srcNodeInfo.Type == "condition" || srcNodeInfo.Type == "parallel" || srcNodeInfo.Type == "inclusion" {
+			proxyNodeId := l.createProxyWaitNode(src.SourceNodeId, node.ID)
+			return proxyNodeId
+		}
+
+		return src.SourceNodeId
+	})
 }
 
 // FindPrevNodeIDs 查找上级节点的信息

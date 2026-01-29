@@ -89,7 +89,7 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		err = e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
+		_, err = e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
 		if err != nil {
 			e.logger.Error("创建自动化任务失败",
 				elog.Any("流程ID", ProcessInstanceID),
@@ -97,6 +97,7 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 				elog.Any("错误信息", err),
 			)
 		}
+
 	}()
 
 	// 等待goroutine完成或超时
@@ -158,6 +159,12 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 				elog.FieldErr(err),
 				elog.Int("流程ID", ProcessInstanceID))
 		}
+	}
+
+	// 判断是否为系统自动节点
+	if len(CurrentNode.UserIDs) > 0 && CurrentNode.UserIDs[0] == "sys_auto" {
+		go e.autoPassProxyNode(ProcessInstanceID, CurrentNode.NodeID)
+		return nil
 	}
 
 	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
@@ -295,4 +302,35 @@ func (e *ProcessEvent) fetchOrderAndWorkflow(ctx context.Context, processInstanc
 	}
 
 	return nOrder, wf, nil
+}
+
+func (e *ProcessEvent) autoPassProxyNode(instanceID int, nodeID string) {
+	// 创建 10 秒超时上下文，用于重试等待任务生成
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			e.logger.Error("User代理节点自动流转失败：等待任务创建超时",
+				elog.Any("InstanceID", instanceID),
+				elog.Any("NodeID", nodeID))
+			return
+		case <-ticker.C:
+			tasks, err := e.engineSvc.GetTasksByCurrentNodeId(ctx, instanceID, nodeID)
+			if err == nil && len(tasks) > 0 {
+				// 找到任务，执行通过
+				// 注意：这里使用的是 TaskID 字段，修正了之前的 ID 报错问题
+				if passErr := e.engineSvc.Pass(ctx, tasks[0].TaskID, "Sys Auto Pass"); passErr != nil {
+					e.logger.Error("User代理节点自动流转通过失败",
+						elog.Any("TaskID", tasks[0].TaskID),
+						elog.FieldErr(passErr))
+				}
+				return
+			}
+		}
+	}
 }

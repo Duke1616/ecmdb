@@ -32,16 +32,22 @@ type ProcessEngineDAO interface {
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 	// GetProxyNodeID 获取代理转发的节点ID
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
+	// UpdateTaskPrevNodeID 修改任务的上级节点ID
+	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
 
 type processEngineDAO struct {
 	db *gorm.DB
 }
 
+func (g *processEngineDAO) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
+	return g.db.WithContext(ctx).Table("proc_task").Where("id = ?", taskId).Update("prev_node_id", prevNodeId).Error
+}
+
 func (g *processEngineDAO) GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error) {
 	var node model.Task
 	err := g.db.WithContext(ctx).Table("proc_task").First(&node,
-		"node_id = ? AND status = ? AND is_finished = ?", prevNodeID, 0, 0).Error
+		"node_id = ? AND status = ? AND is_finished = ?", prevNodeID, 1, 1).Error
 	return node, err
 }
 

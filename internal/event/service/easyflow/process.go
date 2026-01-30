@@ -217,9 +217,10 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 		return err
 	}
 
+	e.logger.Info("包含网关-触发处理", elog.String("nodeId", nodeId))
+
 	// 但凡是有驳回，一率进行处理
 	if rejectNum > 0 {
-		e.logger.Info("有人触发了驳回操作", elog.String("nodeId", nodeId))
 		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemReject, SystemRejectComment)
 	}
 
@@ -267,6 +268,95 @@ func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.
 
 	if IsReject {
 		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
+	}
+
+	return nil
+}
+
+// EventConcurrentRejectCleanup 并行节点驳回清理事件
+// 当并行分支中的某一个节点驳回时，自动清理（取消）同一分支下的其他兄弟任务
+func (e *ProcessEvent) EventConcurrentRejectCleanup(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	// 1. 获取任务详情，检查状态
+	taskInfo, err := engine.GetTaskInfo(TaskID)
+	if err != nil {
+		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
+		return err
+	}
+
+	// 只有驳回(Status=2)才触发清理
+	if taskInfo.Status != 2 {
+		return nil
+	}
+
+	e.logger.Info("并行节点驳回，触发兄弟节点清理",
+		elog.Any("TaskID", TaskID),
+		elog.Any("NodeName", CurrentNode.NodeName),
+		elog.Any("PrevNodeID", PrevNode.NodeID))
+
+	// 2. 调用服务层清理逻辑
+	// 使用 UpdateIsFinishedByPreNodeId 将同级任务置为 SystemReject (系统驳回/取消)
+	// 注意：这里使用的是 PrevNode.NodeID，即分支汇聚点（或分叉点）的ID
+	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
+}
+
+func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	// 1. 获取任务详情，检查状态
+	taskInfo, err := engine.GetTaskInfo(TaskID)
+	if err != nil {
+		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
+		return nil // 获取失败不阻断流程，只是Hack失败
+	}
+
+	// 只有驳回(Status=2)才触发穿透处理
+	if taskInfo.Status != 2 {
+		return nil
+	}
+
+	e.logger.Info("检测到网关后置节点驳回，尝试执行穿透处理", elog.Int("TaskID", TaskID))
+
+	// 2. 寻找真正的回退目标
+	// 预期路径：CurrentNode (Me) <- PrevNode (Gateway) <- Condition <- Target
+	// 此时 PrevNode 是那个 Parallel/Inclusion Gateway
+
+	// 2.1 找到 Gateway 的上级 (Condition)
+	if len(PrevNode.PrevNodeIDs) == 0 {
+		e.logger.Warn("Gateway 节点没有上级，无法穿透", elog.String("NodeID", PrevNode.NodeID))
+		return nil
+	}
+	conditionNodeID := PrevNode.PrevNodeIDs[0]
+
+	// 2.2 获取 Condition 节点详情
+	conditionNode, err := engine.GetInstanceNode(taskInfo.ProcInstID, conditionNodeID)
+	if err != nil {
+		e.logger.Error("获取 Condition 节点失败", elog.FieldErr(err))
+		return nil
+	}
+
+	// 2.3 找到 Condition 的上级 (Target)
+	if len(conditionNode.PrevNodeIDs) == 0 {
+		e.logger.Warn("Condition 节点没有上级，无法穿透", elog.String("NodeID", conditionNodeID))
+		return nil
+	}
+	targetNodeID := conditionNode.PrevNodeIDs[0]
+
+	// 3. 篡改数据库：将当前任务的来源改为 Target
+	// 这样引擎接下来的 TaskNextNode 计算时，就会认为是从 Target 来的，从而退回给 Target
+	e.logger.Info("执行来源篡改",
+		elog.Any("CurrentNode", CurrentNode.NodeName),
+		elog.String("OriginalPrev", taskInfo.PrevNodeID),
+		elog.String("NewPrev", targetNodeID))
+
+	err = e.engineSvc.UpdateTaskPrevNodeID(ctx, TaskID, targetNodeID)
+	if err != nil {
+		e.logger.Error("修改任务上一级节点失败", elog.FieldErr(err))
+		// 如果修改失败，是否报错？建议报错阻断，因为不改的话流程就错了
+		return err
 	}
 
 	return nil

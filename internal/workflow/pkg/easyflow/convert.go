@@ -233,7 +233,7 @@ func (l *logicFlow) User(node Node) {
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 1, UserIDs: property.Approved,
 		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
-		TaskFinishEvents: l.getPassEvents(node.ID),
+		TaskFinishEvents: append(l.getPassEvents(node.ID), l.getRejectEvents(node.ID)...),
 		NodeStartEvents:  []string{"EventNotify"},
 		IsCosigned:       IsCosigned,
 	}
@@ -258,6 +258,52 @@ func (l *logicFlow) getPassEvents(nodeId string) []string {
 			if _, ok := existEvent["EventTaskInclusionNodePass"]; !ok {
 				events = append(events, "EventTaskInclusionNodePass")
 				existEvent["EventTaskInclusionNodePass"] = struct{}{}
+			}
+		}
+	}
+	return events
+}
+
+func (l *logicFlow) getRejectEvents(nodeId string) []string {
+	var events []string
+	edges := l.FindSourceNodeId(nodeId)
+	existEvent := make(map[string]struct{})
+
+	for _, edge := range edges {
+		info := l.GetNodeInfo(edge.SourceNodeId)
+		// 1. 第一级检查：上级必须是条件节点(condition)
+		if info.Type == "condition" {
+			// 2. 第二级检查：该Condition节点的上级必须是并行(parallel)或包容(inclusion)网关
+			// 只有这种"网关 -> 条件 -> 任务"的结构才需要触发特殊的驳回清理
+			conditionSrcEdges := l.FindSourceNodeId(info.ID)
+			for _, condEdge := range conditionSrcEdges {
+				grandPrevNode := l.GetNodeInfo(condEdge.SourceNodeId)
+				if grandPrevNode.Type == "parallel" || grandPrevNode.Type == "inclusion" {
+					if _, ok := existEvent["EventConcurrentRejectCleanup"]; !ok {
+						events = append(events, "EventConcurrentRejectCleanup")
+						existEvent["EventConcurrentRejectCleanup"] = struct{}{}
+					}
+					// 只要找到一个符合条件的上级网关即可，避免重复添加
+					break
+				}
+			}
+		}
+
+		// 新增逻辑：
+		// 1. 第一级检查：上级是并行(parallel)或包容(inclusion)网关
+		if info.Type == "parallel" || info.Type == "inclusion" {
+			// 2. 第二级检查：该网关的上级必须是条件节点(condition)
+			// 结构：Me <- Gateway <- Condition
+			gwSrcEdges := l.FindSourceNodeId(info.ID)
+			for _, gwEdge := range gwSrcEdges {
+				grandPrevNode := l.GetNodeInfo(gwEdge.SourceNodeId)
+				if grandPrevNode.Type == "condition" {
+					if _, ok := existEvent["EventGatewayConditionReject"]; !ok {
+						events = append(events, "EventGatewayConditionReject")
+						existEvent["EventGatewayConditionReject"] = struct{}{}
+					}
+					break
+				}
 			}
 		}
 	}

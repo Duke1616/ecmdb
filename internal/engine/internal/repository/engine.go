@@ -29,10 +29,16 @@ type ProcessEngineRepository interface {
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 	// GetProxyNodeID 获取代理转发的节点ID
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
+	// UpdateTaskPrevNodeID 修改任务的上级节点ID
+	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
 
 type processEngineRepository struct {
 	engineDao dao.ProcessEngineDAO
+}
+
+func (repo *processEngineRepository) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
+	return repo.engineDao.UpdateTaskPrevNodeID(ctx, taskId, prevNodeId)
 }
 
 func (repo *processEngineRepository) GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error) {

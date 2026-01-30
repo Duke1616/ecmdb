@@ -44,6 +44,8 @@ type Service interface {
 	TaskInfo(ctx context.Context, taskId int) (model.Task, error)
 	// GetProxyNodeID 获取代理转发的节点ID
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (string, error)
+	// UpdateTaskPrevNodeID 修改任务节点ID
+	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
 
 type service struct {
@@ -108,6 +110,10 @@ func (s *service) Reject(ctx context.Context, taskId int, comment string) error 
 
 func (s *service) Pass(ctx context.Context, taskId int, comment string) error {
 	return engine.TaskPass(taskId, comment, "", false)
+}
+
+func (s *service) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
+	return s.repo.UpdateTaskPrevNodeID(ctx, taskId, prevNodeId)
 }
 
 func (s *service) TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error) {

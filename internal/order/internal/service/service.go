@@ -72,7 +72,7 @@ func (s *service) CreateBizOrder(ctx context.Context, order domain.Order) (domai
 				elog.Int64("existingOrderId", existingOrder.Id),
 				elog.Int64("bizId", order.BizID),
 				elog.String("key", order.Key))
-			
+
 			// 异步发送追加告警通知（不阻塞主流程）
 			go func() {
 				defer func() {
@@ -86,7 +86,7 @@ func (s *service) CreateBizOrder(ctx context.Context, order domain.Order) (domai
 						elog.Int64("orderId", existingOrder.Id))
 				}
 			}()
-			
+
 			return existingOrder, nil
 		}
 	}
@@ -273,6 +273,13 @@ func (s *service) variables(req domain.Order) ([]event.Variables, error) {
 			valueType := reflect.TypeOf(value)
 			if valueType.Kind() == reflect.Float64 {
 				strValue = fmt.Sprintf("%f", value)
+			}
+
+			// 如果是数组类型，转换成json string
+			if valueType.Kind() == reflect.Slice || valueType.Kind() == reflect.Array {
+				if v, err := json.Marshal(value); err == nil {
+					strValue = string(v)
+				}
 			}
 
 			data = append(data, event.Variables{

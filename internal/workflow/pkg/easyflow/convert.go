@@ -196,7 +196,6 @@ func (l *logicFlow) Condition(node Node) {
 	// 组合 conditions 条件
 	conditions := slice.Map(edgesDst, func(idx int, src Edge) model.Condition {
 		property, _ := ToEdgeProperty(src)
-
 		// 如果没有设置表达式，默认设置为 1 = 1, 自动通过
 		expression := property.Expression
 		if expression == "" {

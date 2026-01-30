@@ -55,7 +55,7 @@ require (
 	gorm.io/gorm v1.31.1
 )
 
-replace github.com/Bunny3th/easy-workflow v1.0.0 => github.com/Duke1616/easy-workflow v1.0.3
+replace github.com/Bunny3th/easy-workflow v1.0.0 => github.com/Duke1616/easy-workflow v1.0.5
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

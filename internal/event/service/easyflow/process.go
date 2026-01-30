@@ -25,6 +25,8 @@ const (
 	UserRevoke          = 5
 	SystemPassComment   = "其余节点审批通过，系统判定无法继续审批"
 	SystemRejectComment = "其余节点进行驳回，系统判定无法继续审批"
+	SysAutoUser         = "sys_auto"
+	SysProxyNodeName    = "系统代理流转"
 )
 
 // ProcessEvent easy-workflow 流程引擎事件处理
@@ -162,7 +164,7 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	}
 
 	// 判断是否为系统自动节点
-	if len(CurrentNode.UserIDs) > 0 && CurrentNode.UserIDs[0] == "sys_auto" {
+	if len(CurrentNode.UserIDs) > 0 && CurrentNode.UserIDs[0] == SysAutoUser {
 		go e.autoPassProxyNode(ProcessInstanceID, CurrentNode.NodeID)
 		return nil
 	}
@@ -244,7 +246,7 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 }
 
 func (e *ProcessEvent) getTargetNodeID(ctx context.Context, prevNodeID string, currentNode *model.Node) (string, error) {
-	if currentNode.NodeName == "系统代理流转" {
+	if currentNode.NodeName == SysProxyNodeName {
 		return e.engineSvc.GetProxyNodeID(ctx, prevNodeID)
 	}
 	return prevNodeID, nil
@@ -302,6 +304,7 @@ func (e *ProcessEvent) EventConcurrentRejectCleanup(TaskID int, CurrentNode *mod
 	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
 }
 
+// EventGatewayConditionReject 如果回退前是代理节点，那么需要修改为正确的节点ID
 func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()

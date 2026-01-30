@@ -9,7 +9,11 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 )
 
-const AutomationApproval = "automation"
+const (
+	AutomationApproval = "automation"
+	SysAutoUser        = "sys_auto"
+	SysProxyNodeName   = "系统代理流转"
+)
 
 type logicFlow struct {
 	Workflow Workflow
@@ -264,49 +268,87 @@ func (l *logicFlow) getPassEvents(nodeId string) []string {
 	return events
 }
 
-func (l *logicFlow) getRejectEvents(nodeId string) []string {
-	var events []string
+type nodeWithInfo struct {
+	ID   string
+	Type string
+}
+
+// 获取某个节点的直接上级节点（带类型）
+func (l *logicFlow) parents(nodeId string) []nodeWithInfo {
 	edges := l.FindSourceNodeId(nodeId)
-	existEvent := make(map[string]struct{})
+	res := make([]nodeWithInfo, 0, len(edges))
 
-	for _, edge := range edges {
-		info := l.GetNodeInfo(edge.SourceNodeId)
-		// 1. 第一级检查：上级必须是条件节点(condition)
-		if info.Type == "condition" {
-			// 2. 第二级检查：该Condition节点的上级必须是并行(parallel)或包容(inclusion)网关
-			// 只有这种"网关 -> 条件 -> 任务"的结构才需要触发特殊的驳回清理
-			conditionSrcEdges := l.FindSourceNodeId(info.ID)
-			for _, condEdge := range conditionSrcEdges {
-				grandPrevNode := l.GetNodeInfo(condEdge.SourceNodeId)
-				if grandPrevNode.Type == "parallel" || grandPrevNode.Type == "inclusion" {
-					if _, ok := existEvent["EventConcurrentRejectCleanup"]; !ok {
-						events = append(events, "EventConcurrentRejectCleanup")
-						existEvent["EventConcurrentRejectCleanup"] = struct{}{}
-					}
-					// 只要找到一个符合条件的上级网关即可，避免重复添加
-					break
-				}
-			}
-		}
+	for _, e := range edges {
+		n := l.GetNodeInfo(e.SourceNodeId)
+		res = append(res, nodeWithInfo{
+			ID:   n.ID,
+			Type: n.Type,
+		})
+	}
 
-		// 新增逻辑：
-		// 1. 第一级检查：上级是并行(parallel)或包容(inclusion)网关
-		if info.Type == "parallel" || info.Type == "inclusion" {
-			// 2. 第二级检查：该网关的上级必须是条件节点(condition)
-			// 结构：Me <- Gateway <- Condition
-			gwSrcEdges := l.FindSourceNodeId(info.ID)
-			for _, gwEdge := range gwSrcEdges {
-				grandPrevNode := l.GetNodeInfo(gwEdge.SourceNodeId)
-				if grandPrevNode.Type == "condition" {
-					if _, ok := existEvent["EventGatewayConditionReject"]; !ok {
-						events = append(events, "EventGatewayConditionReject")
-						existEvent["EventGatewayConditionReject"] = struct{}{}
-					}
-					break
-				}
-			}
+	return res
+}
+
+// 判断节点列表中是否存在某种类型
+func hasType(nodes []nodeWithInfo, types ...string) bool {
+	typeSet := make(map[string]struct{}, len(types))
+	for _, t := range types {
+		typeSet[t] = struct{}{}
+	}
+
+	for _, n := range nodes {
+		if _, ok := typeSet[n.Type]; ok {
+			return true
 		}
 	}
+	return false
+}
+
+// 添加事件（自动去重）
+func addEvent(events *[]string, exist map[string]struct{}, event string) {
+	if _, ok := exist[event]; ok {
+		return
+	}
+	*events = append(*events, event)
+	exist[event] = struct{}{}
+}
+
+func isGateway(t string) bool {
+	return t == "parallel" || t == "inclusion"
+}
+
+func (l *logicFlow) getRejectEvents(nodeId string) []string {
+	events := make([]string, 0, 2)
+	existEvent := make(map[string]struct{})
+
+	// Me 的直接上级
+	parents := l.parents(nodeId)
+
+	for _, p := range parents {
+		// Me 的上级的上级
+		grandParents := l.parents(p.ID)
+
+		// ------------------------------------------------
+		// 规则一：
+		// Gateway -> Condition -> Me
+		// ------------------------------------------------
+		if p.Type == "condition" &&
+			hasType(grandParents, "parallel", "inclusion") {
+
+			addEvent(&events, existEvent, "EventConcurrentRejectCleanup")
+		}
+
+		// ------------------------------------------------
+		// 规则二：
+		// Condition -> Gateway -> Me
+		// ------------------------------------------------
+		if isGateway(p.Type) &&
+			hasType(grandParents, "condition") {
+
+			addEvent(&events, existEvent, "EventGatewayConditionReject")
+		}
+	}
+
 	return events
 }
 
@@ -319,10 +361,10 @@ func (l *logicFlow) createProxyWaitNode(prevNodeId, eventNodeId string) string {
 	// 完成时触发 eventNodeId 需要的事件
 	n := model.Node{
 		NodeID:           proxyNodeId,
-		NodeName:         "系统代理流转",
+		NodeName:         SysProxyNodeName,
 		NodeType:         1, // User 节点
 		PrevNodeIDs:      []string{prevNodeId},
-		UserIDs:          []string{"sys_auto"},    // 标识为系统自动节点
+		UserIDs:          []string{SysAutoUser},   // 标识为系统自动节点
 		NodeStartEvents:  []string{"EventNotify"}, // User节点启动时触发Notify
 		NodeEndEvents:    []string{},
 		TaskFinishEvents: l.getPassEvents(proxyNodeId), // 这会根据 proxyNodeId 查找下级

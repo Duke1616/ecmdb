@@ -196,9 +196,12 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
+	e.logger.Info("包含网关-获取当前节点", elog.Any("Node名称", CurrentNode.NodeName),
+		elog.Any("Node节点", CurrentNode.NodeID))
 
 	taskNum, passNum, rejectNum, err := engine.TaskNodeStatus(TaskID)
 	e.logger.Info("包含网关-处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
+		elog.Any("Node名称", PrevNode.NodeName),
 		elog.Any("Node节点", PrevNode.NodeID),
 		elog.Any("任务数量", taskNum),
 		elog.Any("通过数量", passNum),
@@ -208,9 +211,16 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 		return err
 	}
 
+	// 如果是代理节点，需要查询代理节点的上级
+	nodeId, err := e.getTargetNodeID(ctx, PrevNode.NodeID, CurrentNode)
+	if err != nil {
+		return err
+	}
+
 	// 但凡是有驳回，一率进行处理
 	if rejectNum > 0 {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
+		e.logger.Info("有人触发了驳回操作", elog.String("nodeId", nodeId))
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemReject, SystemRejectComment)
 	}
 
 	// 查看任务详情信息
@@ -221,15 +231,22 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 
 	// 如果不是会签节点，直接修改所有
 	if t.IsCosigned != 1 {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemPass, SystemPassComment)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemPass, SystemPassComment)
 	}
 
 	// 会签节点 pass + task 数量相同才修改
 	if passNum == taskNum {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemPass, SystemPassComment)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemPass, SystemPassComment)
 	}
 
 	return nil
+}
+
+func (e *ProcessEvent) getTargetNodeID(ctx context.Context, prevNodeID string, currentNode *model.Node) (string, error) {
+	if currentNode.NodeName == "系统代理流转" {
+		return e.engineSvc.GetProxyNodeID(ctx, prevNodeID)
+	}
+	return prevNodeID, nil
 }
 
 // EventTaskParallelNodePass 用户任务并行处理事件

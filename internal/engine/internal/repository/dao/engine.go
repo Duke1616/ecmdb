@@ -30,10 +30,19 @@ type ProcessEngineDAO interface {
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
 	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
+	// GetProxyNodeID 获取代理转发的节点ID
+	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
 }
 
 type processEngineDAO struct {
 	db *gorm.DB
+}
+
+func (g *processEngineDAO) GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error) {
+	var node model.Task
+	err := g.db.WithContext(ctx).Table("proc_task").First(&node,
+		"node_id = ? AND status = ? AND is_finished = ?", prevNodeID, 0, 0).Error
+	return node, err
 }
 
 func (g *processEngineDAO) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {

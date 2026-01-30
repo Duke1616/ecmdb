@@ -42,10 +42,17 @@ type Service interface {
 	Upstream(ctx context.Context, taskId int) ([]model.Node, error)
 	// TaskInfo 获取任务详情
 	TaskInfo(ctx context.Context, taskId int) (model.Task, error)
+	// GetProxyNodeID 获取代理转发的节点ID
+	GetProxyNodeID(ctx context.Context, prevNodeID string) (string, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) GetProxyNodeID(ctx context.Context, prevNodeID string) (string, error) {
+	procTask, err := s.repo.GetProxyNodeID(ctx, prevNodeID)
+	return procTask.PrevNodeID, err
 }
 
 func (s *service) TaskInfo(ctx context.Context, taskId int) (model.Task, error) {

@@ -112,8 +112,7 @@ func (l *logicFlow) Start(node Node) {
 	}
 	n := model.Node{NodeID: node.ID, NodeName: NodeName,
 		NodeType: 0, UserIDs: []string{"$starter"},
-		NodeEndEvents:    []string{"EventStart"},
-		TaskFinishEvents: l.getPassEvents(node.ID),
+		NodeEndEvents: []string{"EventStart"},
 	}
 
 	l.NodeList = append(l.NodeList, n)

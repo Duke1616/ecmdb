@@ -132,7 +132,7 @@ func (g *processEngineDAO) ListTaskRecord(ctx context.Context, processInstId, of
 			"create_time,finished_time").
 		Where("proc_inst_id = ?", processInstId)
 	procHistInstDb := g.db.WithContext(ctx).Model(&model.Task{}).Table("hist_proc_task").
-		Select("id,proc_id, proc_inst_id,business_id,starter,node_id,node_name,"+
+		Select("task_id,proc_id, proc_inst_id,business_id,starter,node_id,node_name,"+
 			"prev_node_id,is_cosigned,batch_code,user_id,status,is_finished,comment,proc_inst_create_time,"+
 			"create_time,finished_time").
 		Where("proc_inst_id = ?", processInstId)
@@ -157,7 +157,7 @@ func (g *processEngineDAO) CountTaskRecord(ctx context.Context, processInstId in
 			"create_time,finished_time").
 		Where("proc_inst_id = ?", processInstId)
 	procHistInstDb := g.db.WithContext(ctx).Model(&model.Task{}).Table("hist_proc_task").
-		Select("id,proc_id, proc_inst_id,business_id,starter,node_id,node_name,"+
+		Select("task_id,proc_id, proc_inst_id,business_id,starter,node_id,node_name,"+
 			"prev_node_id,is_cosigned,batch_code,user_id,status,is_finished,comment,proc_inst_create_time,"+
 			"create_time,finished_time").
 		Where("proc_inst_id = ?", processInstId)

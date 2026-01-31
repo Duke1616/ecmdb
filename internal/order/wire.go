@@ -25,6 +25,7 @@ import (
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewService,
+	service.NewProcessEngine,
 	repository.NewOrderRepository,
 	dao.NewOrderDAO,
 	grpc.NewWorkOrderServer,
@@ -38,7 +39,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 		initWechatConsumer,
 		InitProcessConsumer,
 		InitModifyStatusConsumer,
-		InitFeishuCallbackConsumer,
+		InitLardCallbackConsumer,
 		wire.FieldsOf(new(*workflow.Module), "Svc"),
 		wire.FieldsOf(new(*user.Module), "Svc"),
 		wire.FieldsOf(new(*engine.Module), "Svc"),
@@ -78,9 +79,9 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 	return c
 }
 
-func InitFeishuCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark *lark.Client, userSvc user.Service,
-	templateSvc template.Service, svc service.Service, workflowSvc workflow.Service) *consumer.FeishuCallbackEventConsumer {
-	c, err := consumer.NewFeishuCallbackEventConsumer(q, engineSvc, svc, templateSvc, userSvc, workflowSvc, lark)
+func InitLardCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark *lark.Client, userSvc user.Service,
+	templateSvc template.Service, svc service.Service, engineProcessSvc service.ProcessEngine, workflowSvc workflow.Service) *consumer.LarkCallbackEventConsumer {
+	c, err := consumer.NewLarkCallbackEventConsumer(q, engineSvc, engineProcessSvc, svc, templateSvc, userSvc, workflowSvc, lark)
 	if err != nil {
 		return nil
 	}

@@ -38,8 +38,14 @@ type HistoryReq struct {
 }
 
 type PassOrderReq struct {
-	TaskId  int    `json:"task_id"`
-	Comment string `json:"comment"`
+	TaskId    int                    `json:"task_id"`
+	Comment   string                 `json:"comment"`
+	ExtraData map[string]interface{} `json:"extra_data"`
+}
+
+type TaskFormConfigReq struct {
+	WorkflowId int64 `json:"workflow_id"`
+	TaskId     int   `json:"task_id"`
 }
 
 type RejectOrderReq struct {

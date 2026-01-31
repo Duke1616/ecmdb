@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
@@ -23,18 +25,20 @@ import (
 )
 
 type Handler struct {
-	svc         service.Service
-	userSvc     user.Service
-	engineSvc   engine.Service
-	workflowSvc workflow.Service
+	svc              service.Service
+	userSvc          user.Service
+	processEngineSvc service.ProcessEngine
+	engineSvc        engine.Service
+	workflowSvc      workflow.Service
 }
 
-func NewHandler(svc service.Service, engineSvc engine.Service, userSvc user.Service, workflowSvc workflow.Service) *Handler {
+func NewHandler(svc service.Service, engineSvc engine.Service, processEngineSvc service.ProcessEngine, userSvc user.Service, workflowSvc workflow.Service) *Handler {
 	return &Handler{
-		svc:         svc,
-		userSvc:     userSvc,
-		engineSvc:   engineSvc,
-		workflowSvc: workflowSvc,
+		svc:              svc,
+		userSvc:          userSvc,
+		engineSvc:        engineSvc,
+		processEngineSvc: processEngineSvc,
+		workflowSvc:      workflowSvc,
 	}
 }
 
@@ -56,9 +60,61 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
 	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
-
+	g.POST("/task/form_config", ginx.WrapBody[TaskFormConfigReq](h.GetTaskFormConfig))
 }
 
+func (h *Handler) GetTaskFormConfig(ctx *gin.Context, req TaskFormConfigReq) (ginx.Result, error) {
+	// 获取当前节点的信息
+	info, err := h.engineSvc.TaskInfo(ctx, req.TaskId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 查看流程引擎信息
+	wf, err := h.workflowSvc.Find(ctx, req.WorkflowId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	nodes, err := ParseNodes(wf.FlowData.Nodes)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	for _, node := range nodes {
+		if node.ID != info.NodeID {
+			continue
+		}
+
+		property, err1 := easyflow.ToNodeProperty[easyflow.UserProperty](node)
+		if err1 != nil {
+			return systemErrorResult, err1
+		}
+
+		return ginx.Result{
+			Data: property.Fields,
+			Msg:  "获取任务表单配置成功",
+		}, nil
+	}
+
+	return ginx.Result{
+		Data: []easyflow.Field{},
+		Msg:  "未找到对应任务配置",
+	}, nil
+}
+
+func ParseNodes(raw any) ([]easyflow.Node, error) {
+	bytes, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []easyflow.Node
+	if err = json.Unmarshal(bytes, &nodes); err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
 	if req.CreateBy == "" {
 		u, err := h.getSessUser(ctx)
@@ -154,7 +210,7 @@ func (h *Handler) Revoke(ctx *gin.Context, req RevokeOrderReq) (ginx.Result, err
 	}
 
 	// 撤销流程工单
-	err = h.engineSvc.Revoke(ctx, req.InstanceId, u.Username, req.Force)
+	err = h.processEngineSvc.Revoke(ctx, req.InstanceId, u.Username, req.Force)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -223,9 +279,7 @@ func (h *Handler) Pass(ctx *gin.Context, req PassOrderReq) (ginx.Result, error) 
 	if err != nil {
 		return systemErrorResult, err
 	}
-
-	err = h.engineSvc.Pass(ctx, req.TaskId, req.Comment)
-	if err != nil {
+	if err = h.processEngineSvc.Pass(ctx, req.TaskId, req.Comment, req.ExtraData); err != nil {
 		return systemErrorResult, err
 	}
 
@@ -241,7 +295,7 @@ func (h *Handler) Reject(ctx *gin.Context, req RejectOrderReq) (ginx.Result, err
 		return systemErrorResult, err
 	}
 
-	err = h.engineSvc.Reject(ctx, req.TaskId, req.Comment)
+	err = h.processEngineSvc.Reject(ctx, req.TaskId, req.Comment)
 	if err != nil {
 		return systemErrorResult, err
 	}

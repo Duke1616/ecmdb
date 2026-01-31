@@ -20,16 +20,47 @@ type OrderDAO interface {
 	// CreateBizOrder TODO 创建业务工单
 	CreateBizOrder(ctx context.Context, order Order) (Order, error)
 
+	// CreateOrder 创建工单
 	CreateOrder(ctx context.Context, r Order) (int64, error)
+	// DetailByProcessInstId 根据流程实例ID获取工单详情
 	DetailByProcessInstId(ctx context.Context, instanceId int) (Order, error)
+	// Detail 根据ID获取工单详情
 	Detail(ctx context.Context, id int64) (Order, error)
+	// RegisterProcessInstanceId 绑定流程实例ID
 	RegisterProcessInstanceId(ctx context.Context, id int64, instanceId int, status uint8) error
+	// ListOrderByProcessInstanceIds 根据流程实例ID列表获取工单
 	ListOrderByProcessInstanceIds(ctx context.Context, instanceIds []int) ([]Order, error)
+	// UpdateStatusByInstanceId 根据流程实例ID更新状态
 	UpdateStatusByInstanceId(ctx context.Context, instanceId int, status uint8) error
+	// ListOrder 获取工单列表
 	ListOrder(ctx context.Context, userId string, status []int, offset, limit int64) ([]Order, error)
+	// CountOrder 获取工单数量
 	CountOrder(ctx context.Context, userId string, status []int) (int64, error)
 	// FindByBizIdAndKey 根据 BizID 和 Key 查询工单
 	FindByBizIdAndKey(ctx context.Context, bizId int64, key string, status []uint8) (Order, error)
+	// MergeOrderData 合并工单数据（原子更新）
+	MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error
+}
+
+func (dao *orderDAO) MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error {
+	col := dao.db.Collection(OrderCollection)
+	updates := bson.M{
+		"utime": time.Now().UnixMilli(),
+	}
+	for k, v := range data {
+		updates["data."+k] = v
+	}
+
+	updateDoc := bson.M{
+		"$set": updates,
+	}
+	filter := bson.M{"id": id}
+	_, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return nil
 }
 
 func NewOrderDAO(db *mongox.Mongo) OrderDAO {

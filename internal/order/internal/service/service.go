@@ -19,6 +19,7 @@ import (
 )
 
 type Service interface {
+	// CreateBizOrder 创建业务工单
 	CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error)
 
 	// CreateOrder 创建工单
@@ -44,6 +45,13 @@ type Service interface {
 
 	// ListOrdersByUser 查看自己提交的工单
 	ListOrdersByUser(ctx context.Context, userId string, offset, limit int64) ([]domain.Order, int64, error)
+
+	// MergeOrderData 合并工单数据（原子更新）
+	MergeOrderData(ctx context.Context, orderId int64, data map[string]interface{}) error
+}
+
+func (s *service) MergeOrderData(ctx context.Context, orderId int64, data map[string]interface{}) error {
+	return s.repo.MergeOrderData(ctx, orderId, data)
 }
 
 type service struct {

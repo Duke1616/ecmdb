@@ -26,8 +26,6 @@ type Service interface {
 	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	// Pass 通过
 	Pass(ctx context.Context, taskId int, comment string) error
-	// Reject 驳回
-	Reject(ctx context.Context, taskId int, comment string) error
 	// ListPendingStepsOfMyTask 列出我的任务待处理步骤
 	ListPendingStepsOfMyTask(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	// GetAutomationTask 获取自动化完成任务
@@ -36,8 +34,6 @@ type Service interface {
 	GetTasksByInstUsers(ctx context.Context, processInstId int, userIds []string) ([]model.Task, error)
 	// GetOrderIdByVariable 获取工单ID，进行流程绑定
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
-	// Revoke 撤销工单
-	Revoke(ctx context.Context, instanceId int, userId string, force bool) error
 	// Upstream 获取所有上游节点
 	Upstream(ctx context.Context, taskId int) ([]model.Node, error)
 	// TaskInfo 获取任务详情
@@ -69,10 +65,6 @@ func (s *service) Upstream(ctx context.Context, taskId int) ([]model.Node, error
 	return engine.TaskUpstreamNodeList(taskId)
 }
 
-func (s *service) Revoke(ctx context.Context, instanceId int, userId string, force bool) error {
-	return engine.InstanceRevoke(instanceId, force, userId)
-}
-
 func (s *service) GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error) {
 	return s.repo.GetOrderIdByVariable(ctx, processInstId)
 }
@@ -102,10 +94,6 @@ func (s *service) IsReject(ctx context.Context, taskId int) (bool, error) {
 
 func (s *service) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
 	return s.repo.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
-}
-
-func (s *service) Reject(ctx context.Context, taskId int, comment string) error {
-	return engine.TaskReject(taskId, comment, "")
 }
 
 func (s *service) Pass(ctx context.Context, taskId int, comment string) error {

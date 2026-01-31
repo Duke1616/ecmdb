@@ -78,6 +78,37 @@ type EdgeProperty struct {
 	IsPass     bool   `json:"is_pass"`    // 连线是否通过、为了绘制流程图走向使用
 }
 
+type FieldType string
+
+func (f FieldType) ToString() string {
+	return string(f)
+}
+
+const (
+	// FieldInput 单行文本
+	FieldInput FieldType = "input"
+	// FieldTextarea 多行文本
+	FieldTextarea FieldType = "textarea"
+	// FieldDate 日期
+	FieldDate FieldType = "date"
+	// FieldNumber 数字
+	FieldNumber FieldType = "number"
+)
+
+type Option struct {
+	Label string `json:"label"` // 选项显示名
+	Value string `json:"value"` // 选项值
+}
+
+type Field struct {
+	Name     string            `json:"name"`     // 表单字段显示名
+	Key      string            `json:"key"`      // 表单字段键名（对应 Order Data Key）
+	Type     FieldType         `json:"type"`     // 字段类型：input, textarea, date, number...
+	Required bool              `json:"required"` // 是否必填
+	Options  []Option          `json:"options"`  // 选项列表（用于 select 等）
+	Props    map[string]string `json:"props"`    // 额外组件属性（如 placeholder）
+}
+
 type UserProperty struct {
 	Name          string   `json:"name"`           // 节点名称
 	Approved      []string `json:"approved"`       // 审批人、抄送人
@@ -85,6 +116,7 @@ type UserProperty struct {
 	TemplateField string   `json:"template_field"` // 模版字段
 	IsCosigned    bool     `json:"is_cosigned"`    // 是否会签
 	IsCC          bool     `json:"is_cc"`          // 是否抄送
+	Fields        []Field  `json:"fields"`         // 表单字段配置
 }
 
 type StartProperty struct {

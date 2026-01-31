@@ -42,27 +42,28 @@ import (
 )
 
 const (
-	FeishuCardProgress            = "feishu-card-progress"
-	FeishuCardProgressImageResult = "feishu-card-progress-image-result"
+	LarkCardProgress            = "feishu-card-progress"
+	LarkCardProgressImageResult = "feishu-card-progress-image-result"
 )
 
-type FeishuCallbackEventConsumer struct {
-	patchNc      notify.Notifier[*larkim.PatchMessageReq]
-	createNc     notify.Notifier[*larkim.CreateMessageReq]
-	Svc          service.Service
-	logicFlowUrl string
-	tmpl         *template.Template
-	workflowSvc  workflow.Service
-	userSvc      user.Service
-	engineSvc    engineSvc.Service
-	templateSvc  templateSvc.Service
-	consumer     mq.Consumer
-	lark         *lark.Client
-	logger       *elog.Component
+type LarkCallbackEventConsumer struct {
+	patchNc          notify.Notifier[*larkim.PatchMessageReq]
+	createNc         notify.Notifier[*larkim.CreateMessageReq]
+	Svc              service.Service
+	logicFlowUrl     string
+	tmpl             *template.Template
+	workflowSvc      workflow.Service
+	userSvc          user.Service
+	engineSvc        engineSvc.Service
+	engineProcessSvc service.ProcessEngine
+	templateSvc      templateSvc.Service
+	consumer         mq.Consumer
+	lark             *lark.Client
+	logger           *elog.Component
 }
 
-func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, service service.Service,
-	templateSvc templateSvc.Service, userSvc user.Service, workflowSvc workflow.Service, lark *lark.Client) (*FeishuCallbackEventConsumer, error) {
+func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, engineProcessSvc service.ProcessEngine, service service.Service,
+	templateSvc templateSvc.Service, userSvc user.Service, workflowSvc workflow.Service, lark *lark.Client) (*LarkCallbackEventConsumer, error) {
 	groupID := "feishu_callback"
 	consumer, err := q.Consumer(event.FeishuCallbackEventName, groupID)
 	if err != nil {
@@ -84,19 +85,20 @@ func NewFeishuCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, servic
 		return nil, err
 	}
 
-	return &FeishuCallbackEventConsumer{
-		consumer:     consumer,
-		engineSvc:    engineSvc,
-		userSvc:      userSvc,
-		workflowSvc:  workflowSvc,
-		patchNc:      patchNc,
-		createNc:     createNc,
-		logicFlowUrl: getLogicFlowUrl(),
-		templateSvc:  templateSvc,
-		Svc:          service,
-		tmpl:         tmpl,
-		lark:         lark,
-		logger:       elog.DefaultLogger,
+	return &LarkCallbackEventConsumer{
+		consumer:         consumer,
+		engineSvc:        engineSvc,
+		engineProcessSvc: engineProcessSvc,
+		userSvc:          userSvc,
+		workflowSvc:      workflowSvc,
+		patchNc:          patchNc,
+		createNc:         createNc,
+		logicFlowUrl:     getLogicFlowUrl(),
+		templateSvc:      templateSvc,
+		Svc:              service,
+		tmpl:             tmpl,
+		lark:             lark,
+		logger:           elog.DefaultLogger,
 	}, nil
 }
 
@@ -113,7 +115,7 @@ func getLogicFlowUrl() string {
 	return cfg.LogicFlowUrl
 }
 
-func (c *FeishuCallbackEventConsumer) Start(ctx context.Context) {
+func (c *LarkCallbackEventConsumer) Start(ctx context.Context) {
 	go func() {
 		for {
 			err := c.Consume(ctx)
@@ -124,7 +126,7 @@ func (c *FeishuCallbackEventConsumer) Start(ctx context.Context) {
 	}()
 }
 
-func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
+func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 	cm, err := c.consumer.Consume(ctx)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
@@ -148,14 +150,14 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 	switch evt.Action {
 	case "pass":
 		wantResult = fmt.Sprintf("你已同意该申请, 批注：%s", evt.Comment)
-		err = c.engineSvc.Pass(ctx, taskId, evt.Comment)
+		err = c.engineProcessSvc.Pass(ctx, taskId, evt.Comment, nil)
 		if err != nil {
 			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 			c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 		}
 	case "reject":
 		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", evt.Comment)
-		err = c.engineSvc.Reject(ctx, taskId, evt.Comment)
+		err = c.engineProcessSvc.Reject(ctx, taskId, evt.Comment)
 		if err != nil {
 			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
@@ -199,7 +201,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 		}
 
 		// 撤销流程
-		err = c.engineSvc.Revoke(ctx, orderResp.Process.InstanceId, userResp.Username, true)
+		err = c.engineProcessSvc.Revoke(ctx, orderResp.Process.InstanceId, userResp.Username, true)
 		if err != nil {
 			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
@@ -216,7 +218,7 @@ func (c *FeishuCallbackEventConsumer) Consume(ctx context.Context) error {
 	return c.withdraw(ctx, evt, wantResult)
 }
 
-func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) error {
+func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Headless,
 		chromedp.NoSandbox,
@@ -308,7 +310,7 @@ func (c *FeishuCallbackEventConsumer) progress(orderId int64, userId string) err
 	return c.sendImage(taskCtx, imageKey, approvalUsers, userId)
 }
 
-func (c *FeishuCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,
+func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,
 	processId int) (map[string]string, []string, error) {
 	// 查看审批记录
 	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 20)
@@ -442,7 +444,7 @@ func processGatewayNode(gatewayNode string, nodeID string, nodesMap map[string]m
 	}
 }
 
-func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {
+func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {
 	var fields []card.Field
 	us, err := c.userSvc.FindByUsernames(ctx, approvalUsers)
 	if err != nil {
@@ -474,7 +476,7 @@ func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *s
 	notifyWrap := notify.WrapNotifierDynamic(c.createNc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
 		return feishuMsg.NewCreateFeishuMessage(
 			"user_id", userId,
-			feishu.NewFeishuCustomCard(c.tmpl, FeishuCardProgressImageResult,
+			feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgressImageResult,
 				card.NewApprovalCardBuilder().
 					SetToTitle("工单流程进度查看").
 					SetImageKey(*imageKey).
@@ -491,7 +493,7 @@ func (c *FeishuCallbackEventConsumer) sendImage(ctx context.Context, imageKey *s
 	return err
 }
 
-func (c *FeishuCallbackEventConsumer) uploadImage(ctx context.Context, buf []byte) (*string, error) {
+func (c *LarkCallbackEventConsumer) uploadImage(ctx context.Context, buf []byte) (*string, error) {
 	req := larkim.NewCreateImageReqBuilder().
 		Body(larkim.NewCreateImageReqBodyBuilder().
 			ImageType(`message`).
@@ -514,7 +516,7 @@ func (c *FeishuCallbackEventConsumer) uploadImage(ctx context.Context, buf []byt
 	return resp.Data.ImageKey, nil
 }
 
-func (c *FeishuCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string]string) (string, error) {
+func (c *LarkCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string]string) (string, error) {
 	edgesJSON, err := json.Marshal(wf.FlowData.Edges)
 	if err != nil {
 		return "", err
@@ -574,7 +576,7 @@ func edgeToMap(edge easyflow.Edge) map[string]interface{} {
 	}
 }
 
-func (c *FeishuCallbackEventConsumer) withdraw(ctx context.Context, callback event.FeishuCallback, wantResult string) error {
+func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event.FeishuCallback, wantResult string) error {
 	// 获取模版详情信息
 	orderIdInt, _ := strconv.ParseInt(callback.OrderId, 10, 64)
 
@@ -601,7 +603,7 @@ func (c *FeishuCallbackEventConsumer) withdraw(ctx context.Context, callback eve
 	notifyWrap := notify.WrapNotifierDynamic(c.patchNc, func() (notify.BasicNotificationMessage[*larkim.PatchMessageReq], error) {
 		return feishuMsg.NewPatchFeishuMessage(
 			callback.MessageId,
-			feishu.NewFeishuCustomCard(c.tmpl, FeishuCardProgress,
+			feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgress,
 				card.NewApprovalCardBuilder().
 					SetToTitle(rule.GenerateTitle(userInfo.DisplayName, t.Name)).
 					SetToFields(fields).
@@ -641,7 +643,7 @@ func getCallbackValue(callback event.FeishuCallback) []card.Value {
 	return value
 }
 
-func (c *FeishuCallbackEventConsumer) Stop(_ context.Context) error {
+func (c *LarkCallbackEventConsumer) Stop(_ context.Context) error {
 	return c.consumer.Close()
 }
 

@@ -10,6 +10,8 @@ import (
 
 type Service = service.Service
 
+type EngineService = service.ProcessEngine
+
 type RpcServer = grpc.WorkOrderServer
 
 type Handler = web.Handler

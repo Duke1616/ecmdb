@@ -37,29 +37,31 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	}
 	service2 := service.NewService(orderRepository, serviceService, createProcessEventProducer)
 	service3 := engineModule.Svc
+	processEngine := service.NewProcessEngine(service2)
 	service4 := userModule.Svc
 	service5 := workflowModule.Svc
-	handler := web.NewHandler(service2, service3, service4, service5)
+	handler := web.NewHandler(service2, service3, processEngine, service4, service5)
 	workOrderServer := grpc.NewWorkOrderServer(service2, serviceService)
 	wechatOrderConsumer := initWechatConsumer(service2, serviceService, service4, q)
 	processEventConsumer := InitProcessConsumer(q, service5, service2)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, service2)
-	feishuCallbackEventConsumer := InitFeishuCallbackConsumer(q, service3, lark2, service4, serviceService, service2, service5)
+	larkCallbackEventConsumer := InitLardCallbackConsumer(q, service3, lark2, service4, serviceService, service2, processEngine, service5)
 	module := &Module{
 		Hdl:       handler,
 		RpcServer: workOrderServer,
 		Svc:       service2,
+		EngineSvc: processEngine,
 		cw:        wechatOrderConsumer,
 		cs:        processEventConsumer,
 		cms:       orderStatusModifyEventConsumer,
-		cf:        feishuCallbackEventConsumer,
+		cf:        larkCallbackEventConsumer,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewOrderRepository, dao.NewOrderDAO, grpc.NewWorkOrderServer)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, service.NewProcessEngine, repository.NewOrderRepository, dao.NewOrderDAO, grpc.NewWorkOrderServer)
 
 func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
 	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)
@@ -91,9 +93,9 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 	return c
 }
 
-func InitFeishuCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark2 *lark.Client, userSvc user.Service,
-	templateSvc template.Service, svc service.Service, workflowSvc workflow.Service) *consumer.FeishuCallbackEventConsumer {
-	c, err := consumer.NewFeishuCallbackEventConsumer(q, engineSvc, svc, templateSvc, userSvc, workflowSvc, lark2)
+func InitLardCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark2 *lark.Client, userSvc user.Service,
+	templateSvc template.Service, svc service.Service, engineProcessSvc service.ProcessEngine, workflowSvc workflow.Service) *consumer.LarkCallbackEventConsumer {
+	c, err := consumer.NewLarkCallbackEventConsumer(q, engineSvc, engineProcessSvc, svc, templateSvc, userSvc, workflowSvc, lark2)
 	if err != nil {
 		return nil
 	}

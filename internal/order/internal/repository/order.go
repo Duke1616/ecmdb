@@ -32,20 +32,48 @@ type OrderRepository interface {
 	FindByBizIdAndKey(ctx context.Context, bizId int64, key string, status []domain.Status) (domain.Order, error)
 	// MergeOrderData 合并工单数据（原子更新）
 	MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error
+
+	// CreateTaskData 创建任务数据快照
+	CreateTaskData(ctx context.Context, taskId int, data map[string]interface{}) error
+	// FindTaskDataBatch 批量查询任务快照
+	FindTaskDataBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
 }
 
 func (repo *orderRepository) MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error {
 	return repo.dao.MergeOrderData(ctx, id, data)
 }
 
-func NewOrderRepository(dao dao.OrderDAO) OrderRepository {
+func NewOrderRepository(dao dao.OrderDAO, taskData dao.TaskDataDAO) OrderRepository {
 	return &orderRepository{
-		dao: dao,
+		dao:      dao,
+		taskData: taskData,
 	}
 }
 
 type orderRepository struct {
-	dao dao.OrderDAO
+	dao      dao.OrderDAO
+	taskData dao.TaskDataDAO
+}
+
+func (repo *orderRepository) CreateTaskData(ctx context.Context, taskId int, data map[string]interface{}) error {
+	return repo.taskData.Create(ctx, dao.TaskData{
+		TaskId: taskId,
+		Data:   data,
+	})
+}
+
+func (repo *orderRepository) FindTaskDataBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
+	datas, err := repo.taskData.FindByTaskIds(ctx, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int]map[string]interface{}, len(datas))
+	for _, d := range datas {
+		// 这里假设一个 TaskID 只会有一次有效提交（针对审批场景），或者取最新的
+		// 我们的 FindByTaskIds 还没加排序，但审批记录一般只取最后一次
+		res[d.TaskId] = d.Data
+	}
+	return res, nil
 }
 
 func (repo *orderRepository) CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error) {

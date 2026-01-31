@@ -22,8 +22,11 @@ type processEngine struct {
 	engineSvc engineSvc.Service
 }
 
-func NewProcessEngine(svc Service) ProcessEngine {
-	return &processEngine{svc: svc}
+func NewProcessEngine(svc Service, engineSvc engineSvc.Service) ProcessEngine {
+	return &processEngine{
+		svc:       svc,
+		engineSvc: engineSvc,
+	}
 }
 
 func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, extraData map[string]interface{}) error {
@@ -44,6 +47,11 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 		// 3. 更新工单数据
 		if err = e.svc.MergeOrderData(ctx, order.Id, extraData); err != nil {
 			return fmt.Errorf("更新工单数据失败: %w", err)
+		}
+
+		// 4. 记录任务数据快照
+		if err = e.svc.RecordTaskData(ctx, taskId, extraData); err != nil {
+			return fmt.Errorf("记录任务快照失败: %w", err)
 		}
 	}
 

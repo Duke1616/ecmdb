@@ -111,13 +111,14 @@ type RetrieveOrders struct {
 }
 
 type TaskRecord struct {
-	Nodename     string              `json:"nodename"`      // 当前步骤
-	ApprovedBy   string              `json:"approved_by"`   // 处理人
-	IsCosigned   int                 `json:"is_cosigned"`   // 是否会签
-	Status       int                 `json:"status"`        // 任务状态:0:初始 1:通过 2:驳回
-	Comment      string              `json:"comment"`       // 评论
-	IsFinished   int                 `json:"is_finished"`   // 0:任务未完成 1:处理完成
-	FinishedTime *database.LocalTime `json:"finished_time"` // 处理任务时间
+	Nodename     string                 `json:"nodename"`      // 当前步骤
+	ApprovedBy   string                 `json:"approved_by"`   // 处理人
+	IsCosigned   int                    `json:"is_cosigned"`   // 是否会签
+	Status       int                    `json:"status"`        // 任务状态:0:初始 1:通过 2:驳回
+	Comment      string                 `json:"comment"`       // 评论
+	IsFinished   int                    `json:"is_finished"`   // 0:任务未完成 1:处理完成
+	FinishedTime *database.LocalTime    `json:"finished_time"` // 处理任务时间
+	ExtraData    map[string]interface{} `json:"extra_data"`    // 提交的表单记录
 }
 
 type RetrieveTaskRecords struct {

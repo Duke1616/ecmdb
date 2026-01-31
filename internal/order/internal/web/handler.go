@@ -363,39 +363,59 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 		return systemErrorResult, err
 	}
 
-	uniqueMap := make(map[string]bool)
-	uns := slice.FilterMap(ts, func(idx int, src model.Task) (string, bool) {
-		if !uniqueMap[src.UserID] {
-			uniqueMap[src.UserID] = true
-			return src.UserID, true
+	// 1. 提取并去重 UserID
+	userIDs := slice.Map(ts, func(idx int, src model.Task) string {
+		return src.UserID
+	})
+	// 简单去重
+	uniqueUserIDs := make([]string, 0, len(userIDs))
+	for _, uid := range userIDs {
+		if !slice.Contains(uniqueUserIDs, uid) {
+			uniqueUserIDs = append(uniqueUserIDs, uid)
+		}
+	}
+
+	// 2. 获取用户 Map (允许部分失败或降级)
+	uMap, err := h.getUserMap(ctx, uniqueUserIDs)
+	if err != nil {
+		// 记录日志但不阻断，前端展示 ID 即可
+		// h.l.Warn("Failed to get user map", elog.FieldErr(err))
+		uMap = make(map[string]string)
+	}
+
+	// 3. 批量获取任务快照数据
+	taskIds := slice.Map(ts, func(idx int, src model.Task) int {
+		return src.TaskID
+	})
+	taskDataMap, err := h.svc.FindTaskDataBatch(ctx, taskIds)
+	if err != nil {
+		// h.l.Warn("获取任务快照失败", elog.FieldErr(err))
+		taskDataMap = make(map[int]map[string]interface{})
+	}
+
+	// 4. 组装返回结果
+	records := slice.Map(ts, func(idx int, src model.Task) TaskRecord {
+		userName := uMap[src.UserID]
+		if userName == "" {
+			userName = src.UserID
 		}
 
-		return src.UserID, false
+		return TaskRecord{
+			Nodename:     src.NodeName,
+			ApprovedBy:   userName,
+			IsCosigned:   src.IsCosigned,
+			Status:       src.Status,
+			Comment:      src.Comment,
+			IsFinished:   src.IsFinished,
+			FinishedTime: src.FinishedTime,
+			ExtraData:    taskDataMap[src.TaskID],
+		}
 	})
-
-	uMap, err := h.getUserMap(ctx, uns)
-	if err != nil {
-		return systemErrorResult, err
-	}
 
 	return ginx.Result{
 		Data: RetrieveTaskRecords{
-			TaskRecords: slice.Map(ts, func(idx int, src model.Task) TaskRecord {
-				starter, ok := uMap[src.UserID]
-				if !ok {
-					starter = src.UserID
-				}
-				return TaskRecord{
-					Nodename:     src.NodeName,
-					ApprovedBy:   starter,
-					IsCosigned:   src.IsCosigned,
-					Status:       src.Status,
-					Comment:      src.Comment,
-					IsFinished:   src.IsFinished,
-					FinishedTime: src.FinishedTime,
-				}
-			}),
-			Total: total,
+			TaskRecords: records,
+			Total:       total,
 		},
 	}, nil
 }

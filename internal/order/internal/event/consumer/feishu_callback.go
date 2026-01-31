@@ -319,15 +319,12 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 }
 
 func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,
-	processId int) (map[string]string, []string, error) {
+	processId int) (map[string][]string, []string, error) {
 	// 查看审批记录
 	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 20)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// 获取当前所处的节点 ID
-	currentNode := record[len(record)-1].NodeID
 
 	users := slice.FilterMap(record, func(idx int, src model.Task) (string, bool) {
 		if src.Status == 0 && src.IsFinished == 0 {
@@ -350,11 +347,6 @@ func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Or
 		return element.NodeID
 	})
 
-	// 如果工单已经结束，则以结束节点为查询起点
-	if o.Status == domain.END {
-		currentNode = endNodeId
-	}
-
 	// 过滤 record 只保留正常节点，驳回节点暂不处理
 	filterRecord := slice.FilterMap(record, func(idx int, src model.Task) (model.Task, bool) {
 		if src.Status == 2 {
@@ -366,90 +358,92 @@ func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Or
 		return element.NodeID
 	})
 
-	edges := make(map[string]string)
+	edges := make(map[string][]string)
 	visited := make(map[string]bool)
 
-	processNode(currentNode, nodesMap, recordMap, edges, visited)
+	// 遍历所有记录中的节点作为回溯起点
+	// 这样能确保所有“已到达”的节点（无论是正在进行、已完成、还是并行分支中的）
+	// 其前置路径都会被点亮。
+	for _, task := range filterRecord {
+		processNode(task.NodeID, nodesMap, recordMap, edges, visited)
+	}
+
+	// 如果工单已经结束，额外处理结束节点
+	if o.Status == domain.END {
+		processNode(endNodeId, nodesMap, recordMap, edges, visited)
+	}
+
 	return edges, users, nil
 }
 
 // 定义一个递归函数来处理节点
 func processNode(nodeID string, nodesMap map[string]model.Node,
-	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) {
+	recordMap map[string]model.Task, edges map[string][]string, visited map[string]bool) {
+	// 如果已经访问过通过，就不在处理
 	if visited[nodeID] {
 		return
 	}
-	visited[nodeID] = true
 
 	// 获取当前节点
 	node, exists := nodesMap[nodeID]
 	if !exists {
 		return
 	}
+	visited[nodeID] = true
 
-	// 如果上级只有一个节点则直接处理
-	if len(node.PrevNodeIDs) == 1 {
-		prevNodeID := node.PrevNodeIDs[0]
-
-		// 将前置节点添加到 edges 中
-		edges[prevNodeID] = nodeID
-
-		// 递归处理前置节点
-		processNode(prevNodeID, nodesMap, recordMap, edges, visited)
-	}
-
-	// 处理当前节点的前置节点, 网关节点正常不会同时出现两个
-	taskNodes := make([]string, 0)
-	var gatewayNode string
+	// 遍历所有前置节点
 	for _, prevNodeID := range node.PrevNodeIDs {
-		n, _ := nodesMap[prevNodeID]
-
-		switch n.NodeType {
-		case model.TaskNode:
-			taskNodes = append(taskNodes, n.NodeID)
-		case model.GateWayNode:
-			gatewayNode = n.NodeID
-		}
-	}
-
-	// 优先处理任务节点
-	taskNodesProcessed := processTaskNodes(taskNodes, nodeID, nodesMap, recordMap, edges, visited)
-
-	// 如果任务节点处理成功，则不处理网关节点
-	if !taskNodesProcessed {
-		// 处理网关节点
-		processGatewayNode(gatewayNode, nodeID, nodesMap, recordMap, edges, visited)
-	}
-}
-
-// processTaskNodes 处理任务节点，返回是否成功处理
-func processTaskNodes(taskNodes []string, nodeID string, nodesMap map[string]model.Node,
-	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) bool {
-	if len(taskNodes) == 0 {
-		return false
-	}
-
-	for _, taskNodeID := range taskNodes {
-		// 检查任务节点是否处理成功
-		if _, exists := recordMap[taskNodeID]; !exists {
+		prevNode, exists := nodesMap[prevNodeID]
+		if !exists {
 			continue
 		}
 
-		processNode(taskNodeID, nodesMap, recordMap, edges, visited)
-		edges[taskNodeID] = nodeID
-		return true
-	}
+		shouldProcess := false
 
-	// 如果所有任务节点都未成功，返回 false
-	return false
+		// 检查是否是 Proxy 节点 (sys_auto)
+		// 如果是代理节点，进行"穿透"处理：直接连接 代理的前置 -> 当前节点
+		// 因为前端 LogicFlow 图上没有 Proxy 节点，只有 A -> Proxy -> B 中 A -> B 的线
+		if isProxyNode(prevNode) {
+			if len(prevNode.PrevNodeIDs) > 0 {
+				realPrevID := prevNode.PrevNodeIDs[0]
+				// 穿透连接：RealPrev -> Current
+				edges[realPrevID] = append(edges[realPrevID], nodeID)
+				// 递归当前节点的“真实”前置（跳过 Proxy）
+				processNode(realPrevID, nodesMap, recordMap, edges, visited)
+			}
+			continue
+		}
+
+		// 根据前置节点类型决定是否处理
+		switch prevNode.NodeType {
+		case model.TaskNode:
+			// 如果是任务节点，必须在执行记录中存在，且必须是“已完成”状态，才能作为路径来源
+			// 否则仅代表任务已生成但未流转下去
+			if task, ok := recordMap[prevNodeID]; ok && task.IsFinished == 1 {
+				shouldProcess = true
+			}
+		case model.GateWayNode, model.RootNode:
+			// 网关节点和开始节点，默认认为可以通过（或者是路径的一部分）
+			shouldProcess = true
+		}
+
+		if shouldProcess {
+			// 记录边：前置 -> 当前
+			edges[prevNodeID] = append(edges[prevNodeID], nodeID)
+			// 递归回溯
+			processNode(prevNodeID, nodesMap, recordMap, edges, visited)
+		}
+	}
 }
 
-func processGatewayNode(gatewayNode string, nodeID string, nodesMap map[string]model.Node,
-	recordMap map[string]model.Task, edges map[string]string, visited map[string]bool) {
-	if gatewayNode != "" {
-		edges[gatewayNode] = nodeID
-		processNode(gatewayNode, nodesMap, recordMap, edges, visited)
+func isProxyNode(node model.Node) bool {
+	// 判断 UserIDs 是否包含 sys_auto
+	for _, uid := range node.UserIDs {
+		if uid == easyflow.SysAutoUser {
+			return true
+		}
 	}
+	return false
 }
 
 func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {
@@ -524,7 +518,7 @@ func (c *LarkCallbackEventConsumer) uploadImage(ctx context.Context, buf []byte)
 	return resp.Data.ImageKey, nil
 }
 
-func (c *LarkCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string]string) (string, error) {
+func (c *LarkCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string][]string) (string, error) {
 	edgesJSON, err := json.Marshal(wf.FlowData.Edges)
 	if err != nil {
 		return "", err
@@ -542,12 +536,21 @@ func (c *LarkCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[
 			properties = make(map[string]interface{})
 		}
 
-		val, ok := edgeMap[edge.SourceNodeId]
+		targetNodeIDs, ok := edgeMap[edge.SourceNodeId]
 		if !ok {
 			continue
 		}
 
-		if val != edge.TargetNodeId {
+		// 检查当前边的 Target 是否在 targets 列表中
+		isMatched := false
+		for _, tid := range targetNodeIDs {
+			if tid == edge.TargetNodeId {
+				isMatched = true
+				break
+			}
+		}
+
+		if !isMatched {
 			continue
 		}
 

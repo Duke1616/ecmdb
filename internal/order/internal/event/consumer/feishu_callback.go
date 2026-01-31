@@ -266,6 +266,8 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 		return err
 	}
 
+	fmt.Println(injectData)
+
 	// 进行截图
 	err = chromedp.Run(taskCtx,
 		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),

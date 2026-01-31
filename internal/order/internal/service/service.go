@@ -49,19 +49,19 @@ type Service interface {
 	// MergeOrderData 合并工单数据（原子更新）
 	MergeOrderData(ctx context.Context, orderId int64, data map[string]interface{}) error
 
-	// RecordTaskData 记录任务快照
-	RecordTaskData(ctx context.Context, taskId int, data map[string]interface{}) error
+	// RecordSnapshotsData 记录任务快照
+	RecordSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error
 
-	// FindTaskDataBatch 批量查询任务快照
-	FindTaskDataBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
+	// FindSnapshotsBatch 批量查询任务快照
+	FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
 }
 
-func (s *service) FindTaskDataBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
-	return s.repo.FindTaskDataBatch(ctx, taskIds)
+func (s *service) FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
+	return s.repo.FindSnapshotsBatch(ctx, taskIds)
 }
 
-func (s *service) RecordTaskData(ctx context.Context, taskId int, data map[string]interface{}) error {
-	return s.repo.CreateTaskData(ctx, taskId, data)
+func (s *service) RecordSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error {
+	return s.repo.CreateSnapshotsData(ctx, taskId, data)
 }
 
 func (s *service) MergeOrderData(ctx context.Context, orderId int64, data map[string]interface{}) error {

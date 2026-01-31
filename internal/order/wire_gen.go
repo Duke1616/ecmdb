@@ -29,8 +29,8 @@ import (
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module, templateModule *template.Module, userModule *user.Module, lark2 *lark.Client) (*Module, error) {
 	orderDAO := dao.NewOrderDAO(db)
-	taskDataDAO := dao.NewTaskDataDAO(db)
-	orderRepository := repository.NewOrderRepository(orderDAO, taskDataDAO)
+	orderSnapshotsDAO := dao.NewOrderSnapshotsDAO(db)
+	orderRepository := repository.NewOrderRepository(orderDAO, orderSnapshotsDAO)
 	serviceService := templateModule.Svc
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
 	if err != nil {
@@ -62,7 +62,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, service.NewProcessEngine, repository.NewOrderRepository, dao.NewTaskDataDAO, dao.NewOrderDAO, grpc.NewWorkOrderServer)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, service.NewProcessEngine, repository.NewOrderRepository, dao.NewOrderSnapshotsDAO, dao.NewOrderDAO, grpc.NewWorkOrderServer)
 
 func initWechatConsumer(svc service.Service, templateSvc template.Service, userSvc user.Service, q mq.MQ) *consumer.WechatOrderConsumer {
 	c, err := consumer.NewWechatOrderConsumer(svc, templateSvc, userSvc, q)

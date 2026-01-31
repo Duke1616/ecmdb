@@ -50,7 +50,7 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 		}
 
 		// 4. 记录任务数据快照
-		if err = e.svc.RecordTaskData(ctx, taskId, extraData); err != nil {
+		if err = e.svc.RecordSnapshotsData(ctx, taskId, extraData); err != nil {
 			return fmt.Errorf("记录任务快照失败: %w", err)
 		}
 	}

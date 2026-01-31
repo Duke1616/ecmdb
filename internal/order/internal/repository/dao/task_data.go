@@ -10,25 +10,25 @@ import (
 )
 
 const (
-	TaskDataCollection = "c_task_data"
+	TaskDataCollection = "order_snapshots"
 )
 
-type TaskDataDAO interface {
+type OrderSnapshotsDAO interface {
 	Create(ctx context.Context, data TaskData) error
 	FindByTaskIds(ctx context.Context, taskIds []int) ([]TaskData, error)
 }
 
-type taskDataDAO struct {
+type orderSnapshotsDAO struct {
 	db *mongox.Mongo
 }
 
-func NewTaskDataDAO(db *mongox.Mongo) TaskDataDAO {
-	return &taskDataDAO{
+func NewOrderSnapshotsDAO(db *mongox.Mongo) OrderSnapshotsDAO {
+	return &orderSnapshotsDAO{
 		db: db,
 	}
 }
 
-func (dao *taskDataDAO) Create(ctx context.Context, data TaskData) error {
+func (dao *orderSnapshotsDAO) Create(ctx context.Context, data TaskData) error {
 	data.CreateTime = time.Now().UnixMilli()
 	data.Id = dao.db.GetIdGenerator(TaskDataCollection)
 	col := dao.db.Collection(TaskDataCollection)
@@ -40,7 +40,7 @@ func (dao *taskDataDAO) Create(ctx context.Context, data TaskData) error {
 	return nil
 }
 
-func (dao *taskDataDAO) FindByTaskIds(ctx context.Context, taskIds []int) ([]TaskData, error) {
+func (dao *orderSnapshotsDAO) FindByTaskIds(ctx context.Context, taskIds []int) ([]TaskData, error) {
 	col := dao.db.Collection(TaskDataCollection)
 	filter := bson.M{"task_id": bson.M{"$in": taskIds}}
 

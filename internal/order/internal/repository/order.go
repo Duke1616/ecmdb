@@ -33,37 +33,37 @@ type OrderRepository interface {
 	// MergeOrderData 合并工单数据（原子更新）
 	MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error
 
-	// CreateTaskData 创建任务数据快照
-	CreateTaskData(ctx context.Context, taskId int, data map[string]interface{}) error
-	// FindTaskDataBatch 批量查询任务快照
-	FindTaskDataBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
+	// CreateSnapshotsData 创建任务数据快照
+	CreateSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error
+	// FindSnapshotsBatch 批量查询任务快照
+	FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
 }
 
 func (repo *orderRepository) MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error {
 	return repo.dao.MergeOrderData(ctx, id, data)
 }
 
-func NewOrderRepository(dao dao.OrderDAO, taskData dao.TaskDataDAO) OrderRepository {
+func NewOrderRepository(dao dao.OrderDAO, snapshots dao.OrderSnapshotsDAO) OrderRepository {
 	return &orderRepository{
-		dao:      dao,
-		taskData: taskData,
+		dao:       dao,
+		snapshots: snapshots,
 	}
 }
 
 type orderRepository struct {
-	dao      dao.OrderDAO
-	taskData dao.TaskDataDAO
+	dao       dao.OrderDAO
+	snapshots dao.OrderSnapshotsDAO
 }
 
-func (repo *orderRepository) CreateTaskData(ctx context.Context, taskId int, data map[string]interface{}) error {
-	return repo.taskData.Create(ctx, dao.TaskData{
+func (repo *orderRepository) CreateSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error {
+	return repo.snapshots.Create(ctx, dao.TaskData{
 		TaskId: taskId,
 		Data:   data,
 	})
 }
 
-func (repo *orderRepository) FindTaskDataBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
-	datas, err := repo.taskData.FindByTaskIds(ctx, taskIds)
+func (repo *orderRepository) FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
+	datas, err := repo.snapshots.FindByTaskIds(ctx, taskIds)
 	if err != nil {
 		return nil, err
 	}

@@ -387,7 +387,7 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 	taskIds := slice.Map(ts, func(idx int, src model.Task) int {
 		return src.TaskID
 	})
-	taskDataMap, err := h.svc.FindTaskDataBatch(ctx, taskIds)
+	taskDataMap, err := h.svc.FindSnapshotsBatch(ctx, taskIds)
 	if err != nil {
 		// h.l.Warn("获取任务快照失败", elog.FieldErr(err))
 		taskDataMap = make(map[int]map[string]interface{})

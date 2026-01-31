@@ -27,7 +27,7 @@ var ProviderSet = wire.NewSet(
 	service.NewService,
 	service.NewProcessEngine,
 	repository.NewOrderRepository,
-	dao.NewTaskDataDAO,
+	dao.NewOrderSnapshotsDAO,
 	dao.NewOrderDAO,
 	grpc.NewWorkOrderServer,
 )

@@ -73,6 +73,7 @@ cronjob:
 
 frontend:
   logicflow_url: http://localhost:3333/logicflow-preview
+  chromedp_debug: false
 
 grpc:
   server:

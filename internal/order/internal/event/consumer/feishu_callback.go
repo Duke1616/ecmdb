@@ -38,7 +38,7 @@ import (
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/larksuite/oapi-sdk-go/v3"
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 )
 
 const (
@@ -51,6 +51,7 @@ type LarkCallbackEventConsumer struct {
 	createNc         notify.Notifier[*larkim.CreateMessageReq]
 	Svc              service.Service
 	logicFlowUrl     string
+	chromedpDebug    bool
 	tmpl             *template.Template
 	workflowSvc      workflow.Service
 	userSvc          user.Service
@@ -85,6 +86,8 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		return nil, err
 	}
 
+	cfg := getFrontendConfig()
+
 	return &LarkCallbackEventConsumer{
 		consumer:         consumer,
 		engineSvc:        engineSvc,
@@ -93,7 +96,8 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		workflowSvc:      workflowSvc,
 		patchNc:          patchNc,
 		createNc:         createNc,
-		logicFlowUrl:     getLogicFlowUrl(),
+		logicFlowUrl:     cfg.LogicFlowUrl,
+		chromedpDebug:    cfg.ChromedpDebug,
 		templateSvc:      templateSvc,
 		Svc:              service,
 		tmpl:             tmpl,
@@ -102,17 +106,18 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 	}, nil
 }
 
-func getLogicFlowUrl() string {
-	type Config struct {
-		LogicFlowUrl string `mapstructure:"logicflow_url"`
-	}
+type frontendConfig struct {
+	LogicFlowUrl  string `mapstructure:"logicflow_url"`
+	ChromedpDebug bool   `mapstructure:"chromedp_debug"`
+}
 
-	var cfg Config
+func getFrontendConfig() frontendConfig {
+	var cfg frontendConfig
 	if err := viper.UnmarshalKey("frontend", &cfg); err != nil {
 		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
-	return cfg.LogicFlowUrl
+	return cfg
 }
 
 func (c *LarkCallbackEventConsumer) Start(ctx context.Context) {
@@ -220,18 +225,21 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 
 func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Headless,
 		chromedp.NoSandbox,
 		chromedp.NoFirstRun,
 		chromedp.DisableGPU,
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.Flag("disable-setuid-sandbox", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
-		chromedp.Flag("single-process", true),
-		chromedp.Flag("no-zygote", true),
 		chromedp.Flag("font-render-hinting", "none"),
 		chromedp.Flag("force-color-profile", "srgb"),
 	)
+
+	if !c.chromedpDebug {
+		opts = append(opts, chromedp.Headless)
+	} else {
+		opts = append(opts, chromedp.Flag("headless", false))
+	}
 
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancelAlloc()
@@ -265,8 +273,6 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 	if err != nil {
 		return err
 	}
-
-	fmt.Println(injectData)
 
 	// 进行截图
 	err = chromedp.Run(taskCtx,

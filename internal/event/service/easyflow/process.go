@@ -510,3 +510,32 @@ func (e *ProcessEvent) autoPassProxyNode(instanceID int, nodeID string) {
 		}
 	}
 }
+
+// EventInclusionPassCleanup 包容网关通过事件
+// 当包容网关的某一个分支通过时，将其他并行分支置为系统自动通过（SystemPass），实现“一票通过”或“竞争”模式
+func (e *ProcessEvent) EventInclusionPassCleanup(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	// 1. 获取任务详情，检查状态
+	taskInfo, err := engine.GetTaskInfo(TaskID)
+	if err != nil {
+		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
+		return err
+	}
+
+	// 只有通过(Status=1)才触发清理
+	if taskInfo.Status != 1 {
+		return nil
+	}
+
+	e.logger.Info("包含节点通过，触发兄弟节点清理",
+		elog.Any("TaskID", TaskID),
+		elog.Any("NodeName", CurrentNode.NodeName),
+		elog.Any("PrevNodeID", PrevNode.NodeID))
+
+	// 2. 调用服务层清理逻辑
+	// 使用 UpdateIsFinishedByPreNodeId 将同级任务置为 SystemPass (系统通过)
+	// 注意：这里使用的是 PrevNode.NodeID，即分支汇聚点（或分叉点）的ID
+	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemPass, SystemPassComment)
+}

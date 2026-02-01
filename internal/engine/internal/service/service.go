@@ -265,7 +265,8 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 
 		// 2.2 点亮 Incoming 边: Prev -> Current
 		// 驳回节点 (Status=2) 的 Incoming 是回退线，通常不画
-		if task.Status != 2 && task.PrevNodeID != "" {
+		// 系统自动通过 (Status=3) 代表被跳过/分支清理，也不画
+		if task.Status != 2 && task.Status != 3 && task.PrevNodeID != "" {
 			// 将 DB 里的 Proxy ID "翻译" 回逻辑上的前置 ID
 			logicalPrevID := s.getLogicalPrevID(task.PrevNodeID, nodesMap)
 
@@ -280,7 +281,7 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 		}
 
 		// 2.3 前向 Look-ahead (处理已完成任务指向的后续节点，如网关)
-		if task.IsFinished == 1 && task.Status != 2 {
+		if task.IsFinished == 1 && task.Status != 2 && task.Status != 3 {
 			nextIDs := effectiveGraph[task.NodeID]
 			for _, nextID := range nextIDs {
 				// 记录边，并递归点亮后续的纯网关路径

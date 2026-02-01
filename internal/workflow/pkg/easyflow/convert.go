@@ -333,12 +333,20 @@ func (l *logicFlow) getRejectEvents(nodeId string) []string {
 		// ------------------------------------------------
 		if p.Type == "condition" &&
 			hasType(grandParents, "parallel", "inclusion") {
-
 			addEvent(&events, existEvent, "EventConcurrentRejectCleanup")
 		}
 
 		// ------------------------------------------------
 		// 规则二：
+		// Inclusion -> Condition -> Me
+		// ------------------------------------------------
+		if p.Type == "condition" &&
+			hasType(grandParents, "inclusion") {
+			addEvent(&events, existEvent, "EventInclusionPassCleanup")
+		}
+
+		// ------------------------------------------------
+		// 规则三：
 		// Condition -> Gateway -> Me
 		// ------------------------------------------------
 		if isGateway(p.Type) &&
@@ -348,7 +356,7 @@ func (l *logicFlow) getRejectEvents(nodeId string) []string {
 		}
 
 		// ------------------------------------------------
-		// 规则三：检测网关内是否存在 proxy 节点
+		// 规则四：检测网关内是否存在 proxy 节点
 		// 场景：Gateway -> Me（同时网关内存在其他分支有 proxy 节点）
 		// 作用：当 Me 节点驳回时，清理同级的 proxy 节点
 		// ------------------------------------------------

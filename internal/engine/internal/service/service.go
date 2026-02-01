@@ -269,9 +269,13 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 			// 将 DB 里的 Proxy ID "翻译" 回逻辑上的前置 ID
 			logicalPrevID := s.getLogicalPrevID(task.PrevNodeID, nodesMap)
 
-			// 只有在有效图中存在的边才点亮
-			if slice.Contains(effectiveGraph[logicalPrevID], task.NodeID) {
-				uniqueAppend(litEdges, logicalPrevID, task.NodeID)
+			// 搜索从 Prev 到 Current 的路径 (允许穿透中间的网关)
+			//这解决了 DB 记录跳过网关 (Prev=提交人, Current=李四, 中间有网关) 的问题
+			path := s.findPathThroughGateways(logicalPrevID, task.NodeID, effectiveGraph, nodesMap)
+			if len(path) > 1 {
+				for i := 0; i < len(path)-1; i++ {
+					uniqueAppend(litEdges, path[i], path[i+1])
+				}
 			}
 		}
 
@@ -316,6 +320,58 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 	return finalEdges, nil
 }
 
+// findPathThroughGateways 寻找从 start 到 end 的路径，且中间节点必须是网关
+func (s *service) findPathThroughGateways(startID, endID string,
+	effectiveGraph map[string][]string, nodesMap map[string]model.Node) []string {
+
+	type path struct {
+		nodes []string
+	}
+
+	queue := []path{{nodes: []string{startID}}}
+	// 注意：visited 可以防止在一次搜索中产生环路，但如果是 DAG 其实没问题。
+	// 为了简单，我们记录 visited。
+	visited := map[string]bool{startID: true}
+
+	for len(queue) > 0 {
+		currPath := queue[0]
+		queue = queue[1:]
+
+		currNodeID := currPath.nodes[len(currPath.nodes)-1]
+
+		if currNodeID == endID {
+			return currPath.nodes
+		}
+
+		// 限制深度
+		if len(currPath.nodes) > 20 {
+			continue
+		}
+
+		nextIDs := effectiveGraph[currNodeID]
+		for _, nextID := range nextIDs {
+			isTarget := nextID == endID
+			isGateway := false
+			if node, ok := nodesMap[nextID]; ok && node.NodeType == model.GateWayNode {
+				isGateway = true
+			}
+
+			if (isTarget || isGateway) && !visited[nextID] {
+				visited[nextID] = true
+				newNodes := make([]string, len(currPath.nodes))
+				copy(newNodes, currPath.nodes)
+				newNodes = append(newNodes, nextID)
+
+				if isTarget {
+					return newNodes
+				}
+				queue = append(queue, path{nodes: newNodes})
+			}
+		}
+	}
+	return nil
+}
+
 // recursiveReset 清除节点及其后续(如果是网关)的激活边
 func (s *service) recursiveReset(nodeID string, litEdges map[string][]string, nodesMap map[string]model.Node) {
 	targets, ok := litEdges[nodeID]
@@ -342,6 +398,32 @@ func (s *service) lightUpForward(sourceID, targetID string, litEdges map[string]
 	targetNode, ok := nodesMap[targetID]
 	if ok && targetNode.NodeType == model.GateWayNode {
 		nextIDs := effectiveGraph[targetID]
+
+		inDegree := len(targetNode.PrevNodeIDs)
+		outDegree := len(nextIDs)
+		waitType := targetNode.GWConfig.WaitForAllPrevNode
+
+		// 规则 1. 并行网关 (Wait=1):
+		//    - 汇聚 (In>1): 必须等待所有前置到达 -> 停止前探
+		//    - 分支 (In=1): 并行同时触发 -> 允许穿透
+		if waitType == 1 && inDegree > 1 {
+			return
+		}
+
+		// 规则 2. 包容网关 (Wait=0):
+		//    - 汇聚: 需要等待所有Active分支 -> 停止前探
+		//    - 分支: 往往带有条件，不一定全走 -> 停止前探
+		if waitType == 0 {
+			return
+		}
+
+		// 规则 3. 排他/条件网关 (Wait=3):
+		//    - 汇聚: 不等待 (XOR Merge 只要有一个到达即走) -> 允许穿透
+		//    - 分支 (Out>1): 互斥路径，只走一条 -> 停止前探 (由后续生成的 Record 回溯点亮)
+		if waitType == 3 && outDegree > 1 {
+			return
+		}
+
 		for _, nextID := range nextIDs {
 			s.lightUpForward(targetID, nextID, litEdges, nodesMap, effectiveGraph)
 		}

@@ -529,6 +529,21 @@ func (e *ProcessEvent) EventInclusionPassCleanup(TaskID int, CurrentNode *model.
 		return nil
 	}
 
+	// 检查会签状态
+	taskNum, passNum, _, err := engine.TaskNodeStatus(TaskID)
+	if err != nil {
+		return err
+	}
+
+	// 如果是会签节点，且未全部通过，则不触发清理
+	if taskInfo.IsCosigned == 1 && passNum < taskNum {
+		e.logger.Info("包含节点会签未完成，暂不清理兄弟节点",
+			elog.Any("TaskID", TaskID),
+			elog.Int("PassNum", passNum),
+			elog.Int("TotalNum", taskNum))
+		return nil
+	}
+
 	e.logger.Info("包含节点通过，触发兄弟节点清理",
 		elog.Any("TaskID", TaskID),
 		elog.Any("NodeName", CurrentNode.NodeName),

@@ -254,6 +254,38 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 	// Key: SourceID, Value: List of TargetIDs
 	effectiveGraph := s.buildEffectiveGraph(nodesMap)
 
+	// 1.5 预计算节点批次状态 (用于会签/回退判断)
+	type BatchStats struct {
+		Total      int
+		Passed     int // Status = 1
+		Pending    int // IsFinished = 0
+		SystemPass int // Status = 3 (Skipped / Cleaned up)
+		MaxID      int // Track latest task info if needed
+	}
+	// Key: NodeID, Value: Map[BatchCode]Stats
+	nodeBatchStats := make(map[string]map[string]*BatchStats)
+
+	for _, t := range record {
+		if _, ok := nodeBatchStats[t.NodeID]; !ok {
+			nodeBatchStats[t.NodeID] = make(map[string]*BatchStats)
+		}
+
+		stats, ok := nodeBatchStats[t.NodeID][t.BatchCode]
+		if !ok {
+			stats = &BatchStats{}
+			nodeBatchStats[t.NodeID][t.BatchCode] = stats
+		}
+
+		stats.Total++
+		if t.IsFinished == 0 {
+			stats.Pending++
+		} else if t.Status == 1 {
+			stats.Passed++
+		} else if t.Status == 3 {
+			stats.SystemPass++
+		}
+	}
+
 	// 2. 状态重放
 	// litEdges: 当前点亮的边 map[source] -> []target
 	litEdges := make(map[string][]string)
@@ -267,6 +299,14 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 		// 驳回节点 (Status=2) 的 Incoming 是回退线，通常不画
 		// 系统自动通过 (Status=3) 代表被跳过/分支清理，也不画
 		if task.Status != 2 && task.Status != 3 && task.PrevNodeID != "" {
+			// [FIX]: 如果当前 Batch 被 SystemPass (Status=3) "污染"，说明该分支被废弃/跳过
+			// 此时即使有任务通过，也不应该点亮 incoming 路径 (避免显示死路)
+			if batches, ok := nodeBatchStats[task.NodeID]; ok {
+				if stats := batches[task.BatchCode]; stats != nil && stats.SystemPass > 0 {
+					continue
+				}
+			}
+
 			// 将 DB 里的 Proxy ID "翻译" 回逻辑上的前置 ID
 			logicalPrevID := s.getLogicalPrevID(task.PrevNodeID, nodesMap)
 
@@ -282,6 +322,42 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 
 		// 2.3 前向 Look-ahead (处理已完成任务指向的后续节点，如网关)
 		if task.IsFinished == 1 && task.Status != 2 && task.Status != 3 {
+			// 检查当前节点批次状态
+			if batches, ok := nodeBatchStats[task.NodeID]; ok {
+				// 获取当前任务所在 Batch 的统计信息
+				myStats := batches[task.BatchCode]
+
+				// 场景1：会签 (Same Batch)
+				// 如果是会签节点，必须所有任务都为 Status=1 (Pass) 才视为通过
+				// 如果存在 Pending (未完成) 或 SystemPass (被跳过)/Reject (驳回)，则不点亮后续
+				isCosigned := false
+				if nodeDef, exists := nodesMap[task.NodeID]; exists && nodeDef.IsCosigned == 1 {
+					isCosigned = true
+				} else if task.IsCosigned == 1 {
+					isCosigned = true
+				}
+
+				if isCosigned && myStats != nil {
+					// 必须 Status=1 的数量等于总数，才算完全通过
+					if myStats.Passed < myStats.Total {
+						continue
+					}
+				}
+
+				// 场景2：回退重做 (Loop-back / Different Batch)
+				// 如果当前节点上有其他 Batch 处于 Pending 状态，说明流程回退到了这里 -> 阻塞旧路径
+				hasOtherPending := false
+				for batchCode, stats := range batches {
+					if batchCode != task.BatchCode && stats.Pending > 0 {
+						hasOtherPending = true
+						break
+					}
+				}
+				if hasOtherPending {
+					continue
+				}
+			}
+
 			nextIDs := effectiveGraph[task.NodeID]
 			for _, nextID := range nextIDs {
 				// 记录边，并递归点亮后续的纯网关路径

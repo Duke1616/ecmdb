@@ -238,130 +238,171 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 	if err != nil {
 		return nil, err
 	}
-	var endNodeId string
+	// 找到 Root ID
+	var rootID string
 	nodesMap := slice.ToMap(define.Nodes, func(element model.Node) string {
-		if element.NodeType == model.EndNode {
-			endNodeId = element.NodeID
+		if element.NodeType == model.RootNode {
+			rootID = element.NodeID
 		}
 		return element.NodeID
 	})
-
-	filterRecord := slice.FilterMap(record, func(idx int, src model.Task) (model.Task, bool) {
-		if src.Status == 2 {
-			return model.Task{}, false
-		}
-		return src, true
-	})
-	recordMap := slice.ToMap(filterRecord, func(element model.Task) string {
-		return element.NodeID
-	})
-
-	edges := make(map[string][]string)
-	visited := make(map[string]bool)
-
-	// 构建 NextNodesMap 用于前向查找
-	nextNodesMap := make(map[string][]string)
-	for id, node := range nodesMap {
-		for _, prev := range node.PrevNodeIDs {
-			nextNodesMap[prev] = append(nextNodesMap[prev], id)
-		}
+	if rootID == "" && len(record) > 0 {
+		rootID = record[0].NodeID // Fallback
 	}
 
-	for _, task := range filterRecord {
-		// 1. 回溯法 (原有逻辑)
-		s.processNode(task.NodeID, nodesMap, recordMap, edges, visited)
+	// 1. 构建有效图 (Adjacency Map)，处理 Proxy 穿透
+	// Key: SourceID, Value: List of TargetIDs
+	effectiveGraph := s.buildEffectiveGraph(nodesMap)
 
-		// 2. 前向法 (新增逻辑): 如果任务已完成，尝试点亮它指向下一节点的线
-		// 这主要解决：后续节点是网关（Gateway）且因为等待其他分支而尚未生成 Task Record 的情况
-		if task.IsFinished == 1 {
-			nextIDs := nextNodesMap[task.NodeID]
+	// 2. 状态重放
+	// litEdges: 当前点亮的边 map[source] -> []target
+	litEdges := make(map[string][]string)
+
+	for _, task := range record {
+		// 2.1 递归重置 (Recursive Reset)
+		// 如果流程重新进入了该节点，清除它及后续网关的激活状态
+		s.recursiveReset(task.NodeID, litEdges, nodesMap)
+
+		// 2.2 点亮 Incoming 边: Prev -> Current
+		// 驳回节点 (Status=2) 的 Incoming 是回退线，通常不画
+		if task.Status != 2 && task.PrevNodeID != "" {
+			// 将 DB 里的 Proxy ID "翻译" 回逻辑上的前置 ID
+			logicalPrevID := s.getLogicalPrevID(task.PrevNodeID, nodesMap)
+
+			// 只有在有效图中存在的边才点亮
+			if slice.Contains(effectiveGraph[logicalPrevID], task.NodeID) {
+				uniqueAppend(litEdges, logicalPrevID, task.NodeID)
+			}
+		}
+
+		// 2.3 前向 Look-ahead (处理已完成任务指向的后续节点，如网关)
+		if task.IsFinished == 1 && task.Status != 2 {
+			nextIDs := effectiveGraph[task.NodeID]
 			for _, nextID := range nextIDs {
-				s.processForwardEdge(task.NodeID, nextID, nodesMap, nextNodesMap, edges)
+				// 记录边，并递归点亮后续的纯网关路径
+				s.lightUpForward(task.NodeID, nextID, litEdges, nodesMap, effectiveGraph)
 			}
 		}
 	}
 
-	if status == 3 {
-		s.processNode(endNodeId, nodesMap, recordMap, edges, visited)
-	}
+	// 3. 可达性过滤 (Reachability Filter)
+	// 从 Root 开始 BFS，清理因重置而断开的孤岛路径
+	finalEdges := make(map[string][]string)
 
-	return edges, nil
-}
+	if rootID != "" {
+		queue := []string{rootID}
+		visitedNode := make(map[string]bool)
+		visitedNode[rootID] = true
 
-func (s *service) processForwardEdge(sourceID, targetID string, nodesMap map[string]model.Node,
-	nextNodesMap map[string][]string, edges map[string][]string) {
+		for len(queue) > 0 {
+			curr := queue[0]
+			queue = queue[1:]
 
-	targetNode, exists := nodesMap[targetID]
-	if !exists {
-		return
-	}
-
-	// Proxy 穿透处理
-	if s.isProxyNode(targetNode) {
-		// 如果目标是 Proxy，则跳过它，继续找 Proxy 的下一个节点
-		proxyNextIDs := nextNodesMap[targetID]
-		for _, proxyNextID := range proxyNextIDs {
-			// 递归穿透 (sourceID 不变，target 变为 proxy 的 next)
-			s.processForwardEdge(sourceID, proxyNextID, nodesMap, nextNodesMap, edges)
+			targets := litEdges[curr]
+			if len(targets) > 0 {
+				finalEdges[curr] = targets
+				for _, t := range targets {
+					if !visitedNode[t] {
+						visitedNode[t] = true
+						queue = append(queue, t)
+					}
+				}
+			}
 		}
-		return
+	} else {
+		finalEdges = litEdges
 	}
 
-	// 记录边：Source -> Target
-	// 避免重复添加
-	if !slice.Contains(edges[sourceID], targetID) {
-		edges[sourceID] = append(edges[sourceID], targetID)
+	return finalEdges, nil
+}
+
+// recursiveReset 清除节点及其后续(如果是网关)的激活边
+func (s *service) recursiveReset(nodeID string, litEdges map[string][]string, nodesMap map[string]model.Node) {
+	targets, ok := litEdges[nodeID]
+	if !ok {
+		return
+	}
+	delete(litEdges, nodeID)
+
+	for _, tid := range targets {
+		tNode, exists := nodesMap[tid]
+		if exists && tNode.NodeType == model.GateWayNode {
+			s.recursiveReset(tid, litEdges, nodesMap)
+		}
 	}
 }
 
-func (s *service) processNode(nodeID string, nodesMap map[string]model.Node,
-	recordMap map[string]model.Task, edges map[string][]string, visited map[string]bool) {
-	if visited[nodeID] {
-		return
+// lightUpForward 递归点亮前向路径 (穿透网关)
+func (s *service) lightUpForward(sourceID, targetID string, litEdges map[string][]string,
+	nodesMap map[string]model.Node, effectiveGraph map[string][]string) {
+
+	uniqueAppend(litEdges, sourceID, targetID)
+
+	// 如果目标是网关，继续递归点亮它的下一级
+	targetNode, ok := nodesMap[targetID]
+	if ok && targetNode.NodeType == model.GateWayNode {
+		nextIDs := effectiveGraph[targetID]
+		for _, nextID := range nextIDs {
+			s.lightUpForward(targetID, nextID, litEdges, nodesMap, effectiveGraph)
+		}
+	}
+}
+
+// getLogicalPrevID 递归查找逻辑前置（跳过 Proxy）
+func (s *service) getLogicalPrevID(rawPrevID string, nodesMap map[string]model.Node) string {
+	node, ok := nodesMap[rawPrevID]
+	if !ok {
+		return rawPrevID
 	}
 
-	node, exists := nodesMap[nodeID]
-	if !exists {
-		return
+	if s.isProxyNode(node) {
+		if len(node.PrevNodeIDs) > 0 {
+			// 递归查找，直到找到非 Proxy 节点
+			return s.getLogicalPrevID(node.PrevNodeIDs[0], nodesMap)
+		}
 	}
-	visited[nodeID] = true
+	return rawPrevID
+}
 
-	for _, prevNodeID := range node.PrevNodeIDs {
-		prevNode, exists := nodesMap[prevNodeID]
+// buildEffectiveGraph 构建忽略 Proxy 的真实节点邻接表
+func (s *service) buildEffectiveGraph(nodesMap map[string]model.Node) map[string][]string {
+	graph := make(map[string][]string)
+
+	for id, node := range nodesMap {
+		if s.isProxyNode(node) {
+			continue
+		}
+
+		realPrevs := s.resolveRealPrevs(node, nodesMap)
+		for _, prevID := range realPrevs {
+			// Graph: Prev -> ID
+			uniqueAppend(graph, prevID, id)
+		}
+	}
+	return graph
+}
+
+// 辅助：Resolve real prevs (skipping proxy)
+func (s *service) resolveRealPrevs(node model.Node, nodesMap map[string]model.Node) []string {
+	var result []string
+	for _, prevID := range node.PrevNodeIDs {
+		prevNode, exists := nodesMap[prevID]
 		if !exists {
 			continue
 		}
 
-		shouldProcess := false
-
 		if s.isProxyNode(prevNode) {
-			if len(prevNode.PrevNodeIDs) > 0 {
-				realPrevID := prevNode.PrevNodeIDs[0]
-				// 穿透连接：RealPrev -> Current
-				if !slice.Contains(edges[realPrevID], nodeID) {
-					edges[realPrevID] = append(edges[realPrevID], nodeID)
-				}
-				s.processNode(realPrevID, nodesMap, recordMap, edges, visited)
-			}
-			continue
+			result = append(result, s.resolveRealPrevs(prevNode, nodesMap)...)
+		} else {
+			result = append(result, prevID)
 		}
+	}
+	return result
+}
 
-		switch prevNode.NodeType {
-		case model.TaskNode:
-			if task, ok := recordMap[prevNodeID]; ok && task.IsFinished == 1 {
-				shouldProcess = true
-			}
-		case model.GateWayNode, model.RootNode:
-			shouldProcess = true
-		}
-
-		if shouldProcess {
-			// 记录边：前置 -> 当前
-			if !slice.Contains(edges[prevNodeID], nodeID) {
-				edges[prevNodeID] = append(edges[prevNodeID], nodeID)
-			}
-			s.processNode(prevNodeID, nodesMap, recordMap, edges, visited)
-		}
+func uniqueAppend(m map[string][]string, key, val string) {
+	if !slice.Contains(m[key], val) {
+		m[key] = append(m[key], val)
 	}
 }
 

@@ -23,6 +23,11 @@ type ProcessEngineDAO interface {
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
 	SearchStartByProcessInstIds(ctx context.Context, processInstIds []int) ([]Instance, error)
 	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
+	// ForceUpdateIsFinishedByPreNodeId 强制清理指定节点下的所有任务（包括已完成的）
+	// 用于并行网关驳回时清理兄弟分支，避免已完成任务逃过清理导致网关误判
+	ForceUpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
+	// ForceUpdateIsFinishedByNodeId 强制清理指定节点ID的所有任务（包括已完成的）
+	ForceUpdateIsFinishedByNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 
 	ListTasksByProcInstId(ctx context.Context, processInstIds []int, starter string) ([]model.Task, error)
@@ -32,6 +37,10 @@ type ProcessEngineDAO interface {
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 	// GetProxyNodeID 获取代理转发的节点ID
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
+	// GetProxyNodeByProcessInstId 通过流程实例ID获取 proxy 节点
+	GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (model.Task, error)
+	// DeleteProxyNode 删除 proxy 节点任务记录
+	DeleteProxyNode(ctx context.Context, processInstId int) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
@@ -46,9 +55,30 @@ func (g *processEngineDAO) UpdateTaskPrevNodeID(ctx context.Context, taskId int,
 
 func (g *processEngineDAO) GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error) {
 	var node model.Task
+	// NOTE: 查找从指定网关节点（prevNodeID）出发的 proxy 节点
+	// proxy 节点的特征：user_id = 'sys_auto'
 	err := g.db.WithContext(ctx).Table("proc_task").First(&node,
-		"node_id = ? AND status = ? AND is_finished = ?", prevNodeID, 1, 1).Error
+		"prev_node_id = ? AND user_id = ?", prevNodeID, "sys_auto").Error
 	return node, err
+}
+
+// GetProxyNodeByProcessInstId 通过流程实例ID获取 proxy 节点
+func (g *processEngineDAO) GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (model.Task, error) {
+	var node model.Task
+	// NOTE: 查找当前流程实例中的 proxy 节点
+	// proxy 节点的特征：user_id = 'sys_auto'
+	err := g.db.WithContext(ctx).Table("proc_task").First(&node,
+		"proc_inst_id = ? AND user_id = ?", processInstId, "sys_auto").Error
+	return node, err
+}
+
+// DeleteProxyNode 删除 proxy 节点任务记录
+func (g *processEngineDAO) DeleteProxyNode(ctx context.Context, processInstId int) error {
+	// NOTE: 删除当前流程实例中的 proxy 节点任务记录
+	// 因为修改状态无法阻止工作流引擎的判断，必须直接删除
+	return g.db.WithContext(ctx).Table("proc_task").
+		Where("proc_inst_id = ? AND user_id = ?", processInstId, "sys_auto").
+		Delete(&model.Task{}).Error
 }
 
 func (g *processEngineDAO) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {
@@ -115,6 +145,37 @@ func (g *processEngineDAO) UpdateIsFinishedByPreNodeId(ctx context.Context, node
 
 	return g.db.WithContext(ctx).
 		Where("prev_node_id = ? AND is_finished = ? AND status = ?", nodeId, 0, 0).
+		Updates(proTask).Error
+}
+
+// ForceUpdateIsFinishedByPreNodeId 强制清理指定节点下的所有任务（包括已完成的）
+// 移除了 is_finished 和 status 的限制条件，用于并行网关驳回时清理所有兄弟分支
+func (g *processEngineDAO) ForceUpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	proTask := database.ProcTask{
+		Status:       status,
+		IsFinished:   1,
+		Comment:      comment,
+		FinishedTime: database.LTime.Now(),
+	}
+
+	// 不限制 is_finished 和 status，强制更新所有状态的任务
+	return g.db.WithContext(ctx).
+		Where("prev_node_id = ?", nodeId).
+		Updates(proTask).Error
+}
+
+// ForceUpdateIsFinishedByNodeId 强制清理指定节点ID的所有任务（包括已完成的）
+func (g *processEngineDAO) ForceUpdateIsFinishedByNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	proTask := database.ProcTask{
+		Status:       status,
+		IsFinished:   1,
+		Comment:      comment,
+		FinishedTime: database.LTime.Now(),
+	}
+
+	// 根据 node_id 清理，不限制 is_finished 和 status
+	return g.db.WithContext(ctx).
+		Where("node_id = ?", nodeId).
 		Updates(proTask).Error
 }
 

@@ -346,9 +346,75 @@ func (l *logicFlow) getRejectEvents(nodeId string) []string {
 
 			addEvent(&events, existEvent, "EventGatewayConditionReject")
 		}
+
+		// ------------------------------------------------
+		// 规则三：检测网关内是否存在 proxy 节点
+		// 场景：Gateway -> Me（同时网关内存在其他分支有 proxy 节点）
+		// 作用：当 Me 节点驳回时，清理同级的 proxy 节点
+		// ------------------------------------------------
+		if isGateway(p.Type) {
+			// 检查该网关是否有兄弟节点使用了 proxy
+			// 方法：检查网关的所有下级节点，看是否有 proxy 节点存在
+			hasProxy := l.hasProxyInGateway(p.ID)
+			// DEBUG: 输出调试信息
+			nodeInfo := l.GetNodeInfo(nodeId)
+			_ = nodeInfo // 避免未使用变量警告
+			// fmt.Printf("[规则三] 节点=%s, 上级网关=%s, 检测到proxy=%v\n", nodeInfo.Properties, p.ID, hasProxy)
+
+			if hasProxy {
+				addEvent(&events, existEvent, "EventUserNodeRejectProxyCleanup")
+			}
+		}
 	}
 
 	return events
+}
+
+// hasProxyInGateway 检查网关的下级节点中是否存在 proxy 节点
+// 检测方式：递归检查网关的所有下级分支，看是否存在条件网关
+// 因为条件网关最终会连接到汇聚网关时创建 proxy 节点
+func (l *logicFlow) hasProxyInGateway(gatewayId string) bool {
+	// 获取网关的所有下级节点
+	targetEdges := l.FindTargetNodeId(gatewayId)
+
+	for _, edge := range targetEdges {
+		if l.checkBranchHasProxy(edge.TargetNodeId, make(map[string]bool)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// checkBranchHasProxy 递归检查分支路径中是否会创建 proxy 节点
+// visited 用于防止循环引用
+func (l *logicFlow) checkBranchHasProxy(nodeId string, visited map[string]bool) bool {
+	// 防止循环
+	if visited[nodeId] {
+		return false
+	}
+	visited[nodeId] = true
+
+	nodeInfo := l.GetNodeInfo(nodeId)
+
+	// 如果当前节点是条件网关，说明这个分支最终可能会创建 proxy
+	if nodeInfo.Type == "condition" {
+		return true
+	}
+
+	// 如果是用户节点或自动化节点，继续检查下级
+	if nodeInfo.Type == "user" || nodeInfo.Type == "automation" {
+		targetEdges := l.FindTargetNodeId(nodeId)
+		for _, edge := range targetEdges {
+			if l.checkBranchHasProxy(edge.TargetNodeId, visited) {
+				return true
+			}
+		}
+	}
+
+	// 如果是并行网关或包容网关，不继续递归（到达汇聚点）
+	// 结束节点也不继续
+	return false
 }
 
 // createProxyWaitNode 创建代理等待节点（自动化节点）

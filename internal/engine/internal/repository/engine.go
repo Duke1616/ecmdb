@@ -22,6 +22,10 @@ type ProcessEngineRepository interface {
 	ListTaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, error)
 	CountTaskRecord(ctx context.Context, processInstId int) (int64, error)
 	UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
+	// ForceUpdateIsFinishedByPreNodeId 强制清理指定节点下的所有任务（包括已完成的）
+	ForceUpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error
+	// ForceUpdateIsFinishedByNodeId 强制清理指定节点ID的所有任务（包括已完成的）
+	ForceUpdateIsFinishedByNodeId(ctx context.Context, nodeId string, status int, comment string) error
 	CountReject(ctx context.Context, taskId int) (int64, error)
 	ListTasksByProcInstIds(ctx context.Context, processInstIds []int, starter string) ([]domain.Instance, error)
 	GetAutomationTask(ctx context.Context, currentNodeId string, processInstId int) (model.Task, error)
@@ -29,6 +33,10 @@ type ProcessEngineRepository interface {
 	GetOrderIdByVariable(ctx context.Context, processInstId int) (string, error)
 	// GetProxyNodeID 获取代理转发的节点ID
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
+	// GetProxyNodeByProcessInstId 通过流程实例ID获取 proxy 节点
+	GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (model.Task, error)
+	// DeleteProxyNode 删除 proxy 节点任务记录
+	DeleteProxyNode(ctx context.Context, processInstId int) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
@@ -43,6 +51,14 @@ func (repo *processEngineRepository) UpdateTaskPrevNodeID(ctx context.Context, t
 
 func (repo *processEngineRepository) GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error) {
 	return repo.engineDao.GetProxyNodeID(ctx, prevNodeID)
+}
+
+func (repo *processEngineRepository) GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (model.Task, error) {
+	return repo.engineDao.GetProxyNodeByProcessInstId(ctx, processInstId)
+}
+
+func (repo *processEngineRepository) DeleteProxyNode(ctx context.Context, processInstId int) error {
+	return repo.engineDao.DeleteProxyNode(ctx, processInstId)
 }
 
 func (repo *processEngineRepository) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {
@@ -75,6 +91,16 @@ func (repo *processEngineRepository) CountReject(ctx context.Context, taskId int
 
 func (repo *processEngineRepository) UpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
 	return repo.engineDao.UpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
+}
+
+// ForceUpdateIsFinishedByPreNodeId 强制清理指定节点下的所有任务（包括已完成的）
+func (repo *processEngineRepository) ForceUpdateIsFinishedByPreNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	return repo.engineDao.ForceUpdateIsFinishedByPreNodeId(ctx, nodeId, status, comment)
+}
+
+// ForceUpdateIsFinishedByNodeId 强制清理指定节点ID的所有任务（包括已完成的）
+func (repo *processEngineRepository) ForceUpdateIsFinishedByNodeId(ctx context.Context, nodeId string, status int, comment string) error {
+	return repo.engineDao.ForceUpdateIsFinishedByNodeId(ctx, nodeId, status, comment)
 }
 
 func (repo *processEngineRepository) TodoList(userId, processName string, sortByAse bool, offset, limit int) ([]domain.Instance, error) {

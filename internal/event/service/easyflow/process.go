@@ -247,7 +247,7 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 
 func (e *ProcessEvent) getTargetNodeID(ctx context.Context, prevNodeID string, currentNode *model.Node) (string, error) {
 	if currentNode.NodeName == SysProxyNodeName {
-		return e.engineSvc.GetProxyNodeID(ctx, prevNodeID)
+		return e.engineSvc.GetProxyPrevNodeID(ctx, prevNodeID)
 	}
 	return prevNodeID, nil
 }
@@ -321,46 +321,111 @@ func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *mode
 		return nil
 	}
 
-	e.logger.Info("检测到网关后置节点驳回，尝试执行穿透处理", elog.Int("TaskID", TaskID))
+	e.logger.Info("检测到网关后置节点驳回，尝试查找 proxy 节点",
+		elog.Int("TaskID", TaskID),
+		elog.String("CurrentNode", CurrentNode.NodeName))
 
-	// 2. 寻找真正的回退目标
-	// 预期路径：CurrentNode (Me) <- PrevNode (Gateway) <- Condition <- Target
-	// 此时 PrevNode 是那个 Parallel/Inclusion Gateway
-
-	// 2.1 找到 Gateway 的上级 (Condition)
-	if len(PrevNode.PrevNodeIDs) == 0 {
-		e.logger.Warn("Gateway 节点没有上级，无法穿透", elog.String("NodeID", PrevNode.NodeID))
-		return nil
-	}
-	conditionNodeID := PrevNode.PrevNodeIDs[0]
-
-	// 2.2 获取 Condition 节点详情
-	conditionNode, err := engine.GetInstanceNode(taskInfo.ProcInstID, conditionNodeID)
+	// 2. 查找 proxy 节点
+	// NOTE: 通过流程实例ID查找 proxy 节点，获取其 prev_node_id 作为真正的回退目标
+	proxyTask, err := e.engineSvc.GetProxyTaskByProcessInstId(ctx, taskInfo.ProcInstID)
 	if err != nil {
-		e.logger.Error("获取 Condition 节点失败", elog.FieldErr(err))
+		// 没有找到 proxy 节点，说明这个网关内没有 proxy，不需要处理
+		e.logger.Info("未找到 proxy 节点，无需穿透",
+			elog.Int("ProcInstID", taskInfo.ProcInstID))
 		return nil
 	}
 
-	// 2.3 找到 Condition 的上级 (Target)
-	if len(conditionNode.PrevNodeIDs) == 0 {
-		e.logger.Warn("Condition 节点没有上级，无法穿透", elog.String("NodeID", conditionNodeID))
+	// 判定是 proxy 节点在处理逻辑
+	if proxyTask.UserID != SysAutoUser {
 		return nil
 	}
-	targetNodeID := conditionNode.PrevNodeIDs[0]
 
-	// 3. 篡改数据库：将当前任务的来源改为 Target
-	// 这样引擎接下来的 TaskNextNode 计算时，就会认为是从 Target 来的，从而退回给 Target
+	e.logger.Info("找到 proxy 节点，准备执行穿透",
+		elog.String("ProxyNodeID", proxyTask.NodeID),
+		elog.String("ProxyPrevNodeID", proxyTask.PrevNodeID))
+
+	// 3. 篡改数据库：将当前任务的 prev_node_id 改为 proxy 的 prev_node_id
+	// NOTE: proxy.prev_node_id 就是真正的回退目标节点（如：李四）
+	targetNodeID := proxyTask.PrevNodeID
+
 	e.logger.Info("执行来源篡改",
-		elog.Any("CurrentNode", CurrentNode.NodeName),
+		elog.String("CurrentNode", CurrentNode.NodeName),
 		elog.String("OriginalPrev", taskInfo.PrevNodeID),
 		elog.String("NewPrev", targetNodeID))
 
 	err = e.engineSvc.UpdateTaskPrevNodeID(ctx, TaskID, targetNodeID)
 	if err != nil {
 		e.logger.Error("修改任务上一级节点失败", elog.FieldErr(err))
-		// 如果修改失败，是否报错？建议报错阻断，因为不改的话流程就错了
 		return err
 	}
+
+	e.logger.Info("成功修改 prev_node_id，驳回将回退到正确节点")
+
+	// 4. 删除 proxy 节点
+	// NOTE: 驳回发生时，Proxy 节点已经完成了它的历史使命，需要删除，防止干扰后续流程
+	// 这与 EventUserNodeRejectProxyCleanup 的目的类似
+	err = e.engineSvc.DeleteProxyNode(ctx, taskInfo.ProcInstID)
+	if err != nil {
+		e.logger.Error("删除 proxy 节点失败", elog.FieldErr(err))
+		// 删除失败不阻断主流程，因为 prev_node_id 已经修改成功，流程回退路径已修正
+	} else {
+		e.logger.Info("成功清理 proxy 节点记录", elog.Int("ProcInstID", taskInfo.ProcInstID))
+	}
+
+	return nil
+}
+
+// EventUserNodeRejectProxyCleanup 用户节点驳回时清理 proxy 节点事件
+// NOTE: 当检测到网关内存在 proxy 节点时，网关内的所有用户节点都应该注册此事件
+// 作用：当用户节点被驳回时，自动将同级的 proxy 节点状态修改为驳回
+func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	// 1. 获取任务详情，检查状态
+	taskInfo, err := engine.GetTaskInfo(TaskID)
+	if err != nil {
+		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
+		return err
+	}
+
+	// 只有驳回(Status=2)才触发 proxy 节点清理
+	if taskInfo.Status != 2 {
+		return nil
+	}
+
+	e.logger.Info("用户节点驳回，触发 proxy 节点清理",
+		elog.Any("TaskID", TaskID),
+		elog.Any("NodeName", CurrentNode.NodeName),
+		elog.Any("PrevNodeID", PrevNode.NodeID))
+
+	// 2. 查找同级的 proxy 节点
+	// NOTE: 使用流程实例ID查找 proxy 节点，因为一个流程实例只可能有一个 proxy 节点
+	proxyNodeID, err := e.engineSvc.GetProxyNodeByProcessInstId(ctx, taskInfo.ProcInstID)
+	if err != nil {
+		// NOTE: 如果找不到 proxy 节点，说明该网关内可能没有 proxy 节点，不影响主流程
+		e.logger.Warn("未找到 proxy 节点",
+			elog.Int("ProcInstID", taskInfo.ProcInstID),
+			elog.FieldErr(err))
+		return nil
+	}
+
+	e.logger.Info("检测到 proxy 节点，准备删除任务记录",
+		elog.String("ProxyNodeID", proxyNodeID),
+		elog.String("UserNodeID", CurrentNode.NodeID),
+		elog.Int("ProcInstID", taskInfo.ProcInstID))
+
+	// 3. 删除 proxy 节点任务记录
+	// NOTE: 修改状态无法阻止工作流引擎的判断，必须直接删除任务记录
+	err = e.engineSvc.DeleteProxyNode(ctx, taskInfo.ProcInstID)
+	if err != nil {
+		e.logger.Error("删除 proxy 节点任务记录失败", elog.FieldErr(err))
+		return err
+	}
+
+	e.logger.Info("成功删除 proxy 节点任务记录",
+		elog.String("ProxyNodeID", proxyNodeID),
+		elog.Int("ProcInstID", taskInfo.ProcInstID))
 
 	return nil
 }

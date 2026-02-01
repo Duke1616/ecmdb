@@ -1,12 +1,14 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/engine"
 
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
@@ -129,10 +131,39 @@ func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Resu
 		return ginx.Result{}, err
 	}
 
-	//tasks, _, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstanceId, 0, 100)
-	//if err != nil {
-	//	return systemErrorResult, err
-	//}
+	edgeMap, err := h.engineSvc.GetTraversedEdges(ctx, req.ProcessInstanceId, flow.ProcessId, req.Status)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 优化：使用结构体处理，避免混乱的类型断言
+	edgesJSON, _ := json.Marshal(flow.FlowData.Edges)
+	var edges []easyflow.Edge
+	if err = json.Unmarshal(edgesJSON, &edges); err != nil {
+		return systemErrorResult, err
+	}
+
+	for i, edge := range edges {
+		targets, ok := edgeMap[edge.SourceNodeId]
+		if !ok {
+			continue
+		}
+
+		if slice.Contains(targets, edge.TargetNodeId) {
+			properties, ok := edge.Properties.(map[string]interface{})
+			if !ok {
+				properties = make(map[string]interface{})
+			}
+			properties["is_pass"] = true
+			edges[i].Properties = properties
+		}
+	}
+
+	// 将处理后的 edges 转回 map 结构
+	var newEdges []map[string]interface{}
+	newEdgesJSON, _ := json.Marshal(edges)
+	_ = json.Unmarshal(newEdgesJSON, &newEdges)
+	flow.FlowData.Edges = newEdges
 
 	return ginx.Result{
 		Data: RetrieveOrderGraph{

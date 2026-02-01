@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
@@ -320,7 +319,7 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 
 func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,
 	processId int) (map[string][]string, []string, error) {
-	// 查看审批记录
+	// 查看审批记录（用于获取当前审批人）
 	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 20)
 	if err != nil {
 		return nil, nil, err
@@ -334,116 +333,13 @@ func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Or
 		return "", false
 	})
 
-	// 查看流程定义及节点
-	define, err := engine.GetProcessDefine(processId)
+	// 使用 Engine Service 获取已遍历的边
+	edges, err := c.engineSvc.GetTraversedEdges(ctx, o.Process.InstanceId, processId, o.Status.ToUint8())
 	if err != nil {
 		return nil, nil, err
 	}
-	var endNodeId string
-	nodesMap := slice.ToMap(define.Nodes, func(element model.Node) string {
-		if element.NodeType == model.EndNode {
-			endNodeId = element.NodeID
-		}
-		return element.NodeID
-	})
-
-	// 过滤 record 只保留正常节点，驳回节点暂不处理
-	filterRecord := slice.FilterMap(record, func(idx int, src model.Task) (model.Task, bool) {
-		if src.Status == 2 {
-			return model.Task{}, false
-		}
-		return src, true
-	})
-	recordMap := slice.ToMap(filterRecord, func(element model.Task) string {
-		return element.NodeID
-	})
-
-	edges := make(map[string][]string)
-	visited := make(map[string]bool)
-
-	// 遍历所有记录中的节点作为回溯起点
-	// 这样能确保所有“已到达”的节点（无论是正在进行、已完成、还是并行分支中的）
-	// 其前置路径都会被点亮。
-	for _, task := range filterRecord {
-		processNode(task.NodeID, nodesMap, recordMap, edges, visited)
-	}
-
-	// 如果工单已经结束，额外处理结束节点
-	if o.Status == domain.END {
-		processNode(endNodeId, nodesMap, recordMap, edges, visited)
-	}
 
 	return edges, users, nil
-}
-
-// 定义一个递归函数来处理节点
-func processNode(nodeID string, nodesMap map[string]model.Node,
-	recordMap map[string]model.Task, edges map[string][]string, visited map[string]bool) {
-	// 如果已经访问过通过，就不在处理
-	if visited[nodeID] {
-		return
-	}
-
-	// 获取当前节点
-	node, exists := nodesMap[nodeID]
-	if !exists {
-		return
-	}
-	visited[nodeID] = true
-
-	// 遍历所有前置节点
-	for _, prevNodeID := range node.PrevNodeIDs {
-		prevNode, exists := nodesMap[prevNodeID]
-		if !exists {
-			continue
-		}
-
-		shouldProcess := false
-
-		// 检查是否是 Proxy 节点 (sys_auto)
-		// 如果是代理节点，进行"穿透"处理：直接连接 代理的前置 -> 当前节点
-		// 因为前端 LogicFlow 图上没有 Proxy 节点，只有 A -> Proxy -> B 中 A -> B 的线
-		if isProxyNode(prevNode) {
-			if len(prevNode.PrevNodeIDs) > 0 {
-				realPrevID := prevNode.PrevNodeIDs[0]
-				// 穿透连接：RealPrev -> Current
-				edges[realPrevID] = append(edges[realPrevID], nodeID)
-				// 递归当前节点的“真实”前置（跳过 Proxy）
-				processNode(realPrevID, nodesMap, recordMap, edges, visited)
-			}
-			continue
-		}
-
-		// 根据前置节点类型决定是否处理
-		switch prevNode.NodeType {
-		case model.TaskNode:
-			// 如果是任务节点，必须在执行记录中存在，且必须是“已完成”状态，才能作为路径来源
-			// 否则仅代表任务已生成但未流转下去
-			if task, ok := recordMap[prevNodeID]; ok && task.IsFinished == 1 {
-				shouldProcess = true
-			}
-		case model.GateWayNode, model.RootNode:
-			// 网关节点和开始节点，默认认为可以通过（或者是路径的一部分）
-			shouldProcess = true
-		}
-
-		if shouldProcess {
-			// 记录边：前置 -> 当前
-			edges[prevNodeID] = append(edges[prevNodeID], nodeID)
-			// 递归回溯
-			processNode(prevNodeID, nodesMap, recordMap, edges, visited)
-		}
-	}
-}
-
-func isProxyNode(node model.Node) bool {
-	// 判断 UserIDs 是否包含 sys_auto
-	for _, uid := range node.UserIDs {
-		if uid == easyflow.SysAutoUser {
-			return true
-		}
-	}
-	return false
 }
 
 func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {

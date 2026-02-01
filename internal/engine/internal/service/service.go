@@ -7,6 +7,8 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/ecodeclub/ekit/slice"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -54,6 +56,8 @@ type Service interface {
 	DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
+	// GetTraversedEdges 获取已流转的边
+	GetTraversedEdges(ctx context.Context, processInstId, processId int, status uint8) (map[string][]string, error)
 }
 
 type service struct {
@@ -222,4 +226,150 @@ func (s *service) ListByStartUser(ctx context.Context, userId, processName strin
 		return ts, total, err
 	}
 	return ts, total, nil
+}
+
+func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processId int, status uint8) (map[string][]string, error) {
+	record, _, err := s.TaskRecord(ctx, processInstId, 0, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	define, err := engine.GetProcessDefine(processId)
+	if err != nil {
+		return nil, err
+	}
+	var endNodeId string
+	nodesMap := slice.ToMap(define.Nodes, func(element model.Node) string {
+		if element.NodeType == model.EndNode {
+			endNodeId = element.NodeID
+		}
+		return element.NodeID
+	})
+
+	filterRecord := slice.FilterMap(record, func(idx int, src model.Task) (model.Task, bool) {
+		if src.Status == 2 {
+			return model.Task{}, false
+		}
+		return src, true
+	})
+	recordMap := slice.ToMap(filterRecord, func(element model.Task) string {
+		return element.NodeID
+	})
+
+	edges := make(map[string][]string)
+	visited := make(map[string]bool)
+
+	// 构建 NextNodesMap 用于前向查找
+	nextNodesMap := make(map[string][]string)
+	for id, node := range nodesMap {
+		for _, prev := range node.PrevNodeIDs {
+			nextNodesMap[prev] = append(nextNodesMap[prev], id)
+		}
+	}
+
+	for _, task := range filterRecord {
+		// 1. 回溯法 (原有逻辑)
+		s.processNode(task.NodeID, nodesMap, recordMap, edges, visited)
+
+		// 2. 前向法 (新增逻辑): 如果任务已完成，尝试点亮它指向下一节点的线
+		// 这主要解决：后续节点是网关（Gateway）且因为等待其他分支而尚未生成 Task Record 的情况
+		if task.IsFinished == 1 {
+			nextIDs := nextNodesMap[task.NodeID]
+			for _, nextID := range nextIDs {
+				s.processForwardEdge(task.NodeID, nextID, nodesMap, nextNodesMap, edges)
+			}
+		}
+	}
+
+	if status == 3 {
+		s.processNode(endNodeId, nodesMap, recordMap, edges, visited)
+	}
+
+	return edges, nil
+}
+
+func (s *service) processForwardEdge(sourceID, targetID string, nodesMap map[string]model.Node,
+	nextNodesMap map[string][]string, edges map[string][]string) {
+
+	targetNode, exists := nodesMap[targetID]
+	if !exists {
+		return
+	}
+
+	// Proxy 穿透处理
+	if s.isProxyNode(targetNode) {
+		// 如果目标是 Proxy，则跳过它，继续找 Proxy 的下一个节点
+		proxyNextIDs := nextNodesMap[targetID]
+		for _, proxyNextID := range proxyNextIDs {
+			// 递归穿透 (sourceID 不变，target 变为 proxy 的 next)
+			s.processForwardEdge(sourceID, proxyNextID, nodesMap, nextNodesMap, edges)
+		}
+		return
+	}
+
+	// 记录边：Source -> Target
+	// 避免重复添加
+	if !slice.Contains(edges[sourceID], targetID) {
+		edges[sourceID] = append(edges[sourceID], targetID)
+	}
+}
+
+func (s *service) processNode(nodeID string, nodesMap map[string]model.Node,
+	recordMap map[string]model.Task, edges map[string][]string, visited map[string]bool) {
+	if visited[nodeID] {
+		return
+	}
+
+	node, exists := nodesMap[nodeID]
+	if !exists {
+		return
+	}
+	visited[nodeID] = true
+
+	for _, prevNodeID := range node.PrevNodeIDs {
+		prevNode, exists := nodesMap[prevNodeID]
+		if !exists {
+			continue
+		}
+
+		shouldProcess := false
+
+		if s.isProxyNode(prevNode) {
+			if len(prevNode.PrevNodeIDs) > 0 {
+				realPrevID := prevNode.PrevNodeIDs[0]
+				// 穿透连接：RealPrev -> Current
+				if !slice.Contains(edges[realPrevID], nodeID) {
+					edges[realPrevID] = append(edges[realPrevID], nodeID)
+				}
+				s.processNode(realPrevID, nodesMap, recordMap, edges, visited)
+			}
+			continue
+		}
+
+		switch prevNode.NodeType {
+		case model.TaskNode:
+			if task, ok := recordMap[prevNodeID]; ok && task.IsFinished == 1 {
+				shouldProcess = true
+			}
+		case model.GateWayNode, model.RootNode:
+			shouldProcess = true
+		}
+
+		if shouldProcess {
+			// 记录边：前置 -> 当前
+			if !slice.Contains(edges[prevNodeID], nodeID) {
+				edges[prevNodeID] = append(edges[prevNodeID], nodeID)
+			}
+			s.processNode(prevNodeID, nodesMap, recordMap, edges, visited)
+		}
+	}
+}
+
+func (s *service) isProxyNode(node model.Node) bool {
+	for _, uid := range node.UserIDs {
+		if uid == easyflow.SysAutoUser {
+			return true
+		}
+	}
+	return false
 }

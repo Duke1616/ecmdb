@@ -250,41 +250,9 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 		rootID = record[0].NodeID // Fallback
 	}
 
-	// 1. 构建有效图 (Adjacency Map)，处理 Proxy 穿透
-	// Key: SourceID, Value: List of TargetIDs
-	effectiveGraph := s.buildEffectiveGraph(nodesMap)
-
-	// 1.5 预计算节点批次状态 (用于会签/回退判断)
-	type BatchStats struct {
-		Total      int
-		Passed     int // Status = 1
-		Pending    int // IsFinished = 0
-		SystemPass int // Status = 3 (Skipped / Cleaned up)
-		MaxID      int // Track latest task info if needed
-	}
-	// Key: NodeID, Value: Map[BatchCode]Stats
-	nodeBatchStats := make(map[string]map[string]*BatchStats)
-
-	for _, t := range record {
-		if _, ok := nodeBatchStats[t.NodeID]; !ok {
-			nodeBatchStats[t.NodeID] = make(map[string]*BatchStats)
-		}
-
-		stats, ok := nodeBatchStats[t.NodeID][t.BatchCode]
-		if !ok {
-			stats = &BatchStats{}
-			nodeBatchStats[t.NodeID][t.BatchCode] = stats
-		}
-
-		stats.Total++
-		if t.IsFinished == 0 {
-			stats.Pending++
-		} else if t.Status == 1 {
-			stats.Passed++
-		} else if t.Status == 3 {
-			stats.SystemPass++
-		}
-	}
+	// 1. 初始化辅助服务
+	analyzer := NewNodeStatusAnalyzer(record, nodesMap)
+	topology := NewGraphTopologyService(nodesMap, s)
 
 	// 2. 状态重放
 	// litEdges: 当前点亮的边 map[source] -> []target
@@ -292,27 +260,19 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 
 	for _, task := range record {
 		// 2.1 递归重置 (Recursive Reset)
-		// 如果流程重新进入了该节点，清除它及后续网关的激活状态
 		s.recursiveReset(task.NodeID, litEdges, nodesMap)
 
-		// 2.2 点亮 Incoming 边: Prev -> Current
-		// 驳回节点 (Status=2) 的 Incoming 是回退线，通常不画
-		// 系统自动通过 (Status=3) 代表被跳过/分支清理，也不画
+		// 2.2 处理入边 (Incoming): Prev -> Current
+		// 业务规则：Status!=2 (驳回) 且 Status!=3 (自动跳过) 且当前批次未被污染
 		if task.Status != 2 && task.Status != 3 && task.PrevNodeID != "" {
-			// [FIX]: 如果当前 Batch 被 SystemPass (Status=3) "污染"，说明该分支被废弃/跳过
-			// 此时即使有任务通过，也不应该点亮 incoming 路径 (避免显示死路)
-			if batches, ok := nodeBatchStats[task.NodeID]; ok {
-				if stats := batches[task.BatchCode]; stats != nil && stats.SystemPass > 0 {
-					continue
-				}
+			if analyzer.IsBatchTainted(task.NodeID, task.BatchCode) {
+				continue
 			}
 
-			// 将 DB 里的 Proxy ID "翻译" 回逻辑上的前置 ID
-			logicalPrevID := s.getLogicalPrevID(task.PrevNodeID, nodesMap)
+			// 解析逻辑前置并寻找路径
+			logicalPrevID := topology.ResolveLogicalPrev(task.PrevNodeID)
+			path := topology.FindPath(logicalPrevID, task.NodeID, s)
 
-			// 搜索从 Prev 到 Current 的路径 (允许穿透中间的网关)
-			//这解决了 DB 记录跳过网关 (Prev=提交人, Current=李四, 中间有网关) 的问题
-			path := s.findPathThroughGateways(logicalPrevID, task.NodeID, effectiveGraph, nodesMap)
 			if len(path) > 1 {
 				for i := 0; i < len(path)-1; i++ {
 					uniqueAppend(litEdges, path[i], path[i+1])
@@ -320,48 +280,17 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 			}
 		}
 
-		// 2.3 前向 Look-ahead (处理已完成任务指向的后续节点，如网关)
-		if task.IsFinished == 1 && task.Status != 2 && task.Status != 3 {
-			// 检查当前节点批次状态
-			if batches, ok := nodeBatchStats[task.NodeID]; ok {
-				// 获取当前任务所在 Batch 的统计信息
-				myStats := batches[task.BatchCode]
-
-				// 场景1：会签 (Same Batch)
-				// 如果是会签节点，必须所有任务都为 Status=1 (Pass) 才视为通过
-				// 如果存在 Pending (未完成) 或 SystemPass (被跳过)/Reject (驳回)，则不点亮后续
-				isCosigned := false
-				if nodeDef, exists := nodesMap[task.NodeID]; exists && nodeDef.IsCosigned == 1 {
-					isCosigned = true
-				} else if task.IsCosigned == 1 {
-					isCosigned = true
-				}
-
-				if isCosigned && myStats != nil {
-					// 必须 Status=1 的数量等于总数，才算完全通过
-					if myStats.Passed < myStats.Total {
-						continue
-					}
-				}
-
-				// 场景2：回退重做 (Loop-back / Different Batch)
-				// 如果当前节点上有其他 Batch 处于 Pending 状态，说明流程回退到了这里 -> 阻塞旧路径
-				hasOtherPending := false
-				for batchCode, stats := range batches {
-					if batchCode != task.BatchCode && stats.Pending > 0 {
-						hasOtherPending = true
-						break
-					}
-				}
-				if hasOtherPending {
-					continue
-				}
+		// 2.3 处理出边 (Forward Look-ahead)
+		// 业务规则：必须有效通过 (会签全完) 且无回退 (无更新的Pending批次)
+		if analyzer.IsBatchEffectivelyPassed(task) {
+			if analyzer.HasNewerBatchPending(task.NodeID, task.BatchCode) {
+				continue
 			}
 
-			nextIDs := effectiveGraph[task.NodeID]
-			for _, nextID := range nextIDs {
-				// 记录边，并递归点亮后续的纯网关路径
-				s.lightUpForward(task.NodeID, nextID, litEdges, nodesMap, effectiveGraph)
+			// 探索后续节点
+			nextNodes := topology.ResolveNextNodes(task.NodeID)
+			for _, nextID := range nextNodes {
+				s.lightUpForward(task.NodeID, nextID, litEdges, nodesMap, topology.effectiveGraph)
 			}
 		}
 	}

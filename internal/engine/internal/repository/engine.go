@@ -35,8 +35,8 @@ type ProcessEngineRepository interface {
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
 	// GetProxyNodeByProcessInstId 通过流程实例ID获取 proxy 节点
 	GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (model.Task, error)
-	// DeleteProxyNode 删除 proxy 节点任务记录
-	DeleteProxyNode(ctx context.Context, processInstId int) error
+	// DeleteProxyNodeByNodeId 删除指定 proxy 节点任务记录
+	DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
@@ -57,8 +57,8 @@ func (repo *processEngineRepository) GetProxyNodeByProcessInstId(ctx context.Con
 	return repo.engineDao.GetProxyNodeByProcessInstId(ctx, processInstId)
 }
 
-func (repo *processEngineRepository) DeleteProxyNode(ctx context.Context, processInstId int) error {
-	return repo.engineDao.DeleteProxyNode(ctx, processInstId)
+func (repo *processEngineRepository) DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error {
+	return repo.engineDao.DeleteProxyNodeByNodeId(ctx, nodeId)
 }
 
 func (repo *processEngineRepository) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {

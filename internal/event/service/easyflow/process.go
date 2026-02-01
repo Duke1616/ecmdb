@@ -364,7 +364,7 @@ func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *mode
 	// 4. 删除 proxy 节点
 	// NOTE: 驳回发生时，Proxy 节点已经完成了它的历史使命，需要删除，防止干扰后续流程
 	// 这与 EventUserNodeRejectProxyCleanup 的目的类似
-	err = e.engineSvc.DeleteProxyNode(ctx, taskInfo.ProcInstID)
+	err = e.engineSvc.DeleteProxyNodeByNodeId(ctx, proxyTask.NodeID)
 	if err != nil {
 		e.logger.Error("删除 proxy 节点失败", elog.FieldErr(err))
 		// 删除失败不阻断主流程，因为 prev_node_id 已经修改成功，流程回退路径已修正
@@ -417,7 +417,8 @@ func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *
 
 	// 3. 删除 proxy 节点任务记录
 	// NOTE: 修改状态无法阻止工作流引擎的判断，必须直接删除任务记录
-	err = e.engineSvc.DeleteProxyNode(ctx, taskInfo.ProcInstID)
+	// 这里使用获取到的 proxyNodeID 进行精确删除
+	err = e.engineSvc.DeleteProxyNodeByNodeId(ctx, proxyNodeID)
 	if err != nil {
 		e.logger.Error("删除 proxy 节点任务记录失败", elog.FieldErr(err))
 		return err

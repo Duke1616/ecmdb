@@ -39,8 +39,8 @@ type ProcessEngineDAO interface {
 	GetProxyNodeID(ctx context.Context, prevNodeID string) (model.Task, error)
 	// GetProxyNodeByProcessInstId 通过流程实例ID获取 proxy 节点
 	GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (model.Task, error)
-	// DeleteProxyNode 删除 proxy 节点任务记录
-	DeleteProxyNode(ctx context.Context, processInstId int) error
+	// DeleteProxyNodeByNodeId 删除指定 proxy 节点任务记录
+	DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
@@ -72,12 +72,11 @@ func (g *processEngineDAO) GetProxyNodeByProcessInstId(ctx context.Context, proc
 	return node, err
 }
 
-// DeleteProxyNode 删除 proxy 节点任务记录
-func (g *processEngineDAO) DeleteProxyNode(ctx context.Context, processInstId int) error {
-	// NOTE: 删除当前流程实例中的 proxy 节点任务记录
-	// 因为修改状态无法阻止工作流引擎的判断，必须直接删除
+// DeleteProxyNodeByNodeId 删除指定 proxy 节点任务记录
+func (g *processEngineDAO) DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error {
+	// NOTE: 精确删除指定的 proxy 节点，防止误删同一流程实例下其他分支的 proxy 节点
 	return g.db.WithContext(ctx).Table("proc_task").
-		Where("proc_inst_id = ? AND user_id = ?", processInstId, "sys_auto").
+		Where("node_id = ? AND user_id = ?", nodeId, "sys_auto").
 		Delete(&model.Task{}).Error
 }
 

@@ -50,8 +50,8 @@ type Service interface {
 	GetProxyNodeByProcessInstId(ctx context.Context, processInstId int) (string, error)
 	// GetProxyTaskByProcessInstId 通过流程实例ID获取 proxy 节点完整信息
 	GetProxyTaskByProcessInstId(ctx context.Context, processInstId int) (model.Task, error)
-	// DeleteProxyNode 删除 proxy 节点任务记录
-	DeleteProxyNode(ctx context.Context, processInstId int) error
+	// DeleteProxyNodeByNodeId 删除指定 proxy 节点任务记录
+	DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 }
@@ -81,8 +81,8 @@ func (s *service) GetProxyTaskByProcessInstId(ctx context.Context, processInstId
 	return s.repo.GetProxyNodeByProcessInstId(ctx, processInstId)
 }
 
-func (s *service) DeleteProxyNode(ctx context.Context, processInstId int) error {
-	return s.repo.DeleteProxyNode(ctx, processInstId)
+func (s *service) DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error {
+	return s.repo.DeleteProxyNodeByNodeId(ctx, nodeId)
 }
 
 func (s *service) TaskInfo(ctx context.Context, taskId int) (model.Task, error) {

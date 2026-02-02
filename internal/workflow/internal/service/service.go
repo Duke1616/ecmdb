@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
@@ -24,10 +25,12 @@ type Service interface {
 	// FindPassEdgeIds 查找所有已经完成的边id
 	FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error)
 	GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error)
+	GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.LogicFlow, error)
 }
 
 type service struct {
 	repo         repository.WorkflowRepository
+	engineSvc    engine.Service
 	engineCovert easyflow.ProcessEngineConvert
 }
 
@@ -35,9 +38,10 @@ func (s *service) GetAutomationProperty(workflow easyflow.Workflow, nodeId strin
 	return s.engineCovert.GetAutomationProperty(workflow, nodeId)
 }
 
-func NewService(repo repository.WorkflowRepository, engineCovert easyflow.ProcessEngineConvert) Service {
+func NewService(repo repository.WorkflowRepository, engineSvc engine.Service, engineCovert easyflow.ProcessEngineConvert) Service {
 	return &service{
 		repo:         repo,
+		engineSvc:    engineSvc,
 		engineCovert: engineCovert,
 	}
 }
@@ -93,7 +97,22 @@ func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 	}
 
 	// 绑定此流程对应引擎的ID, 为了后续查询数据详情使用
-	return s.repo.UpdateProcessId(ctx, wf.Id, processId)
+	if err = s.repo.UpdateProcessId(ctx, wf.Id, processId); err != nil {
+		return err
+	}
+
+	// Double Check: 获取刚刚创建的流程版本号
+	version, err := s.engineSvc.GetLatestProcessVersion(ctx, processId)
+	if err != nil {
+		return err
+	}
+
+	// 创建快照 (记录此刻的 FlowData 与 ProcessID/Version 的关系)
+	return s.repo.CreateSnapshot(ctx, wf, processId, version)
+}
+
+func (s *service) GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.LogicFlow, error) {
+	return s.repo.FindSnapshot(ctx, processID, version)
 }
 
 func (s *service) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error) {

@@ -39,6 +39,13 @@ type ProcessEngineRepository interface {
 	DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
+
+	// GetInstanceByID 获取流程实例详情 (用于获取版本号)
+	GetInstanceByID(ctx context.Context, processInstId int) (domain.Instance, error)
+	// GetProcessDefineByVersion 获取指定版本的流程定义 (包含历史版本)
+	GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error)
+	// GetLatestProcessVersion 获取流程的最新版本号
+	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
 }
 
 type processEngineRepository struct {
@@ -59,6 +66,22 @@ func (repo *processEngineRepository) GetProxyNodeByProcessInstId(ctx context.Con
 
 func (repo *processEngineRepository) DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error {
 	return repo.engineDao.DeleteProxyNodeByNodeId(ctx, nodeId)
+}
+
+func (repo *processEngineRepository) GetInstanceByID(ctx context.Context, processInstId int) (domain.Instance, error) {
+	inst, err := repo.engineDao.GetInstanceByID(ctx, processInstId)
+	if err != nil {
+		return domain.Instance{}, err
+	}
+	return repo.toDomainByInstance(inst), nil
+}
+
+func (repo *processEngineRepository) GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error) {
+	return repo.engineDao.GetProcessDefineByVersion(ctx, processID, version)
+}
+
+func (repo *processEngineRepository) GetLatestProcessVersion(ctx context.Context, processID int) (int, error) {
+	return repo.engineDao.GetLatestProcessVersion(ctx, processID)
 }
 
 func (repo *processEngineRepository) GetTasksByCurrentNodeId(ctx context.Context, processInstId int, currentNodeId string) ([]model.Task, error) {

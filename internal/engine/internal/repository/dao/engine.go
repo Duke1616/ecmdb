@@ -2,6 +2,8 @@ package dao
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -43,6 +45,13 @@ type ProcessEngineDAO interface {
 	DeleteProxyNodeByNodeId(ctx context.Context, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
+
+	// GetInstanceByID 获取流程实例详情 (用于获取版本号)
+	GetInstanceByID(ctx context.Context, processInstId int) (Instance, error)
+	// GetProcessDefineByVersion 获取指定版本的流程定义 (包含历史版本)
+	GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error)
+	// GetLatestProcessVersion 获取流程的最新版本号
+	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
 }
 
 type processEngineDAO struct {
@@ -317,4 +326,56 @@ type Instance struct {
 	CreateTime      *time.Time `gorm:"column:create_time"`       //创建时间
 	ApprovedBy      string     `gorm:"column:user_id"`           //创建时间
 	Status          int        `gorm:"column:status"`            //0:未完成(审批中) 1:已完成(通过) 2:撤销
+}
+
+func (g *processEngineDAO) GetInstanceByID(ctx context.Context, processInstId int) (Instance, error) {
+	var res Instance
+	err := g.db.WithContext(ctx).Table("proc_inst").Where("id = ?", processInstId).First(&res).Error
+
+	// 如果在活跃表中没找到，尝试去历史表中查找
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = g.db.WithContext(ctx).Table("hist_proc_inst").Where("proc_inst_id = ?", processInstId).First(&res).Error
+	}
+
+	return res, err
+}
+
+func (g *processEngineDAO) GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error) {
+	var resource string
+
+	// 使用 UNION ALL 查询主表和历史表
+	// 优先级：大部分冷数据在 hist 表，热数据在 proc_def 表
+	// SELECT resource FROM (SELECT resource, version FROM proc_def WHERE id=? UNION ALL SELECT resource, version FROM hist_proc_def WHERE proc_id=?) as t WHERE version=? LIMIT 1
+	subQuery1 := g.db.Table("proc_def").Select("resource, version").Where("id = ?", processID)
+	subQuery2 := g.db.Table("hist_proc_def").Select("resource, version").Where("proc_id = ?", processID)
+
+	err := g.db.Table("(?) as t", g.db.Raw("? UNION ALL ?", subQuery1, subQuery2)).
+		Select("resource").
+		Where("version = ?", version).
+		Limit(1).
+		Scan(&resource).Error
+
+	if err != nil {
+		return model.Process{}, err
+	}
+
+	if resource == "" {
+		return model.Process{}, fmt.Errorf("definition for process_id=%d version=%d not found", processID, version)
+	}
+
+	// Parse JSON
+	var process model.Process
+	if err = json.Unmarshal([]byte(resource), &process); err != nil {
+		return model.Process{}, err
+	}
+	return process, nil
+}
+
+func (g *processEngineDAO) GetLatestProcessVersion(ctx context.Context, processID int) (int, error) {
+	var version int
+	err := g.db.WithContext(ctx).Table("proc_def").
+		Select("version").
+		Where("id = ?", processID).
+		Scan(&version).Error
+	return version, err
 }

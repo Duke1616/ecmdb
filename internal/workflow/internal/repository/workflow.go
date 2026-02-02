@@ -18,16 +18,21 @@ type WorkflowRepository interface {
 	Find(ctx context.Context, id int64) (domain.Workflow, error)
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, error)
 	CountByKeyword(ctx context.Context, keyword string) (int64, error)
+	// Snapshot
+	CreateSnapshot(ctx context.Context, workflow domain.Workflow, processID, processVersion int) error
+	FindSnapshot(ctx context.Context, processID, processVersion int) (domain.LogicFlow, error)
 }
 
-func NewWorkflowRepository(dao dao.WorkflowDAO) WorkflowRepository {
+func NewWorkflowRepository(dao dao.WorkflowDAO, snapshotDao dao.SnapshotDAO) WorkflowRepository {
 	return &workflowRepository{
-		dao: dao,
+		dao:         dao,
+		snapshotDao: snapshotDao,
 	}
 }
 
 type workflowRepository struct {
-	dao dao.WorkflowDAO
+	dao         dao.WorkflowDAO
+	snapshotDao dao.SnapshotDAO
 }
 
 func (repo *workflowRepository) Create(ctx context.Context, req domain.Workflow) (int64, error) {
@@ -87,6 +92,31 @@ func (repo *workflowRepository) FindByKeyword(ctx context.Context, keyword strin
 
 func (repo *workflowRepository) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
 	return repo.dao.CountByKeyword(ctx, keyword)
+}
+
+func (repo *workflowRepository) CreateSnapshot(ctx context.Context, workflow domain.Workflow, processID, processVersion int) error {
+	return repo.snapshotDao.Create(ctx, dao.Snapshot{
+		WorkflowID:     int(workflow.Id),
+		ProcessID:      processID,
+		ProcessVersion: processVersion,
+		Name:           workflow.Name,
+		FlowData: dao.LogicFlow{
+			Edges: workflow.FlowData.Edges,
+			Nodes: workflow.FlowData.Nodes,
+		},
+	})
+}
+
+func (repo *workflowRepository) FindSnapshot(ctx context.Context, processID, processVersion int) (domain.LogicFlow, error) {
+	s, err := repo.snapshotDao.FindByProcess(ctx, processID, processVersion)
+	if err != nil {
+		return domain.LogicFlow{}, err
+	}
+
+	return domain.LogicFlow{
+		Edges: s.FlowData.Edges,
+		Nodes: s.FlowData.Nodes,
+	}, nil
 }
 
 func (repo *workflowRepository) toDomain(req dao.Workflow) domain.Workflow {

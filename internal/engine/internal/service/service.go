@@ -58,10 +58,28 @@ type Service interface {
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 	// GetTraversedEdges 获取已流转的边
 	GetTraversedEdges(ctx context.Context, processInstId, processId int, status uint8) (map[string][]string, error)
+	// GetInstanceByID 获取流程实例详情 (用于获取版本号)
+	GetInstanceByID(ctx context.Context, processInstId int) (domain.Instance, error)
+	// GetProcessDefineByVersion 获取指定版本的流程定义 (包含历史版本)
+	GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error)
+	// GetLatestProcessVersion 获取流程的最新版本号
+	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
 }
 
 type service struct {
 	repo repository.ProcessEngineRepository
+}
+
+func (s *service) GetInstanceByID(ctx context.Context, processInstId int) (domain.Instance, error) {
+	return s.repo.GetInstanceByID(ctx, processInstId)
+}
+
+func (s *service) GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error) {
+	return s.repo.GetProcessDefineByVersion(ctx, processID, version)
+}
+
+func (s *service) GetLatestProcessVersion(ctx context.Context, processID int) (int, error) {
+	return s.repo.GetLatestProcessVersion(ctx, processID)
 }
 
 func (s *service) GetProxyPrevNodeID(ctx context.Context, prevNodeID string) (string, error) {
@@ -229,12 +247,22 @@ func (s *service) ListByStartUser(ctx context.Context, userId, processName strin
 }
 
 func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processId int, status uint8) (map[string][]string, error) {
+	// 1. 获取任务历史记录
 	record, _, err := s.TaskRecord(ctx, processInstId, 0, 1000)
 	if err != nil {
 		return nil, err
 	}
 
-	define, err := engine.GetProcessDefine(processId)
+	// 2. 获取流程实例详情，拿到对应的版本号
+	inst, err := s.repo.GetInstanceByID(ctx, processInstId)
+	if err != nil {
+		// 降级：如果查不到实例（不应该发生），则尝试直接查最新版
+		// 但这里为了稳健，如果报错直接返回
+		return nil, err
+	}
+
+	// 3. 根据版本号获取流程定义（支持历史版本回溯）
+	define, err := s.repo.GetProcessDefineByVersion(ctx, processId, inst.ProcVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ var ProviderSet = wire.NewSet(
 	service.NewService,
 	repository.NewWorkflowRepository,
 	dao.NewWorkflowDAO,
+	dao.NewSnapshotDAO,
 	easyflow.NewLogicFlowToEngineConvert,
 )
 

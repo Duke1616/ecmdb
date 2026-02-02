@@ -251,12 +251,21 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 	// 存储截图的 buffer
 	var buf []byte
 
+	// 1. 获取工单详情
 	orderDetail, err := c.Svc.Detail(taskCtx, orderId)
 	if err != nil {
 		return err
 	}
 
-	wf, err := c.workflowSvc.Find(taskCtx, orderDetail.WorkflowId)
+	// 2. 获取流程实例详情，拿到对应的版本号
+	inst, err := c.engineSvc.GetInstanceByID(taskCtx, orderDetail.Process.InstanceId)
+	if err != nil {
+		return err
+	}
+
+	// 3. 尝试获取历史快照 (Version-Aware)
+	// 3. 尝试获取历史快照 (Version-Aware)
+	wf, err := c.workflowSvc.FindInstanceFlow(taskCtx, orderDetail.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
 		return err
 	}

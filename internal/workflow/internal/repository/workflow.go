@@ -9,18 +9,28 @@ import (
 )
 
 type WorkflowRepository interface {
+	// Create 创建流程定义
 	Create(ctx context.Context, req domain.Workflow) (int64, error)
+	// List 分页查询流程定义列表
 	List(ctx context.Context, offset, limit int64) ([]domain.Workflow, error)
+	// Total 统计流程定义总数
 	Total(ctx context.Context) (int64, error)
+	// Update 更新流程定义
 	Update(ctx context.Context, req domain.Workflow) (int64, error)
+	// UpdateProcessId 绑定流程引擎ID
 	UpdateProcessId(ctx context.Context, id int64, processId int) error
+	// Delete 删除流程定义
 	Delete(ctx context.Context, id int64) (int64, error)
+	// Find 根据ID查询流程定义
 	Find(ctx context.Context, id int64) (domain.Workflow, error)
+	// FindByKeyword 根据关键字搜索流程
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, error)
+	// CountByKeyword 根据关键字统计流程总数
 	CountByKeyword(ctx context.Context, keyword string) (int64, error)
-	// Snapshot
+	// CreateSnapshot 创建流程快照
 	CreateSnapshot(ctx context.Context, workflow domain.Workflow, processID, processVersion int) error
-	FindSnapshot(ctx context.Context, processID, processVersion int) (domain.LogicFlow, error)
+	// FindSnapshot 查找流程快照
+	FindSnapshot(ctx context.Context, processID, processVersion int) (domain.Workflow, error)
 }
 
 func NewWorkflowRepository(dao dao.WorkflowDAO, snapshotDao dao.SnapshotDAO) WorkflowRepository {
@@ -107,15 +117,20 @@ func (repo *workflowRepository) CreateSnapshot(ctx context.Context, workflow dom
 	})
 }
 
-func (repo *workflowRepository) FindSnapshot(ctx context.Context, processID, processVersion int) (domain.LogicFlow, error) {
+func (repo *workflowRepository) FindSnapshot(ctx context.Context, processID, processVersion int) (domain.Workflow, error) {
 	s, err := repo.snapshotDao.FindByProcess(ctx, processID, processVersion)
 	if err != nil {
-		return domain.LogicFlow{}, err
+		return domain.Workflow{}, err
 	}
 
-	return domain.LogicFlow{
-		Edges: s.FlowData.Edges,
-		Nodes: s.FlowData.Nodes,
+	return domain.Workflow{
+		Id:        int64(s.WorkflowID),
+		ProcessId: s.ProcessID,
+		Name:      s.Name,
+		FlowData: domain.LogicFlow{
+			Edges: s.FlowData.Edges,
+			Nodes: s.FlowData.Nodes,
+		},
 	}, nil
 }
 

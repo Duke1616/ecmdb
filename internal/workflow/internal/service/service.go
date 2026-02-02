@@ -12,20 +12,28 @@ import (
 )
 
 type Service interface {
+	// Create 创建流程定义
 	Create(ctx context.Context, req domain.Workflow) (int64, error)
+	// List 分页查询流程定义列表
 	List(ctx context.Context, offset, limit int64) ([]domain.Workflow, int64, error)
+	// Find 根据ID查询流程定义（返回最新版元数据）
 	Find(ctx context.Context, id int64) (domain.Workflow, error)
+	// Update 更新流程定义
 	Update(ctx context.Context, req domain.Workflow) (int64, error)
+	// Delete 删除流程定义
 	Delete(ctx context.Context, id int64) (int64, error)
+	// Deploy 发布流程到引擎并创建快照
 	Deploy(ctx context.Context, flow domain.Workflow) error
-
 	// FindByKeyword 根据关键字搜索流程
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error)
-
 	// FindPassEdgeIds 查找所有已经完成的边id
 	FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error)
+	// GetAutomationProperty 获取指定节点的自动化属性配置
 	GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error)
-	GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.LogicFlow, error)
+	// GetWorkflowSnapshot 获取指定版本的流程快照（原子语义，直接返回快照数据）
+	GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.Workflow, error)
+	// FindInstanceFlow 获取流程实例对应的流程定义（包含历史快照回溯与降级逻辑）
+	FindInstanceFlow(ctx context.Context, workflowID int64, processID, version int) (domain.Workflow, error)
 }
 
 type service struct {
@@ -111,8 +119,31 @@ func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 	return s.repo.CreateSnapshot(ctx, wf, processId, version)
 }
 
-func (s *service) GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.LogicFlow, error) {
+func (s *service) GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.Workflow, error) {
 	return s.repo.FindSnapshot(ctx, processID, version)
+}
+
+func (s *service) FindInstanceFlow(ctx context.Context, workflowID int64, processID, version int) (domain.Workflow, error) {
+	// 1. 获取最新版元数据
+	latest, err := s.Find(ctx, workflowID)
+	// 如果主记录找不到了，尝试纯靠快照恢复
+	if err != nil {
+		snapshot, snapErr := s.repo.FindSnapshot(ctx, processID, version)
+		if snapErr != nil {
+			return domain.Workflow{}, err
+		}
+		// 此时 snapshot 已经是 domain.Workflow 类型
+		return snapshot, nil
+	}
+
+	// 2. 尝试读取锁定的快照
+	snapshot, err := s.repo.FindSnapshot(ctx, processID, version)
+	if err == nil {
+		// 覆盖 FlowData (Snapshot 现在是 domain.Workflow)
+		latest.FlowData = snapshot.FlowData
+	}
+
+	return latest, nil
 }
 
 func (s *service) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error) {

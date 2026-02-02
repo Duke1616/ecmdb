@@ -56,6 +56,7 @@ func (c *ProcessEventConsumer) Consume(ctx context.Context) error {
 	if err = json.Unmarshal(cm.Value, &evt); err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
+	// 启动新流程实例时，应当使用最新的流程定义，因此这里直接Find最新版是正确的。
 	flow, err := c.workFlowSvc.Find(ctx, evt.WorkflowId)
 	if err != nil {
 		return fmt.Errorf("查询流程信息失败: %w", err)

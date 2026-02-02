@@ -15,14 +15,23 @@ const (
 )
 
 type WorkflowDAO interface {
+	// Create 创建流程定义
 	Create(ctx context.Context, w Workflow) (int64, error)
+	// List 分页查询流程定义列表
 	List(ctx context.Context, offset, limit int64) ([]Workflow, error)
+	// Count 统计流程定义总数
 	Count(ctx context.Context) (int64, error)
+	// Update 更新流程定义
 	Update(ctx context.Context, c Workflow) (int64, error)
+	// UpdateProcessId 绑定流程引擎ID
 	UpdateProcessId(ctx context.Context, id int64, processId int) error
+	// Delete 删除流程定义
 	Delete(ctx context.Context, id int64) (int64, error)
+	// Find 根据ID查询流程定义
 	Find(ctx context.Context, id int64) (Workflow, error)
+	// FindByKeyword 根据关键字搜索流程
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Workflow, error)
+	// CountByKeyword 根据关键字统计流程总数
 	CountByKeyword(ctx context.Context, keyword string) (int64, error)
 }
 
@@ -172,10 +181,10 @@ type LogicFlow struct {
 
 func (dao *workflowDAO) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Workflow, error) {
 	col := dao.db.Collection(WorkFlowCollection)
-	
+
 	// 默认为空查询
 	filter := bson.M{}
-	
+
 	// 如果关键字不为空，则添加过滤条件
 	if keyword != "" {
 		filter["$or"] = []bson.M{
@@ -183,7 +192,7 @@ func (dao *workflowDAO) FindByKeyword(ctx context.Context, keyword string, offse
 			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
 		}
 	}
-	
+
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -208,10 +217,10 @@ func (dao *workflowDAO) FindByKeyword(ctx context.Context, keyword string, offse
 
 func (dao *workflowDAO) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
 	col := dao.db.Collection(WorkFlowCollection)
-	
+
 	// 默认为空查询
 	filter := bson.M{}
-	
+
 	// 如果关键字不为空，则添加过滤条件
 	if keyword != "" {
 		filter["$or"] = []bson.M{
@@ -219,11 +228,11 @@ func (dao *workflowDAO) CountByKeyword(ctx context.Context, keyword string) (int
 			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
 		}
 	}
-	
+
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
-	
+
 	return count, nil
 }

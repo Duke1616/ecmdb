@@ -14,7 +14,9 @@ const (
 )
 
 type SnapshotDAO interface {
+	// Create 创建快照记录
 	Create(ctx context.Context, snapshot Snapshot) error
+	// FindByProcess 根据流程引擎ID和版本号查找快照
 	FindByProcess(ctx context.Context, processID, version int) (Snapshot, error)
 }
 

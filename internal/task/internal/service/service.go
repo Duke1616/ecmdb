@@ -313,13 +313,19 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return s.handleTaskError(ctx, task.Id, "获取工单失败", domain.FAILED, err)
 	}
 
-	// 2. 获取流程信息
-	flow, err := s.workflowSvc.Find(ctx, orderResp.WorkflowId)
+	// 2. 获取流程实例详情，拿到对应的版本号
+	inst, err := s.engineSvc.GetInstanceByID(ctx, task.ProcessInstId)
+	if err != nil {
+		return s.handleTaskError(ctx, task.Id, "获取流程实例失败", domain.FAILED, err)
+	}
+
+	// 3. 尝试获取历史快照 (Version-Aware)
+	flow, err := s.workflowSvc.FindInstanceFlow(ctx, orderResp.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
 		return s.handleTaskError(ctx, task.Id, "获取流程信息失败", domain.FAILED, err)
 	}
 
-	// 3. 获取自动化配置
+	// 4. 获取自动化配置
 	automation, err := s.getAutomationProperties(ctx, flow, task)
 	if err != nil {
 		return s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)

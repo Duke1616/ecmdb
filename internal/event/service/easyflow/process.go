@@ -467,8 +467,15 @@ func (e *ProcessEvent) fetchOrderAndWorkflow(ctx context.Context, processInstanc
 		return order.Order{}, workflow.Workflow{}, err
 	}
 
-	// 获取流程信息
-	wf, err := e.workflowSvc.Find(ctx, nOrder.WorkflowId)
+	// 获取流程实例详情，拿到对应的版本号
+	inst, err := e.engineSvc.GetInstanceByID(ctx, processInstanceID)
+	if err != nil {
+		return order.Order{}, workflow.Workflow{}, err
+	}
+
+	// 3. 尝试获取历史快照 (Version-Aware)
+	// 获取流程信息 (自动处理快照与降级)
+	wf, err := e.workflowSvc.FindInstanceFlow(ctx, nOrder.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
 		e.logger.Error("查询流程信息错误",
 			elog.FieldErr(err),

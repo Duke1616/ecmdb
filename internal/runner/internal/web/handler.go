@@ -81,6 +81,7 @@ func (h *Handler) ListByIds(ctx *gin.Context, req ListRunnerByIds) (ginx.Result,
 }
 
 func (h *Handler) ListByWorkflowId(ctx *gin.Context, req ListByWorkflowIdReq) (ginx.Result, error) {
+	// 获取最新版的工作流定义，用于配置/管理场景
 	wf, err := h.workflowSvc.Find(ctx, req.WorkflowId)
 	if err != nil {
 		return systemErrorResult, err

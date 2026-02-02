@@ -129,30 +129,16 @@ func (h *Handler) Delete(ctx *gin.Context, req DeleteReq) (ginx.Result, error) {
 }
 
 func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Result, error) {
-	// 1. 获取基本信息
-	flow, err := h.svc.Find(ctx, req.Id)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	// 2. 获取流程实例详情，拿到对应的版本号
+	// 1. 获取流程实例详情，拿到对应的版本号
 	inst, err := h.engineSvc.GetInstanceByID(ctx, req.ProcessInstanceId)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	// 3. 尝试获取历史快照 (Version-Aware)
-	snapshot, err := h.svc.GetWorkflowSnapshot(ctx, inst.ProcID, inst.ProcVersion)
-	if err == nil && len(snapshot.Nodes) > 0 {
-		// 如果找到了快照，使用快照的数据覆盖当前 FlowData
-		// 这样保证前端渲染的图结构(Nodes/Edges)与工单当时的实际结构一致
-		flow.FlowData = snapshot
-	} else {
-		// 如果没找到快照 (说明是旧数据)，这里做一个降级处理：
-		// 继续使用 flow.FlowData (最新版)，虽然可能不准，但比空白强。
-		// 在日志里记录一下
-		h.logger.Info("快照没有找到, 降级处理，使用最新版的 FLowData", elog.Int("ProcessID", inst.ProcID),
-			elog.Int("Version", inst.ProcVersion))
+	// 2. 获取历史快照 (Version-Aware)
+	flow, err := h.svc.FindInstanceFlow(ctx, req.Id, inst.ProcID, inst.ProcVersion)
+	if err != nil {
+		return ginx.Result{}, err
 	}
 
 	// 4. 获取点亮的边

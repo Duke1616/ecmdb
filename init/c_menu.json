@@ -931,7 +931,7 @@
     "_id": "66bdb7c0ce7b5a67a43e8c83",
     "component": "",
     "ctime": "1723709376232",
-    "endpoints": "[ { \"path\" : \"/api/order/start/user\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/by_ids\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/template/by_ids\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/start/user\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "89",
     "meta": "{ \"title\" : \"我的工单\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "my_order",
@@ -941,23 +941,23 @@
     "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1770033386186"
   },
   {
     "_id": "66bdb801ce7b5a67a43e8c84",
     "component": "",
     "ctime": "1723709441243",
-    "endpoints": "[ { \"path\" : \"/api/order/detail/process_inst_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/task/record\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/graph\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/order/task/form_config\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/detail/process_inst_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/task/record\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/graph\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "90",
     "meta": "{ \"title\" : \"工单详情\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "detail_order",
     "path": "",
     "pid": "32",
     "redirect": "",
-    "sort": "2",
+    "sort": "5",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1770033409964"
   },
   {
     "_id": "66bdb876ce7b5a67a43e8c86",
@@ -970,10 +970,10 @@
     "path": "",
     "pid": "32",
     "redirect": "",
-    "sort": "3",
+    "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1770033391648"
   },
   {
     "_id": "66bdb89bce7b5a67a43e8c87",
@@ -986,10 +986,10 @@
     "path": "",
     "pid": "32",
     "redirect": "",
-    "sort": "4",
+    "sort": "3",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1770033402101"
   },
   {
     "_id": "66bdb900ce7b5a67a43e8c89",
@@ -2122,10 +2122,10 @@
     "path": "",
     "pid": "32",
     "redirect": "",
-    "sort": "5",
+    "sort": "4",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1770033406827"
   },
   {
     "_id": "68c57a12175628f9c3ab47ba",

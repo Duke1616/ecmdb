@@ -25,6 +25,12 @@ type AttributeGroupDAO interface {
 
 	// ListAttributeGroupByIds 根据 IDS 获取组信息
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]AttributeGroup, error)
+
+	// DeleteAttributeGroup 删除属性组
+	DeleteAttributeGroup(ctx context.Context, id int64) (int64, error)
+
+	// RenameAttributeGroup 重命名属性组
+	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
 }
 
 type attributeGroupDAO struct {
@@ -125,6 +131,36 @@ func (dao *attributeGroupDAO) ListAttributeGroupByIds(ctx context.Context, ids [
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 	return result, nil
+}
+
+func (dao *attributeGroupDAO) DeleteAttributeGroup(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(AttributeGroupCollection)
+	filter := bson.M{"id": id}
+
+	res, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除属性组错误: %w", err)
+	}
+
+	return res.DeletedCount, nil
+}
+
+func (dao *attributeGroupDAO) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
+	col := dao.db.Collection(AttributeGroupCollection)
+	filter := bson.M{"id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"name":  name,
+			"utime": time.Now().UnixMilli(),
+		},
+	}
+
+	res, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("重命名属性组错误: %w", err)
+	}
+
+	return res.ModifiedCount, nil
 }
 
 type AttributeGroup struct {

@@ -30,6 +30,9 @@ type RelationResourceService interface {
 
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+
+	// CountByRelationTypeUID 根据关联类型 UID 获取数量
+	CountByRelationTypeUID(ctx context.Context, uid string) (int64, error)
 }
 
 type resourceService struct {
@@ -134,4 +137,8 @@ func (s *resourceService) DeleteDstRelation(ctx context.Context, resourceId int6
 
 func (s *resourceService) DeleteResourceRelation(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteResourceRelation(ctx, id)
+}
+
+func (s *resourceService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	return s.repo.CountByRelationTypeUID(ctx, uid)
 }

@@ -30,6 +30,12 @@ type RelationModelRepository interface {
 
 	// FindModelDiagramBySrcUids 查询模型关联关系，绘制拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
+
+	// CountByRelationTypeUID 根据关联类型 UID 获取数量
+	CountByRelationTypeUID(ctx context.Context, uid string) (int64, error)
+
+	// GetByID 根据 ID 获取数据
+	GetByID(ctx context.Context, id int64) (domain.ModelRelation, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -114,4 +120,13 @@ func (r *modelRepository) toDomain(modelDao dao.ModelRelation) domain.ModelRelat
 		Ctime:           time.UnixMilli(modelDao.Ctime),
 		Utime:           time.UnixMilli(modelDao.Utime),
 	}
+}
+
+func (r *modelRepository) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	return r.dao.CountByRelationTypeUid(ctx, uid)
+}
+
+func (r *modelRepository) GetByID(ctx context.Context, id int64) (domain.ModelRelation, error) {
+	val, err := r.dao.GetByID(ctx, id)
+	return r.toDomain(val), err
 }

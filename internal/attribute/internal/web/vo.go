@@ -22,6 +22,15 @@ type CreateAttributeGroup struct {
 	Index    int64  `json:"index"`
 }
 
+type DeleteAttributeGroupReq struct {
+	ID int64 `json:"id"`
+}
+
+type RenameAttributeGroupReq struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
 type ListAttributeGroupReq struct {
 	ModelUid string `json:"model_uid"`
 }

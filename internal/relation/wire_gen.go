@@ -23,7 +23,11 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 	relationModelService := InitRMService(db)
 	relationTypeDAO := InitRelationTypeDAO(db)
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
-	relationTypeService := service.NewRelationTypeService(relationTypeRepository)
+	relationModelDAO := initRmDAO(db)
+	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
+	relationResourceDAO := intRrDAO(db)
+	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
+	relationTypeService := service.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
 	relationResourceHandler := web.NewRelationResourceHandler(relationResourceService)
 	relationModelHandler := web.NewRelationModelHandler(relationModelService)
 	relationTypeHandler := web.NewRelationTypeHandler(relationTypeService)
@@ -41,7 +45,9 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 func InitRMService(db *mongox.Mongo) service.RelationModelService {
 	relationModelDAO := initRmDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
-	relationModelService := service.NewRelationModelService(relationModelRepository)
+	relationResourceDAO := intRrDAO(db)
+	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
+	relationModelService := service.NewRelationModelService(relationModelRepository, relationResourceRepository)
 	return relationModelService
 }
 
@@ -54,7 +60,9 @@ func InitRRService(db *mongox.Mongo) service.RelationResourceService {
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, web.NewRelationTypeHandler, service.NewRelationTypeService, repository.NewRelationTypeRepository)
+var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, web.NewRelationTypeHandler, service.NewRelationTypeService, repository.NewRelationTypeRepository, repository.NewRelationModelRepository, repository.NewRelationResourceRepository, initRmDAO,
+	intRrDAO,
+)
 
 var (
 	rmDaoOnce = sync.Once{}

@@ -59,6 +59,12 @@ type Service interface {
 
 	// BatchCreateAttributeGroup 批量创建组
 	BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error)
+
+	// DeleteAttributeGroup 删除模型字段组
+	DeleteAttributeGroup(ctx context.Context, id int64) (int64, error)
+
+	// RenameAttributeGroup 重命名属性组
+	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
 }
 
 type service struct {
@@ -233,4 +239,17 @@ func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
 		Secure:    false,
 		Builtin:   true,
 	}
+}
+
+func (s *service) DeleteAttributeGroup(ctx context.Context, id int64) (int64, error) {
+	// 1. 删除组下的所有 Attributes
+	if _, err := s.repo.DeleteByGroupId(ctx, id); err != nil {
+		return 0, err
+	}
+	// 2. 删除 Group
+	return s.groupRepo.DeleteAttributeGroup(ctx, id)
+}
+
+func (s *service) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
+	return s.groupRepo.RenameAttributeGroup(ctx, id, name)
 }

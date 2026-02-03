@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository"
@@ -31,19 +32,24 @@ type RelationModelService interface {
 
 	// FindModelDiagramBySrcUids 查询模型关联关系，绘制拓扑图
 	FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error)
+
+	// CountByRelationTypeUID 根据关联类型 UID 获取数量
+	CountByRelationTypeUID(ctx context.Context, uid string) (int64, error)
 }
 
 type modelService struct {
-	repo repository.RelationModelRepository
+	repo         repository.RelationModelRepository
+	resourceRepo repository.RelationResourceRepository
 }
 
 func (s *modelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	return s.repo.TotalByModelUid(ctx, modelUid)
 }
 
-func NewRelationModelService(repo repository.RelationModelRepository) RelationModelService {
+func NewRelationModelService(repo repository.RelationModelRepository, resourceRepo repository.RelationResourceRepository) RelationModelService {
 	return &modelService{
-		repo: repo,
+		repo:         repo,
+		resourceRepo: resourceRepo,
 	}
 }
 
@@ -89,5 +95,22 @@ func (s *modelService) FindModelDiagramBySrcUids(ctx context.Context, srcUids []
 }
 
 func (s *modelService) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
+	mr, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := s.resourceRepo.CountByRelationName(ctx, mr.RelationName)
+	if err != nil {
+		return 0, err
+	}
+	if count > 0 {
+		return 0, fmt.Errorf("%w: 关联关系正在被 %d 个资源关联数据使用，无法删除", ErrDependency, count)
+	}
+
 	return s.repo.DeleteModelRelation(ctx, id)
+}
+
+func (s *modelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	return s.repo.CountByRelationTypeUID(ctx, uid)
 }

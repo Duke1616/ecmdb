@@ -89,6 +89,11 @@ type DeleteModelGroup struct {
 	ID int64 `json:"id"`
 }
 
+type RenameModelGroupReq struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
 type ModelLine struct {
 	From string `json:"from"`
 	To   string `json:"to"`

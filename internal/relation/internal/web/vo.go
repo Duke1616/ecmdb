@@ -23,6 +23,17 @@ type CreateRelationTypeReq struct {
 	TargetDescribe string `json:"target_describe"`
 }
 
+type UpdateRelationTypeReq struct {
+	ID             int64  `json:"id"`
+	Name           string `json:"name"`
+	SourceDescribe string `json:"source_describe"`
+	TargetDescribe string `json:"target_describe"`
+}
+
+type DeleteRelationTypeReq struct {
+	Id int64 `json:"id"`
+}
+
 type Page struct {
 	Offset int64 `json:"offset,omitempty"`
 	Limit  int64 `json:"limit,omitempty"`

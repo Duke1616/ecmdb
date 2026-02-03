@@ -32,6 +32,9 @@ type ModelGroupDAO interface {
 
 	// Delete 删除分组
 	Delete(ctx context.Context, id int64) (int64, error)
+
+	// Rename 重命名分组
+	Rename(ctx context.Context, id int64, name string) (int64, error)
 }
 
 func NewModelGroupDAO(db *mongox.Mongo) ModelGroupDAO {
@@ -173,4 +176,20 @@ func (dao *groupDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64
 	}
 
 	return mg.Id, nil
+}
+
+func (dao *groupDAO) Rename(ctx context.Context, id int64, name string) (int64, error) {
+	col := dao.db.Collection(ModelGroupCollection)
+	filter := bson.M{"id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"name":  name,
+			"utime": time.Now().UnixMilli(),
+		},
+	}
+	res, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("模型组重命名失败: %w", err)
+	}
+	return res.ModifiedCount, nil
 }

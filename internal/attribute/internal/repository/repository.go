@@ -45,6 +45,9 @@ type AttributeRepository interface {
 
 	// DetailAttribute 根据 ID 查看详情属性
 	DetailAttribute(ctx context.Context, id int64) (domain.Attribute, error)
+
+	// DeleteByGroupId 根据分组ID删除所有属性
+	DeleteByGroupId(ctx context.Context, groupId int64) (int64, error)
 }
 
 type attributeRepository struct {
@@ -108,6 +111,10 @@ func (repo *attributeRepository) CustomAttributeFieldColumnsReverse(ctx *gin.Con
 
 func (repo *attributeRepository) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
 	return repo.dao.DeleteAttribute(ctx, id)
+}
+
+func (repo *attributeRepository) DeleteByGroupId(ctx context.Context, groupId int64) (int64, error) {
+	return repo.dao.DeleteByGroupId(ctx, groupId)
 }
 
 func (repo *attributeRepository) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {

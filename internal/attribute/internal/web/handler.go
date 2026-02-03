@@ -25,6 +25,8 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/group/create", ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup))
 	g.POST("/group/list", ginx.WrapBody[ListAttributeGroupReq](h.ListAttributeGroup))
 	g.POST("/group/ids", ginx.WrapBody[ListAttributeGroupByIdsReq](h.ListAttributeGroupByIds))
+	g.POST("/group/delete", ginx.WrapBody[DeleteAttributeGroupReq](h.DeleteAttributeGroup))
+	g.POST("/group/rename", ginx.WrapBody[RenameAttributeGroupReq](h.RenameAttributeGroup))
 
 	// 字段操作
 	g.POST("/create", ginx.WrapBody[CreateAttributeReq](h.CreateAttribute))
@@ -158,6 +160,27 @@ func (h *Handler) CreateAttributeGroup(ctx *gin.Context, req CreateAttributeGrou
 	return ginx.Result{
 		Data: id,
 		Msg:  "添加模型属性成功",
+	}, nil
+}
+
+func (h *Handler) DeleteAttributeGroup(ctx *gin.Context, req DeleteAttributeGroupReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteAttributeGroup(ctx, req.ID)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Data: count,
+		Msg:  "删除属性分组成功",
+	}, nil
+}
+
+func (h *Handler) RenameAttributeGroup(ctx *gin.Context, req RenameAttributeGroupReq) (ginx.Result, error) {
+	_, err := h.svc.RenameAttributeGroup(ctx, req.ID, req.Name)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "重命名属性分组成功",
 	}, nil
 }
 

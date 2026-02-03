@@ -24,6 +24,15 @@ type RelationTypeRepository interface {
 
 	// Total 数量
 	Total(ctx context.Context) (int64, error)
+
+	// Update 更新关联类型
+	Update(ctx context.Context, req domain.RelationType) (int64, error)
+
+	// Delete 删除关联类型
+	Delete(ctx context.Context, id int64) (int64, error)
+
+	// GetByID 根据 ID 获取关联类型
+	GetByID(ctx context.Context, id int64) (domain.RelationType, error)
 }
 
 func NewRelationTypeRepository(dao dao.RelationTypeDAO) RelationTypeRepository {
@@ -65,8 +74,22 @@ func (r *relationRepository) Total(ctx context.Context) (int64, error) {
 	return r.dao.Count(ctx)
 }
 
+func (r *relationRepository) Update(ctx context.Context, req domain.RelationType) (int64, error) {
+	return r.dao.Update(ctx, r.toEntity(req))
+}
+
+func (r *relationRepository) Delete(ctx context.Context, id int64) (int64, error) {
+	return r.dao.Delete(ctx, id)
+}
+
+func (r *relationRepository) GetByID(ctx context.Context, id int64) (domain.RelationType, error) {
+	val, err := r.dao.GetByID(ctx, id)
+	return r.toDomain(val), err
+}
+
 func (r *relationRepository) toEntity(req domain.RelationType) dao.RelationType {
 	return dao.RelationType{
+		Id:             req.ID,
 		UID:            req.UID,
 		Name:           req.Name,
 		SourceDescribe: req.SourceDescribe,

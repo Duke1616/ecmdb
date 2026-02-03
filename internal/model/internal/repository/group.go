@@ -29,6 +29,9 @@ type MGRepository interface {
 
 	// DeleteModelGroup 根据 ID 删除模型组
 	DeleteModelGroup(ctx context.Context, id int64) (int64, error)
+
+	// Rename 重命名分组
+	Rename(ctx context.Context, id int64, name string) (int64, error)
 }
 
 type groupRepository struct {
@@ -91,4 +94,8 @@ func (repo *groupRepository) toDomain(modelDao dao.ModelGroup) domain.ModelGroup
 		ID:   modelDao.Id,
 		Name: modelDao.Name,
 	}
+}
+
+func (repo *groupRepository) Rename(ctx context.Context, id int64, name string) (int64, error) {
+	return repo.dao.Rename(ctx, id, name)
 }

@@ -26,6 +26,15 @@ type RelationTypeDAO interface {
 
 	// Count 数量
 	Count(ctx context.Context) (int64, error)
+
+	// Update 更新关联类型
+	Update(ctx context.Context, r RelationType) (int64, error)
+
+	// Delete 删除关联类型
+	Delete(ctx context.Context, id int64) (int64, error)
+
+	// GetByID 根据 ID 获取关联类型
+	GetByID(ctx context.Context, id int64) (RelationType, error)
 }
 
 func NewRelationTypeDAO(db *mongox.Mongo) RelationTypeDAO {
@@ -145,6 +154,44 @@ func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (dao *relationDAO) Update(ctx context.Context, r RelationType) (int64, error) {
+	col := dao.db.Collection(RelationTypeCollection)
+	filter := bson.M{"id": r.Id}
+	update := bson.M{
+		"$set": bson.M{
+			"name":            r.Name,
+			"source_describe": r.SourceDescribe,
+			"target_describe": r.TargetDescribe,
+			"utime":           time.Now().UnixMilli(),
+		},
+	}
+	res, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("更新关联类型失败: %w", err)
+	}
+	return res.ModifiedCount, nil
+}
+
+func (dao *relationDAO) Delete(ctx context.Context, id int64) (int64, error) {
+	col := dao.db.Collection(RelationTypeCollection)
+	filter := bson.M{"id": id}
+	res, err := col.DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("删除关联类型失败: %w", err)
+	}
+	return res.DeletedCount, nil
+}
+
+func (dao *relationDAO) GetByID(ctx context.Context, id int64) (RelationType, error) {
+	col := dao.db.Collection(RelationTypeCollection)
+	filter := bson.M{"id": id}
+	var res RelationType
+	if err := col.FindOne(ctx, filter).Decode(&res); err != nil {
+		return RelationType{}, fmt.Errorf("查询关联类型失败: %w", err)
+	}
+	return res, nil
 }
 
 type RelationType struct {

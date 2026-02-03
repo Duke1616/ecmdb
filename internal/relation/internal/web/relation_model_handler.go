@@ -1,6 +1,8 @@
 package web
 
 import (
+	"errors"
+
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -26,6 +28,7 @@ func (h *RelationModelHandler) PrivateRoute(server *gin.Engine) {
 	// 查询模型拥有的所有关联信息
 	g.POST("/relation/list", ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation))
 
+	// 删除模型关联关系
 	g.POST("/relation/delete", ginx.WrapBody[DeleteModelRelationReq](h.DeleteModelRelation))
 }
 
@@ -62,6 +65,12 @@ func (h *RelationModelHandler) ListModelUIDRelation(ctx *gin.Context, req ListMo
 func (h *RelationModelHandler) DeleteModelRelation(ctx *gin.Context, req DeleteModelRelationReq) (ginx.Result, error) {
 	id, err := h.svc.DeleteModelRelation(ctx, req.Id)
 	if err != nil {
+		if errors.Is(err, service.ErrDependency) {
+			return ginx.Result{
+				Code: 501001,
+				Msg:  err.Error(),
+			}, nil
+		}
 		return systemErrorResult, err
 	}
 

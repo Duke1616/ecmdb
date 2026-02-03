@@ -26,6 +26,9 @@ type MGService interface {
 
 	// Delete 根据 ID 删除模型组
 	Delete(ctx context.Context, id int64) (int64, error)
+
+	// Rename 根据 ID 重命名模型组
+	Rename(ctx context.Context, id int64, name string) (int64, error)
 }
 
 type groupService struct {
@@ -78,4 +81,8 @@ func (s *groupService) Create(ctx context.Context, req domain.ModelGroup) (int64
 
 func (s *groupService) Delete(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteModelGroup(ctx, id)
+}
+
+func (s *groupService) Rename(ctx context.Context, id int64, name string) (int64, error) {
+	return s.repo.Rename(ctx, id, name)
 }

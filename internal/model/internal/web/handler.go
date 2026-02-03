@@ -40,7 +40,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateModelGroup))
 	g.POST("/group/list", ginx.WrapBody[Page](h.ListModelGroups))
 	g.POST("/group/delete", ginx.WrapBody[DeleteModelGroup](h.DeleteModelGroup))
-
+	g.POST("/group/rename", ginx.WrapBody[RenameModelGroupReq](h.RenameModelGroup))
 	// 模型 - 基础操作
 	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
 	g.GET("/detail/:id", ginx.Wrap(h.DetailModel))
@@ -263,6 +263,16 @@ func (h *Handler) DeleteModelGroup(ctx *gin.Context, req DeleteModelGroup) (ginx
 	}
 	return ginx.Result{
 		Data: count,
+	}, nil
+}
+
+func (h *Handler) RenameModelGroup(ctx *gin.Context, req RenameModelGroupReq) (ginx.Result, error) {
+	_, err := h.mgSvc.Rename(ctx, req.ID, req.Name)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "重命名模型分组成功",
 	}, nil
 }
 

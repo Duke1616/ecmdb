@@ -60,7 +60,6 @@ func RunIncrementalOperationsToVersion(currentVersion, targetVersion string) err
 			if err := incrRegistry[v].Before(ctx); err != nil {
 				return fmt.Errorf("版本 %s Before 执行失败: %w", v, err)
 			}
-
 			// 执行 Commit
 			if err := incrRegistry[v].Commit(ctx); err != nil {
 				return fmt.Errorf("版本 %s Commit 执行失败: %w", v, err)

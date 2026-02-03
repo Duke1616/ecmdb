@@ -19,6 +19,10 @@ var ProviderSet = wire.NewSet(
 	web.NewRelationTypeHandler,
 	service.NewRelationTypeService,
 	repository.NewRelationTypeRepository,
+	repository.NewRelationModelRepository,
+	repository.NewRelationResourceRepository,
+	initRmDAO,
+	intRrDAO,
 )
 
 func InitModule(db *mongox.Mongo) (*Module, error) {
@@ -65,7 +69,9 @@ func InitRelationTypeDAO(db *mongox.Mongo) dao.RelationTypeDAO {
 func InitRMService(db *mongox.Mongo) RMSvc {
 	wire.Build(
 		initRmDAO,
+		intRrDAO,
 		repository.NewRelationModelRepository,
+		repository.NewRelationResourceRepository,
 		service.NewRelationModelService,
 	)
 	return nil

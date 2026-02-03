@@ -51,6 +51,9 @@ type AttributeDAO interface {
 
 	// DetailAttribute 根据 ID 查看详情属性
 	DetailAttribute(ctx context.Context, id int64) (Attribute, error)
+
+	// DeleteByGroupId 根据分组ID删除所有属性
+	DeleteByGroupId(ctx context.Context, groupId int64) (int64, error)
 }
 
 type attributeDAO struct {
@@ -253,6 +256,18 @@ func (dao *attributeDAO) DeleteAttribute(ctx context.Context, id int64) (int64, 
 	result, err := col.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *attributeDAO) DeleteByGroupId(ctx context.Context, groupId int64) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"group_id": groupId}
+
+	result, err := col.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("批量删除属性失败: %w", err)
 	}
 
 	return result.DeletedCount, nil

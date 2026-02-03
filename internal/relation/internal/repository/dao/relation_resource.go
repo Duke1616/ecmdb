@@ -29,6 +29,12 @@ type RelationResourceDAO interface {
 	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+
+	// CountByRelationTypeUid 根据关联类型 UID 获取数量
+	CountByRelationTypeUid(ctx context.Context, uid string) (int64, error)
+
+	// CountByRelationName 根据关联名称获取数量
+	CountByRelationName(ctx context.Context, name string) (int64, error)
 }
 
 func NewRelationResourceDAO(db *mongox.Mongo) RelationResourceDAO {
@@ -334,6 +340,26 @@ func (dao *resourceDAO) DeleteDstRelation(ctx context.Context, resourceId int64,
 	}
 
 	return result.DeletedCount, nil
+}
+
+func (dao *resourceDAO) CountByRelationTypeUid(ctx context.Context, uid string) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{"relation_type_uid": uid}
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("关联引用统计错误: %w", err)
+	}
+	return count, nil
+}
+
+func (dao *resourceDAO) CountByRelationName(ctx context.Context, name string) (int64, error) {
+	col := dao.db.Collection(ResourceRelationCollection)
+	filter := bson.M{"relation_name": name}
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("关联引用统计错误: %w", err)
+	}
+	return count, nil
 }
 
 type ResourceRelation struct {

@@ -20,6 +20,12 @@ type AttributeGroupRepository interface {
 
 	// ListAttributeGroupByIds 根据 IDS 获取组信息
 	ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error)
+
+	// DeleteAttributeGroup 删除属性组
+	DeleteAttributeGroup(ctx context.Context, id int64) (int64, error)
+
+	// RenameAttributeGroup 重命名属性组
+	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
 }
 
 type attributeGroupRepository struct {
@@ -75,4 +81,12 @@ func (a *attributeGroupRepository) toDomain(src dao.AttributeGroup) domain.Attri
 		Name:     src.Name,
 		ModelUid: src.ModelUid,
 	}
+}
+
+func (a *attributeGroupRepository) DeleteAttributeGroup(ctx context.Context, id int64) (int64, error) {
+	return a.dao.DeleteAttributeGroup(ctx, id)
+}
+
+func (a *attributeGroupRepository) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
+	return a.dao.RenameAttributeGroup(ctx, id, name)
 }

@@ -25,6 +25,12 @@ type RelationResourceRepository interface {
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 
+	// CountByRelationTypeUID 根据关联类型 UID 获取数量
+	CountByRelationTypeUID(ctx context.Context, uid string) (int64, error)
+
+	// CountByRelationName 根据关联名称获取数量
+	CountByRelationName(ctx context.Context, name string) (int64, error)
+
 	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
@@ -127,4 +133,12 @@ func (r *resourceRepository) toAggregatedAssetsDomain(src dao.ResourceAggregated
 		Total:        src.Total,
 		ResourceIds:  src.ResourceIds,
 	}
+}
+
+func (r *resourceRepository) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	return r.dao.CountByRelationTypeUid(ctx, uid)
+}
+
+func (r *resourceRepository) CountByRelationName(ctx context.Context, name string) (int64, error) {
+	return r.dao.CountByRelationName(ctx, name)
 }

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
@@ -259,6 +260,12 @@ func (h *Handler) ListModels(ctx *gin.Context, req Page) (ginx.Result, error) {
 func (h *Handler) DeleteModelGroup(ctx *gin.Context, req DeleteModelGroup) (ginx.Result, error) {
 	count, err := h.mgSvc.Delete(ctx, req.ID)
 	if err != nil {
+		if errors.Is(err, service.ErrDependency) {
+			return ginx.Result{
+				Code: 501002,
+				Msg:  err.Error(),
+			}, nil
+		}
 		return systemErrorResult, err
 	}
 	return ginx.Result{

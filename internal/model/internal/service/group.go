@@ -2,11 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
+
+var ErrDependency = errors.New("exist dependency")
 
 type MGService interface {
 	// Create 创建模型分组
@@ -32,12 +36,14 @@ type MGService interface {
 }
 
 type groupService struct {
-	repo repository.MGRepository
+	repo      repository.MGRepository
+	modelRepo repository.ModelRepository
 }
 
-func NewMGService(repo repository.MGRepository) MGService {
+func NewMGService(repo repository.MGRepository, modelRepo repository.ModelRepository) MGService {
 	return &groupService{
-		repo: repo,
+		repo:      repo,
+		modelRepo: modelRepo,
 	}
 }
 
@@ -80,6 +86,13 @@ func (s *groupService) Create(ctx context.Context, req domain.ModelGroup) (int64
 }
 
 func (s *groupService) Delete(ctx context.Context, id int64) (int64, error) {
+	count, err := s.modelRepo.CountByGroupId(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if count > 0 {
+		return 0, fmt.Errorf("%w: 模型组正在被 %d 个模型使用，无法删除", ErrDependency, count)
+	}
 	return s.repo.DeleteModelGroup(ctx, id)
 }
 

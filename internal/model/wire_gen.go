@@ -27,7 +27,7 @@ func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribu
 	serviceService := service.NewModelService(modelRepository)
 	modelGroupDAO := dao.NewModelGroupDAO(db)
 	mgRepository := repository.NewMGRepository(modelGroupDAO)
-	mgService := service.NewMGService(mgRepository)
+	mgService := service.NewMGService(mgRepository, modelRepository)
 	relationModelService := rmModule.RMSvc
 	service2 := attrModule.Svc
 	encryptedSvc := resourceSvc.EncryptedSvc

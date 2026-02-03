@@ -20,6 +20,9 @@ type ModelRepository interface {
 	ListByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
 	DeleteById(ctx context.Context, id int64) (int64, error)
 	DeleteByUid(ctx context.Context, modelUid string) (int64, error)
+
+	// CountByGroupId 获取指定组下的模型数量
+	CountByGroupId(ctx context.Context, GroupId int64) (int64, error)
 }
 
 func NewModelRepository(dao dao.ModelDAO) ModelRepository {
@@ -111,4 +114,8 @@ func (repo *modelRepository) toDomain(modelDao dao.Model) domain.Model {
 		Ctime:   time.UnixMilli(modelDao.Ctime),
 		Utime:   time.UnixMilli(modelDao.Utime),
 	}
+}
+
+func (repo *modelRepository) CountByGroupId(ctx context.Context, GroupId int64) (int64, error) {
+	return repo.dao.CountByGroupId(ctx, GroupId)
 }

@@ -42,6 +42,9 @@ type ModelDAO interface {
 
 	// DeleteByUid 根据唯一标识删除模型
 	DeleteByUid(ctx context.Context, modelUid string) (int64, error)
+
+	// CountByGroupId 获取指定组下的模型数量
+	CountByGroupId(ctx context.Context, GroupId int64) (int64, error)
 }
 
 func NewModelDAO(db *mongox.Mongo) ModelDAO {
@@ -228,4 +231,14 @@ func (dao *modelDAO) DeleteByUid(ctx context.Context, modelUid string) (int64, e
 	}
 
 	return result.DeletedCount, nil
+}
+
+func (dao *modelDAO) CountByGroupId(ctx context.Context, GroupId int64) (int64, error) {
+	col := dao.db.Collection(ModelCollection)
+	filter := bson.M{"model_group_id": GroupId}
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+	return count, nil
 }

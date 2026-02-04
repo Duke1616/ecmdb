@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
-	"github.com/Duke1616/ecmdb/cmd/initial/incr/v1.5.0"
-	"github.com/Duke1616/ecmdb/cmd/initial/incr/v1.9.2"
+	v150 "github.com/Duke1616/ecmdb/cmd/initial/incr/v1.5.0"
+	v192 "github.com/Duke1616/ecmdb/cmd/initial/incr/v1.9.2"
 	v193 "github.com/Duke1616/ecmdb/cmd/initial/incr/v1.9.3"
 	v194 "github.com/Duke1616/ecmdb/cmd/initial/incr/v1.9.4"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr/version"
@@ -107,6 +107,34 @@ func RollbackToVersion(currentVersion, targetVersion string) error {
 	}
 
 	fmt.Println("所有回滚操作执行完成")
+	return nil
+}
+
+// ForceExecuteVersion 强制执行指定版本的增量操作（不更新版本号）
+func ForceExecuteVersion(targetVersion string) error {
+	incr, ok := incrRegistry[targetVersion]
+	if !ok {
+		return fmt.Errorf("找不到版本 %s 的定义", targetVersion)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	fmt.Printf("⚠️ 开始强制执行版本 %s\n", targetVersion)
+
+	// 执行 Before (备份等安全操作依然需要)
+	if err := incr.Before(ctx); err != nil {
+		return fmt.Errorf("版本 %s Before 执行失败: %w", targetVersion, err)
+	}
+
+	// 执行 Commit (核心逻辑)
+	if err := incr.Commit(ctx); err != nil {
+		return fmt.Errorf("版本 %s Commit 执行失败: %w", targetVersion, err)
+	}
+
+	// ⚠️ 关键点：跳过 After 执行，防止更新数据库中的版本号
+	fmt.Printf("⚠️ 已跳过版本 %s 的 After 操作，数据库版本号未变更\n", targetVersion)
+
 	return nil
 }
 

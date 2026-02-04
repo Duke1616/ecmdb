@@ -15,6 +15,7 @@ var (
 	TagVersion    string
 	targetVersion string
 	dryRun        bool
+	forceExec     bool
 )
 
 var Cmd = &cobra.Command{
@@ -42,6 +43,18 @@ var Cmd = &cobra.Command{
 		}
 
 		// 判断是执行全量 OR 增量数据
+		if forceExec {
+			if targetVersion == "" {
+				cobra.CheckErr(fmt.Errorf("强制执行模式必须指定目标版本 (-v/--version)"))
+			}
+			fmt.Printf("⚠️ 正在强制执行版本 %s 的逻辑（跳过版本检查，不更新数据库版本）...\n", targetVersion)
+			register.RegisterIncr(app)
+			err := register.ForceExecuteVersion(targetVersion)
+			cobra.CheckErr(err)
+			fmt.Printf("✅ 强制执行完成\n")
+			return
+		}
+
 		if currentVersion == "" {
 			complete(app)
 			if targetVersion != "" {
@@ -207,6 +220,7 @@ func init() {
 	Cmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "show debug info")
 	Cmd.PersistentFlags().StringVarP(&targetVersion, "version", "v", "", "指定目标版本 (例如: v1.2.3)")
 	Cmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "预览模式，不执行实际操作")
+	Cmd.PersistentFlags().BoolVar(&forceExec, "force", false, "强制执行指定版本的增量逻辑（不更新数据库版本号）")
 
 	// 添加子命令
 	Cmd.AddCommand(rollbackCmd)

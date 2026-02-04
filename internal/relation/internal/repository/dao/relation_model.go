@@ -38,6 +38,9 @@ type RelationModelDAO interface {
 
 	// GetByID 根据 ID 获取数据
 	GetByID(ctx context.Context, id int64) (ModelRelation, error)
+
+	// UpdateModelRelation 更新模型关联关系
+	UpdateModelRelation(ctx context.Context, mr ModelRelation) (int64, error)
 }
 
 func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
@@ -225,6 +228,26 @@ func (dao *modelDAO) GetByID(ctx context.Context, id int64) (ModelRelation, erro
 		return ModelRelation{}, fmt.Errorf("查询错误: %w", err)
 	}
 	return res, nil
+}
+
+func (dao *modelDAO) UpdateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
+	col := dao.db.Collection(ModelRelationCollection)
+	filter := bson.M{"id": mr.Id}
+	update := bson.M{
+		"$set": bson.M{
+			"source_model_uid":  mr.SourceModelUid,
+			"target_model_uid":  mr.TargetModelUid,
+			"relation_type_uid": mr.RelationTypeUid,
+			"relation_name":     mr.RelationName,
+			"mapping":           mr.Mapping,
+			"utime":             time.Now().UnixMilli(),
+		},
+	}
+	res, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("更新文档错误: %w", err)
+	}
+	return res.ModifiedCount, nil
 }
 
 type ModelRelation struct {

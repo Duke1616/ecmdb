@@ -30,6 +30,9 @@ func (h *RelationModelHandler) PrivateRoute(server *gin.Engine) {
 
 	// 删除模型关联关系
 	g.POST("/relation/delete", ginx.WrapBody[DeleteModelRelationReq](h.DeleteModelRelation))
+
+	// 更新模型关联关系
+	g.POST("/relation/update", ginx.WrapBody[UpdateModelRelationReq](h.UpdateModelRelation))
 }
 
 func (h *RelationModelHandler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
@@ -77,6 +80,30 @@ func (h *RelationModelHandler) DeleteModelRelation(ctx *gin.Context, req DeleteM
 	return ginx.Result{
 		Data: id,
 	}, nil
+}
+
+func (h *RelationModelHandler) UpdateModelRelation(ctx *gin.Context, req UpdateModelRelationReq) (ginx.Result, error) {
+	_, err := h.svc.UpdateModelRelation(ctx, toUpdateModelDomain(req))
+	if err != nil {
+		if errors.Is(err, service.ErrDependency) {
+			return ginx.Result{
+				Code: 501001,
+				Msg:  err.Error(),
+			}, nil
+		}
+		return systemErrorResult, err
+	}
+	return ginx.Result{Msg: "更新模型关联关系成功"}, nil
+}
+
+func toUpdateModelDomain(req UpdateModelRelationReq) domain.ModelRelation {
+	return domain.ModelRelation{
+		ID:              req.ID,
+		SourceModelUID:  req.SourceModelUID,
+		TargetModelUID:  req.TargetModelUID,
+		RelationTypeUID: req.RelationTypeUID,
+		Mapping:         req.Mapping,
+	}
 }
 
 func toModelDomain(req CreateModelRelationReq) domain.ModelRelation {

@@ -8,6 +8,14 @@ type CreateModelRelationReq struct {
 	Mapping         string `json:"mapping"`
 }
 
+type UpdateModelRelationReq struct {
+	ID              int64  `json:"id"`
+	SourceModelUID  string `json:"source_model_uid"`
+	TargetModelUID  string `json:"target_model_uid"`
+	RelationTypeUID string `json:"relation_type_uid"`
+	Mapping         string `json:"mapping"`
+}
+
 // CreateResourceRelationReq 资源关联关系
 type CreateResourceRelationReq struct {
 	SourceResourceID int64  `json:"source_resource_id"`

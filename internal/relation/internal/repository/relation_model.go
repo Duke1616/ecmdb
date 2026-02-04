@@ -36,6 +36,9 @@ type RelationModelRepository interface {
 
 	// GetByID 根据 ID 获取数据
 	GetByID(ctx context.Context, id int64) (domain.ModelRelation, error)
+
+	// UpdateModelRelation 更新模型关联关系
+	UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
 }
 
 func NewRelationModelRepository(dao dao.RelationModelDAO) RelationModelRepository {
@@ -92,6 +95,7 @@ func (r *modelRepository) DeleteModelRelation(ctx context.Context, id int64) (in
 
 func (r *modelRepository) toEntity(req domain.ModelRelation) dao.ModelRelation {
 	return dao.ModelRelation{
+		Id:              req.ID,
 		SourceModelUid:  req.SourceModelUID,
 		TargetModelUid:  req.TargetModelUID,
 		RelationName:    req.RelationName,
@@ -129,4 +133,8 @@ func (r *modelRepository) CountByRelationTypeUID(ctx context.Context, uid string
 func (r *modelRepository) GetByID(ctx context.Context, id int64) (domain.ModelRelation, error) {
 	val, err := r.dao.GetByID(ctx, id)
 	return r.toDomain(val), err
+}
+
+func (r *modelRepository) UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	return r.dao.UpdateModelRelation(ctx, r.toEntity(req))
 }

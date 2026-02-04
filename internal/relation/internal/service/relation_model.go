@@ -35,6 +35,9 @@ type RelationModelService interface {
 
 	// CountByRelationTypeUID 根据关联类型 UID 获取数量
 	CountByRelationTypeUID(ctx context.Context, uid string) (int64, error)
+
+	// UpdateModelRelation 更新模型关联关系
+	UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
 }
 
 type modelService struct {
@@ -109,6 +112,26 @@ func (s *modelService) DeleteModelRelation(ctx context.Context, id int64) (int64
 	}
 
 	return s.repo.DeleteModelRelation(ctx, id)
+}
+
+func (s *modelService) UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	mr, err := s.repo.GetByID(ctx, req.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	req.RelationName = req.RM()
+	if mr.RelationName != req.RelationName {
+		count, err := s.resourceRepo.CountByRelationName(ctx, mr.RelationName)
+		if err != nil {
+			return 0, err
+		}
+		if count > 0 {
+			return 0, fmt.Errorf("%w: 关联关系(变更前)正在被 %d 个资源关联数据使用，无法修改定义", ErrDependency, count)
+		}
+	}
+
+	return s.repo.UpdateModelRelation(ctx, req)
 }
 
 func (s *modelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {

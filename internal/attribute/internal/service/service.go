@@ -277,15 +277,33 @@ func (s *service) RenameAttributeGroup(ctx context.Context, id int64, name strin
 // Sort 属性拖拽排序（执行计划模式）
 func (s *service) Sort(ctx context.Context, id, targetGroupId, targetPosition int64) error {
 	// 1. 获取目标分组的所有属性
-	attrs, err := s.repo.ListByGroupID(ctx, targetGroupId)
+	targetAttrs, err := s.repo.ListByGroupID(ctx, targetGroupId)
 	if err != nil {
 		return err
 	}
 
-	// 2. 计算重排方案（纯计算，无副作用）
-	plan := s.planReorder(attrs, id, targetPosition)
+	// 2. 获取被拖拽的属性（支持跨组）
+	var draggedAttr domain.Attribute
+	draggedIdx := slices.IndexFunc(targetAttrs, func(a domain.Attribute) bool {
+		return a.ID == id
+	})
 
-	// 3. 执行计划
+	if draggedIdx == -1 {
+		// 跨组：查出详情
+		draggedAttr, err = s.repo.DetailAttribute(ctx, id)
+		if err != nil {
+			return err
+		}
+		// 修正 GroupId 为目标组
+		draggedAttr.GroupId = targetGroupId
+	} else {
+		draggedAttr = targetAttrs[draggedIdx]
+	}
+
+	// 3. 计算重排方案
+	plan := s.planReorder(targetAttrs, draggedAttr, targetPosition)
+
+	// 4. 执行计划
 	if plan.NeedRebalance {
 		// 慢路径：批量更新整个分组
 		return s.repo.BatchUpdateSortKey(ctx, plan.Items)
@@ -296,24 +314,22 @@ func (s *service) Sort(ctx context.Context, id, targetGroupId, targetPosition in
 }
 
 // planReorder 计算重排方案（核心算法，纯函数）
-func (s *service) planReorder(attrs []domain.Attribute, draggedId int64, targetPosition int64) domain.ReorderPlan {
-	// 1. 查找被拖拽元素
-	draggedIdx := slices.IndexFunc(attrs, func(a domain.Attribute) bool {
-		return a.ID == draggedId
-	})
+func (s *service) planReorder(targetAttrs []domain.Attribute, draggedAttr domain.Attribute, targetPosition int64) domain.ReorderPlan {
+	// 1. 移除被拖拽元素（如果是组内拖拽），得到剩余列表
+	remainingAttrs := s.removeDraggedAttr(targetAttrs, draggedAttr.ID)
 
-	// 2. 模拟排序后的最终顺序
-	finalOrder := s.simulateFinalOrder(attrs, draggedIdx, targetPosition)
+	// 2. 基于剩余列表和目标位置，计算新的 SortKey
+	newSortKey := s.calculateSortKey(remainingAttrs, targetPosition)
 
-	// 3. 尝试稀疏插入
-	newSortKey := s.calculateSortKey(finalOrder, targetPosition)
+	// 3. 检测是否需要重平衡
+	if s.needsRebalance(remainingAttrs, targetPosition, newSortKey) {
+		// 4. 构建包含被拖拽元素的完整最终列表
+		finalList := s.insertAttr(remainingAttrs, draggedAttr, targetPosition)
 
-	// 4. 检测是否需要重平衡
-	if s.needsRebalance(finalOrder, targetPosition, newSortKey) {
 		// 触发重平衡：生成批量更新方案
 		return domain.ReorderPlan{
 			NeedRebalance: true,
-			Items:         s.generateRebalanceItems(finalOrder),
+			Items:         s.generateRebalanceItems(finalList),
 		}
 	}
 
@@ -324,23 +340,31 @@ func (s *service) planReorder(attrs []domain.Attribute, draggedId int64, targetP
 	}
 }
 
-// simulateFinalOrder 在内存中模拟最终的排序顺序
-func (s *service) simulateFinalOrder(attrs []domain.Attribute, draggedIdx int, targetPosition int64) []domain.Attribute {
-	// 跨组拖拽（draggedIdx == -1）直接返回原列表
-	if draggedIdx < 0 {
+// removeDraggedAttr 移除被拖拽元素
+func (s *service) removeDraggedAttr(attrs []domain.Attribute, draggedId int64) []domain.Attribute {
+	idx := slices.IndexFunc(attrs, func(a domain.Attribute) bool {
+		return a.ID == draggedId
+	})
+	if idx == -1 {
 		return attrs
 	}
+	return slices.Delete(slices.Clone(attrs), idx, idx+1)
+}
 
-	// 组内拖拽：移除 → 插入
-	result := slices.Delete(slices.Clone(attrs), draggedIdx, draggedIdx+1)
-
-	// 调整目标位置（移除元素后索引前移）
-	adjustedPos := targetPosition
-	if int64(draggedIdx) < targetPosition {
-		adjustedPos--
+// insertAttr 将元素插入到指定位置
+func (s *service) insertAttr(attrs []domain.Attribute, attr domain.Attribute, position int64) []domain.Attribute {
+	// 修正 position 范围
+	if position < 0 {
+		position = 0
+	}
+	if position > int64(len(attrs)) {
+		position = int64(len(attrs))
 	}
 
-	return result // NOTE: 返回移除后的列表，用于后续 SortKey 计算
+	// 插入
+	result := slices.Insert(slices.Clone(attrs), int(position), attr)
+	// 并不是所有时候都需要 clone，但为了安全起见
+	return result
 }
 
 // calculateSortKey 计算新的 SortKey（统一算法）
@@ -403,10 +427,19 @@ func (s *service) SortAttributeGroup(ctx context.Context, id, targetPosition int
 		return err
 	}
 
-	// 2. 计算重排方案（复用 planReorderGroup 逻辑）
-	plan := s.planReorderGroup(allGroups, id, targetPosition)
+	// 2. 获取被拖拽的分组
+	draggedIdx := slices.IndexFunc(allGroups, func(g domain.AttributeGroup) bool {
+		return g.ID == id
+	})
+	if draggedIdx == -1 {
+		return fmt.Errorf("被拖拽的分组未在列表中找到")
+	}
+	draggedGroup := allGroups[draggedIdx]
 
-	// 3. 执行计划
+	// 3. 计算重排方案
+	plan := s.planReorderGroup(allGroups, draggedGroup, targetPosition)
+
+	// 4. 执行计划
 	if plan.NeedRebalance {
 		// 慢路径：批量更新整个模型下的分组
 		return s.groupRepo.BatchUpdateSort(ctx, plan.Items)
@@ -417,24 +450,22 @@ func (s *service) SortAttributeGroup(ctx context.Context, id, targetPosition int
 }
 
 // planReorderGroup 计算属性组重排方案（核心算法，纯函数）
-func (s *service) planReorderGroup(groups []domain.AttributeGroup, draggedId int64, targetPosition int64) domain.ReorderGroupPlan {
-	// 1. 查找被拖拽元素
-	draggedIdx := slices.IndexFunc(groups, func(g domain.AttributeGroup) bool {
-		return g.ID == draggedId
-	})
+func (s *service) planReorderGroup(groups []domain.AttributeGroup, draggedGroup domain.AttributeGroup, targetPosition int64) domain.ReorderGroupPlan {
+	// 1. 移除被拖拽元素
+	remainingGroups := s.removeDraggedGroup(groups, draggedGroup.ID)
 
-	// 2. 模拟排序后的最终顺序
-	finalOrder := s.simulateFinalOrderGroup(groups, draggedIdx, targetPosition)
+	// 2. 计算新的 SortKey
+	newSortKey := s.calculateSortKeyGroup(remainingGroups, targetPosition)
 
-	// 3. 尝试稀疏插入
-	newSortKey := s.calculateSortKeyGroup(finalOrder, targetPosition)
+	// 3. 检测是否需要重平衡
+	if s.needsRebalanceGroup(remainingGroups, targetPosition, newSortKey) {
+		// 4. 构建完整列表
+		finalList := s.insertGroup(remainingGroups, draggedGroup, targetPosition)
 
-	// 4. 检测是否需要重平衡
-	if s.needsRebalanceGroup(finalOrder, targetPosition, newSortKey) {
 		// 触发重平衡：生成批量更新方案
 		return domain.ReorderGroupPlan{
 			NeedRebalance: true,
-			Items:         s.generateRebalanceItemsGroup(finalOrder),
+			Items:         s.generateRebalanceItemsGroup(finalList),
 		}
 	}
 
@@ -445,16 +476,26 @@ func (s *service) planReorderGroup(groups []domain.AttributeGroup, draggedId int
 	}
 }
 
-// simulateFinalOrderGroup 在内存中模拟最终的排序顺序 (属性组版本)
-func (s *service) simulateFinalOrderGroup(groups []domain.AttributeGroup, draggedIdx int, targetPosition int64) []domain.AttributeGroup {
-	if draggedIdx < 0 {
+// removeDraggedGroup 移除被拖拽分组
+func (s *service) removeDraggedGroup(groups []domain.AttributeGroup, draggedId int64) []domain.AttributeGroup {
+	idx := slices.IndexFunc(groups, func(g domain.AttributeGroup) bool {
+		return g.ID == draggedId
+	})
+	if idx == -1 {
 		return groups
 	}
+	return slices.Delete(slices.Clone(groups), idx, idx+1)
+}
 
-	// 移除 → 插入
-	result := slices.Delete(slices.Clone(groups), draggedIdx, draggedIdx+1)
-
-	return result
+// insertGroup 插入分组
+func (s *service) insertGroup(groups []domain.AttributeGroup, group domain.AttributeGroup, position int64) []domain.AttributeGroup {
+	if position < 0 {
+		position = 0
+	}
+	if position > int64(len(groups)) {
+		position = int64(len(groups))
+	}
+	return slices.Insert(slices.Clone(groups), int(position), group)
 }
 
 // calculateSortKeyGroup 计算新的 SortKey (属性组版本)

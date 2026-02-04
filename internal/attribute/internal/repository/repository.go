@@ -182,6 +182,7 @@ func (repo *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		Display:   attr.Display,
 		Index:     attr.Index,
 		SortKey:   attr.SortKey,
+		GroupId:   attr.GroupId,
 	}
 }
 

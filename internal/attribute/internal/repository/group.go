@@ -26,6 +26,12 @@ type AttributeGroupRepository interface {
 
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
+
+	// UpdateSort 更新属性组排序
+	UpdateSort(ctx context.Context, id int64, sortKey int64) error
+
+	// BatchUpdateSort 批量更新属性组排序
+	BatchUpdateSort(ctx context.Context, items []domain.AttributeGroupSortItem) error
 }
 
 type attributeGroupRepository struct {
@@ -72,6 +78,7 @@ func (a *attributeGroupRepository) toEntity(req domain.AttributeGroup) dao.Attri
 	return dao.AttributeGroup{
 		Name:     req.Name,
 		ModelUid: req.ModelUid,
+		SortKey:  req.SortKey,
 	}
 }
 
@@ -80,6 +87,7 @@ func (a *attributeGroupRepository) toDomain(src dao.AttributeGroup) domain.Attri
 		ID:       src.Id,
 		Name:     src.Name,
 		ModelUid: src.ModelUid,
+		SortKey:  src.SortKey,
 	}
 }
 
@@ -89,4 +97,18 @@ func (a *attributeGroupRepository) DeleteAttributeGroup(ctx context.Context, id 
 
 func (a *attributeGroupRepository) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
 	return a.dao.RenameAttributeGroup(ctx, id, name)
+}
+
+func (a *attributeGroupRepository) UpdateSort(ctx context.Context, id int64, sortKey int64) error {
+	return a.dao.UpdateSort(ctx, id, sortKey)
+}
+
+func (a *attributeGroupRepository) BatchUpdateSort(ctx context.Context, items []domain.AttributeGroupSortItem) error {
+	daoItems := slice.Map(items, func(idx int, src domain.AttributeGroupSortItem) dao.AttributeGroupSortItem {
+		return dao.AttributeGroupSortItem{
+			ID:      src.ID,
+			SortKey: src.SortKey,
+		}
+	})
+	return a.dao.BatchUpdateSort(ctx, daoItems)
 }

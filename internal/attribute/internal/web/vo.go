@@ -63,6 +63,12 @@ type SortAttributeReq struct {
 	TargetPosition int64 `json:"target_position"` // 目标位置 (0-based，前端列表顺序)
 }
 
+// SortAttributeGroupReq 属性组拖拽排序请求
+type SortAttributeGroupReq struct {
+	ID             int64 `json:"id"`              // 被拖拽的属性组 ID
+	TargetPosition int64 `json:"target_position"` // 目标位置 (0-based，前端列表顺序)
+}
+
 type Attribute struct {
 	ID        int64       `json:"id"`
 	ModelUid  string      `json:"model_uid"`

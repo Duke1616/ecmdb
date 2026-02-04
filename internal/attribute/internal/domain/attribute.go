@@ -121,7 +121,7 @@ type AttributeGroup struct {
 	ID       int64
 	Name     string
 	ModelUid string
-	Index    int64
+	SortKey  int64
 }
 
 type AttributePipeline struct {
@@ -145,4 +145,20 @@ type ReorderPlan struct {
 	NewSortKey int64
 	// Items 批量更新的元素列表（慢路径）
 	Items []AttributeSortItem
+}
+
+// AttributeGroupSortItem 属性组排序更新项
+type AttributeGroupSortItem struct {
+	ID      int64
+	SortKey int64
+}
+
+// ReorderGroupPlan 属性组重排执行计划
+type ReorderGroupPlan struct {
+	// NeedRebalance 是否需要重平衡整个模型
+	NeedRebalance bool
+	// NewSortKey 单个元素的新 SortKey（快速路径）
+	NewSortKey int64
+	// Items 批量更新的元素列表（慢路径）
+	Items []AttributeGroupSortItem
 }

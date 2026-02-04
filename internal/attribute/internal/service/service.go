@@ -74,6 +74,9 @@ type Service interface {
 
 	// Sort 属性拖拽排序
 	Sort(ctx context.Context, id, targetGroupId, targetPosition int64) error
+
+	// SortAttributeGroup 属性组拖拽排序
+	SortAttributeGroup(ctx context.Context, id, targetPosition int64) error
 }
 
 type service struct {
@@ -212,7 +215,7 @@ func (s *service) CreateDefaultAttribute(ctx context.Context, modelUid string) (
 	groupId, err := s.CreateAttributeGroup(ctx, domain.AttributeGroup{
 		Name:     "基础属性",
 		ModelUid: modelUid,
-		Index:    0,
+		SortKey:  0,
 	})
 	if err != nil {
 		return 0, err
@@ -377,6 +380,119 @@ func (s *service) generateRebalanceItems(attrs []domain.Attribute) []domain.Attr
 		return domain.AttributeSortItem{
 			ID:      src.ID,
 			GroupId: src.GroupId,
+			SortKey: int64(idx+1) * IndexGap,
+		}
+	})
+}
+
+// SortAttributeGroup 属性组拖拽排序（执行计划模式）
+func (s *service) SortAttributeGroup(ctx context.Context, id, targetPosition int64) error {
+	// 0. 获取当前组信息，拿到 ModelUid
+	groups, err := s.groupRepo.ListAttributeGroupByIds(ctx, []int64{id})
+	if err != nil {
+		return err
+	}
+	if len(groups) == 0 {
+		return fmt.Errorf("属性组不存在")
+	}
+	modelUid := groups[0].ModelUid
+
+	// 1. 获取该模型下的所有分组（已排序）
+	allGroups, err := s.groupRepo.ListAttributeGroup(ctx, modelUid)
+	if err != nil {
+		return err
+	}
+
+	// 2. 计算重排方案（复用 planReorderGroup 逻辑）
+	plan := s.planReorderGroup(allGroups, id, targetPosition)
+
+	// 3. 执行计划
+	if plan.NeedRebalance {
+		// 慢路径：批量更新整个模型下的分组
+		return s.groupRepo.BatchUpdateSort(ctx, plan.Items)
+	}
+
+	// 快速路径：单条更新
+	return s.groupRepo.UpdateSort(ctx, id, plan.NewSortKey)
+}
+
+// planReorderGroup 计算属性组重排方案（核心算法，纯函数）
+func (s *service) planReorderGroup(groups []domain.AttributeGroup, draggedId int64, targetPosition int64) domain.ReorderGroupPlan {
+	// 1. 查找被拖拽元素
+	draggedIdx := slices.IndexFunc(groups, func(g domain.AttributeGroup) bool {
+		return g.ID == draggedId
+	})
+
+	// 2. 模拟排序后的最终顺序
+	finalOrder := s.simulateFinalOrderGroup(groups, draggedIdx, targetPosition)
+
+	// 3. 尝试稀疏插入
+	newSortKey := s.calculateSortKeyGroup(finalOrder, targetPosition)
+
+	// 4. 检测是否需要重平衡
+	if s.needsRebalanceGroup(finalOrder, targetPosition, newSortKey) {
+		// 触发重平衡：生成批量更新方案
+		return domain.ReorderGroupPlan{
+			NeedRebalance: true,
+			Items:         s.generateRebalanceItemsGroup(finalOrder),
+		}
+	}
+
+	// 快速路径：返回单条更新方案
+	return domain.ReorderGroupPlan{
+		NeedRebalance: false,
+		NewSortKey:    newSortKey,
+	}
+}
+
+// simulateFinalOrderGroup 在内存中模拟最终的排序顺序 (属性组版本)
+func (s *service) simulateFinalOrderGroup(groups []domain.AttributeGroup, draggedIdx int, targetPosition int64) []domain.AttributeGroup {
+	if draggedIdx < 0 {
+		return groups
+	}
+
+	// 移除 → 插入
+	result := slices.Delete(slices.Clone(groups), draggedIdx, draggedIdx+1)
+
+	return result
+}
+
+// calculateSortKeyGroup 计算新的 SortKey (属性组版本)
+func (s *service) calculateSortKeyGroup(groups []domain.AttributeGroup, position int64) int64 {
+	n := int64(len(groups))
+
+	// 边界：空列表或末尾插入
+	if n == 0 || position >= n {
+		if n == 0 {
+			return IndexGap
+		}
+		return groups[n-1].SortKey + IndexGap
+	}
+
+	// 开头插入
+	if position == 0 {
+		return groups[0].SortKey / 2
+	}
+
+	// 中间插入：取前后中点
+	return (groups[position-1].SortKey + groups[position].SortKey) / 2
+}
+
+// needsRebalanceGroup 检测是否需要重平衡 (属性组版本)
+func (s *service) needsRebalanceGroup(groups []domain.AttributeGroup, position, newSortKey int64) bool {
+	// 只有中间插入才可能冲突
+	if position <= 0 || position >= int64(len(groups)) {
+		return false
+	}
+	// SortKey 冲突（间隙 < 1）
+	return newSortKey <= groups[position-1].SortKey
+}
+
+// generateRebalanceItemsGroup 生成重平衡的批量更新方案 (属性组版本)
+func (s *service) generateRebalanceItemsGroup(groups []domain.AttributeGroup) []domain.AttributeGroupSortItem {
+	return slice.Map(groups, func(idx int, src domain.AttributeGroup) domain.AttributeGroupSortItem {
+		return domain.AttributeGroupSortItem{
+			ID:      src.ID,
 			SortKey: int64(idx+1) * IndexGap,
 		}
 	})

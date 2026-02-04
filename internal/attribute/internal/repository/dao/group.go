@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -31,6 +32,12 @@ type AttributeGroupDAO interface {
 
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
+
+	// UpdateSort 更新属性组排序
+	UpdateSort(ctx context.Context, id int64, sortKey int64) error
+
+	// BatchUpdateSort 批量更新属性组排序
+	BatchUpdateSort(ctx context.Context, items []AttributeGroupSortItem) error
 }
 
 type attributeGroupDAO struct {
@@ -100,7 +107,9 @@ func (dao *attributeGroupDAO) CreateAttributeGroup(ctx context.Context, req Attr
 func (dao *attributeGroupDAO) ListAttributeGroup(ctx context.Context, modelUid string) ([]AttributeGroup, error) {
 	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"model_uid": modelUid}
-	opts := &options.FindOptions{}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "sort_key", Value: 1}},
+	}
 
 	cursor, err := col.Find(ctx, filter, opts)
 	defer cursor.Close(ctx)
@@ -163,11 +172,52 @@ func (dao *attributeGroupDAO) RenameAttributeGroup(ctx context.Context, id int64
 	return res.ModifiedCount, nil
 }
 
+func (dao *attributeGroupDAO) UpdateSort(ctx context.Context, id int64, sortKey int64) error {
+	col := dao.db.Collection(AttributeGroupCollection)
+	filter := bson.M{"id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"sort_key": sortKey,
+			"utime":    time.Now().UnixMilli(),
+		},
+	}
+
+	_, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("更新排序错误: %w", err)
+	}
+	return nil
+}
+
+func (dao *attributeGroupDAO) BatchUpdateSort(ctx context.Context, items []AttributeGroupSortItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	col := dao.db.Collection(AttributeGroupCollection)
+	var models []mongo.WriteModel
+	for _, item := range items {
+		update := mongo.NewUpdateOneModel().
+			SetFilter(bson.M{"id": item.ID}).
+			SetUpdate(bson.M{"$set": bson.M{
+				"sort_key": item.SortKey,
+				"utime":    time.Now().UnixMilli(),
+			}})
+		models = append(models, update)
+	}
+
+	_, err := col.BulkWrite(ctx, models)
+	if err != nil {
+		return fmt.Errorf("批量更新排序错误: %w", err)
+	}
+	return nil
+}
+
 type AttributeGroup struct {
 	Id       int64  `bson:"id"`
 	Name     string `bson:"name"`
 	ModelUid string `bson:"model_uid"`
-	Index    int64  `bson:"index"`
+	SortKey  int64  `bson:"sort_key"`
 	Ctime    int64  `bson:"ctime"`
 	Utime    int64  `bson:"utime"`
 }
@@ -178,4 +228,10 @@ func (a *AttributeGroup) SetID(id int64) {
 
 func (a *AttributeGroup) GetID() int64 {
 	return a.Id
+}
+
+// AttributeGroupSortItem 排序更新项
+type AttributeGroupSortItem struct {
+	ID      int64
+	SortKey int64
 }

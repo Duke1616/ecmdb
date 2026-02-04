@@ -38,6 +38,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 属性排序
 	g.POST("/sort", ginx.WrapBody[SortAttributeReq](h.Sort))
+	g.POST("/group/sort", ginx.WrapBody[SortAttributeGroupReq](h.SortAttributeGroup))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -89,7 +90,7 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		item := AttributeList{
 			GroupId:   group.ID,
 			GroupName: group.Name,
-			Index:     group.Index,
+			Index:     group.SortKey,
 			Expanded:  true,
 		}
 
@@ -204,7 +205,7 @@ func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
 	return AttributeGroup{
 		GroupName: src.Name,
 		GroupId:   src.ID,
-		Index:     src.Index,
+		Index:     src.SortKey,
 	}
 }
 
@@ -224,13 +225,24 @@ func (h *Handler) toAttrGroupDomain(req CreateAttributeGroup) domain.AttributeGr
 	return domain.AttributeGroup{
 		Name:     req.Name,
 		ModelUid: req.ModelUid,
-		Index:    req.Index,
+		SortKey:  req.Index,
 	}
 }
 
 // Sort 属性拖拽排序
 func (h *Handler) Sort(ctx *gin.Context, req SortAttributeReq) (ginx.Result, error) {
 	err := h.svc.Sort(ctx.Request.Context(), req.ID, req.TargetGroupID, req.TargetPosition)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "排序成功",
+	}, nil
+}
+
+// SortAttributeGroup 属性组拖拽排序
+func (h *Handler) SortAttributeGroup(ctx *gin.Context, req SortAttributeGroupReq) (ginx.Result, error) {
+	err := h.svc.SortAttributeGroup(ctx.Request.Context(), req.ID, req.TargetPosition)
 	if err != nil {
 		return systemErrorResult, err
 	}

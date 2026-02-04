@@ -148,7 +148,7 @@ func (l *loader) loadAttributes(ctx context.Context, modelCfg structure.ModelCon
 		return attribute.AttributeGroup{
 			Name:     src.Name,
 			ModelUid: modelCfg.UID,
-			Index:    src.Index,
+			SortKey:  src.Index,
 		}
 	})
 

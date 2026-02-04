@@ -33,6 +33,9 @@ type AttributeGroupDAO interface {
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
 
+	// GetMaxSortKeyByModuleUid 获取分组下的最大 SortKey
+	GetMaxSortKeyByModuleUid(ctx context.Context, modelUid string) (int64, error)
+
 	// UpdateSort 更新属性组排序
 	UpdateSort(ctx context.Context, id int64, sortKey int64) error
 
@@ -48,6 +51,24 @@ func NewAttributeGroupDAO(db *mongox.Mongo) AttributeGroupDAO {
 	return &attributeGroupDAO{
 		db: db,
 	}
+}
+
+func (dao *attributeGroupDAO) GetMaxSortKeyByModuleUid(ctx context.Context, modelUid string) (int64, error) {
+	col := dao.db.Collection(AttributeGroupCollection)
+	filter := bson.M{"model_uid": modelUid}
+	opts := &options.FindOneOptions{
+		Sort: bson.D{{Key: "sort_key", Value: -1}}, // 按 sort_key 降序取第一个
+	}
+
+	var result Attribute
+	err := col.FindOne(ctx, filter, opts).Decode(&result)
+	if err != nil {
+		if mongox.IsNotFoundError(err) {
+			return 0, nil // 分组为空时返回 0
+		}
+		return 0, fmt.Errorf("查询最大 SortKey 错误: %w", err)
+	}
+	return result.SortKey, nil
 }
 
 func (dao *attributeGroupDAO) BatchCreateAttributeGroup(ctx context.Context, ags []AttributeGroup) ([]AttributeGroup, error) {

@@ -225,7 +225,6 @@ func (h *Handler) toAttrGroupDomain(req CreateAttributeGroup) domain.AttributeGr
 	return domain.AttributeGroup{
 		Name:     req.Name,
 		ModelUid: req.ModelUid,
-		SortKey:  req.Index,
 	}
 }
 

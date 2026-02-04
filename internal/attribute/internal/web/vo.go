@@ -19,7 +19,6 @@ type CreateAttributeReq struct {
 type CreateAttributeGroup struct {
 	Name     string `json:"group_name"`
 	ModelUid string `json:"model_uid"`
-	Index    int64  `json:"index"`
 }
 
 type DeleteAttributeGroupReq struct {
@@ -80,7 +79,7 @@ type Attribute struct {
 	Link      bool        `json:"link"`
 	Display   bool        `json:"display"`
 	Option    interface{} `json:"option"`
-	Index     int64       `json:"index"`
+	Index     int64       `json:"sort_key"`
 	Builtin   bool        `json:"builtin"`
 }
 
@@ -88,7 +87,7 @@ type AttributeGroup struct {
 	GroupName string `json:"group_name"`
 	ModelUid  string `json:"model_uid"`
 	GroupId   int64  `json:"group_id"`
-	Index     int64  `json:"index"`
+	Index     int64  `json:"sort_key"`
 }
 
 // CustomAttributeFieldColumnsReq 排序并展示数据
@@ -110,7 +109,7 @@ type AttributeList struct {
 	GroupId    int64       `json:"group_id"`
 	GroupName  string      `json:"group_name"`
 	Expanded   bool        `json:"expanded"`
-	Index      int64       `json:"index"`
+	Index      int64       `json:"sort_key"`
 	Total      int         `json:"total"`
 	Attributes []Attribute `json:"attributes,omitempty"`
 }
@@ -150,7 +149,7 @@ func toAttributeVo(attr domain.Attribute) Attribute {
 		Display:   attr.Display,
 		Option:    attr.Option,
 		Secure:    attr.Secure,
-		Index:     attr.Index,
+		Index:     attr.SortKey,
 		Builtin:   attr.Builtin,
 	}
 }

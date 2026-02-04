@@ -27,6 +27,9 @@ type AttributeGroupRepository interface {
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
 
+	// GetMaxSortKeyByModuleUid 获取分组下的最大 SortKey
+	GetMaxSortKeyByModuleUid(ctx context.Context, modelUid string) (int64, error)
+
 	// UpdateSort 更新属性组排序
 	UpdateSort(ctx context.Context, id int64, sortKey int64) error
 
@@ -42,6 +45,10 @@ func NewAttributeGroupRepository(dao dao.AttributeGroupDAO) AttributeGroupReposi
 	return &attributeGroupRepository{
 		dao: dao,
 	}
+}
+
+func (a *attributeGroupRepository) GetMaxSortKeyByModuleUid(ctx context.Context, modelUid string) (int64, error) {
+	return a.dao.GetMaxSortKeyByModuleUid(ctx, modelUid)
 }
 
 func (a *attributeGroupRepository) ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error) {

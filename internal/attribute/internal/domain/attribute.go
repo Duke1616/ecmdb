@@ -22,6 +22,12 @@ type Attribute struct {
 	Builtin   bool
 }
 
+// GetID 实现 Sortable 接口
+func (a Attribute) GetID() int64 { return a.ID }
+
+// GetSortKey 实现 Sortable 接口
+func (a Attribute) GetSortKey() int64 { return a.SortKey }
+
 // GetOptionStrings 获取选项字符串列表
 // NOTE: 统一处理 []string、[]interface{}、primitive.A 等类型
 func (a *Attribute) GetOptionStrings() []string {
@@ -124,6 +130,12 @@ type AttributeGroup struct {
 	SortKey  int64
 }
 
+// GetID 实现 Sortable 接口
+func (ag AttributeGroup) GetID() int64 { return ag.ID }
+
+// GetSortKey 实现 Sortable 接口
+func (ag AttributeGroup) GetSortKey() int64 { return ag.SortKey }
+
 type AttributePipeline struct {
 	GroupId    int64       `bson:"_id"`
 	Total      int         `bson:"total"`
@@ -131,34 +143,16 @@ type AttributePipeline struct {
 }
 
 // AttributeSortItem 属性排序更新项
+// NOTE: 用于批量更新时的数据传输
 type AttributeSortItem struct {
 	ID      int64
 	GroupId int64
 	SortKey int64
 }
 
-// ReorderPlan 重排执行计划
-type ReorderPlan struct {
-	// NeedRebalance 是否需要重平衡整个分组
-	NeedRebalance bool
-	// NewSortKey 单个元素的新 SortKey（快速路径）
-	NewSortKey int64
-	// Items 批量更新的元素列表（慢路径）
-	Items []AttributeSortItem
-}
-
 // AttributeGroupSortItem 属性组排序更新项
+// NOTE: 用于批量更新时的数据传输
 type AttributeGroupSortItem struct {
 	ID      int64
 	SortKey int64
-}
-
-// ReorderGroupPlan 属性组重排执行计划
-type ReorderGroupPlan struct {
-	// NeedRebalance 是否需要重平衡整个模型
-	NeedRebalance bool
-	// NewSortKey 单个元素的新 SortKey（快速路径）
-	NewSortKey int64
-	// Items 批量更新的元素列表（慢路径）
-	Items []AttributeGroupSortItem
 }

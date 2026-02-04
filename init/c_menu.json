@@ -1283,7 +1283,7 @@
     "_id": "66bdbf18ce7b5a67a43e8ca6",
     "component": "",
     "ctime": "1723711256492",
-    "endpoints": "[ { \"path\" : \"/api/attribute/custom/field\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/attribute/group/sort\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/attribute/sort\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/attribute/custom/field\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "113",
     "meta": "{ \"title\" : \"字段排序\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"cmdb\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "model_attr_sort",
@@ -1293,7 +1293,7 @@
     "sort": "5",
     "status": "1",
     "type": "3",
-    "utime": "1770119441971"
+    "utime": "1770193670691"
   },
   {
     "_id": "66bdbf96ce7b5a67a43e8ca7",

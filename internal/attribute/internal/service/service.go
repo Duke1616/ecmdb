@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
@@ -11,6 +12,11 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	// IndexGap 稀疏索引间隔
+	IndexGap = 1000
 )
 
 //go:generate mockgen -source=./service.go -destination=../../mocks/attribute.mock.go -package=attributemocks -typed Service
@@ -65,6 +71,9 @@ type Service interface {
 
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
+
+	// Sort 属性拖拽排序
+	Sort(ctx context.Context, id, targetGroupId, targetPosition int64) error
 }
 
 type service struct {
@@ -126,6 +135,14 @@ func (s *service) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelU
 }
 
 func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
+	// NOTE: 分配稀疏索引，防止频繁更新
+	if req.SortKey == 0 {
+		maxSortKey, err := s.repo.GetMaxSortKeyByGroupID(ctx, req.GroupId)
+		if err != nil {
+			return 0, err
+		}
+		req.SortKey = maxSortKey + 1000
+	}
 	return s.repo.CreateAttribute(ctx, req)
 }
 
@@ -252,4 +269,115 @@ func (s *service) DeleteAttributeGroup(ctx context.Context, id int64) (int64, er
 
 func (s *service) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
 	return s.groupRepo.RenameAttributeGroup(ctx, id, name)
+}
+
+// Sort 属性拖拽排序（执行计划模式）
+func (s *service) Sort(ctx context.Context, id, targetGroupId, targetPosition int64) error {
+	// 1. 获取目标分组的所有属性
+	attrs, err := s.repo.ListByGroupID(ctx, targetGroupId)
+	if err != nil {
+		return err
+	}
+
+	// 2. 计算重排方案（纯计算，无副作用）
+	plan := s.planReorder(attrs, id, targetPosition)
+
+	// 3. 执行计划
+	if plan.NeedRebalance {
+		// 慢路径：批量更新整个分组
+		return s.repo.BatchUpdateSortKey(ctx, plan.Items)
+	}
+
+	// 快速路径：单条更新
+	return s.repo.UpdateSort(ctx, id, targetGroupId, plan.NewSortKey)
+}
+
+// planReorder 计算重排方案（核心算法，纯函数）
+func (s *service) planReorder(attrs []domain.Attribute, draggedId int64, targetPosition int64) domain.ReorderPlan {
+	// 1. 查找被拖拽元素
+	draggedIdx := slices.IndexFunc(attrs, func(a domain.Attribute) bool {
+		return a.ID == draggedId
+	})
+
+	// 2. 模拟排序后的最终顺序
+	finalOrder := s.simulateFinalOrder(attrs, draggedIdx, targetPosition)
+
+	// 3. 尝试稀疏插入
+	newSortKey := s.calculateSortKey(finalOrder, targetPosition)
+
+	// 4. 检测是否需要重平衡
+	if s.needsRebalance(finalOrder, targetPosition, newSortKey) {
+		// 触发重平衡：生成批量更新方案
+		return domain.ReorderPlan{
+			NeedRebalance: true,
+			Items:         s.generateRebalanceItems(finalOrder),
+		}
+	}
+
+	// 快速路径：返回单条更新方案
+	return domain.ReorderPlan{
+		NeedRebalance: false,
+		NewSortKey:    newSortKey,
+	}
+}
+
+// simulateFinalOrder 在内存中模拟最终的排序顺序
+func (s *service) simulateFinalOrder(attrs []domain.Attribute, draggedIdx int, targetPosition int64) []domain.Attribute {
+	// 跨组拖拽（draggedIdx == -1）直接返回原列表
+	if draggedIdx < 0 {
+		return attrs
+	}
+
+	// 组内拖拽：移除 → 插入
+	result := slices.Delete(slices.Clone(attrs), draggedIdx, draggedIdx+1)
+
+	// 调整目标位置（移除元素后索引前移）
+	adjustedPos := targetPosition
+	if int64(draggedIdx) < targetPosition {
+		adjustedPos--
+	}
+
+	return result // NOTE: 返回移除后的列表，用于后续 SortKey 计算
+}
+
+// calculateSortKey 计算新的 SortKey（统一算法）
+func (s *service) calculateSortKey(attrs []domain.Attribute, position int64) int64 {
+	n := int64(len(attrs))
+
+	// 边界：空列表或末尾插入
+	if n == 0 || position >= n {
+		if n == 0 {
+			return IndexGap
+		}
+		return attrs[n-1].SortKey + IndexGap
+	}
+
+	// 开头插入
+	if position == 0 {
+		return attrs[0].SortKey / 2
+	}
+
+	// 中间插入：取前后中点
+	return (attrs[position-1].SortKey + attrs[position].SortKey) / 2
+}
+
+// needsRebalance 检测是否需要重平衡
+func (s *service) needsRebalance(attrs []domain.Attribute, position, newSortKey int64) bool {
+	// 只有中间插入才可能冲突
+	if position <= 0 || position >= int64(len(attrs)) {
+		return false
+	}
+	// SortKey 冲突（间隙 < 1）
+	return newSortKey <= attrs[position-1].SortKey
+}
+
+// generateRebalanceItems 生成重平衡的批量更新方案
+func (s *service) generateRebalanceItems(attrs []domain.Attribute) []domain.AttributeSortItem {
+	return slice.Map(attrs, func(idx int, src domain.Attribute) domain.AttributeSortItem {
+		return domain.AttributeSortItem{
+			ID:      src.ID,
+			GroupId: src.GroupId,
+			SortKey: int64(idx+1) * IndexGap,
+		}
+	})
 }

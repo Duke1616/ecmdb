@@ -17,6 +17,7 @@ type Attribute struct {
 	Secure    bool
 	Link      bool
 	Index     int64
+	SortKey   int64 // 拖拽排序键（稀疏索引）
 	Option    interface{}
 	Builtin   bool
 }
@@ -127,4 +128,21 @@ type AttributePipeline struct {
 	GroupId    int64       `bson:"_id"`
 	Total      int         `bson:"total"`
 	Attributes []Attribute `bson:"attributes"`
+}
+
+// AttributeSortItem 属性排序更新项
+type AttributeSortItem struct {
+	ID      int64
+	GroupId int64
+	SortKey int64
+}
+
+// ReorderPlan 重排执行计划
+type ReorderPlan struct {
+	// NeedRebalance 是否需要重平衡整个分组
+	NeedRebalance bool
+	// NewSortKey 单个元素的新 SortKey（快速路径）
+	NewSortKey int64
+	// Items 批量更新的元素列表（慢路径）
+	Items []AttributeSortItem
 }

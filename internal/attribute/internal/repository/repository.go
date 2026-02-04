@@ -48,6 +48,18 @@ type AttributeRepository interface {
 
 	// DeleteByGroupId 根据分组ID删除所有属性
 	DeleteByGroupId(ctx context.Context, groupId int64) (int64, error)
+
+	// ListByGroupID 根据分组ID获取属性列表（按 SortKey 排序）
+	ListByGroupID(ctx context.Context, groupId int64) ([]domain.Attribute, error)
+
+	// GetMaxSortKeyByGroupID 获取分组下的最大 SortKey
+	GetMaxSortKeyByGroupID(ctx context.Context, groupId int64) (int64, error)
+
+	// UpdateSort 更新属性的分组和排序
+	UpdateSort(ctx context.Context, id, groupId, sortKey int64) error
+
+	// BatchUpdateSortKey 批量更新属性的 SortKey
+	BatchUpdateSortKey(ctx context.Context, items []domain.AttributeSortItem) error
 }
 
 type attributeRepository struct {
@@ -149,6 +161,7 @@ func (repo *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		Builtin:   req.Builtin,
 		Link:      req.Link,
 		Index:     req.Index,
+		SortKey:   req.SortKey,
 		Option:    req.Option,
 		Display:   req.Display,
 	}
@@ -168,6 +181,7 @@ func (repo *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		Option:    attr.Option,
 		Display:   attr.Display,
 		Index:     attr.Index,
+		SortKey:   attr.SortKey,
 	}
 }
 
@@ -179,4 +193,31 @@ func (repo *attributeRepository) toAttributeGroupsDomain(ags dao.AttributePipeli
 			return repo.toDomain(src)
 		}),
 	}
+}
+
+func (repo *attributeRepository) ListByGroupID(ctx context.Context, groupId int64) ([]domain.Attribute, error) {
+	attrs, err := repo.dao.ListByGroupID(ctx, groupId)
+	return slice.Map(attrs, func(idx int, src dao.Attribute) domain.Attribute {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *attributeRepository) GetMaxSortKeyByGroupID(ctx context.Context, groupId int64) (int64, error) {
+	return repo.dao.GetMaxSortKeyByGroupID(ctx, groupId)
+}
+
+func (repo *attributeRepository) UpdateSort(ctx context.Context, id, groupId, sortKey int64) error {
+	return repo.dao.UpdateSort(ctx, id, groupId, sortKey)
+}
+
+func (repo *attributeRepository) BatchUpdateSortKey(ctx context.Context, items []domain.AttributeSortItem) error {
+	// NOTE: Repository 层负责 Domain → DAO 类型转换
+	daoItems := slice.Map(items, func(idx int, src domain.AttributeSortItem) dao.AttributeSortItem {
+		return dao.AttributeSortItem{
+			ID:      src.ID,
+			GroupId: src.GroupId,
+			SortKey: src.SortKey,
+		}
+	})
+	return repo.dao.BatchUpdateSortKey(ctx, daoItems)
 }

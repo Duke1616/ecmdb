@@ -27,13 +27,22 @@ func initAttrIndex(db *mongox.Mongo) error {
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				{"field_uid", -1},
-				{"model_uid", -1},
+				{Key: "field_uid", Value: -1},
+				{Key: "model_uid", Value: -1},
 			},
 			Options: options.Index().SetUnique(true),
 		},
 		{
-			Keys: bson.M{"model_uid": -1},
+			Keys: bson.D{
+				{Key: "model_uid", Value: 1},
+				{Key: "sort_key", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "group_id", Value: 1},
+				{Key: "sort_key", Value: 1},
+			},
 		},
 	}
 
@@ -48,8 +57,8 @@ func initAttrGroupIndex(db *mongox.Mongo) error {
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				{"model_uid", -1},
-				{"name", -1},
+				{Key: "model_uid", Value: -1},
+				{Key: "name", Value: -1},
 			},
 			Options: options.Index().SetUnique(true),
 		},

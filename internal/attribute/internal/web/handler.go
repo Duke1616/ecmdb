@@ -35,6 +35,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/custom/field", ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns))
 	g.POST("/delete", ginx.WrapBody[DeleteAttributeReq](h.DeleteAttribute))
 	g.POST("/update", ginx.WrapBody[UpdateAttributeReq](h.UpdateAttribute))
+
+	// 属性排序
+	g.POST("/sort", ginx.WrapBody[SortAttributeReq](h.Sort))
 }
 
 func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
@@ -72,38 +75,32 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		return systemErrorResult, err
 	}
 
-	aps, err := h.svc.ListAttributePipeline(ctx, req.ModelUid)
+	pipelines, err := h.svc.ListAttributePipeline(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	apsMap := make(map[int64]domain.AttributePipeline)
-	for _, g := range aps {
-		apsMap[g.GroupId] = g
+
+	pipelineMap := make(map[int64]domain.AttributePipeline, len(pipelines))
+	for _, p := range pipelines {
+		pipelineMap[p.GroupId] = p
 	}
 
-	attributeList := slice.Map(groups, func(idx int, src domain.AttributeGroup) AttributeList {
-		mb := AttributeList{}
-		val, ok := apsMap[src.ID]
-		if ok {
-			mb.GroupId = src.ID
-			mb.GroupName = src.Name
-			mb.Index = src.Index
-			mb.Expanded = true
-			mb.Total = val.Total
-			mb.Attributes = slice.Map(val.Attributes, func(idx int, src domain.Attribute) Attribute {
-				return toAttributeVo(src)
-			})
-
-			return mb
-		}
-
-		return AttributeList{
-			GroupId:   src.ID,
-			GroupName: src.Name,
+	attributeList := slice.Map(groups, func(idx int, group domain.AttributeGroup) AttributeList {
+		item := AttributeList{
+			GroupId:   group.ID,
+			GroupName: group.Name,
+			Index:     group.Index,
 			Expanded:  true,
-			Index:     src.Index,
-			Total:     0,
 		}
+
+		if p, ok := pipelineMap[group.ID]; ok {
+			item.Total = p.Total
+			item.Attributes = slice.Map(p.Attributes, func(_ int, attr domain.Attribute) Attribute {
+				return toAttributeVo(attr)
+			})
+		}
+
+		return item
 	})
 
 	return ginx.Result{
@@ -229,4 +226,15 @@ func (h *Handler) toAttrGroupDomain(req CreateAttributeGroup) domain.AttributeGr
 		ModelUid: req.ModelUid,
 		Index:    req.Index,
 	}
+}
+
+// Sort 属性拖拽排序
+func (h *Handler) Sort(ctx *gin.Context, req SortAttributeReq) (ginx.Result, error) {
+	err := h.svc.Sort(ctx.Request.Context(), req.ID, req.TargetGroupID, req.TargetPosition)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "排序成功",
+	}, nil
 }

@@ -42,6 +42,83 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// BatchCreateAttribute mocks base method.
+func (m *MockService) BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchCreateAttribute", ctx, attrs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchCreateAttribute indicates an expected call of BatchCreateAttribute.
+func (mr *MockServiceMockRecorder) BatchCreateAttribute(ctx, attrs any) *MockServiceBatchCreateAttributeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateAttribute", reflect.TypeOf((*MockService)(nil).BatchCreateAttribute), ctx, attrs)
+	return &MockServiceBatchCreateAttributeCall{Call: call}
+}
+
+// MockServiceBatchCreateAttributeCall wrap *gomock.Call
+type MockServiceBatchCreateAttributeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceBatchCreateAttributeCall) Return(arg0 error) *MockServiceBatchCreateAttributeCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceBatchCreateAttributeCall) Do(f func(context.Context, []domain.Attribute) error) *MockServiceBatchCreateAttributeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceBatchCreateAttributeCall) DoAndReturn(f func(context.Context, []domain.Attribute) error) *MockServiceBatchCreateAttributeCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// BatchCreateAttributeGroup mocks base method.
+func (m *MockService) BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchCreateAttributeGroup", ctx, ags)
+	ret0, _ := ret[0].([]domain.AttributeGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BatchCreateAttributeGroup indicates an expected call of BatchCreateAttributeGroup.
+func (mr *MockServiceMockRecorder) BatchCreateAttributeGroup(ctx, ags any) *MockServiceBatchCreateAttributeGroupCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateAttributeGroup", reflect.TypeOf((*MockService)(nil).BatchCreateAttributeGroup), ctx, ags)
+	return &MockServiceBatchCreateAttributeGroupCall{Call: call}
+}
+
+// MockServiceBatchCreateAttributeGroupCall wrap *gomock.Call
+type MockServiceBatchCreateAttributeGroupCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceBatchCreateAttributeGroupCall) Return(arg0 []domain.AttributeGroup, arg1 error) *MockServiceBatchCreateAttributeGroupCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceBatchCreateAttributeGroupCall) Do(f func(context.Context, []domain.AttributeGroup) ([]domain.AttributeGroup, error)) *MockServiceBatchCreateAttributeGroupCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceBatchCreateAttributeGroupCall) DoAndReturn(f func(context.Context, []domain.AttributeGroup) ([]domain.AttributeGroup, error)) *MockServiceBatchCreateAttributeGroupCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CreateAttribute mocks base method.
 func (m *MockService) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
 	m.ctrl.T.Helper()
@@ -237,6 +314,45 @@ func (c *MockServiceDeleteAttributeCall) DoAndReturn(f func(context.Context, int
 	return c
 }
 
+// DeleteAttributeGroup mocks base method.
+func (m *MockService) DeleteAttributeGroup(ctx context.Context, id int64) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAttributeGroup", ctx, id)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteAttributeGroup indicates an expected call of DeleteAttributeGroup.
+func (mr *MockServiceMockRecorder) DeleteAttributeGroup(ctx, id any) *MockServiceDeleteAttributeGroupCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAttributeGroup", reflect.TypeOf((*MockService)(nil).DeleteAttributeGroup), ctx, id)
+	return &MockServiceDeleteAttributeGroupCall{Call: call}
+}
+
+// MockServiceDeleteAttributeGroupCall wrap *gomock.Call
+type MockServiceDeleteAttributeGroupCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceDeleteAttributeGroupCall) Return(arg0 int64, arg1 error) *MockServiceDeleteAttributeGroupCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceDeleteAttributeGroupCall) Do(f func(context.Context, int64) (int64, error)) *MockServiceDeleteAttributeGroupCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceDeleteAttributeGroupCall) DoAndReturn(f func(context.Context, int64) (int64, error)) *MockServiceDeleteAttributeGroupCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListAttributeGroup mocks base method.
 func (m *MockService) ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error) {
 	m.ctrl.T.Helper()
@@ -394,6 +510,45 @@ func (c *MockServiceListAttributesCall) DoAndReturn(f func(context.Context, stri
 	return c
 }
 
+// RenameAttributeGroup mocks base method.
+func (m *MockService) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RenameAttributeGroup", ctx, id, name)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RenameAttributeGroup indicates an expected call of RenameAttributeGroup.
+func (mr *MockServiceMockRecorder) RenameAttributeGroup(ctx, id, name any) *MockServiceRenameAttributeGroupCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameAttributeGroup", reflect.TypeOf((*MockService)(nil).RenameAttributeGroup), ctx, id, name)
+	return &MockServiceRenameAttributeGroupCall{Call: call}
+}
+
+// MockServiceRenameAttributeGroupCall wrap *gomock.Call
+type MockServiceRenameAttributeGroupCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceRenameAttributeGroupCall) Return(arg0 int64, arg1 error) *MockServiceRenameAttributeGroupCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceRenameAttributeGroupCall) Do(f func(context.Context, int64, string) (int64, error)) *MockServiceRenameAttributeGroupCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceRenameAttributeGroupCall) DoAndReturn(f func(context.Context, int64, string) (int64, error)) *MockServiceRenameAttributeGroupCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // SearchAllAttributeFieldsByModelUid mocks base method.
 func (m *MockService) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -507,6 +662,44 @@ func (c *MockServiceSearchAttributeFieldsBySecureCall) Do(f func(context.Context
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServiceSearchAttributeFieldsBySecureCall) DoAndReturn(f func(context.Context, []string) (map[string][]string, error)) *MockServiceSearchAttributeFieldsBySecureCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Sort mocks base method.
+func (m *MockService) Sort(ctx context.Context, id, targetGroupId, targetPosition int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Sort", ctx, id, targetGroupId, targetPosition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Sort indicates an expected call of Sort.
+func (mr *MockServiceMockRecorder) Sort(ctx, id, targetGroupId, targetPosition any) *MockServiceSortCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sort", reflect.TypeOf((*MockService)(nil).Sort), ctx, id, targetGroupId, targetPosition)
+	return &MockServiceSortCall{Call: call}
+}
+
+// MockServiceSortCall wrap *gomock.Call
+type MockServiceSortCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceSortCall) Return(arg0 error) *MockServiceSortCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceSortCall) Do(f func(context.Context, int64, int64, int64) error) *MockServiceSortCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceSortCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockServiceSortCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

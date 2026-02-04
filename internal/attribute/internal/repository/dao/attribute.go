@@ -54,6 +54,18 @@ type AttributeDAO interface {
 
 	// DeleteByGroupId 根据分组ID删除所有属性
 	DeleteByGroupId(ctx context.Context, groupId int64) (int64, error)
+
+	// ListByGroupID 根据分组ID获取属性列表（按 SortKey 排序）
+	ListByGroupID(ctx context.Context, groupId int64) ([]Attribute, error)
+
+	// GetMaxSortKeyByGroupID 获取分组下的最大 SortKey
+	GetMaxSortKeyByGroupID(ctx context.Context, groupId int64) (int64, error)
+
+	// UpdateSort 更新属性的分组和排序
+	UpdateSort(ctx context.Context, id, groupId, sortKey int64) error
+
+	// BatchUpdateSortKey 批量更新属性的 SortKey
+	BatchUpdateSortKey(ctx context.Context, items []AttributeSortItem) error
 }
 
 type attributeDAO struct {
@@ -183,7 +195,9 @@ func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid
 func (dao *attributeDAO) ListAttributes(ctx context.Context, modelUid string) ([]Attribute, error) {
 	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"model_uid": modelUid}
-	opts := &options.FindOptions{}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "sort_key", Value: 1}},
+	}
 
 	cursor, err := col.Find(ctx, filter, opts)
 	defer cursor.Close(ctx)
@@ -219,8 +233,8 @@ func (dao *attributeDAO) UpdateFieldIndex(ctx context.Context, modelUid string, 
 	updates := make([]mongo.WriteModel, len(customField))
 	updates = slice.Map(customField, func(idx int, src string) mongo.WriteModel {
 		return &mongo.UpdateOneModel{
-			Filter: bson.D{{"model_uid", modelUid}, {"field_name", src}},
-			Update: bson.D{{"$set", bson.D{{"display", true}, {"index", idx}}}},
+			Filter: bson.D{{Key: "model_uid", Value: modelUid}, {Key: "field_name", Value: src}},
+			Update: bson.D{{Key: "$set", Value: bson.D{{Key: "display", Value: true}, {Key: "index", Value: idx}}}},
 		}
 	})
 
@@ -235,10 +249,10 @@ func (dao *attributeDAO) UpdateFieldIndex(ctx context.Context, modelUid string, 
 func (dao *attributeDAO) UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error) {
 	col := dao.db.Collection(AttributeCollection)
 	filter := bson.D{
-		{"model_uid", modelUid},
-		{"field_name", bson.D{{"$nin", customField}}},
+		{Key: "model_uid", Value: modelUid},
+		{Key: "field_name", Value: bson.D{{Key: "$nin", Value: customField}}},
 	}
-	update := bson.D{{"$set", bson.D{{"display", false}}}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "display", Value: false}}}}
 
 	// 执行批量更新
 	result, err := col.UpdateMany(ctx, filter, update)
@@ -276,15 +290,16 @@ func (dao *attributeDAO) DeleteByGroupId(ctx context.Context, groupId int64) (in
 func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error) {
 	col := dao.db.Collection(AttributeCollection)
 	filter := bson.D{
-		{"model_uid", modelUid},
+		{Key: "model_uid", Value: modelUid},
 	}
 
 	pipeline := mongo.Pipeline{
-		{{"$match", filter}},
-		{{"$group", bson.D{
-			{"_id", bson.D{{"$toLong", "$group_id"}}},
-			{"total", bson.D{{"$sum", 1}}},
-			{"attributes", bson.D{{"$push", "$$ROOT"}}},
+		{{Key: "$match", Value: filter}},
+		{{Key: "$sort", Value: bson.D{{Key: "sort_key", Value: 1}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: bson.D{{Key: "$toLong", Value: "$group_id"}}},
+			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "attributes", Value: bson.D{{Key: "$push", Value: "$$ROOT"}}},
 		}}},
 	}
 
@@ -342,6 +357,7 @@ type Attribute struct {
 	Required  bool        `bson:"required"`   // 是否为必传
 	Display   bool        `bson:"display"`    // 是否前端展示
 	Index     int64       `bson:"index"`      // 字段前端展示顺序
+	SortKey   int64       `bson:"sort_key"`   // 拖拽排序键（稀疏索引）
 	Secure    bool        `bson:"secure"`     // 是否字段安全、脱敏、加密
 	Link      bool        `bson:"link"`       // 是否外链
 	Builtin   bool        `bson:"builtin"`    // 是否内置属性
@@ -356,10 +372,98 @@ type AttributePipeline struct {
 	Attributes []Attribute `bson:"attributes"`
 }
 
+// AttributeSortItem 排序更新项
+type AttributeSortItem struct {
+	ID      int64
+	GroupId int64
+	SortKey int64
+}
+
 func (a *Attribute) SetID(id int64) {
 	a.Id = id
 }
 
 func (a *Attribute) GetID() int64 {
 	return a.Id
+}
+
+func (dao *attributeDAO) ListByGroupID(ctx context.Context, groupId int64) ([]Attribute, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"group_id": groupId}
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "sort_key", Value: 1}}, // 按 sort_key 升序
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+
+	var result []Attribute
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *attributeDAO) GetMaxSortKeyByGroupID(ctx context.Context, groupId int64) (int64, error) {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"group_id": groupId}
+	opts := &options.FindOneOptions{
+		Sort: bson.D{{Key: "sort_key", Value: -1}}, // 按 sort_key 降序取第一个
+	}
+
+	var result Attribute
+	err := col.FindOne(ctx, filter, opts).Decode(&result)
+	if err != nil {
+		if mongox.IsNotFoundError(err) {
+			return 0, nil // 分组为空时返回 0
+		}
+		return 0, fmt.Errorf("查询最大 SortKey 错误: %w", err)
+	}
+	return result.SortKey, nil
+}
+
+func (dao *attributeDAO) UpdateSort(ctx context.Context, id, groupId, sortKey int64) error {
+	col := dao.db.Collection(AttributeCollection)
+	filter := bson.M{"id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"group_id": groupId,
+			"sort_key": sortKey,
+			"utime":    time.Now().UnixMilli(),
+		},
+	}
+
+	_, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("更新排序错误: %w", err)
+	}
+	return nil
+}
+
+func (dao *attributeDAO) BatchUpdateSortKey(ctx context.Context, items []AttributeSortItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	col := dao.db.Collection(AttributeCollection)
+	var models []mongo.WriteModel
+	for _, item := range items {
+		update := mongo.NewUpdateOneModel().
+			SetFilter(bson.M{"id": item.ID}).
+			SetUpdate(bson.M{"$set": bson.M{
+				"group_id": item.GroupId,
+				"sort_key": item.SortKey,
+				"utime":    time.Now().UnixMilli(),
+			}})
+		models = append(models, update)
+	}
+
+	_, err := col.BulkWrite(ctx, models)
+	if err != nil {
+		return fmt.Errorf("批量更新 SortKey 错误: %w", err)
+	}
+	return nil
 }

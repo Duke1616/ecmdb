@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var ErrDependency = errors.New("exist dependency")
+var ErrDependency = errors.New("存在关联数据")
 
 type MGService interface {
 	// Create 创建模型分组

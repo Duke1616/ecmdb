@@ -2,7 +2,6 @@ package web
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
@@ -141,6 +140,11 @@ func (h *Handler) ListModelGroups(ctx *gin.Context, req Page) (ginx.Result, erro
 	}, nil
 }
 
+var (
+	errModelRelationNotEmpty = errors.New("模型关联不为空")
+	errModelResourceNotEmpty = errors.New("模型关联资产数据不为空")
+)
+
 func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (ginx.Result, error) {
 	var (
 		eg errgroup.Group
@@ -154,7 +158,7 @@ func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (g
 		}
 
 		if mTotal != 0 {
-			return fmt.Errorf("模型关联不为空")
+			return errModelRelationNotEmpty
 		}
 
 		return err
@@ -168,13 +172,25 @@ func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (g
 		}
 
 		if rTotal != 0 {
-			return fmt.Errorf("模型关联资产数据不为空")
+			return errModelResourceNotEmpty
 		}
 
 		return err
 	})
 
 	if err := eg.Wait(); err != nil {
+		if errors.Is(err, errModelRelationNotEmpty) {
+			return ginx.Result{
+				Code: 501002,
+				Msg:  err.Error(),
+			}, nil
+		}
+		if errors.Is(err, errModelResourceNotEmpty) {
+			return ginx.Result{
+				Code: 501003,
+				Msg:  err.Error(),
+			}, nil
+		}
 		return systemErrorResult, err
 	}
 

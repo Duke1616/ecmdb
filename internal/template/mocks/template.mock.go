@@ -197,6 +197,46 @@ func (c *MockServiceDetailTemplateByExternalTemplateIdCall) DoAndReturn(f func(c
 	return c
 }
 
+// FindByKeyword mocks base method.
+func (m *MockService) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Template, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByKeyword", ctx, keyword, offset, limit)
+	ret0, _ := ret[0].([]domain.Template)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// FindByKeyword indicates an expected call of FindByKeyword.
+func (mr *MockServiceMockRecorder) FindByKeyword(ctx, keyword, offset, limit any) *MockServiceFindByKeywordCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByKeyword", reflect.TypeOf((*MockService)(nil).FindByKeyword), ctx, keyword, offset, limit)
+	return &MockServiceFindByKeywordCall{Call: call}
+}
+
+// MockServiceFindByKeywordCall wrap *gomock.Call
+type MockServiceFindByKeywordCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceFindByKeywordCall) Return(arg0 []domain.Template, arg1 int64, arg2 error) *MockServiceFindByKeywordCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceFindByKeywordCall) Do(f func(context.Context, string, int64, int64) ([]domain.Template, int64, error)) *MockServiceFindByKeywordCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceFindByKeywordCall) DoAndReturn(f func(context.Context, string, int64, int64) ([]domain.Template, int64, error)) *MockServiceFindByKeywordCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // FindByTemplateIds mocks base method.
 func (m *MockService) FindByTemplateIds(ctx context.Context, ids []int64) ([]domain.Template, error) {
 	m.ctrl.T.Helper()

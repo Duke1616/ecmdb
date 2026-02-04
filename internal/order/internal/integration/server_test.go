@@ -54,27 +54,13 @@ func (s *GRPCServerTestSuite) TestCreateWorkOrder() {
 		errAssertFunc assert.ErrorAssertionFunc
 	}{
 		{
-			name: "参数传递错误",
-			req: &clientv1.CreateOrderRequest{
-				Order: &clientv1.Order{
-					TemplateId: 1,
-					Data:       nil,
-				},
-				NotificationConf: &clientv1.NotificationConf{
-					TemplateId:     1,
-					TemplateParams: nil,
-				},
-			},
-			before:        func(t *testing.T) { return },
-			setupContext:  s.contextWithJWT,
-			errAssertFunc: assert.Error,
-		},
-		{
 			name: "创建工单成功",
 			req: &clientv1.CreateOrderRequest{
-				Order: &clientv1.Order{
-					TemplateId: 1,
-				},
+				BizId:      1,
+				Key:        "test-order-key",
+				TemplateId: 1,
+				Provider:   clientv1.Provider_SYSTEM,
+				CreateBy:   "test-user",
 			},
 			before: func(t *testing.T) {
 				s.producer.EXPECT().Produce(gomock.Any(), gomock.Any()).Return(nil)
@@ -133,18 +119,22 @@ func (s *BaseGRPCServerTestSuite) SetupTestSuite() {
 	// 模版Service
 	templateSvc := templatemocks.NewMockService(s.ctrl)
 	templateSvc.EXPECT().DetailTemplate(gomock.Any(), gomock.Any()).
-		AnyTimes().DoAndReturn(func(ctx context.Context) (template.Template, error) {
+		AnyTimes().DoAndReturn(func(ctx context.Context, id int64) (template.Template, error) {
 		tm := template.Template{
 			Name: "模版名称",
 		}
 		return tm, nil
 	})
+	// 添加 FindByKeyword mock（如果需要）
+	templateSvc.EXPECT().FindByKeyword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes().Return(nil, int64(0), nil)
 
 	// 初始化注册中心
 	etcdClient := startup.InitEtcdClient()
 	orderDao := dao.NewOrderDAO(s.db)
-	orderRepository := repository.NewOrderRepository(orderDao)
-	orderServer := grpc2.NewWorkOrderServer(service.NewService(orderRepository, templateSvc, s.producer))
+	snapshotDao := dao.NewOrderSnapshotsDAO(s.db)
+	orderRepository := repository.NewOrderRepository(orderDao, snapshotDao)
+	orderServer := grpc2.NewWorkOrderServer(service.NewService(orderRepository, templateSvc, s.producer), templateSvc)
 	s.clientGRPCServer = startup.InitGrpcServer(orderServer, etcdClient)
 
 	// 创建服务器

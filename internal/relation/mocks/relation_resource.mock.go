@@ -41,6 +41,45 @@ func (m *MockRelationResourceService) EXPECT() *MockRelationResourceServiceMockR
 	return m.recorder
 }
 
+// CountByRelationTypeUID mocks base method.
+func (m *MockRelationResourceService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountByRelationTypeUID", ctx, uid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountByRelationTypeUID indicates an expected call of CountByRelationTypeUID.
+func (mr *MockRelationResourceServiceMockRecorder) CountByRelationTypeUID(ctx, uid any) *MockRelationResourceServiceCountByRelationTypeUIDCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByRelationTypeUID", reflect.TypeOf((*MockRelationResourceService)(nil).CountByRelationTypeUID), ctx, uid)
+	return &MockRelationResourceServiceCountByRelationTypeUIDCall{Call: call}
+}
+
+// MockRelationResourceServiceCountByRelationTypeUIDCall wrap *gomock.Call
+type MockRelationResourceServiceCountByRelationTypeUIDCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationResourceServiceCountByRelationTypeUIDCall) Return(arg0 int64, arg1 error) *MockRelationResourceServiceCountByRelationTypeUIDCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationResourceServiceCountByRelationTypeUIDCall) Do(f func(context.Context, string) (int64, error)) *MockRelationResourceServiceCountByRelationTypeUIDCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationResourceServiceCountByRelationTypeUIDCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockRelationResourceServiceCountByRelationTypeUIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CreateResourceRelation mocks base method.
 func (m *MockRelationResourceService) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
 	m.ctrl.T.Helper()

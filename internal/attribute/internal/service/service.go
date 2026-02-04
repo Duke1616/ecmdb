@@ -323,7 +323,7 @@ func (s *service) Sort(ctx context.Context, id, targetGroupId, targetPosition in
 
 	// 4. 执行计划
 	if plan.NeedRebalance {
-		// NOTE: 修正批量更新项的 GroupId，防止历史脏数据（GroupId=0）被写入
+		// 修正批量更新项的 GroupId，防止历史脏数据（GroupId=0）被写入
 		for i := range plan.Items {
 			plan.Items[i].GroupId = targetGroupId
 		}

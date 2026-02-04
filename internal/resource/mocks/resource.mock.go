@@ -41,6 +41,44 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// BatchCreateOrUpdate mocks base method.
+func (m *MockService) BatchCreateOrUpdate(ctx context.Context, rs []domain.Resource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchCreateOrUpdate", ctx, rs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchCreateOrUpdate indicates an expected call of BatchCreateOrUpdate.
+func (mr *MockServiceMockRecorder) BatchCreateOrUpdate(ctx, rs any) *MockServiceBatchCreateOrUpdateCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateOrUpdate", reflect.TypeOf((*MockService)(nil).BatchCreateOrUpdate), ctx, rs)
+	return &MockServiceBatchCreateOrUpdateCall{Call: call}
+}
+
+// MockServiceBatchCreateOrUpdateCall wrap *gomock.Call
+type MockServiceBatchCreateOrUpdateCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceBatchCreateOrUpdateCall) Return(arg0 error) *MockServiceBatchCreateOrUpdateCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceBatchCreateOrUpdateCall) Do(f func(context.Context, []domain.Resource) error) *MockServiceBatchCreateOrUpdateCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceBatchCreateOrUpdateCall) DoAndReturn(f func(context.Context, []domain.Resource) error) *MockServiceBatchCreateOrUpdateCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // BatchUpdateResources mocks base method.
 func (m *MockService) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
 	m.ctrl.T.Helper()
@@ -468,6 +506,46 @@ func (c *MockServiceListResourceByIdsCall) Do(f func(context.Context, []string, 
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServiceListResourceByIdsCall) DoAndReturn(f func(context.Context, []string, []int64) ([]domain.Resource, error)) *MockServiceListResourceByIdsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListResourcesWithFilters mocks base method.
+func (m *MockService) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListResourcesWithFilters", ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListResourcesWithFilters indicates an expected call of ListResourcesWithFilters.
+func (mr *MockServiceMockRecorder) ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups any) *MockServiceListResourcesWithFiltersCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesWithFilters", reflect.TypeOf((*MockService)(nil).ListResourcesWithFilters), ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	return &MockServiceListResourcesWithFiltersCall{Call: call}
+}
+
+// MockServiceListResourcesWithFiltersCall wrap *gomock.Call
+type MockServiceListResourcesWithFiltersCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceListResourcesWithFiltersCall) Return(arg0 []domain.Resource, arg1 int64, arg2 error) *MockServiceListResourcesWithFiltersCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceListResourcesWithFiltersCall) Do(f func(context.Context, []string, string, []int64, int64, int64, []domain.FilterGroup) ([]domain.Resource, int64, error)) *MockServiceListResourcesWithFiltersCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceListResourcesWithFiltersCall) DoAndReturn(f func(context.Context, []string, string, []int64, int64, int64, []domain.FilterGroup) ([]domain.Resource, int64, error)) *MockServiceListResourcesWithFiltersCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

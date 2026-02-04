@@ -704,6 +704,44 @@ func (c *MockServiceSortCall) DoAndReturn(f func(context.Context, int64, int64, 
 	return c
 }
 
+// SortAttributeGroup mocks base method.
+func (m *MockService) SortAttributeGroup(ctx context.Context, id, targetPosition int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SortAttributeGroup", ctx, id, targetPosition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SortAttributeGroup indicates an expected call of SortAttributeGroup.
+func (mr *MockServiceMockRecorder) SortAttributeGroup(ctx, id, targetPosition any) *MockServiceSortAttributeGroupCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SortAttributeGroup", reflect.TypeOf((*MockService)(nil).SortAttributeGroup), ctx, id, targetPosition)
+	return &MockServiceSortAttributeGroupCall{Call: call}
+}
+
+// MockServiceSortAttributeGroupCall wrap *gomock.Call
+type MockServiceSortAttributeGroupCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceSortAttributeGroupCall) Return(arg0 error) *MockServiceSortAttributeGroupCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceSortAttributeGroupCall) Do(f func(context.Context, int64, int64) error) *MockServiceSortAttributeGroupCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceSortAttributeGroupCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockServiceSortAttributeGroupCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UpdateAttribute mocks base method.
 func (m *MockService) UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error) {
 	m.ctrl.T.Helper()

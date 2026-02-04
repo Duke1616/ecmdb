@@ -41,6 +41,44 @@ func (m *MockEncryptedSvc) EXPECT() *MockEncryptedSvcMockRecorder {
 	return m.recorder
 }
 
+// BatchCreateOrUpdate mocks base method.
+func (m *MockEncryptedSvc) BatchCreateOrUpdate(ctx context.Context, rs []domain.Resource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchCreateOrUpdate", ctx, rs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchCreateOrUpdate indicates an expected call of BatchCreateOrUpdate.
+func (mr *MockEncryptedSvcMockRecorder) BatchCreateOrUpdate(ctx, rs any) *MockEncryptedSvcBatchCreateOrUpdateCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateOrUpdate", reflect.TypeOf((*MockEncryptedSvc)(nil).BatchCreateOrUpdate), ctx, rs)
+	return &MockEncryptedSvcBatchCreateOrUpdateCall{Call: call}
+}
+
+// MockEncryptedSvcBatchCreateOrUpdateCall wrap *gomock.Call
+type MockEncryptedSvcBatchCreateOrUpdateCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockEncryptedSvcBatchCreateOrUpdateCall) Return(arg0 error) *MockEncryptedSvcBatchCreateOrUpdateCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockEncryptedSvcBatchCreateOrUpdateCall) Do(f func(context.Context, []domain.Resource) error) *MockEncryptedSvcBatchCreateOrUpdateCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockEncryptedSvcBatchCreateOrUpdateCall) DoAndReturn(f func(context.Context, []domain.Resource) error) *MockEncryptedSvcBatchCreateOrUpdateCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // BatchUpdateResources mocks base method.
 func (m *MockEncryptedSvc) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
 	m.ctrl.T.Helper()
@@ -507,6 +545,46 @@ func (c *MockEncryptedSvcListResourceByIdsCall) Do(f func(context.Context, []str
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockEncryptedSvcListResourceByIdsCall) DoAndReturn(f func(context.Context, []string, []int64) ([]domain.Resource, error)) *MockEncryptedSvcListResourceByIdsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListResourcesWithFilters mocks base method.
+func (m *MockEncryptedSvc) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListResourcesWithFilters", ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListResourcesWithFilters indicates an expected call of ListResourcesWithFilters.
+func (mr *MockEncryptedSvcMockRecorder) ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups any) *MockEncryptedSvcListResourcesWithFiltersCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesWithFilters", reflect.TypeOf((*MockEncryptedSvc)(nil).ListResourcesWithFilters), ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	return &MockEncryptedSvcListResourcesWithFiltersCall{Call: call}
+}
+
+// MockEncryptedSvcListResourcesWithFiltersCall wrap *gomock.Call
+type MockEncryptedSvcListResourcesWithFiltersCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockEncryptedSvcListResourcesWithFiltersCall) Return(arg0 []domain.Resource, arg1 int64, arg2 error) *MockEncryptedSvcListResourcesWithFiltersCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockEncryptedSvcListResourcesWithFiltersCall) Do(f func(context.Context, []string, string, []int64, int64, int64, []domain.FilterGroup) ([]domain.Resource, int64, error)) *MockEncryptedSvcListResourcesWithFiltersCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockEncryptedSvcListResourcesWithFiltersCall) DoAndReturn(f func(context.Context, []string, string, []int64, int64, int64, []domain.FilterGroup) ([]domain.Resource, int64, error)) *MockEncryptedSvcListResourcesWithFiltersCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

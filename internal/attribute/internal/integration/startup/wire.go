@@ -8,7 +8,9 @@ import (
 )
 
 func InitHandler() (*attribute.Handler, error) {
-	wire.Build(InitMongoDB,
+	wire.Build(
+		InitMongoDB,
+		InitMQ,
 		attribute.InitModule,
 		wire.FieldsOf(new(*attribute.Module), "Hdl"),
 	)

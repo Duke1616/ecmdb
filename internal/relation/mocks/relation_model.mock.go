@@ -41,6 +41,44 @@ func (m *MockRelationModelService) EXPECT() *MockRelationModelServiceMockRecorde
 	return m.recorder
 }
 
+// BatchCreate mocks base method.
+func (m *MockRelationModelService) BatchCreate(ctx context.Context, relations []domain.ModelRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchCreate", ctx, relations)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchCreate indicates an expected call of BatchCreate.
+func (mr *MockRelationModelServiceMockRecorder) BatchCreate(ctx, relations any) *MockRelationModelServiceBatchCreateCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreate", reflect.TypeOf((*MockRelationModelService)(nil).BatchCreate), ctx, relations)
+	return &MockRelationModelServiceBatchCreateCall{Call: call}
+}
+
+// MockRelationModelServiceBatchCreateCall wrap *gomock.Call
+type MockRelationModelServiceBatchCreateCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceBatchCreateCall) Return(arg0 error) *MockRelationModelServiceBatchCreateCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceBatchCreateCall) Do(f func(context.Context, []domain.ModelRelation) error) *MockRelationModelServiceBatchCreateCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceBatchCreateCall) DoAndReturn(f func(context.Context, []domain.ModelRelation) error) *MockRelationModelServiceBatchCreateCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CountByModelUid mocks base method.
 func (m *MockRelationModelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -76,6 +114,45 @@ func (c *MockRelationModelServiceCountByModelUidCall) Do(f func(context.Context,
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockRelationModelServiceCountByModelUidCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockRelationModelServiceCountByModelUidCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// CountByRelationTypeUID mocks base method.
+func (m *MockRelationModelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountByRelationTypeUID", ctx, uid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountByRelationTypeUID indicates an expected call of CountByRelationTypeUID.
+func (mr *MockRelationModelServiceMockRecorder) CountByRelationTypeUID(ctx, uid any) *MockRelationModelServiceCountByRelationTypeUIDCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByRelationTypeUID", reflect.TypeOf((*MockRelationModelService)(nil).CountByRelationTypeUID), ctx, uid)
+	return &MockRelationModelServiceCountByRelationTypeUIDCall{Call: call}
+}
+
+// MockRelationModelServiceCountByRelationTypeUIDCall wrap *gomock.Call
+type MockRelationModelServiceCountByRelationTypeUIDCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceCountByRelationTypeUIDCall) Return(arg0 int64, arg1 error) *MockRelationModelServiceCountByRelationTypeUIDCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceCountByRelationTypeUIDCall) Do(f func(context.Context, string) (int64, error)) *MockRelationModelServiceCountByRelationTypeUIDCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceCountByRelationTypeUIDCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockRelationModelServiceCountByRelationTypeUIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -197,6 +274,45 @@ func (c *MockRelationModelServiceFindModelDiagramBySrcUidsCall) DoAndReturn(f fu
 	return c
 }
 
+// GetByRelationNames mocks base method.
+func (m *MockRelationModelService) GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByRelationNames", ctx, names)
+	ret0, _ := ret[0].([]domain.ModelRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByRelationNames indicates an expected call of GetByRelationNames.
+func (mr *MockRelationModelServiceMockRecorder) GetByRelationNames(ctx, names any) *MockRelationModelServiceGetByRelationNamesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByRelationNames", reflect.TypeOf((*MockRelationModelService)(nil).GetByRelationNames), ctx, names)
+	return &MockRelationModelServiceGetByRelationNamesCall{Call: call}
+}
+
+// MockRelationModelServiceGetByRelationNamesCall wrap *gomock.Call
+type MockRelationModelServiceGetByRelationNamesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceGetByRelationNamesCall) Return(arg0 []domain.ModelRelation, arg1 error) *MockRelationModelServiceGetByRelationNamesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceGetByRelationNamesCall) Do(f func(context.Context, []string) ([]domain.ModelRelation, error)) *MockRelationModelServiceGetByRelationNamesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceGetByRelationNamesCall) DoAndReturn(f func(context.Context, []string) ([]domain.ModelRelation, error)) *MockRelationModelServiceGetByRelationNamesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListModelUidRelation mocks base method.
 func (m *MockRelationModelService) ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error) {
 	m.ctrl.T.Helper()
@@ -233,6 +349,45 @@ func (c *MockRelationModelServiceListModelUidRelationCall) Do(f func(context.Con
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockRelationModelServiceListModelUidRelationCall) DoAndReturn(f func(context.Context, int64, int64, string) ([]domain.ModelRelation, int64, error)) *MockRelationModelServiceListModelUidRelationCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// UpdateModelRelation mocks base method.
+func (m *MockRelationModelService) UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateModelRelation", ctx, req)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateModelRelation indicates an expected call of UpdateModelRelation.
+func (mr *MockRelationModelServiceMockRecorder) UpdateModelRelation(ctx, req any) *MockRelationModelServiceUpdateModelRelationCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateModelRelation", reflect.TypeOf((*MockRelationModelService)(nil).UpdateModelRelation), ctx, req)
+	return &MockRelationModelServiceUpdateModelRelationCall{Call: call}
+}
+
+// MockRelationModelServiceUpdateModelRelationCall wrap *gomock.Call
+type MockRelationModelServiceUpdateModelRelationCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceUpdateModelRelationCall) Return(arg0 int64, arg1 error) *MockRelationModelServiceUpdateModelRelationCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceUpdateModelRelationCall) Do(f func(context.Context, domain.ModelRelation) (int64, error)) *MockRelationModelServiceUpdateModelRelationCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceUpdateModelRelationCall) DoAndReturn(f func(context.Context, domain.ModelRelation) (int64, error)) *MockRelationModelServiceUpdateModelRelationCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

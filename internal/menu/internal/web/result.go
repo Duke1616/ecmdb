@@ -10,4 +10,8 @@ var (
 		Code: errs.SystemError.Code,
 		Msg:  errs.SystemError.Msg,
 	}
+	menuHasChildrenResult = ginx.Result{
+		Code: errs.MenuHasChildren.Code,
+		Msg:  errs.MenuHasChildren.Msg,
+	}
 )

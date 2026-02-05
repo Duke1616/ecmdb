@@ -8,8 +8,10 @@ import (
 	"github.com/Duke1616/ecmdb/internal/permission/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/role"
+	"github.com/Duke1616/ecmdb/pkg/tools"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
@@ -34,26 +36,25 @@ func (s *service) AddPermissionForRole(ctx context.Context, RoleCode string, men
 		return err
 	}
 
-	// 先收集所有 endpoints
+	// 提取所有 endpoints
 	var allEndpoints []menu.Endpoint
 	for _, m := range menus {
 		allEndpoints = append(allEndpoints, m.Endpoints...)
 	}
 
-	// 去重转换
-	uniqueMap := make(map[string]struct{})
-	policies := slice.FilterMap(allEndpoints, func(idx int, src menu.Endpoint) (policy.Policy, bool) {
-		key := fmt.Sprintf("%s:%s:%s", src.Method, src.Path, src.Resource)
-		if _, exists := uniqueMap[key]; exists {
-			return policy.Policy{}, false
-		}
-		uniqueMap[key] = struct{}{}
+	// 转换为 Policy
+	policies := slice.Map(allEndpoints, func(idx int, src menu.Endpoint) policy.Policy {
 		return policy.Policy{
 			Path:     src.Path,
-			Resource: src.Resource,
 			Method:   src.Method,
+			Resource: src.Resource,
 			Effect:   "allow",
-		}, true
+		}
+	})
+
+	// 去重
+	policies = tools.UniqueBy(policies, func(p policy.Policy) string {
+		return fmt.Sprintf("%s:%s:%s", p.Method, p.Path, p.Resource)
 	})
 
 	// 同步权限
@@ -73,88 +74,83 @@ func (s *service) MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uin
 
 	switch action {
 	case domain.CREATE.ToUint8():
-		// TODO 任何菜单新增都添加对应菜单、API权限
 		// 新增菜单，自动授权给 admin 超级管理员
-		err = s.create(ctx, req)
-		if err != nil {
+		if err = s.initialAdminPermission(ctx, req); err != nil {
 			return err
 		}
+		s.logger.Info("菜单权限同步完成: 新增默认Admin权限", elog.Int64("menuId", req.Id))
 	case domain.WRITE.ToUint8():
-		err = s.write(ctx, roles, req.Endpoints)
+		var changed bool
+		changed, err = s.write(ctx, roles, req.Endpoints)
 		if err != nil {
 			return err
 		}
+		s.logger.Info("菜单权限同步完成: 更新权限", elog.Int64("menuId", req.Id), elog.Any("changed", changed))
 	case domain.DELETE.ToUint8():
-		err = s.reWrite(ctx, roles)
+		var changed bool
+		changed, err = s.remove(ctx, roles, req.Endpoints)
 		if err != nil {
 			return err
 		}
+		s.logger.Info("菜单权限同步完成: 删除权限", elog.Int64("menuId", req.Id), elog.Any("changed", changed))
 	}
 	return nil
 }
 
-func (s *service) create(ctx context.Context, req domain.Menu) error {
+func (s *service) initialAdminPermission(ctx context.Context, req domain.Menu) error {
+	var eg errgroup.Group
 	if len(req.Endpoints) != 0 {
-		err := s.write(ctx, []role.Role{{Code: "admin"}}, req.Endpoints)
+		eg.Go(func() error {
+			_, err := s.write(ctx, []role.Role{{Code: role.AdminRole}}, req.Endpoints)
+			return err
+		})
+	}
+
+	eg.Go(func() error {
+		// 获取角色
+		r, err := s.roleSvc.FindByRoleCode(ctx, role.AdminRole)
 		if err != nil {
 			return err
 		}
-	}
 
-	// 获取角色
-	r, err := s.roleSvc.FindByRoleCode(ctx, "admin")
-	if err != nil {
+		// 组合菜单ID, 进行更新
+		menus := append(r.MenuIds, req.Id)
+		_, err = s.roleSvc.CreateOrUpdateRoleMenuIds(ctx, role.AdminRole, menus)
 		return err
-	}
+	})
 
-	// 组合菜单ID, 进行更新
-	menus := make([]int64, 0)
-	menus = append(menus, r.MenuIds...)
-	menus = append(menus, req.Id)
-	_, err = s.roleSvc.CreateOrUpdateRoleMenuIds(ctx, "admin", menus)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return eg.Wait()
 }
 
-func (s *service) write(ctx context.Context, roles []role.Role, es []domain.Endpoint) error {
-	for _, r := range roles {
-		policies := slice.Map(es, func(idx int, src domain.Endpoint) policy.Policy {
-			return policy.Policy{
-				Path:     src.Path,
-				Method:   src.Method,
-				Resource: src.Resource,
-				Effect:   "allow",
-			}
-		})
+func (s *service) write(ctx context.Context, roles []role.Role, es []domain.Endpoint) (bool, error) {
+	return s.policySvc.AddBatchPolicies(ctx, s.toBatchPolicies(roles, es))
+}
 
-		_, err := s.policySvc.AddPolicies(ctx, policy.Policies{
+func (s *service) remove(ctx context.Context, roles []role.Role, es []domain.Endpoint) (bool, error) {
+	return s.policySvc.RemoveBatchPolicies(ctx, s.toBatchPolicies(roles, es))
+}
+
+func (s *service) toBatchPolicies(roles []role.Role, es []domain.Endpoint) policy.BatchPolicies {
+	policies := slice.Map(roles, func(idx int, r role.Role) policy.Policies {
+		return policy.Policies{
 			RoleCode: r.Code,
-			Policies: policies,
-		})
-
-		if err != nil {
-			return err
+			Policies: slice.Map(es, func(idx int, src domain.Endpoint) policy.Policy {
+				return policy.Policy{
+					Path:     src.Path,
+					Method:   src.Method,
+					Resource: src.Resource,
+					Effect:   "allow",
+				}
+			}),
 		}
-	}
-	return nil
-}
+	})
 
-func (s *service) reWrite(ctx context.Context, roles []role.Role) error {
-	for _, r := range roles {
-		err := s.AddPermissionForRole(ctx, r.Code, r.MenuIds)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return policy.BatchPolicies{Policies: policies}
 }
 
 func NewService(roleSvc role.Service, policySvc policy.Service, menuSvc menu.Service) Service {
 	return &service{
-		logger:    elog.DefaultLogger,
+		logger:    elog.DefaultLogger.With(elog.FieldComponentName("PermissionService")),
 		roleSvc:   roleSvc,
 		policySvc: policySvc,
 		menuSvc:   menuSvc,

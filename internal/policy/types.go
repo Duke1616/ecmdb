@@ -16,3 +16,5 @@ type Service = service.Service
 type Policy = domain.Policy
 
 type Policies = domain.Policies
+
+type BatchPolicies = domain.BatchPolicies

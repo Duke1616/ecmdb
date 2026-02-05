@@ -6,11 +6,18 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/menu/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/menu/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/event"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/repository"
+	"github.com/Duke1616/ecmdb/pkg/sorter"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"go.mongodb.org/mongo-driver/mongo"
+)
+
+const (
+	// IndexGap 稀疏索引间隔
+	IndexGap = 1000
 )
 
 type Service interface {
@@ -43,12 +50,16 @@ type Service interface {
 
 	// ChangeMenuEndpoints 变更菜单后端 API 接口
 	ChangeMenuEndpoints(ctx context.Context, id int64, action domain.Action, endpoints []domain.Endpoint) (int64, error)
+
+	// Sort 菜单拖拽排序
+	Sort(ctx context.Context, id, targetPid, targetPosition int64) error
 }
 
 type service struct {
 	producer event.MenuChangeEventProducer
 	repo     repository.MenuRepository
 	logger   *elog.Component
+	sorter   *sorter.Sorter[domain.Menu, domain.MenuSortItem]
 }
 
 func (s *service) ChangeMenuEndpoints(ctx context.Context, id int64, action domain.Action, endpoints []domain.Endpoint) (int64, error) {
@@ -102,6 +113,15 @@ func (s *service) GetAllMenu(ctx context.Context) ([]domain.Menu, error) {
 }
 
 func (s *service) CreateMenu(ctx context.Context, req domain.Menu) (int64, error) {
+	// 为了支持用户自己插入的情况
+	if req.Sort == 0 {
+		maxSortKey, err := s.repo.GetMaxSortKeyByPid(ctx, req.Pid)
+		if err != nil {
+			return 0, err
+		}
+		req.Sort = maxSortKey + IndexGap
+	}
+
 	id, err := s.repo.CreateMenu(ctx, req)
 	if err != nil {
 		return id, err
@@ -116,15 +136,31 @@ func (s *service) CreateMenu(ctx context.Context, req domain.Menu) (int64, error
 }
 
 func (s *service) DeleteMenu(ctx context.Context, id int64) (int64, error) {
-	count, err := s.repo.DeleteMenu(ctx, id)
+	// 校验是否存在子菜单
+	children, err := s.repo.ListByPid(ctx, id)
 	if err != nil {
-		return id, err
+		return 0, err
+	}
+	if len(children) > 0 {
+		return 0, errs.MenuHasChildren
 	}
 
-	// TODO 菜单删除，是验证有角色绑定了菜单不允许删除，还是考虑清除与菜单相关的角色、casbin数据
-	//if id != 0 {
-	//	go s.sendMenuEvent(event.DELETE, id, domain.Menu{})
-	//}
+	// 1. 获取菜单详情（为了拿到 Endpoints，以便后续清理权限）
+	menu, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	// 2. 执行删除
+	count, err := s.repo.DeleteMenu(ctx, id)
+	if err != nil {
+		return count, err
+	}
+
+	// 3. 发送菜单删除事件，通知权限服务清理相关策略
+	if count > 0 {
+		go s.sendMenuEvent(event.DELETE, id, menu)
+	}
 
 	return count, nil
 }
@@ -168,5 +204,44 @@ func NewService(repo repository.MenuRepository, producer event.MenuChangeEventPr
 		repo:     repo,
 		producer: producer,
 		logger:   elog.DefaultLogger,
+		sorter: sorter.NewSorter[domain.Menu, domain.MenuSortItem](
+			func(elem domain.Menu, idx int) domain.MenuSortItem {
+				return domain.MenuSortItem{
+					ID:      elem.Id,
+					Pid:     elem.Pid,
+					SortKey: int64(idx+1) * IndexGap,
+				}
+			},
+		),
 	}
+}
+
+func (s *service) Sort(ctx context.Context, id, targetPid, targetPosition int64) error {
+	// 1. 获取目标分组的所有菜单
+	targetMenus, err := s.repo.ListByPid(ctx, targetPid)
+	if err != nil {
+		return err
+	}
+
+	// 2. 获取被拖拽的菜单详情
+	draggedMenu, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return err
+	}
+	draggedMenu.Pid = targetPid
+
+	// 3. 使用泛型排序器计算重排方案
+	plan := s.sorter.PlanReorder(targetMenus, draggedMenu, targetPosition)
+
+	// 4. 执行计划
+	if plan.NeedRebalance {
+		// 修正批量更新项的 Pid
+		for i := range plan.Items {
+			plan.Items[i].Pid = targetPid
+		}
+		return s.repo.BatchUpdateSortKey(ctx, plan.Items)
+	}
+
+	// 快速路径:单条更新
+	return s.repo.UpdateSort(ctx, id, targetPid, plan.NewSortKey)
 }

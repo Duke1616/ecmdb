@@ -31,10 +31,94 @@ type MenuDAO interface {
 
 	// UpdateMenuEndpoints 同步菜单API数据变更
 	UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []Endpoint) (int64, error)
+
+	// GetMaxSortKeyByPid 获取当前 PID 下最大的排序值
+	GetMaxSortKeyByPid(ctx context.Context, pid int64) (int64, error)
+	// ListByPid 根据 PID 获取菜单列表
+	ListByPid(ctx context.Context, pid int64) ([]Menu, error)
+
+	// UpdateSort 更新单个菜单的排序
+	UpdateSort(ctx context.Context, id, pid, sortKey int64) error
+	// BatchUpdateSortKey 批量更新排序
+	BatchUpdateSortKey(ctx context.Context, items []Menu) error
 }
 
 type menuDAO struct {
 	db *mongox.Mongo
+}
+
+func (dao *menuDAO) BatchUpdateSortKey(ctx context.Context, items []Menu) error {
+	col := dao.db.Collection(MenuCollection)
+	writeModels := make([]mongo.WriteModel, 0, len(items))
+
+	for _, item := range items {
+		update := bson.M{
+			"$set": bson.M{
+				"sort":  item.Sort,
+				"pid":   item.Pid,
+				"utime": time.Now().UnixMilli(),
+			},
+		}
+
+		model := mongo.NewUpdateOneModel().
+			SetFilter(bson.M{"id": item.Id}).
+			SetUpdate(update)
+		writeModels = append(writeModels, model)
+	}
+
+	if len(writeModels) == 0 {
+		return nil
+	}
+
+	_, err := col.BulkWrite(ctx, writeModels)
+	return err
+}
+
+func (dao *menuDAO) UpdateSort(ctx context.Context, id, pid, sortKey int64) error {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{"id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"sort":  sortKey,
+			"pid":   pid,
+			"utime": time.Now().UnixMilli(),
+		},
+	}
+	_, err := col.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (dao *menuDAO) ListByPid(ctx context.Context, pid int64) ([]Menu, error) {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{"pid": pid}
+	opts := options.Find().SetSort(bson.D{{Key: "sort", Value: 1}}) // 按 sort 升序
+
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("查询失败: %w", err)
+	}
+
+	var results []Menu
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, fmt.Errorf("解码失败: %w", err)
+	}
+	return results, nil
+}
+
+func (dao *menuDAO) GetMaxSortKeyByPid(ctx context.Context, pid int64) (int64, error) {
+	col := dao.db.Collection(MenuCollection)
+	filter := bson.M{"pid": pid}
+	opts := options.FindOne().SetSort(bson.D{{Key: "sort", Value: -1}})
+
+	var result Menu
+	err := col.FindOne(ctx, filter, opts).Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return result.Sort, nil
 }
 
 func (dao *menuDAO) UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []Endpoint) (int64, error) {

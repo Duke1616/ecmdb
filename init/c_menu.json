@@ -1552,22 +1552,6 @@
     "utime": "1758897424032"
   },
   {
-    "_id": "66bdc345ce7b5a67a43e8cb8",
-    "component": "",
-    "ctime": "1723712325003",
-    "endpoints": "[ { \"path\" : \"/api/endpoint/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
-    "id": "131",
-    "meta": "{ \"title\" : \"接口列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
-    "name": "list_api",
-    "path": "",
-    "pid": "38",
-    "redirect": "",
-    "sort": "0",
-    "status": "1",
-    "type": "3",
-    "utime": "1758897424032"
-  },
-  {
     "_id": "66bdc38fce7b5a67a43e8cb9",
     "component": "",
     "ctime": "1723712399342",
@@ -3293,7 +3277,7 @@
     "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1760494846612"
+    "utime": "1770262344944"
   },
   {
     "_id": "68ef05373b79b9968e89080d",
@@ -4350,5 +4334,37 @@
     "status": "1",
     "type": "3",
     "utime": "1770184643443"
+  },
+  {
+    "_id": "69840f49cab360250bbb7167",
+    "component": "",
+    "ctime": "1770262344944",
+    "endpoints": "[ { \"path\" : \"/api/endpoint/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "131",
+    "meta": "{ \"title\" : \"接口列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "list_api",
+    "path": "",
+    "pid": "38",
+    "redirect": "",
+    "sort": "0",
+    "status": "1",
+    "type": "3",
+    "utime": "1770262344944"
+  },
+  {
+    "_id": "69841381bb1e1b213bba296c",
+    "component": "",
+    "ctime": "1770263425783",
+    "endpoints": "[ { \"path\" : \"/api/menu/sort\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "305",
+    "meta": "{ \"title\" : \"菜单排序\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "40",
+    "redirect": "",
+    "sort": "7",
+    "status": "1",
+    "type": "3",
+    "utime": "1770263446002"
   }
 ]

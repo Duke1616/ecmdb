@@ -72,3 +72,17 @@ type Meta struct {
 	Icon        string   // Icon图标
 	Platforms   []string // 作用平台
 }
+
+func (m Menu) GetID() int64 {
+	return m.Id
+}
+
+func (m Menu) GetSortKey() int64 {
+	return m.Sort
+}
+
+type MenuSortItem struct {
+	ID      int64
+	SortKey int64
+	Pid     int64
+}

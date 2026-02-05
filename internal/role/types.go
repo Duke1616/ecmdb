@@ -10,4 +10,8 @@ type Handler = web.Handler
 
 type Service = service.Service
 
+const (
+	AdminRole = domain.AdminRole
+)
+
 type Role = domain.Role

@@ -18,6 +18,12 @@ type DeleteMenuReq struct {
 	Id int64 `json:"id"`
 }
 
+type SortMenuReq struct {
+	ID             int64 `json:"id"`
+	TargetPid      int64 `json:"target_pid"`
+	TargetPosition int64 `json:"target_position"`
+}
+
 type UpdateMenuReq struct {
 	Id            int64      `json:"id"`
 	Pid           int64      `json:"pid"`

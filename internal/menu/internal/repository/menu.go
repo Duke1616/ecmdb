@@ -24,10 +24,45 @@ type MenuRepository interface {
 
 	// InjectMenu 注入菜单数据
 	InjectMenu(ctx context.Context, ms []domain.Menu) (*mongo.BulkWriteResult, error)
+
+	// GetMaxSortKeyByPid 获取当前 PID 下最大的排序值
+	GetMaxSortKeyByPid(ctx context.Context, pid int64) (int64, error)
+	// ListByPid 根据 PID 获取菜单列表
+	ListByPid(ctx context.Context, pid int64) ([]domain.Menu, error)
+
+	// UpdateSort 更新单个菜单的排序
+	UpdateSort(ctx context.Context, id, pid, sortKey int64) error
+	// BatchUpdateSortKey 批量更新排序
+	BatchUpdateSortKey(ctx context.Context, items []domain.MenuSortItem) error
 }
 
 type menuRepository struct {
 	dao dao.MenuDAO
+}
+
+func (repo *menuRepository) BatchUpdateSortKey(ctx context.Context, items []domain.MenuSortItem) error {
+	return repo.dao.BatchUpdateSortKey(ctx, slice.Map(items, func(idx int, src domain.MenuSortItem) dao.Menu {
+		return dao.Menu{
+			Id:   src.ID,
+			Pid:  src.Pid,
+			Sort: src.SortKey,
+		}
+	}))
+}
+
+func (repo *menuRepository) UpdateSort(ctx context.Context, id, pid, sortKey int64) error {
+	return repo.dao.UpdateSort(ctx, id, pid, sortKey)
+}
+
+func (repo *menuRepository) ListByPid(ctx context.Context, pid int64) ([]domain.Menu, error) {
+	menus, err := repo.dao.ListByPid(ctx, pid)
+	return slice.Map(menus, func(idx int, src dao.Menu) domain.Menu {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *menuRepository) GetMaxSortKeyByPid(ctx context.Context, pid int64) (int64, error) {
+	return repo.dao.GetMaxSortKeyByPid(ctx, pid)
 }
 
 func (repo *menuRepository) UpdateMenuEndpoints(ctx context.Context, id int64, endpoints []domain.Endpoint) (int64, error) {

@@ -13,6 +13,10 @@ import (
 type Service interface {
 	// AddPolicies 批量添加策略，存在的会跳过
 	AddPolicies(ctx context.Context, req domain.Policies) (bool, error)
+	// AddBatchPolicies 批量添加策略，存在的会跳过
+	AddBatchPolicies(ctx context.Context, req domain.BatchPolicies) (bool, error)
+	// RemoveBatchPolicies 批量移除策略
+	RemoveBatchPolicies(ctx context.Context, req domain.BatchPolicies) (bool, error)
 	// AddGroupingPolicy 用户绑定角色
 	AddGroupingPolicy(ctx context.Context, req domain.AddGroupingPolicy) (bool, error)
 	// CreateOrUpdateFilteredPolicies 通过过滤完成新增修改删除
@@ -91,6 +95,39 @@ func (s *service) AddPolicies(ctx context.Context, req domain.Policies) (bool, e
 		return ok, err
 	}
 	return ok, nil
+}
+
+func (s *service) AddBatchPolicies(ctx context.Context, req domain.BatchPolicies) (bool, error) {
+	var policies [][]string
+	for _, p := range req.Policies {
+		for _, policy := range p.Policies {
+			policies = append(policies, []string{p.RoleCode, policy.Path, policy.Method, policy.Resource,
+				policy.Effect.ToString()})
+		}
+	}
+
+	ok, err := s.enforcer.RemovePolicies(policies)
+	if err != nil {
+		return ok, err
+	}
+
+	ok, err = s.enforcer.AddPolicies(policies)
+	if err != nil {
+		return ok, err
+	}
+	return ok, nil
+}
+
+func (s *service) RemoveBatchPolicies(ctx context.Context, req domain.BatchPolicies) (bool, error) {
+	var policies [][]string
+	for _, p := range req.Policies {
+		for _, policy := range p.Policies {
+			policies = append(policies, []string{p.RoleCode, policy.Path, policy.Method, policy.Resource,
+				policy.Effect.ToString()})
+		}
+	}
+
+	return s.enforcer.RemovePolicies(policies)
 }
 
 func (s *service) CreateOrUpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error) {

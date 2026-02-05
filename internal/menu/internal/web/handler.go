@@ -1,7 +1,10 @@
 package web
 
 import (
+	"errors"
+
 	"github.com/Duke1616/ecmdb/internal/menu/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/menu/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/menu/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
@@ -37,6 +40,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 改变 API 接口
 	g.POST("/change_endpoints", ginx.WrapBody[ChangeEndpointsReq](h.ChangeEndpointsReq))
+
+	// 菜单拖拽排序
+	g.POST("/sort", ginx.WrapBody[SortMenuReq](h.SortMenu))
 }
 
 func (h *Handler) ChangeEndpointsReq(ctx *gin.Context, req ChangeEndpointsReq) (ginx.Result, error) {
@@ -80,6 +86,9 @@ func (h *Handler) ListByPlatform(ctx *gin.Context, req ListByPlatformReq) (ginx.
 func (h *Handler) DeleteMenu(ctx *gin.Context, req DeleteMenuReq) (ginx.Result, error) {
 	count, err := h.svc.DeleteMenu(ctx, req.Id)
 	if err != nil {
+		if errors.Is(err, errs.MenuHasChildren) {
+			return menuHasChildrenResult, nil
+		}
 		return systemErrorResult, err
 	}
 	return ginx.Result{
@@ -111,6 +120,16 @@ func (h *Handler) UpdateMenu(ctx *gin.Context, req UpdateMenuReq) (ginx.Result, 
 
 	return ginx.Result{
 		Data: t,
+	}, nil
+}
+
+func (h *Handler) SortMenu(ctx *gin.Context, req SortMenuReq) (ginx.Result, error) {
+	err := h.svc.Sort(ctx, req.ID, req.TargetPid, req.TargetPosition)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	return ginx.Result{
+		Msg: "OK",
 	}, nil
 }
 

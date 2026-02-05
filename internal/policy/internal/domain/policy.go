@@ -13,6 +13,10 @@ const (
 	DENY Effect = "deny"
 )
 
+type BatchPolicies struct {
+	Policies []Policies
+}
+
 type Policies struct {
 	RoleCode string
 	Policies []Policy

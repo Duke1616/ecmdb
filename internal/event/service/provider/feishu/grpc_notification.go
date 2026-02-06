@@ -34,8 +34,7 @@ func (f *grpcProvider) Send(ctx context.Context, src domain.Notification) (bool,
 		SetToHideForm(src.Template.HideForm).
 		SetInputFields(toCardInputFields(src.Template.InputFields)).
 		SetToCallbackValue(toCardValues(src.Template.Values)).Build()
-
-	fmt.Println(builderMsg)
+	
 	var rawMap map[string]interface{}
 	bytes, err := json.Marshal(builderMsg)
 	if err != nil {

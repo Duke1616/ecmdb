@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 
 	orderv1 "github.com/Duke1616/ecmdb/api/proto/gen/order/v1"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
@@ -33,8 +32,6 @@ func (f *WorkOrderServer) Register(server grpc.ServiceRegistrar) {
 
 func (f *WorkOrderServer) CreateWorkOrder(ctx context.Context, request *orderv1.CreateOrderRequest) (
 	*orderv1.Response, error) {
-
-	fmt.Println(request, "request")
 	// 解析工单数据
 	data, err := protox.AnyMapToInterfaceMap(request.Data)
 	if err != nil {

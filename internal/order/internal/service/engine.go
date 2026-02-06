@@ -45,8 +45,6 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 		return fmt.Errorf("获取任务详情失败: %w", err)
 	}
 
-	return engine.TaskPass(taskId, comment, "", false)
-
 	// 2. 获取流程版本
 	instance, err := e.engineSvc.GetInstanceByID(ctx, taskInfo.ProcInstID)
 	if err != nil {

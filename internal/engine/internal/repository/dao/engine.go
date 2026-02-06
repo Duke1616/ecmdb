@@ -289,7 +289,6 @@ func (g *processEngineDAO) ListStartUser(ctx context.Context, userId, processNam
 
 	err := db.Scan(&res).Error
 
-	fmt.Println(res)
 	return res, err
 }
 

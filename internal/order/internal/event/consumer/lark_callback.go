@@ -146,18 +146,18 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 		comment = "无"
 	}
 
-	c.logger.Info("获取飞书回调信息", elog.Any("evt", evt),
+	c.logger.Debug("获取飞书回调信息", elog.Any("evt", evt),
 		elog.Any("order_id", orderId),
 		elog.Any("task_id", taskId),
 	)
 
-	var wantResult string
+	var remark string
 	switch evt.GetAction() {
 	case event.Pass:
-		wantResult = fmt.Sprintf("你已同意该申请, 批注：%s", comment)
-		if err = c.engineProcessSvc.Pass(ctx, taskId, comment, nil); err != nil {
+		remark = fmt.Sprintf("你已同意该申请, 批注：%s", comment)
+		if err = c.engineProcessSvc.Pass(ctx, taskId, comment, evt.GetFormValue()); err != nil {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
-				wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
+				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 				break
 			}
@@ -182,11 +182,11 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			return err
 		}
 	case event.Reject:
-		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
+		remark = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
 		err = c.engineProcessSvc.Reject(ctx, taskId, comment)
 		if err != nil {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
-				wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
+				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 				break
 			}
@@ -199,7 +199,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			return err
 		}
 	case event.Progress:
-		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
+		remark = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
 		err = c.progress(orderId, evt.GetUserId())
 		if err != nil {
 			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
@@ -208,7 +208,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 
 		return nil
 	case event.Revoke:
-		wantResult = fmt.Sprintf("你已撤销该申请, 批注：%s", evt.GetComment())
+		remark = fmt.Sprintf("你已撤销该申请, 批注：%s", evt.GetComment())
 		// 获取工单详情
 		var orderResp domain.Order
 		orderResp, err = c.Svc.Detail(ctx, orderId)
@@ -226,7 +226,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 		// 撤销流程
 		err = c.engineProcessSvc.Revoke(ctx, orderResp.Process.InstanceId, userResp.Username, true)
 		if err != nil {
-			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
+			remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
 		}
 
@@ -239,7 +239,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 		return nil
 	}
 
-	return c.withdraw(ctx, evt, wantResult)
+	return c.withdraw(ctx, evt, remark)
 }
 
 func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error {

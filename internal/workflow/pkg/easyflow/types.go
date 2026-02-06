@@ -85,7 +85,7 @@ func ParseNodes(raw any) ([]Node, error) {
 		return nil, err
 	}
 
-	if err := decoder.Decode(raw); err != nil {
+	if err = decoder.Decode(raw); err != nil {
 		return nil, err
 	}
 

@@ -49,7 +49,7 @@ func Test_BatchUpdate_Resources(t *testing.T) {
 							"password": "123456",
 							"backend":  "mysql",
 						}
-						fmt.Println()
+
 						if err := verifyEncryptedResource(t, resources[0], expected); err != nil {
 							return 0, err
 						}

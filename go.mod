@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.21
+	github.com/Duke1616/enotify v0.1.22
 	github.com/Duke1616/ework-runner v0.0.1
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/IBM/sarama v1.43.3
@@ -31,6 +31,7 @@ require (
 	github.com/gotomicro/ego v1.2.2
 	github.com/larksuite/oapi-sdk-go/v3 v3.3.2
 	github.com/minio/minio-go/v7 v7.0.98
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pkg/sftp v1.13.7
 	github.com/purpleclay/gitz v0.9.0
 	github.com/redis/go-redis/v9 v9.12.1
@@ -143,7 +144,6 @@ require (
 	github.com/microsoft/go-mssqldb v1.6.0 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.0 // indirect

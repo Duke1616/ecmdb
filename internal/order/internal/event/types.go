@@ -98,6 +98,11 @@ func (l *LarkCallback) GetTaskId() string {
 	return ""
 }
 
+func (l *LarkCallback) GetFormValue() map[string]interface{} {
+	delete(l.FormValue, "comment")
+	return l.FormValue
+}
+
 func (l *LarkCallback) GetTaskIdInt() (int, error) {
 	val := l.GetTaskId()
 	if val == "" {

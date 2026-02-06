@@ -89,21 +89,22 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer prod
 
 func newChannel(builder *sequential.SelectorBuilder) channel.Channel {
 	return channel.NewDispatcher(map[domain.Channel]channel.Channel{
-		domain.ChannelFeishuCard: channel.NewFeishuCardChannel(builder),
+		domain.ChannelLarkCard: channel.NewLarkCardChannel(builder),
 	})
 }
 
 func newSelectorBuilder(
 	lark *lark.Client,
+	notificationSvc notificationv1.NotificationServiceClient,
 ) *sequential.SelectorBuilder {
 	// 构建SMS供应商
 	providers := make([]provider.Provider, 0)
-
-	cardProvider, err := feishu.NewFeishuCardProvider(lark)
+	cardProvider, err := feishu.NewLarkCardProvider(lark)
 	if err != nil {
 		return nil
 	}
 
-	providers = append(providers, cardProvider)
+	grpcNotificationProvider := feishu.NewGRPCProvider(notificationSvc)
+	providers = append(providers, grpcNotificationProvider, cardProvider)
 	return sequential.NewSelectorBuilder(providers)
 }

@@ -7,10 +7,15 @@ import (
 	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/pkg/wechat"
-	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/xen0n/go-workwx"
 )
+
+type Field struct {
+	IsShort bool   `json:"is_short"`
+	Tag     string `json:"tag"`
+	Content string `json:"content"`
+}
 
 type FieldProcessor struct {
 	rules      []Rule
@@ -20,7 +25,7 @@ type FieldProcessor struct {
 	optionsMap map[string]map[interface{}]string
 }
 
-func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []card.Field {
+func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []Field {
 	fp := &FieldProcessor{
 		rules:   rules,
 		provide: provide,
@@ -65,8 +70,8 @@ func (fp *FieldProcessor) filterHiddenFields() {
 	}
 }
 
-func (fp *FieldProcessor) processSystemFields() []card.Field {
-	var fields []card.Field
+func (fp *FieldProcessor) processSystemFields() []Field {
+	var fields []Field
 	keys := fp.getSortedKeys()
 
 	for i, field := range keys {
@@ -74,14 +79,14 @@ func (fp *FieldProcessor) processSystemFields() []card.Field {
 		title := fp.getFieldTitle(field)
 		displayValue := fp.getDisplayValue(field, value)
 
-		fields = append(fields, card.Field{
+		fields = append(fields, Field{
 			IsShort: true,
 			Tag:     "lark_md",
 			Content: fmt.Sprintf(`**%s:**\n%v`, title, displayValue),
 		})
 
 		if (i+1)%2 == 0 {
-			fields = append(fields, card.Field{
+			fields = append(fields, Field{
 				IsShort: false,
 				Tag:     "lark_md",
 				Content: "",
@@ -92,27 +97,27 @@ func (fp *FieldProcessor) processSystemFields() []card.Field {
 	return fields
 }
 
-func (fp *FieldProcessor) processWechatFields() []card.Field {
+func (fp *FieldProcessor) processWechatFields() []Field {
 	oaData, err := wechat.Unmarshal(fp.data)
 	if err != nil {
 		return nil
 	}
 
-	var fields []card.Field
+	var fields []Field
 
 	for i, contents := range oaData.ApplyData.Contents {
 		key := contents.Title[0].Text
 		content := fp.processWechatContent(contents)
 
 		if content != "" {
-			fields = append(fields, card.Field{
+			fields = append(fields, Field{
 				IsShort: true,
 				Tag:     "lark_md",
 				Content: fmt.Sprintf(`**%s:**\n%v`, key, content),
 			})
 
 			if (i+1)%2 == 0 {
-				fields = append(fields, card.Field{
+				fields = append(fields, Field{
 					IsShort: false,
 					Tag:     "lark_md",
 					Content: "",

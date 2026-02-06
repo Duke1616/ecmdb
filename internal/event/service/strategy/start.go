@@ -11,7 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/enotify/notify/feishu/card"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 )
 
@@ -56,14 +56,21 @@ func (s *StartNotification) Send(ctx context.Context, notification domain.Strate
 		return false, err
 	}
 
+	ruleFields := rule.GetFields(rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
 	return s.sender.Send(ctx, domain.Notification{
-		Channel:  domain.ChannelFeishuCard,
+		Channel:  domain.ChannelLarkCard,
 		Receiver: startUser.FeishuInfo.UserId,
 		Template: domain.Template{
-			Name:   FeishuTemplateApprovalRevokeName,
-			Title:  rule.GenerateTitle("你提交的", tName),
-			Fields: rule.GetFields(rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data),
-			Values: []card.Value{
+			Name:  LarkTemplateApprovalRevokeName,
+			Title: rule.GenerateTitle("你提交的", tName),
+			Fields: slice.Map(ruleFields, func(idx int, src rule.Field) domain.Field {
+				return domain.Field{
+					IsShort: src.IsShort,
+					Tag:     src.Tag,
+					Content: src.Content,
+				}
+			}),
+			Values: []domain.Value{
 				{
 					Key:   "order_id",
 					Value: notification.OrderInfo.Id,

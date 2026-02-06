@@ -12,6 +12,10 @@ type ErrorCode struct {
 	Msg  string
 }
 
+func (e ErrorCode) Error() string {
+	return e.Msg
+}
+
 var (
 	ErrInvalidParameter = errors.New("参数错误")
 )

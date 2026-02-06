@@ -18,7 +18,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
@@ -135,11 +134,11 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 
 	// 2. 生成消息数据（先生成默认的）
 	title := rule.GenerateTitle(data.startUser.DisplayName, data.tName)
-	template := FeishuTemplateApprovalName
+	template := LarkTemplateApprovalName
 
 	// 3. 判断是否是抄送情况，如果是，则修改模板和标题，且先执行自动通过
 	if property.IsCC {
-		template = FeishuTemplateCC
+		template = LarkTemplateCC
 		title = rule.GenerateCCTitle(data.startUser.DisplayName, data.tName)
 
 		go func() {
@@ -175,9 +174,17 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 	}
 
 	// 7、. 获取需要传递的信息字段
-	fields := rule.GetFields(data.rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
+	ruleFields := rule.GetFields(data.rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
+	fields := slice.Map(ruleFields, func(idx int, src rule.Field) domain.Field {
+		return domain.Field{
+			IsShort: src.IsShort,
+			Tag:     src.Tag,
+			Content: src.Content,
+		}
+	})
+
 	for field, value := range data.wantResult {
-		fields = append(fields, card.Field{
+		fields = append(fields, domain.Field{
 			IsShort: true,
 			Tag:     "lark_md",
 			Content: fmt.Sprintf(`**%s:**\n%v`, field, value),
@@ -187,13 +194,13 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 	ns := slice.Map(tasks, func(idx int, src model.Task) domain.Notification {
 		receiver, _ := userMap[src.UserID]
 		return domain.Notification{
-			Channel:  domain.ChannelFeishuCard,
+			Channel:  domain.ChannelLarkCard,
 			Receiver: receiver,
 			Template: domain.Template{
 				Name:   template,
 				Title:  title,
 				Fields: fields,
-				Values: []card.Value{
+				Values: []domain.Value{
 					{
 						Key:   "order_id",
 						Value: notification.OrderInfo.Id,
@@ -204,6 +211,21 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 					},
 				},
 				HideForm: false,
+				InputFields: slice.Map(property.Fields, func(idx int, src easyflow.Field) domain.InputField {
+					return domain.InputField{
+						Name:     src.Name,
+						Key:      src.Key,
+						Type:     domain.FieldType(src.Type),
+						Required: src.Required,
+						Options: slice.Map(src.Options, func(idx int, src easyflow.Option) domain.InputOption {
+							return domain.InputOption{
+								Label: src.Label,
+								Value: src.Value,
+							}
+						}),
+						Props: src.Props,
+					}
+				}),
 			},
 		}
 	})

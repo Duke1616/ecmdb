@@ -32,6 +32,7 @@ import (
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/server/egin"
 )
 
 func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,
@@ -43,61 +44,61 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 	departmentHdl *department.Handler, toolsHdl *tools.Handler, termHdl *terminal.Handler, rotaHdl *rota.Handler,
 	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
-) *gin.Engine {
+) *egin.Component {
 	session.SetDefaultProvider(sp)
 	gin.SetMode(gin.ReleaseMode)
 
-	server := gin.Default()
+	server := egin.DefaultContainer().Build(egin.WithPort(8000))
 	server.Use(mdls...)
 
 	// 不需要登录认证鉴权的路由
-	userHdl.PublicRoutes(server)
-	strategyHdl.PublicRoutes(server)
-	toolsHdl.PublicRoutes(server)
-	orderHdl.PublicRoute(server)
+	userHdl.PublicRoutes(server.Engine)
+	strategyHdl.PublicRoutes(server.Engine)
+	toolsHdl.PublicRoutes(server.Engine)
+	orderHdl.PublicRoute(server.Engine)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
 
 	// 查看用户拥有权限
-	permissionHdl.PublicRoutes(server)
+	permissionHdl.PublicRoutes(server.Engine)
 
 	// 检查权限策略
 	server.Use(checkPolicyMiddleware.Build())
 
 	// CMDB 相关接口
-	modelHdl.PrivateRoutes(server)
-	attributeHdl.PrivateRoutes(server)
-	resourceHdl.PrivateRoutes(server)
-	rmHdl.PrivateRoute(server)
-	rrHdl.PrivateRoute(server)
-	rtHdl.PrivateRoute(server)
-	termHdl.PrivateRoutes(server)
-	dataIOHdl.PrivateRoutes(server)
+	modelHdl.PrivateRoutes(server.Engine)
+	attributeHdl.PrivateRoutes(server.Engine)
+	resourceHdl.PrivateRoutes(server.Engine)
+	rmHdl.PrivateRoute(server.Engine)
+	rrHdl.PrivateRoute(server.Engine)
+	rtHdl.PrivateRoute(server.Engine)
+	termHdl.PrivateRoutes(server.Engine)
+	dataIOHdl.PrivateRoutes(server.Engine)
 
 	// 工单流程相关接口
-	workflowHdl.PrivateRoutes(server)
-	templateGroupHdl.PrivateRoutes(server)
-	discoveryHdl.PrivateRoutes(server)
-	engineHdl.PrivateRoutes(server)
-	orderHdl.PrivateRoutes(server)
-	taskHdl.PrivateRoutes(server)
-	templateHdl.PrivateRoutes(server)
-	codebookHdl.PrivateRoutes(server)
-	workerHdl.PrivateRoutes(server)
-	runnerHdl.PrivateRoutes(server)
+	workflowHdl.PrivateRoutes(server.Engine)
+	templateGroupHdl.PrivateRoutes(server.Engine)
+	discoveryHdl.PrivateRoutes(server.Engine)
+	engineHdl.PrivateRoutes(server.Engine)
+	orderHdl.PrivateRoutes(server.Engine)
+	taskHdl.PrivateRoutes(server.Engine)
+	templateHdl.PrivateRoutes(server.Engine)
+	codebookHdl.PrivateRoutes(server.Engine)
+	workerHdl.PrivateRoutes(server.Engine)
+	runnerHdl.PrivateRoutes(server.Engine)
 
 	// 排班系统相关接口
-	rotaHdl.PrivateRoutes(server)
+	rotaHdl.PrivateRoutes(server.Engine)
 
 	// 用户权限相关接口
-	userHdl.PrivateRoutes(server)
-	permissionHdl.PrivateRoutes(server)
-	policyHdl.PrivateRoutes(server)
-	menuHdl.PrivateRoutes(server)
-	endpointHdl.PrivateRoutes(server)
-	departmentHdl.PrivateRoutes(server)
-	roleHdl.PrivateRoutes(server)
+	userHdl.PrivateRoutes(server.Engine)
+	permissionHdl.PrivateRoutes(server.Engine)
+	policyHdl.PrivateRoutes(server.Engine)
+	menuHdl.PrivateRoutes(server.Engine)
+	endpointHdl.PrivateRoutes(server.Engine)
+	departmentHdl.PrivateRoutes(server.Engine)
+	roleHdl.PrivateRoutes(server.Engine)
 
 	return server
 }

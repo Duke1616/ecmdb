@@ -6,10 +6,12 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/service/provider"
+	"github.com/gotomicro/ego/core/elog"
 )
 
 type baseChannel struct {
 	builder provider.SelectorBuilder
+	logger  *elog.Component
 }
 
 func (s *baseChannel) Send(ctx context.Context, notification domain.Notification) (bool, error) {
@@ -19,11 +21,18 @@ func (s *baseChannel) Send(ctx context.Context, notification domain.Notification
 	}
 
 	for {
-		p, err1 := selector.Next(ctx, notification)
-		if err1 != nil {
-			return false, fmt.Errorf("%s: %w", "发送通知失败", err1)
+		p, nextErr := selector.Next(ctx, notification)
+		if nextErr != nil {
+			return false, fmt.Errorf("发送通知失败: %w", nextErr)
 		}
-		
-		return p.Send(ctx, notification)
+
+		// 使用当前供应商发送
+		resp, sendErr := p.Send(ctx, notification)
+		if sendErr != nil {
+			s.logger.Error("使用当前供应商发送失败，将继续向下重试直到结束", elog.FieldErr(sendErr))
+			continue
+		}
+
+		return resp, nil
 	}
 }

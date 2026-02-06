@@ -3,15 +3,15 @@ package ioc
 import (
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/internal/event/service/easyflow"
-	"github.com/Duke1616/ecmdb/pkg/grpcx"
-	"github.com/gin-gonic/gin"
+	grpcpkg "github.com/Duke1616/ework-runner/pkg/grpc"
+	"github.com/gotomicro/ego/server/egin"
 	"github.com/gotomicro/ego/task/ecron"
 )
 
 type App struct {
-	Web   *gin.Engine
-	Grpc  *grpcx.Server
-	Event *easyflow.ProcessEvent
-	Jobs  []*ecron.Component
-	Svc   endpoint.Service
+	Web    *egin.Component
+	Server *grpcpkg.Server
+	Event  *easyflow.ProcessEvent
+	Jobs   []*ecron.Component
+	Svc    endpoint.Service
 }

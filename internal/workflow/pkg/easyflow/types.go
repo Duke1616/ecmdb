@@ -1,6 +1,9 @@
 package easyflow
 
-import "github.com/Bunny3th/easy-workflow/workflow/model"
+import (
+	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/mitchellh/mapstructure"
+)
 
 type ProcessEngineConvert interface {
 	Deploy(workflow Workflow) (int, error)
@@ -65,11 +68,28 @@ type Edge struct {
 	Text         map[string]interface{}   `json:"text"`
 }
 
-// Node 节点定义
 type Node struct {
 	Type       string      `json:"type"`
 	Properties interface{} `json:"properties"`
 	ID         string      `json:"id"`
+}
+
+func ParseNodes(raw any) ([]Node, error) {
+	var nodes []Node
+
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &nodes,
+		TagName: "json",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := decoder.Decode(raw); err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
 }
 
 type EdgeProperty struct {

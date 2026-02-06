@@ -38,15 +38,15 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	}
 	service2 := service.NewService(orderRepository, serviceService, createProcessEventProducer)
 	service3 := engineModule.Svc
-	processEngine := service.NewProcessEngine(service2, service3)
-	service4 := userModule.Svc
-	service5 := workflowModule.Svc
-	handler := web.NewHandler(service2, service3, processEngine, service4, service5)
+	service4 := workflowModule.Svc
+	processEngine := service.NewProcessEngine(service2, service3, service4)
+	service5 := userModule.Svc
+	handler := web.NewHandler(service2, service3, processEngine, service5, service4)
 	workOrderServer := grpc.NewWorkOrderServer(service2, serviceService)
-	wechatOrderConsumer := initWechatConsumer(service2, serviceService, service4, q)
-	processEventConsumer := InitProcessConsumer(q, service5, service2)
+	wechatOrderConsumer := initWechatConsumer(service2, serviceService, service5, q)
+	processEventConsumer := InitProcessConsumer(q, service4, service2)
 	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, service2)
-	larkCallbackEventConsumer := InitLardCallbackConsumer(q, service3, lark2, service4, serviceService, service2, processEngine, service5)
+	larkCallbackEventConsumer := InitLardCallbackConsumer(q, service3, lark2, service5, serviceService, service2, processEngine, service4)
 	module := &Module{
 		Hdl:       handler,
 		RpcServer: workOrderServer,

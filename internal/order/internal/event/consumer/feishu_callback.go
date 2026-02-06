@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -14,6 +15,7 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/order/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -24,7 +26,6 @@ import (
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/Duke1616/enotify/notify/feishu/card"
-	feishuMsg "github.com/Duke1616/enotify/notify/feishu/message"
 	"github.com/Duke1616/enotify/template"
 	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
@@ -46,12 +47,11 @@ const (
 )
 
 type LarkCallbackEventConsumer struct {
-	patchNc          notify.Notifier[*larkim.PatchMessageReq]
-	createNc         notify.Notifier[*larkim.CreateMessageReq]
 	Svc              service.Service
 	logicFlowUrl     string
 	chromedpDebug    bool
 	tmpl             *template.Template
+	handler          notify.Handler
 	workflowSvc      workflow.Service
 	userSvc          user.Service
 	engineSvc        engineSvc.Service
@@ -75,26 +75,19 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		return nil, err
 	}
 
-	patchNc, err := feishu.NewPatchFeishuNotifyByClient(lark)
-	if err != nil {
-		return nil, err
-	}
-
-	createNc, err := feishu.NewCreateFeishuNotifyByClient(lark)
+	handler, err := feishu.NewHandler(lark)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := getFrontendConfig()
-
 	return &LarkCallbackEventConsumer{
 		consumer:         consumer,
 		engineSvc:        engineSvc,
 		engineProcessSvc: engineProcessSvc,
 		userSvc:          userSvc,
 		workflowSvc:      workflowSvc,
-		patchNc:          patchNc,
-		createNc:         createNc,
+		handler:          handler,
 		logicFlowUrl:     cfg.LogicFlowUrl,
 		chromedpDebug:    cfg.ChromedpDebug,
 		templateSvc:      templateSvc,
@@ -154,17 +147,48 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 	switch evt.Action {
 	case "pass":
 		wantResult = fmt.Sprintf("你已同意该申请, 批注：%s", evt.Comment)
-		err = c.engineProcessSvc.Pass(ctx, taskId, evt.Comment, nil)
-		if err != nil {
-			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
-			c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
+		if err = c.engineProcessSvc.Pass(ctx, taskId, evt.Comment, nil); err != nil {
+			if strings.Contains(err.Error(), "已处理，无需操作") {
+				wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
+				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
+				return nil
+			}
+
+			if errors.Is(err, errs.ValidationError) {
+				content := fmt.Sprintf(`{"text": "%s"}`, err.Error())
+				msg := feishu.NewCreateBuilder(evt.FeishuUserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+					SetContent(feishu.NewFeishuCustom("text", content)).Build()
+
+				if err = c.handler.Send(ctx, msg); err != nil {
+					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %s, 工单ID: %s", err, evt.TaskId, evt.OrderId)
+				}
+
+				return err
+			}
+
+			c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err),
+				elog.String("任务ID", evt.TaskId),
+				elog.String("工单ID", evt.OrderId),
+			)
+
+			return err
 		}
 	case "reject":
 		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", evt.Comment)
 		err = c.engineProcessSvc.Reject(ctx, taskId, evt.Comment)
 		if err != nil {
-			wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
-			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err))
+			if strings.Contains(err.Error(), "已处理，无需操作") {
+				wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
+				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
+				return nil
+			}
+
+			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err),
+				elog.String("任务ID", evt.TaskId),
+				elog.String("工单ID", evt.OrderId),
+			)
+
+			return err
 		}
 	case "progress":
 		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", evt.Comment)
@@ -263,7 +287,6 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 		return err
 	}
 
-	// 3. 尝试获取历史快照 (Version-Aware)
 	// 3. 尝试获取历史快照 (Version-Aware)
 	wf, err := c.workflowSvc.FindInstanceFlow(taskCtx, orderDetail.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
@@ -380,24 +403,19 @@ func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *str
 		Content: status,
 	})
 
-	notifyWrap := notify.WrapNotifierDynamic(c.createNc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
-		return feishuMsg.NewCreateFeishuMessage(
-			"user_id", userId,
-			feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgressImageResult,
-				card.NewApprovalCardBuilder().
-					SetToTitle("工单流程进度查看").
-					SetImageKey(*imageKey).
-					SetToFields(fields).
-					Build(),
-			),
-		), nil
-	})
+	msg := feishu.NewCreateBuilder(userId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+		SetContent(feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgressImageResult, card.NewApprovalCardBuilder().
+			SetToTitle("工单流程进度查看").
+			SetImageKey(*imageKey).
+			SetToFields(fields).
+			Build())).
+		Build()
 
-	ok, err := notifyWrap.Send(ctx)
-	if !ok {
-		c.logger.Error("发送流程进度失败")
+	if err = c.handler.Send(ctx, msg); err != nil {
+		return fmt.Errorf("发送流程进度失败: %w", err)
 	}
-	return err
+
+	return nil
 }
 
 func (c *LarkCallbackEventConsumer) uploadImage(ctx context.Context, buf []byte) (*string, error) {
@@ -510,31 +528,27 @@ func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event
 	if err != nil {
 		return err
 	}
-	fields := rule.GetFields(rules, fOrder.Provide.ToUint8(), fOrder.Data)
+	ruleFields := rule.GetFields(rules, fOrder.Provide.ToUint8(), fOrder.Data)
 	userInfo, err := c.userSvc.FindByUsername(ctx, fOrder.CreateBy)
 	if err != nil {
 		return err
 	}
 
-	notifyWrap := notify.WrapNotifierDynamic(c.patchNc, func() (notify.BasicNotificationMessage[*larkim.PatchMessageReq], error) {
-		return feishuMsg.NewPatchFeishuMessage(
-			callback.MessageId,
-			feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgress,
-				card.NewApprovalCardBuilder().
-					SetToTitle(rule.GenerateTitle(userInfo.DisplayName, t.Name)).
-					SetToFields(fields).
-					SetToCallbackValue(getCallbackValue(callback)).
-					SetWantResult(wantResult).
-					Build(),
-			),
-		), nil
-	})
+	msg := feishu.NewPatchBuilder(callback.MessageId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+		SetContent(feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgress,
+			card.NewApprovalCardBuilder().
+				SetToTitle(rule.GenerateTitle(userInfo.DisplayName, t.Name)).
+				SetToFields(toCardFields(ruleFields)).
+				SetToCallbackValue(getCallbackValue(callback)).
+				SetWantResult(wantResult).
+				Build(),
+		)).Build()
 
-	ok, err := notifyWrap.Send(ctx)
-	if !ok {
-		c.logger.Error("修改飞书消息失败")
+	if err = c.handler.Send(ctx, msg); err != nil {
+		return fmt.Errorf("修改飞书消息失败: %w", err)
 	}
-	return err
+
+	return nil
 }
 
 func getCallbackValue(callback event.FeishuCallback) []card.Value {
@@ -594,4 +608,16 @@ func scaleImage(buf []byte) ([]byte, error) {
 
 	// 返回处理后的字节流
 	return outBuf.Bytes(), nil
+}
+
+func toCardFields(fields []rule.Field) []card.Field {
+	var cardFields []card.Field
+	for _, f := range fields {
+		cardFields = append(cardFields, card.Field{
+			IsShort: f.IsShort,
+			Tag:     f.Tag,
+			Content: f.Content,
+		})
+	}
+	return cardFields
 }

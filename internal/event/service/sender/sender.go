@@ -17,6 +17,7 @@ type NotificationSender interface {
 type sender struct {
 	channel channel.Channel
 	logger  *elog.Component
+	sem     chan struct{}
 }
 
 // NewSender 创建通知发送器
@@ -24,6 +25,7 @@ func NewSender(channel channel.Channel) NotificationSender {
 	return &sender{
 		channel: channel,
 		logger:  elog.DefaultLogger,
+		sem:     make(chan struct{}, 50),
 	}
 }
 
@@ -45,11 +47,15 @@ func (d *sender) BatchSend(ctx context.Context, notifications []domain.Notificat
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(notifications))
 	for i := range notifications {
 		n := notifications[i]
+		wg.Add(1)
+		d.sem <- struct{}{} // Acquire semaphore
 		go func() {
-			defer wg.Done()
+			defer func() {
+				<-d.sem // Release semaphore
+				wg.Done()
+			}()
 			_, err := d.channel.Send(ctx, n)
 			if err != nil {
 				d.logger.Error("发送失败", elog.FieldErr(err))

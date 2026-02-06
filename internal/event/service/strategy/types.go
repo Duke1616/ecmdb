@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	// FeishuTemplateApprovalName 正常审批通知
-	FeishuTemplateApprovalName = "feishu-card-callback"
-	// FeishuTemplateApprovalRevokeName 带有撤销的审批通知
-	FeishuTemplateApprovalRevokeName = "feishu-card-revoke"
-	// FeishuTemplateCC 抄送通知
-	FeishuTemplateCC = "feishu-card-cc"
+	// LarkTemplateApprovalName 正常审批通知
+	LarkTemplateApprovalName = "feishu-card-callback"
+	// LarkTemplateApprovalRevokeName 带有撤销的审批通知
+	LarkTemplateApprovalRevokeName = "feishu-card-revoke"
+	// LarkTemplateCC 抄送通知
+	LarkTemplateCC = "feishu-card-cc"
 )
 
 // SendStrategy 针对不同节点的策略

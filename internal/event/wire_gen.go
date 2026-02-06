@@ -46,7 +46,7 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 	service3 := workflowModule.Svc
 	service4 := userModule.Svc
 	service5 := templateModule.Svc
-	selectorBuilder := newSelectorBuilder(lark2)
+	selectorBuilder := newSelectorBuilder(lark2, notificationSvc)
 	channel := newChannel(selectorBuilder)
 	notificationSender := sender.NewSender(channel)
 	startNotification, err := strategy.NewStartNotification(service4, service5, notificationSender)
@@ -102,19 +102,20 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 pro
 }
 
 func newChannel(builder *sequential.SelectorBuilder) channel.Channel {
-	return channel.NewDispatcher(map[domain.Channel]channel.Channel{domain.ChannelFeishuCard: channel.NewFeishuCardChannel(builder)})
+	return channel.NewDispatcher(map[domain.Channel]channel.Channel{domain.ChannelLarkCard: channel.NewLarkCardChannel(builder)})
 }
 
 func newSelectorBuilder(lark2 *lark.Client,
+	notificationSvc notificationv1.NotificationServiceClient,
 ) *sequential.SelectorBuilder {
 
 	providers := make([]provider.Provider, 0)
-
-	cardProvider, err := feishu.NewFeishuCardProvider(lark2)
+	cardProvider, err := feishu.NewLarkCardProvider(lark2)
 	if err != nil {
 		return nil
 	}
 
-	providers = append(providers, cardProvider)
+	grpcNotificationProvider := feishu.NewGRPCProvider(notificationSvc)
+	providers = append(providers, grpcNotificationProvider, cardProvider)
 	return sequential.NewSelectorBuilder(providers)
 }

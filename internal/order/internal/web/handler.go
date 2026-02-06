@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -76,7 +75,7 @@ func (h *Handler) GetTaskFormConfig(ctx *gin.Context, req TaskFormConfigReq) (gi
 		return systemErrorResult, err
 	}
 
-	nodes, err := ParseNodes(wf.FlowData.Nodes)
+	nodes, err := easyflow.ParseNodes(wf.FlowData.Nodes)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -103,18 +102,6 @@ func (h *Handler) GetTaskFormConfig(ctx *gin.Context, req TaskFormConfigReq) (gi
 	}, nil
 }
 
-func ParseNodes(raw any) ([]easyflow.Node, error) {
-	bytes, err := json.Marshal(raw)
-	if err != nil {
-		return nil, err
-	}
-
-	var nodes []easyflow.Node
-	if err = json.Unmarshal(bytes, &nodes); err != nil {
-		return nil, err
-	}
-	return nodes, nil
-}
 func (h *Handler) CreateOrder(ctx *gin.Context, req CreateOrderReq) (ginx.Result, error) {
 	if req.CreateBy == "" {
 		u, err := h.getSessUser(ctx)

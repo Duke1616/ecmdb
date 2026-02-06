@@ -8,7 +8,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/endpoint"
 	"github.com/Duke1616/ecmdb/ioc"
-	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/server/egin"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ var Cmd = &cobra.Command{
 }
 
 // 生成端点路由信息、方便菜单权限绑定路由
-func initEndpoint(ctx context.Context, web *gin.Engine, svc endpoint.Service) error {
+func initEndpoint(ctx context.Context, web *egin.Component, svc endpoint.Service) error {
 	routes := web.Routes()
 	var endpoints []endpoint.Endpoint
 

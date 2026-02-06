@@ -5,6 +5,9 @@ import (
 
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/ioc"
+	"github.com/gotomicro/ego"
+	"github.com/gotomicro/ego/core/elog"
+	"github.com/gotomicro/ego/server"
 	"github.com/gotomicro/ego/task/ecron"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,14 +25,23 @@ var Cmd = &cobra.Command{
 		initCronjob(app.Jobs)
 		engine.RegisterEvents(app.Event)
 
-		go func() {
-			if err = app.Web.Run(":8000"); err != nil {
-				panic(err)
-			}
-		}()
+		// 创建 ego 应用实例
+		egoApp := ego.New(ego.WithDisableBanner(true))
 
-		err = app.Grpc.Serve()
-		panic(err)
+		// 启动服务
+		if err := egoApp.Serve(
+			func() server.Server {
+				return app.Web
+			}(),
+			func() server.Server {
+				return app.Server
+			}(),
+		).Cron().
+			Run(); err != nil {
+			elog.Panic("startup", elog.FieldErr(err))
+		}
+
+		return nil
 	},
 }
 

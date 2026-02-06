@@ -35,14 +35,12 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
-	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/Duke1616/ecmdb/pkg/storage"
+	grpc2 "github.com/Duke1616/ework-runner/pkg/grpc"
+	"github.com/Duke1616/ework-runner/pkg/grpc/registry"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
-	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 import (
@@ -196,14 +194,16 @@ func InitApp() (*App, error) {
 	}
 	handler23 := dataioModule.Hdl
 	checkLoginMiddlewareBuilder := middleware.NewCheckLoginMiddlewareBuilder(provider)
-	ginEngine := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22, handler23, checkLoginMiddlewareBuilder)
+	component := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22, handler23, checkLoginMiddlewareBuilder)
+	registry := InitRegistry(client)
 	workOrderServer := orderModule.RpcServer
 	policyServer := module.RpcServer
 	endpointServer := endpointModule.RpcServer
 	userServer := userModule.RpcServer
 	rotaServer := rotaModule.RpcServer
-	server := InitGrpcServer(workOrderServer, policyServer, endpointServer, userServer, rotaServer, client)
-	notificationServiceClient := InitNotificationServiceClient(client)
+	server := InitGrpcServer(registry, workOrderServer, policyServer, endpointServer, userServer, rotaServer)
+	clientConnInterface := InitEALERTGrpcClient(registry)
+	notificationServiceClient := InitNotificationServiceClient(clientConnInterface)
 	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, departmentModule, larkClient, notificationServiceClient)
 	if err != nil {
 		return nil, err
@@ -214,11 +214,11 @@ func InitApp() (*App, error) {
 	v2 := initCronJobs(startTaskJob, passProcessTaskJob)
 	serviceService := endpointModule.Svc
 	app := &App{
-		Web:   ginEngine,
-		Grpc:  server,
-		Event: processEvent,
-		Jobs:  v2,
-		Svc:   serviceService,
+		Web:    component,
+		Server: server,
+		Event:  processEvent,
+		Jobs:   v2,
+		Svc:    serviceService,
 	}
 	return app, nil
 }
@@ -226,36 +226,26 @@ func InitApp() (*App, error) {
 // wire.go:
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRedisSearch, InitEtcdClient, InitWorkWx, InitLarkClient, InitModuleCrypto)
+	InitRedisSearch, InitEtcdClient, InitWorkWx, InitLarkClient, InitModuleCrypto, InitRegistry)
 
-func InitNotificationServiceClient(etcdClient *clientv3.Client) notificationv1.NotificationServiceClient {
-	type Config struct {
-		Target string `mapstructure:"target"`
-		Secure bool   `mapstructure:"secure"`
-		Key    string `mapstructure:"key"`
+// InitEALERTGrpcClient 初始化 EALERT gRPC 客户端
+func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
+	var cfg grpc2.ClientConfig
+	if err := viper.UnmarshalKey("grpc.client.ealert", &cfg); err != nil {
+		panic(err)
 	}
-	var cfg Config
-	err := viper.UnmarshalKey("grpc.client.ealert", &cfg)
+
+	cc, err := grpc2.NewClientConn(
+		reg, grpc2.WithServiceName(cfg.Name), grpc2.WithClientJWTAuth(cfg.AuthToken),
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	rs, err := resolver.NewBuilder(etcdClient)
-	if err != nil {
-		panic(err)
-	}
+	return cc
+}
 
-	jwtInterceptor := jwt.NewClientInterceptorBuilder(cfg.Key)
-	opts := []grpc.DialOption{grpc.WithResolvers(rs), grpc.WithUnaryInterceptor(jwtInterceptor.UnaryClientInterceptor())}
-
-	if !cfg.Secure {
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	cc, err := grpc.NewClient(cfg.Target, opts...)
-	if err != nil {
-		panic(err)
-	}
-
+// InitNotificationServiceClient 初始化 notification 服务客户端
+func InitNotificationServiceClient(cc grpc.ClientConnInterface) notificationv1.NotificationServiceClient {
 	return notificationv1.NewNotificationServiceClient(cc)
 }

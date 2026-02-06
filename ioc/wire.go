@@ -31,18 +31,16 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
-	"github.com/Duke1616/ecmdb/pkg/grpcx/interceptors/jwt"
 	"github.com/Duke1616/ecmdb/pkg/storage"
+	grpcpkg "github.com/Duke1616/ework-runner/pkg/grpc"
+	"github.com/Duke1616/ework-runner/pkg/grpc/registry"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
-	etcdv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var BaseSet = wire.NewSet(InitMongoDB, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRedisSearch, InitEtcdClient, InitWorkWx, InitLarkClient, InitModuleCrypto)
+	InitRedisSearch, InitEtcdClient, InitWorkWx, InitLarkClient, InitModuleCrypto, InitRegistry)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),
@@ -51,6 +49,7 @@ func InitApp() (*App, error) {
 		InitCasbin,
 		InitLdapConfig,
 		storage.NewS3Storage,
+		InitEALERTGrpcClient,
 		InitNotificationServiceClient,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
@@ -111,38 +110,26 @@ func InitApp() (*App, error) {
 	return new(App), nil
 }
 
-func InitNotificationServiceClient(etcdClient *etcdv3.Client) notificationv1.NotificationServiceClient {
-	type Config struct {
-		Target string `mapstructure:"target"`
-		Secure bool   `mapstructure:"secure"`
-		Key    string `mapstructure:"key"`
+// InitEALERTGrpcClient 初始化 EALERT gRPC 客户端
+func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
+	var cfg grpcpkg.ClientConfig
+	if err := viper.UnmarshalKey("grpc.client.ealert", &cfg); err != nil {
+		panic(err)
 	}
-	var cfg Config
-	err := viper.UnmarshalKey("grpc.client.ealert", &cfg)
+
+	cc, err := grpcpkg.NewClientConn(
+		reg,
+		grpcpkg.WithServiceName(cfg.Name),
+		grpcpkg.WithClientJWTAuth(cfg.AuthToken),
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	rs, err := resolver.NewBuilder(etcdClient)
-	if err != nil {
-		panic(err)
-	}
+	return cc
+}
 
-	// 创建 JWT 客户端拦截器
-	jwtInterceptor := jwt.NewClientInterceptorBuilder(cfg.Key)
-	opts := []grpc.DialOption{
-		grpc.WithResolvers(rs),
-		grpc.WithUnaryInterceptor(jwtInterceptor.UnaryClientInterceptor()),
-	}
-
-	if !cfg.Secure {
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	cc, err := grpc.NewClient(cfg.Target, opts...)
-	if err != nil {
-		panic(err)
-	}
-
+// InitNotificationServiceClient 初始化 notification 服务客户端
+func InitNotificationServiceClient(cc grpc.ClientConnInterface) notificationv1.NotificationServiceClient {
 	return notificationv1.NewNotificationServiceClient(cc)
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/gotomicro/ego/core/elog"
 )
 
@@ -74,13 +73,13 @@ func (n *AutomationNotification) Send(ctx context.Context, notification domain.S
 	}
 
 	return n.sender.Send(ctx, domain.Notification{
-		Channel:  domain.ChannelFeishuCard,
+		Channel:  domain.ChannelLarkCard,
 		Receiver: startUser.FeishuInfo.UserId,
 		Template: domain.Template{
-			Name:     FeishuTemplateApprovalName,
+			Name:     LarkTemplateApprovalName,
 			Title:    rule.GenerateAutoTitle("你提交", tName),
 			Fields:   n.getFields(wantResult),
-			Values:   []card.Value{},
+			Values:   []domain.Value{},
 			HideForm: true,
 		},
 	})
@@ -96,21 +95,21 @@ func (n *AutomationNotification) getTemplateName(ctx context.Context, order orde
 	return "", nil
 }
 
-func (n *AutomationNotification) getFields(wantResult map[string]interface{}) []card.Field {
+func (n *AutomationNotification) getFields(wantResult map[string]interface{}) []domain.Field {
 	num := 1
-	var fields []card.Field
+	var fields []domain.Field
 
 	for field, value := range wantResult {
 		title := field
 
-		fields = append(fields, card.Field{
+		fields = append(fields, domain.Field{
 			IsShort: true,
 			Tag:     "lark_md",
 			Content: fmt.Sprintf(`**%s:**\n%v`, title, value),
 		})
 
 		if num%2 == 0 {
-			fields = append(fields, card.Field{
+			fields = append(fields, domain.Field{
 				IsShort: false,
 				Tag:     "lark_md",
 				Content: "",

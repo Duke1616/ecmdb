@@ -11,16 +11,14 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
-	"github.com/Duke1616/enotify/notify/feishu/message"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type ExecuteResultConsumer struct {
 	consumer    mq.Consumer
-	nc          notify.Notifier[*larkim.CreateMessageReq]
+	handler     notify.Handler
 	codebookSvc codebook.Service
 	userSvc     user.Service
 	svc         service.Service
@@ -36,7 +34,7 @@ func NewExecuteResultConsumer(q mq.MQ, svc service.Service, codebookSvc codebook
 		return nil, err
 	}
 
-	nc, err := feishu.NewCreateFeishuNotifyByClient(lark)
+	handler, err := feishu.NewHandler(lark)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +44,7 @@ func NewExecuteResultConsumer(q mq.MQ, svc service.Service, codebookSvc codebook
 		svc:         svc,
 		codebookSvc: codebookSvc,
 		userSvc:     userSvc,
-		nc:          nc,
+		handler:     handler,
 		logger:      elog.DefaultLogger,
 	}, nil
 }
@@ -103,23 +101,14 @@ func (c *ExecuteResultConsumer) failedNotify(ctx context.Context, id int64) erro
 		return err
 	}
 
-	wrap := notify.WrapNotifierDynamic(c.nc, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
-		content := fmt.Sprintf(`{"text": "任务执行失败, 请通过平台进行查看，任务ID: %d, 工作节点: %s"}`,
-			id, t.WorkerName)
+	content := fmt.Sprintf(`{"text": "任务执行失败, 请通过平台进行查看，任务ID: %d, 工作节点: %s"}`,
+		id, t.WorkerName)
 
-		return message.NewCreateFeishuMessage(
-			"user_id", u.FeishuInfo.UserId,
-			feishu.NewFeishuCustom("text", content),
-		), nil
-	})
+	msg := feishu.NewCreateBuilder(u.FeishuInfo.UserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+		SetContent(feishu.NewFeishuCustom("text", content)).Build()
 
-	ok, err := wrap.Send(ctx)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		c.logger.Error("任务执行失败，触发发送信息失败", elog.Int64("工单ID", id))
+	if err = c.handler.Send(ctx, msg); err != nil {
+		return fmt.Errorf("任务执行失败，触发发送信息失败: %w, 工单ID: %d", err, id)
 	}
 
 	return nil

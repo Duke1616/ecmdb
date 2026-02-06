@@ -8,45 +8,48 @@ import (
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/Duke1616/enotify/notify/feishu/card"
-	"github.com/Duke1616/enotify/notify/feishu/message"
 	"github.com/Duke1616/enotify/template"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
-type feishuCardProvider struct {
-	notify notify.Notifier[*larkim.CreateMessageReq]
-	tmpl   *template.Template
+type larkCardProvider struct {
+	handler notify.Handler
+	tmpl    *template.Template
 }
 
-func NewFeishuCardProvider(lark *lark.Client) (provider.Provider, error) {
+func NewLarkCardProvider(lark *lark.Client) (provider.Provider, error) {
 	tmpl, err := template.FromGlobs([]string{})
 	if err != nil {
 		return nil, err
 	}
 
-	nc, err := feishu.NewCreateFeishuNotifyByClient(lark)
+	handler, err := feishu.NewHandler(lark)
 	if err != nil {
 		return nil, err
 	}
 
-	return &feishuCardProvider{
-		tmpl:   tmpl,
-		notify: nc,
+	return &larkCardProvider{
+		tmpl:    tmpl,
+		handler: handler,
 	}, nil
 }
 
-func (f *feishuCardProvider) Send(ctx context.Context, notification domain.Notification) (bool, error) {
-	return notify.WrapNotifierDynamic(f.notify, func() (notify.BasicNotificationMessage[*larkim.CreateMessageReq], error) {
-		return message.NewCreateFeishuMessage(
-			"user_id", notification.Receiver,
-			feishu.NewFeishuCustomCard(f.tmpl, notification.Template.Name,
-				card.NewApprovalCardBuilder().
-					SetToTitle(notification.Template.Title).
-					SetToFields(notification.Template.Fields).
-					SetToHideForm(notification.Template.HideForm).
-					SetToCallbackValue(notification.Template.Values).Build(),
-			),
-		), nil
-	}).Send(ctx)
+func (f *larkCardProvider) Send(ctx context.Context, src domain.Notification) (bool, error) {
+	msg := feishu.NewCreateBuilder(src.Receiver).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+		SetContent(feishu.NewFeishuCustomCard(f.tmpl, src.Template.Name,
+			card.NewApprovalCardBuilder().
+				SetToTitle(src.Template.Title).
+				SetToFields(toCardFields(src.Template.Fields)).
+				SetToHideForm(src.Template.HideForm).
+				SetInputFields(toCardInputFields(src.Template.InputFields)).
+				SetToCallbackValue(toCardValues(src.Template.Values)).
+				Build(),
+		)).
+		Build()
+
+	if err := f.handler.Send(ctx, msg); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

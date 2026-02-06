@@ -3,5 +3,5 @@ package domain
 type Channel string
 
 const (
-	ChannelFeishuCard Channel = "FEISHU_CARD" // 飞书卡片
+	ChannelLarkCard Channel = "FEISHU_CARD" // 飞书卡片
 )

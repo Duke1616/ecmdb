@@ -60,30 +60,35 @@ etcd:
 
 minio:
   endpoint: minio:9000
-  accessKeyID: minio
-  secretAccessKey: minio123
-  useSSL: false
+  access_key_id: minio
+  secret_access_key: minio123
+  use_ssl: false
 
 # 用于查询企业微信API
 wechat:
-  corpId: ""
-  corpSecret: ""
-  agentId: 1000002
+  corp_id: ""
+  corp_secret: ""
+  agent_id: 1000002
 
 # 用于飞书发送消息通知
-feishu:
-  appId: ""
-  appSecret: ""
+lark:
+  app_id: ""
+  app_secret: ""
+  callback:
+    frontend_url: http://ecmdb-web:80/logicflow-preview
+    debug: false
 
-frontend:
-  logicflow_url: http://localhost:3333/logicflow-preview
-
+# 如果工单需要自动化任务必须开启
 cronjob:
   enabled: false
 
 grpc:
   server:
-    name: "ecmdb"
-    port: 8097
-    etcd_ttl: 60
-    key: "1234567890"
+    ecmdb:
+      name: "ecmdb"
+      listen_addr: "0.0.0.0:8097"
+      auth_token: "1234567890"
+  client:
+    ealert:
+      name: "ealert"
+      auth_token: "1234567890"

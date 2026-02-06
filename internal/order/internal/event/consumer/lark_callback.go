@@ -34,8 +34,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/image/draw"
 
-	"strconv"
-
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -48,8 +46,7 @@ const (
 
 type LarkCallbackEventConsumer struct {
 	Svc              service.Service
-	logicFlowUrl     string
-	chromedpDebug    bool
+	callback         callback
 	tmpl             *template.Template
 	handler          notify.Handler
 	workflowSvc      workflow.Service
@@ -64,8 +61,8 @@ type LarkCallbackEventConsumer struct {
 
 func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, engineProcessSvc service.ProcessEngine, service service.Service,
 	templateSvc templateSvc.Service, userSvc user.Service, workflowSvc workflow.Service, lark *lark.Client) (*LarkCallbackEventConsumer, error) {
-	groupID := "feishu_callback"
-	consumer, err := q.Consumer(event.FeishuCallbackEventName, groupID)
+	groupID := "lark_callback"
+	consumer, err := q.Consumer(event.LarkCallbackEventName, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +77,6 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		return nil, err
 	}
 
-	cfg := getFrontendConfig()
 	return &LarkCallbackEventConsumer{
 		consumer:         consumer,
 		engineSvc:        engineSvc,
@@ -88,8 +84,7 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		userSvc:          userSvc,
 		workflowSvc:      workflowSvc,
 		handler:          handler,
-		logicFlowUrl:     cfg.LogicFlowUrl,
-		chromedpDebug:    cfg.ChromedpDebug,
+		callback:         getLarkCallbackConfig(),
 		templateSvc:      templateSvc,
 		Svc:              service,
 		tmpl:             tmpl,
@@ -98,14 +93,14 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 	}, nil
 }
 
-type frontendConfig struct {
-	LogicFlowUrl  string `mapstructure:"logicflow_url"`
-	ChromedpDebug bool   `mapstructure:"chromedp_debug"`
+type callback struct {
+	FrontendUrl string `mapstructure:"frontend_url"`
+	Debug       bool   `mapstructure:"debug"`
 }
 
-func getFrontendConfig() frontendConfig {
-	var cfg frontendConfig
-	if err := viper.UnmarshalKey("frontend", &cfg); err != nil {
+func getLarkCallbackConfig() callback {
+	var cfg callback
+	if err := viper.UnmarshalKey("lark.callback", &cfg); err != nil {
 		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 
@@ -128,92 +123,92 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
-	var evt event.FeishuCallback
+	var evt event.LarkCallback
 	if err = json.Unmarshal(cm.Value, &evt); err != nil {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	taskId, err := strconv.Atoi(evt.TaskId)
+	// 获取任务ID
+	taskId, err := evt.GetTaskIdInt()
+	if err != nil {
+		return err
+	}
+
+	// 获取工单ID
+	orderId, err := evt.GetOrderIdInt()
 	if err != nil {
 		return err
 	}
 
 	// 处理消息
-	if evt.Comment == "" {
-		evt.Comment = "无"
+	comment := evt.GetComment()
+	if comment == "" {
+		comment = "无"
 	}
 
+	c.logger.Info("获取飞书回调信息", elog.Any("evt", evt),
+		elog.Any("order_id", orderId),
+		elog.Any("task_id", taskId),
+	)
+
 	var wantResult string
-	switch evt.Action {
-	case "pass":
-		wantResult = fmt.Sprintf("你已同意该申请, 批注：%s", evt.Comment)
-		if err = c.engineProcessSvc.Pass(ctx, taskId, evt.Comment, nil); err != nil {
+	switch evt.GetAction() {
+	case event.Pass:
+		wantResult = fmt.Sprintf("你已同意该申请, 批注：%s", comment)
+		if err = c.engineProcessSvc.Pass(ctx, taskId, comment, nil); err != nil {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
 				wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
-				return nil
+				break
 			}
 
 			if errors.Is(err, errs.ValidationError) {
 				content := fmt.Sprintf(`{"text": "%s"}`, err.Error())
-				msg := feishu.NewCreateBuilder(evt.FeishuUserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+				msg := feishu.NewCreateBuilder(evt.UserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
 					SetContent(feishu.NewFeishuCustom("text", content)).Build()
 
 				if err = c.handler.Send(ctx, msg); err != nil {
-					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %s, 工单ID: %s", err, evt.TaskId, evt.OrderId)
+					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %s, 工单ID: %s", err, taskId, orderId)
 				}
 
 				return err
 			}
 
 			c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err),
-				elog.String("任务ID", evt.TaskId),
-				elog.String("工单ID", evt.OrderId),
+				elog.Int("任务ID", taskId),
+				elog.Int64("工单ID", orderId),
 			)
 
 			return err
 		}
-	case "reject":
-		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", evt.Comment)
-		err = c.engineProcessSvc.Reject(ctx, taskId, evt.Comment)
+	case event.Reject:
+		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
+		err = c.engineProcessSvc.Reject(ctx, taskId, comment)
 		if err != nil {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
 				wantResult = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
-				return nil
+				break
 			}
 
 			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err),
-				elog.String("任务ID", evt.TaskId),
-				elog.String("工单ID", evt.OrderId),
+				elog.String("任务ID", evt.GetTaskId()),
+				elog.String("工单ID", evt.GetOrderId()),
 			)
 
 			return err
 		}
-	case "progress":
-		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", evt.Comment)
-		var orderId int64
-		orderId, err = strconv.ParseInt(evt.OrderId, 10, 64)
-		if err != nil {
-			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
-			return err
-		}
-		err = c.progress(orderId, evt.FeishuUserId)
+	case event.Progress:
+		wantResult = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
+		err = c.progress(orderId, evt.GetUserId())
 		if err != nil {
 			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
 			return err
 		}
 
 		return nil
-	case "revoke":
-		wantResult = fmt.Sprintf("你已撤销该申请, 批注：%s", evt.Comment)
-		var orderId int64
-		orderId, err = strconv.ParseInt(evt.OrderId, 10, 64)
-		if err != nil {
-			c.logger.Error("撤销失败", elog.FieldErr(err))
-			return err
-		}
-
+	case event.Revoke:
+		wantResult = fmt.Sprintf("你已撤销该申请, 批注：%s", evt.GetComment())
 		// 获取工单详情
 		var orderResp domain.Order
 		orderResp, err = c.Svc.Detail(ctx, orderId)
@@ -223,7 +218,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 
 		// 查找用户详情
 		var userResp user.User
-		userResp, err = c.userSvc.FindByFeishuUserId(ctx, evt.FeishuUserId)
+		userResp, err = c.userSvc.FindByFeishuUserId(ctx, evt.GetUserId())
 		if err != nil {
 			return err
 		}
@@ -240,6 +235,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			c.logger.Error("撤销变更流程状态失败", elog.FieldErr(err))
 		}
 	default:
+		c.logger.Error("没有匹配到任何选项")
 		return nil
 	}
 
@@ -258,7 +254,7 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 		chromedp.Flag("force-color-profile", "srgb"),
 	)
 
-	if !c.chromedpDebug {
+	if !c.callback.Debug {
 		opts = append(opts, chromedp.Headless)
 	} else {
 		opts = append(opts, chromedp.Flag("headless", false))
@@ -308,7 +304,7 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 	// 进行截图
 	err = chromedp.Run(taskCtx,
 		chromedp.EmulateViewport(1920, 1080, chromedp.EmulateScale(1)),
-		chromedp.Navigate(c.logicFlowUrl),
+		chromedp.Navigate(c.callback.FrontendUrl),
 		chromedp.WaitReady("body"),
 		// 等待数据加载
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -510,9 +506,12 @@ func edgeToMap(edge easyflow.Edge) map[string]interface{} {
 	}
 }
 
-func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event.FeishuCallback, wantResult string) error {
+func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event.LarkCallback, wantResult string) error {
 	// 获取模版详情信息
-	orderIdInt, _ := strconv.ParseInt(callback.OrderId, 10, 64)
+	orderIdInt, err := callback.GetOrderIdInt()
+	if err != nil {
+		return err
+	}
 
 	fOrder, err := c.Svc.Detail(ctx, orderIdInt)
 	if err != nil {
@@ -534,7 +533,7 @@ func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event
 		return err
 	}
 
-	msg := feishu.NewPatchBuilder(callback.MessageId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+	msg := feishu.NewPatchBuilder(callback.GetMessageId()).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
 		SetContent(feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgress,
 			card.NewApprovalCardBuilder().
 				SetToTitle(rule.GenerateTitle(userInfo.DisplayName, t.Name)).
@@ -551,15 +550,15 @@ func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event
 	return nil
 }
 
-func getCallbackValue(callback event.FeishuCallback) []card.Value {
+func getCallbackValue(callback event.LarkCallback) []card.Value {
 	fields := []struct {
 		Key   string
 		Value string
 	}{
-		{"order_id", callback.OrderId},
-		{"task_id", callback.TaskId},
-		{"feishu_user_id", callback.FeishuUserId},
-		{"action", "progress"},
+		{"order_id", callback.GetOrderId()},
+		{"task_id", callback.GetTaskId()},
+		{"user_id", callback.GetUserId()},
+		{"action", string(event.Progress)},
 	}
 
 	value := make([]card.Value, 0, len(fields))

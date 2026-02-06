@@ -11,9 +11,9 @@ import (
 func InitMinioClient() *minio.Client {
 	type Config struct {
 		Endpoint        string `mapstructure:"endpoint"`
-		AccessKeyId     string `mapstructure:"accessKeyID"`
-		SecretAccessKey string `mapstructure:"secretAccessKey"`
-		UseSSL          bool   `mapstructure:"useSSL"`
+		AccessKeyId     string `mapstructure:"access_key_id"`
+		SecretAccessKey string `mapstructure:"secret_access_key"`
+		UseSSL          bool   `mapstructure:"use_ssl"`
 	}
 	var cfg Config
 	if err := viper.UnmarshalKey("minio", &cfg); err != nil {

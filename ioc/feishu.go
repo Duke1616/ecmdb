@@ -9,12 +9,12 @@ import (
 
 func InitLarkClient() *lark.Client {
 	type Config struct {
-		AppId     string `mapstructure:"appId"`
-		AppSecret string `mapstructure:"appSecret"`
+		AppId     string `mapstructure:"app_id"`
+		AppSecret string `mapstructure:"app_secret"`
 	}
 
 	var cfg Config
-	if err := viper.UnmarshalKey("feishu", &cfg); err != nil {
+	if err := viper.UnmarshalKey("lark", &cfg); err != nil {
 		panic(fmt.Errorf("unable to decode into structure: %v", err))
 	}
 

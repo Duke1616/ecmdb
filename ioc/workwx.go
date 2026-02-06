@@ -10,11 +10,11 @@ import (
 func InitWorkWx() *workwx.WorkwxApp {
 	type Config struct {
 		// CorpSecret 应用的凭证密钥，必填
-		CorpSecret string `yaml:"corpSecret"`
+		CorpSecret string `mapstructure:"corp_secret"`
 		// AgentID 应用 ID，必填
-		AgentID int64 `json:"agentId"`
+		AgentID int64 `mapstructure:"agent_id"`
 		// 企业微信 ID
-		CorpID string `yaml:"corpId"`
+		CorpID string `mapstructure:"corp_id"`
 	}
 
 	var cfg Config

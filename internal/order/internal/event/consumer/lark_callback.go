@@ -159,7 +159,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
 				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
-				break
+
 			}
 
 			if errors.Is(err, errs.ValidationError) {
@@ -178,9 +178,8 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 				elog.Int("任务ID", taskId),
 				elog.Int64("工单ID", orderId),
 			)
-
-			return err
 		}
+		return c.withdraw(ctx, evt, remark)
 	case event.Reject:
 		remark = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
 		err = c.engineProcessSvc.Reject(ctx, taskId, comment)
@@ -188,18 +187,15 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
 				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
-				break
 			}
 
 			c.logger.Error("飞书回调消息，驳回工单失败", elog.FieldErr(err),
 				elog.String("任务ID", evt.GetTaskId()),
 				elog.String("工单ID", evt.GetOrderId()),
 			)
-
-			return err
 		}
+		return c.withdraw(ctx, evt, remark)
 	case event.Progress:
-		remark = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
 		err = c.progress(orderId, evt.GetUserId())
 		if err != nil {
 			c.logger.Error("查看流程进度失败", elog.FieldErr(err))
@@ -234,12 +230,12 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 		if err != nil {
 			c.logger.Error("撤销变更流程状态失败", elog.FieldErr(err))
 		}
+
+		return c.withdraw(ctx, evt, remark)
 	default:
 		c.logger.Error("没有匹配到任何选项")
 		return nil
 	}
-
-	return c.withdraw(ctx, evt, remark)
 }
 
 func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error {

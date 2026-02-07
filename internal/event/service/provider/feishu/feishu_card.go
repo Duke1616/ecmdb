@@ -34,7 +34,7 @@ func NewLarkCardProvider(lark *lark.Client) (provider.Provider, error) {
 	}, nil
 }
 
-func (f *larkCardProvider) Send(ctx context.Context, src domain.Notification) (bool, error) {
+func (f *larkCardProvider) Send(ctx context.Context, src domain.Notification) (domain.NotificationResponse, error) {
 	msg := feishu.NewCreateBuilder(src.Receiver).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
 		SetContent(feishu.NewFeishuCustomCard(f.tmpl, src.Template.Name,
 			card.NewApprovalCardBuilder().
@@ -48,8 +48,8 @@ func (f *larkCardProvider) Send(ctx context.Context, src domain.Notification) (b
 		Build()
 
 	if err := f.handler.Send(ctx, msg); err != nil {
-		return false, err
+		return domain.NotificationResponse{}, err
 	}
 
-	return true, nil
+	return domain.NotificationResponse{}, nil
 }

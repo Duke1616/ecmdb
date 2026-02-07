@@ -10,8 +10,8 @@ import (
 )
 
 type NotificationSender interface {
-	Send(ctx context.Context, notification domain.Notification) (bool, error)
-	BatchSend(ctx context.Context, notifications []domain.Notification) (bool, error)
+	Send(ctx context.Context, notification domain.Notification) (domain.NotificationResponse, error)
+	BatchSend(ctx context.Context, notifications []domain.Notification) (domain.NotificationResponse, error)
 }
 
 type sender struct {
@@ -30,20 +30,20 @@ func NewSender(channel channel.Channel) NotificationSender {
 }
 
 // Send 单条发送通知
-func (d *sender) Send(ctx context.Context, notifications domain.Notification) (bool, error) {
+func (d *sender) Send(ctx context.Context, notifications domain.Notification) (domain.NotificationResponse, error) {
 	_, err := d.channel.Send(ctx, notifications)
 	if err != nil {
 		d.logger.Error("发送失败", elog.FieldErr(err))
-		return false, err
+		return domain.NotificationResponse{}, err
 	}
 
-	return true, nil
+	return domain.NotificationResponse{}, nil
 }
 
 // BatchSend 批量发送通知
-func (d *sender) BatchSend(ctx context.Context, notifications []domain.Notification) (bool, error) {
+func (d *sender) BatchSend(ctx context.Context, notifications []domain.Notification) (domain.NotificationResponse, error) {
 	if len(notifications) == 0 {
-		return false, nil
+		return domain.NotificationResponse{}, nil
 	}
 
 	var wg sync.WaitGroup
@@ -64,5 +64,5 @@ func (d *sender) BatchSend(ctx context.Context, notifications []domain.Notificat
 	}
 	wg.Wait()
 
-	return true, nil
+	return domain.NotificationResponse{}, nil
 }

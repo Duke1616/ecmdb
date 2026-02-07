@@ -8,7 +8,7 @@ import (
 
 type Provider interface {
 	// Send 发送消息
-	Send(ctx context.Context, notification domain.Notification) (bool, error)
+	Send(ctx context.Context, notification domain.Notification) (domain.NotificationResponse, error)
 }
 
 // Selector 供应商选择器接口

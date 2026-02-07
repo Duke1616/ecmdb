@@ -14,16 +14,16 @@ type baseChannel struct {
 	logger  *elog.Component
 }
 
-func (s *baseChannel) Send(ctx context.Context, notification domain.Notification) (bool, error) {
+func (s *baseChannel) Send(ctx context.Context, notification domain.Notification) (domain.NotificationResponse, error) {
 	selector, err := s.builder.Build()
 	if err != nil {
-		return false, fmt.Errorf("%s: %w", "发送通知失败", err)
+		return domain.NotificationResponse{}, fmt.Errorf("%s: %w", "发送通知失败", err)
 	}
 
 	for {
 		p, nextErr := selector.Next(ctx, notification)
 		if nextErr != nil {
-			return false, fmt.Errorf("发送通知失败: %w", nextErr)
+			return domain.NotificationResponse{}, fmt.Errorf("发送通知失败: %w", nextErr)
 		}
 
 		// 使用当前供应商发送

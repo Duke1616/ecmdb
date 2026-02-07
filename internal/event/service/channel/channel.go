@@ -9,7 +9,7 @@ import (
 
 type Channel interface {
 	// Send 发送通知
-	Send(ctx context.Context, notification domain.Notification) (bool, error)
+	Send(ctx context.Context, notification domain.Notification) (domain.NotificationResponse, error)
 }
 
 // Dispatcher 渠道分发器，对外伪装成Channel，作为统一入口
@@ -24,10 +24,10 @@ func NewDispatcher(channels map[domain.Channel]Channel) *Dispatcher {
 	}
 }
 
-func (d *Dispatcher) Send(ctx context.Context, notification domain.Notification) (bool, error) {
+func (d *Dispatcher) Send(ctx context.Context, notification domain.Notification) (domain.NotificationResponse, error) {
 	channel, ok := d.channels[notification.Channel]
 	if !ok {
-		return false, fmt.Errorf("%s: %s", "无可用通知渠道", notification.Channel)
+		return domain.NotificationResponse{}, fmt.Errorf("%s: %s", "无可用通知渠道", notification.Channel)
 	}
 	return channel.Send(ctx, notification)
 }

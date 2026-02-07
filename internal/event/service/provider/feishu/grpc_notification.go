@@ -8,6 +8,7 @@ import (
 
 	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/event/domain"
+	"github.com/Duke1616/ecmdb/internal/event/errs"
 	"github.com/Duke1616/ecmdb/internal/event/service/provider"
 	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/enotify/notify/feishu/card"
@@ -28,7 +29,7 @@ func NewGRPCProvider(notification notificationv1.NotificationServiceClient) prov
 	}
 }
 
-func (f *grpcProvider) Send(ctx context.Context, src domain.Notification) (bool, error) {
+func (f *grpcProvider) Send(ctx context.Context, src domain.Notification) (domain.NotificationResponse, error) {
 	builderMsg := card.NewApprovalCardBuilder().
 		SetToTitle(src.Template.Title).
 		SetToFields(toCardFields(src.Template.Fields)).
@@ -39,20 +40,20 @@ func (f *grpcProvider) Send(ctx context.Context, src domain.Notification) (bool,
 	var rawMap map[string]interface{}
 	bytes, err := json.Marshal(builderMsg)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeBuildFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrBuildMessage, err)
 	}
 	if err = json.Unmarshal(bytes, &rawMap); err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeParseFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrParseMessage, err)
 	}
 
 	params, err := structpb.NewStruct(rawMap)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeParseFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrParseMessage, err)
 	}
 
 	// NOTE: 这里的超时时间设置非常短 (400ms)，目的是快速探测 gRPC 服务状态。
 	// 如果 gRPC 服务未启动或网络不通，应该尽快超时报错，从而触发上层 channel 的 Fallback 机制 (降级到 Feishu Card 直连)。
-	ctx, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	msg, err := f.notification.SendNotification(ctx, &notificationv1.SendNotificationRequest{Notification: &notificationv1.Notification{
 		BizId:          notificationv1.Business_TICKET,
@@ -63,18 +64,27 @@ func (f *grpcProvider) Send(ctx context.Context, src domain.Notification) (bool,
 		TemplateParams: params,
 	}})
 
-	if err != nil || msg.Status != notificationv1.SendStatus_SUCCEEDED {
-		return false, fmt.Errorf("消息发送失败: %v", msg)
+	if err != nil {
+		return domain.NewErrorResponse(string(errs.ErrorCodeServiceUnavailable), err.Error()), fmt.Errorf("%w: %v", errs.ErrNotificationUnavailable, err)
 	}
 
-	return true, nil
+	if msg.Status != notificationv1.SendStatus_SUCCEEDED {
+		return domain.NewErrorResponseWithID(
+			int64(msg.NotificationId),
+			msg.Status.String(),
+			string(errs.ErrorCodeUnknown),
+			"消息发送未成功",
+		), fmt.Errorf("%w: 状态=%v", errs.ErrNotificationFailed, msg.Status)
+	}
+
+	return domain.NewSuccessResponse(int64(msg.NotificationId), msg.Status.String()), nil
 }
 
 func getTemplateID(templateName string) int64 {
 	var templateID int64
 	switch templateName {
 	case strategy.LarkTemplateApprovalName:
-		return templateID
+		return 10
 	case strategy.LarkTemplateApprovalRevokeName:
 		return templateID
 	case strategy.LarkTemplateCC:

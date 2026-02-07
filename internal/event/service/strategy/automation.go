@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/event/domain"
+	"github.com/Duke1616/ecmdb/internal/event/errs"
 	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -33,21 +34,21 @@ func NewAutomationNotification(resultSvc FetcherResult, userSvc user.Service, te
 	}, nil
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, notification domain.StrategyInfo) (bool, error) {
+func (n *AutomationNotification) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
 	// 获取当前节点信息
 	property, err := getNodeProperty[easyflow.AutomationProperty](notification.WfInfo, notification.CurrentNode.NodeID)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
 	// 判断是否开启消息发送，以及是否为立即发送
 	if !property.IsNotify {
-		return false, fmt.Errorf("【自动化节点】未配置消息通知")
+		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
 	// 判断模式如果不是理解发送则退出
 	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return false, fmt.Errorf("【自动化节点】节点未开启消息通知")
+		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】节点未开启消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
 	// 查看返回的消息
@@ -57,19 +58,18 @@ func (n *AutomationNotification) Send(ctx context.Context, notification domain.S
 			elog.FieldErr(err),
 			elog.Any("instId", notification.InstanceId),
 		)
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
-	// 获取工单创建用户
 	startUser, err := n.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	// 获取模版名称
 	tName, err := n.getTemplateName(ctx, notification.OrderInfo)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	return n.sender.Send(ctx, domain.Notification{

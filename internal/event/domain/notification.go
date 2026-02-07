@@ -14,6 +14,43 @@ const (
 	User       NodeName = "USER"       // 用户审批节点
 )
 
+type NotificationResponse struct {
+	// 通知平台生成的通知ID
+	NotificationId int64 `json:"notification_Id"`
+	// 发送状态
+	Status string `json:"status"`
+	// 失败时的错误代码
+	ErrorCode string `json:"error_code"`
+	// 错误详情
+	ErrorMsg string `json:"error_msg"`
+}
+
+// NewSuccessResponse 创建成功响应
+func NewSuccessResponse(notificationId int64, status string) NotificationResponse {
+	return NotificationResponse{
+		NotificationId: notificationId,
+		Status:         status,
+	}
+}
+
+// NewErrorResponse 创建错误响应
+func NewErrorResponse(errorCode, errorMsg string) NotificationResponse {
+	return NotificationResponse{
+		ErrorCode: errorCode,
+		ErrorMsg:  errorMsg,
+	}
+}
+
+// NewErrorResponseWithID 创建带通知ID的错误响应
+func NewErrorResponseWithID(notificationId int64, status, errorCode, errorMsg string) NotificationResponse {
+	return NotificationResponse{
+		NotificationId: notificationId,
+		Status:         status,
+		ErrorCode:      errorCode,
+		ErrorMsg:       errorMsg,
+	}
+}
+
 type StrategyInfo struct {
 	NodeName    NodeName          `json:"node_name"`    // 节点名称
 	OrderInfo   order.Order       `json:"order_info"`   // 工单提交信息

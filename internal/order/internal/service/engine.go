@@ -86,32 +86,22 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 
 	for _, field := range property.Fields {
 		val, exists := extraData[field.Key]
-
-		// 6.1 必填校验
-		if field.Required && (!exists || val == nil || val == "") {
-			return fmt.Errorf("%w: 字段 [%s] 为必填项，请填写", errs.ValidationError, field.Name)
+		// 数据校验
+		if err = e.validate(field, exists, val); err != nil {
+			return err
 		}
 
-		// 6.2 正则校验
-		if exists && field.Validate != "" {
-			matched, validateErr := regexp.MatchString(field.Validate, fmt.Sprintf("%v", val))
-			if validateErr != nil {
-				e.logger.Error("正则校验执行失败", elog.String("field", field.Name), elog.String("regex", field.Validate), elog.FieldErr(err))
-			} else if !matched {
-				return fmt.Errorf("%w: 字段 [%s] 格式校验未通过", errs.ValidationError, field.Name)
-			}
-		}
-
+		// 不记录未填写字段
 		if !exists {
 			continue
 		}
 
-		// 6.3 收集需要合并的数据
+		// 收集需要合并的数据
 		if field.Merge {
-			mergeData[field.Key] = val
+			mergeData[field.Name] = val
 		}
 
-		// 6.4 收集表单快照数据
+		// 收集表单快照数据
 		formValues = append(formValues, domain.FormValue{
 			Name:  field.Name,
 			Key:   field.Key,
@@ -139,6 +129,27 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 	}
 
 	return engine.TaskPass(taskId, comment, "", false)
+}
+
+func (e *processEngine) validate(field easyflow.Field, exists bool, val any) error {
+	if field.Required && (!exists || val == nil || val == "") {
+		return fmt.Errorf("%w: 字段 [%s] 为必填项，请填写", errs.ValidationError, field.Name)
+	}
+
+	// 6.2 正则校验
+	if exists && field.Validate != "" {
+		matched, validateErr := regexp.MatchString(field.Validate, fmt.Sprintf("%v", val))
+		if validateErr != nil {
+			e.logger.Error("正则校验执行失败",
+				elog.String("field", field.Name),
+				elog.String("regex", field.Validate),
+			)
+		} else if !matched {
+			return fmt.Errorf("%w: 字段 [%s] 格式校验未通过", errs.ValidationError, field.Name)
+		}
+	}
+
+	return nil
 }
 
 func (e *processEngine) Reject(ctx context.Context, taskId int, comment string) error {

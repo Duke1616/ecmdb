@@ -17,7 +17,7 @@ const (
 
 // SendStrategy 针对不同节点的策略
 type SendStrategy interface {
-	Send(ctx context.Context, notification domain.StrategyInfo) (bool, error)
+	Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error)
 }
 
 type Dispatcher struct {
@@ -38,7 +38,7 @@ func NewDispatcher(
 	}
 }
 
-func (d *Dispatcher) Send(ctx context.Context, notification domain.StrategyInfo) (bool, error) {
+func (d *Dispatcher) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
 	return d.selectStrategy(notification).Send(ctx, notification)
 }
 

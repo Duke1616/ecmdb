@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/event/domain"
+	"github.com/Duke1616/ecmdb/internal/event/errs"
 	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -32,28 +33,28 @@ func NewStartNotification(userSvc user.Service, templateSvc template.Service, se
 	}, nil
 }
 
-func (s *StartNotification) Send(ctx context.Context, notification domain.StrategyInfo) (bool, error) {
+func (s *StartNotification) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
 	// 获取当前节点信息
 	property, err := getNodeProperty[easyflow.StartProperty](notification.WfInfo, notification.CurrentNode.NodeID)
 	if err != nil {
-		return false, fmt.Errorf("【开始节点】未配置消息通知")
+		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
 	// 判断开始节点是否需要发送消息通知
 	if ok := s.isNotify(property, notification.InstanceId); !ok {
-		return false, fmt.Errorf("【开始节点】未配置消息通知")
+		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
 	// 解析配置
 	rules, tName, err := s.getRules(ctx, notification.OrderInfo)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	// 获取工单创建用户
 	startUser, err := s.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
 	if err != nil {
-		return false, err
+		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	ruleFields := rule.GetFields(rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)

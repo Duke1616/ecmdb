@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/department"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/domain"
+	"github.com/Duke1616/ecmdb/internal/event/errs"
 	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -73,23 +74,23 @@ func (n *UserNotification) isGlobalNotify(wf workflow.Workflow, instanceId int) 
 	return true
 }
 
-func (n *UserNotification) Send(ctx context.Context, notification domain.StrategyInfo) (bool, error) {
+func (n *UserNotification) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
 	// 获取流程节点信息
 	nodes, err := unmarshal(notification.WfInfo)
 	if err != nil {
-		return false, fmt.Errorf("解析流程信息失败: %w", err)
+		return domain.NewErrorResponse(string(errs.ErrorCodeParseFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrParseMessage, err)
 	}
 
 	// 获取当前节点属性
 	property, err := getProperty[easyflow.UserProperty](nodes, notification.CurrentNode.NodeID)
 	if err != nil {
-		return false, fmt.Errorf("获取节点属性失败: %w", err)
+		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
 	// 并行获取所需数据
 	data, err := n.fetchRequiredData(ctx, notification, nodes)
 	if err != nil {
-		return false, fmt.Errorf("获取组合数据失败: %w", err)
+		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	// 为异步发送设置一个独立的超时 ctx，避免无限挂起
@@ -103,7 +104,7 @@ func (n *UserNotification) Send(ctx context.Context, notification domain.Strateg
 			elog.FieldErr(err),
 			elog.Int("instanceId", notification.InstanceId),
 			elog.String("rule", property.Rule.ToString()))
-		return false, fmt.Errorf("根据规则解析用户失败：%w", err)
+		return domain.NewErrorResponse(string(errs.ErrorCodeResolveRuleFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrResolveRule, err)
 	}
 
 	// 异步发送通知，将 cancel 函数传给异步任务
@@ -118,7 +119,7 @@ func (n *UserNotification) Send(ctx context.Context, notification domain.Strateg
 		n.asyncSendNotification(sendCtx, notification, property, data)
 	}()
 
-	return true, nil
+	return domain.NotificationResponse{}, nil
 }
 
 func (n *UserNotification) asyncSendNotification(ctx context.Context, notification domain.StrategyInfo,

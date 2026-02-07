@@ -64,8 +64,7 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	// 查看工单关联
 	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
 
-	var ok bool
-	ok, err = e.strategy.Send(ctx, domain.StrategyInfo{
+	_, err = e.strategy.Send(ctx, domain.StrategyInfo{
 		NodeName:    domain.Start,
 		OrderInfo:   orderInfo,
 		WfInfo:      wfInfo,
@@ -73,7 +72,7 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 		CurrentNode: CurrentNode,
 	})
 
-	if err != nil || !ok {
+	if err != nil {
 		e.logger.Error("【EventStart】 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 	}
 
@@ -177,8 +176,7 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		nodeMethod = domain.Automation
 	}
 
-	var ok bool
-	ok, err = e.strategy.Send(ctx, domain.StrategyInfo{
+	_, err = e.strategy.Send(ctx, domain.StrategyInfo{
 		NodeName:    nodeMethod,
 		OrderInfo:   orderInfo,
 		WfInfo:      wfInfo,
@@ -186,7 +184,7 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 		CurrentNode: CurrentNode,
 	})
 
-	if err != nil || !ok {
+	if err != nil {
 		e.logger.Error("【EventNotify】 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
 	}
 

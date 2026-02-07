@@ -6,6 +6,73 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.10.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.10.0) - 2026-02-07
+
+- [`fc614bf`](https://github.com/Duke1616/ecmdb/commit/fc614bf608e808793daff2f32d417c010eef26ac) chore: 优化错误处理
+- [`e6f4278`](https://github.com/Duke1616/ecmdb/commit/e6f427803c69f21d4211a614aa69ec0f140faca8) fix: 修复 lark callback 无法发送消息
+- [`6d16c21`](https://github.com/Duke1616/ecmdb/commit/6d16c21dc6311b6eaa9b916af81e728ae06ec792) refactor: 重构工作流用户节点存储结构, 新增 merge、 validate 字段
+- [`6fa358f`](https://github.com/Duke1616/ecmdb/commit/6fa358f33d3bb0cbfb123bc82157ff54d07217ca) chore: 优化完成
+- [`5b14b03`](https://github.com/Duke1616/ecmdb/commit/5b14b035bf03ea4c4a71aaf5c07404e07b7f77ac) chorm: 同步最新配置文件
+- [`976c8b9`](https://github.com/Duke1616/ecmdb/commit/976c8b9dfd3cfea39df964bcc9f9dc13bd404cb1) feat: 完善消息通知与审批交互能力
+- [`7c7b96b`](https://github.com/Duke1616/ecmdb/commit/7c7b96bfd5f5af4c83d27d751b25b2e0876af724) feat: 菜单排序功能开发，优化部分鉴权逻辑
+- [`3866833`](https://github.com/Duke1616/ecmdb/commit/3866833701469a24f5caca843a86ff0305b8c12d) fix: 修复一些集成测试的报错情况
+- [`847ab9d`](https://github.com/Duke1616/ecmdb/commit/847ab9d780b1f6cfd61e15f9cb20719097c7ce61) chore: 封装 sorter 优化逻辑
+- [`2974a1e`](https://github.com/Duke1616/ecmdb/commit/2974a1eec8431ef6964c29f545e3f8a058d58c02) fix: sort_key 最初为 0 值，跨组迁移导致 gourp_id 存储错误
+- [`070ed37`](https://github.com/Duke1616/ecmdb/commit/070ed3724d71bfb3578bed5bc3e902fdd22c9b6d) chore: 同步菜单
+- [`dacde2e`](https://github.com/Duke1616/ecmdb/commit/dacde2e6eeb42b813e6af375b0f3c2a3177896aa) feat: 模型分组新增排序能力
+- [`72c1f43`](https://github.com/Duke1616/ecmdb/commit/72c1f430c4bd2c3f71175cf31a3d828b4ada0d10) feat: 新增 init --force 强制执行增量逻辑功能
+- [`654ad49`](https://github.com/Duke1616/ecmdb/commit/654ad49fbc5e0cd6e891c1ab7b3ccdafd78f3284) chore: 更新菜单，优化错误提醒
+- [`d9857ac`](https://github.com/Duke1616/ecmdb/commit/d9857ac978894ca3d97dc78a802029dfde06b3c1) feat: 模型属性排序接口
+- [`e6e797f`](https://github.com/Duke1616/ecmdb/commit/e6e797f83d1795db0d3b4414e59d42eb027f1147) chore: 添加模型关联 update 接口
+- [`b890c98`](https://github.com/Duke1616/ecmdb/commit/b890c98fe115cd9dba22fe79d5c1255925ec8d33) chore: 增强模型组删除，校验逻辑
+- [`840e49f`](https://github.com/Duke1616/ecmdb/commit/840e49f0aa403bed27f2a339d9606d816fd9f417) feat: 完善 cmdb 模块个别缺失功能接口，字段组重命名、关联类型删除等
+- [`28c73d1`](https://github.com/Duke1616/ecmdb/commit/28c73d1dfe26d0af676662f80db2ae3405dce209) chore: 同步菜单
+- [`7f1991d`](https://github.com/Duke1616/ecmdb/commit/7f1991dc4ff75adf24edcd7f686542f08d4370bc) chore: CHANGES 文档补全
+- [`0bd88de`](https://github.com/Duke1616/ecmdb/commit/0bd88de31e5afd8b2401e46017fe3e8a1b1fcf0e) chore: 新增 v1.9.4 版本 incr，针对 workflow snapshot 历史数据的补偿
+- [`22063d1`](https://github.com/Duke1616/ecmdb/commit/22063d1b6028bed3fda9546ef3d4c66504405317) chore: 优化逻辑， 封装 FindInstanceFlow 方法
+- [`de7d824`](https://github.com/Duke1616/ecmdb/commit/de7d8241109160d104ef4ecf319f569baa424b70) cho 工作流内部也制定版本控制约束，防止流程图展示错误
+- [`4382fe8`](https://github.com/Duke1616/ecmdb/commit/4382fe8e3e5f4e276a66a3bc297706603cfa9a1b) refactor: 增强图生成的可读性
+- [`f043187`](https://github.com/Duke1616/ecmdb/commit/f043187cc6608592c713856df568df94a8e84135) fix: 修复在有会签的情况下处理异常
+- [`621d861`](https://github.com/Duke1616/ecmdb/commit/621d8614ad1c17b2b3e428aef534578509ee4f93) fix: 补充包含网关 pass 情况，文档补全
+- [`377d4cc`](https://github.com/Duke1616/ecmdb/commit/377d4cc090db4a3b5012b0bc1cb94bd730f82642) fix: 修复流程图线路展示
+- [`dadc2b8`](https://github.com/Duke1616/ecmdb/commit/dadc2b82d66a6294d4a82d18cf3bc08f53de38fc) fix: 流程图绘制错误
+- [`4a96cb5`](https://github.com/Duke1616/ecmdb/commit/4a96cb5b7bae3d6b2ed5943fe40599d5e4a42659) chore: 优化流程图的线条准确性
+- [`0555e13`](https://github.com/Duke1616/ecmdb/commit/0555e13412fcd63bffbab31f8fbc4e96f9f37dd2) chore: 通过 node 节点删除，流程更稳定
+- [`973c3dc`](https://github.com/Duke1616/ecmdb/commit/973c3dc7443957192bdc740be0a03cff6a7d2d34) fix: 新增 EventUserNodeRejectProxyCleanup 处理驳回异常情况
+- [`ffa99c2`](https://github.com/Duke1616/ecmdb/commit/ffa99c2e9892b13d3f2bf27ff1a7bdefb40e6023) chore: 复杂情况下的流程图 is_pass 线路绘制
+- [`0d1223c`](https://github.com/Duke1616/ecmdb/commit/0d1223c8999b67d137ca4dcb4e7dc68509dd3f23) chore: 新增 chromedp debug 配置，支持本地调试能力
+- [`57559c9`](https://github.com/Duke1616/ecmdb/commit/57559c91eb3b028eefcd273187e8934822679c88) chore: 打印 inject 流程图数据
+- [`161cf8e`](https://github.com/Duke1616/ecmdb/commit/161cf8e915a0504ec18b074a7abdd5c5714c2e69) chore: 查询历史表返回 task id 错误
+- [`a42755e`](https://github.com/Duke1616/ecmdb/commit/a42755e39a98a9ac4960829c268038ef228c798f) chore: 新增任务数据记录表
+- [`4cab945`](https://github.com/Duke1616/ecmdb/commit/4cab9457ceaecac4ece63e5506f6cedf89513ce5) feat: 用户审批节点新增自定义表单
+- [`29e2b53`](https://github.com/Duke1616/ecmdb/commit/29e2b53591eb8103965f2d6903862f9ab7faa0f6) chore: 处理 JSON_CONTAINS 匹配情况
+- [`f8146e8`](https://github.com/Duke1616/ecmdb/commit/f8146e85fb3ae296dddd3e7e1b57eb4f13b25140) chore: 通过常量优化不变项
+- [`13241e0`](https://github.com/Duke1616/ecmdb/commit/13241e0342b81a8f0d4038500607f7dc2d4973a0) fix: 修复驳回情况下的次序异常情况
+- [`0bef192`](https://github.com/Duke1616/ecmdb/commit/0bef1922d9fb5f8c32e9f77152f8e979a191aa9f) chore: 处理驳回情况，查询代理节点情况
+- [`31efa12`](https://github.com/Duke1616/ecmdb/commit/31efa125f272703144153b42a8ef35d9ce52e0ae) refactor: 处理复杂流程图情况下的处理，通过 proxy 代理解决
+- [`4336226`](https://github.com/Duke1616/ecmdb/commit/433622693224e0e0a3baf08002e457b6166a9561) fix: 前后端传递类型不一致
+- [`c271afa`](https://github.com/Duke1616/ecmdb/commit/c271afaf8965b178a31aab9d50ef00d0b8af9c2e) Merge branch 'main' of github.com:Duke1616/ecmdb
+- [`e1b4ddf`](https://github.com/Duke1616/ecmdb/commit/e1b4ddf3d1e770dd8b2b2a69ba7d1832e52f4fa2) chore: 增加 default
+- [`ad3dff9`](https://github.com/Duke1616/ecmdb/commit/ad3dff98900334d926152daa2af34d4be2c330e5) Merge pull request #9 from Duke1616/feat/cmdb-import-export
+- [`1ff6001`](https://github.com/Duke1616/ecmdb/commit/1ff6001319c5b2cd90d164aff43af4865dc17dee) fix: 报错文案错误
+- [`cf49cb1`](https://github.com/Duke1616/ecmdb/commit/cf49cb12508a6e450ce5ce21577f86e6bc0a9bd9) Merge pull request #8 from Duke1616/feat/cmdb-import-export
+- [`e472437`](https://github.com/Duke1616/ecmdb/commit/e4724378c89e6959f8843dd9c8c98b75900f16e6) chore: 更新菜单
+- [`2d2a467`](https://github.com/Duke1616/ecmdb/commit/2d2a4679ff85d329f26499f99cf8f0fac333bbd7) chore: 文件上传逻辑
+- [`7cecb3b`](https://github.com/Duke1616/ecmdb/commit/7cecb3b28abe53b5b278e0c140ac52ebead2f413) refactor: 优化导出方法
+- [`e5162e5`](https://github.com/Duke1616/ecmdb/commit/e5162e5b29808b90878c801fb2800cba9f0ba6a7) refactor: exchange 模块重命名为 dataio
+- [`de7f55e`](https://github.com/Duke1616/ecmdb/commit/de7f55e6f92f895c652eb8d2e3e0f08e4f0c126b) feat: 支持 excel 上传录入数据能力
+- [`54d5f73`](https://github.com/Duke1616/ecmdb/commit/54d5f73f41f6c01e41a43ea6a7ea7e8eda11418a) feat: 添加 cmdb 模型 excel 模版导出功能
+- [`06de3ca`](https://github.com/Duke1616/ecmdb/commit/06de3ca8fd9709a1da29f32c18b86d4fcbac3f53) chore: 同步最新菜单
+- [`9ad8cbb`](https://github.com/Duke1616/ecmdb/commit/9ad8cbb81163dc9511ff95996058c664246cb686) chore: 同步最新菜单
+- [`9feac63`](https://github.com/Duke1616/ecmdb/commit/9feac634e58beaa89e82bbbfddf19aa31ca73670) chore: 修改正确可展示的图标
+- [`f0f9ed6`](https://github.com/Duke1616/ecmdb/commit/f0f9ed6cc9365f54e8ac8d2594185b7e2aa31015) fix: 代码未处理创建情况
+- [`cc65bc9`](https://github.com/Duke1616/ecmdb/commit/cc65bc954ecc5795002ec6b163627a8dfff6e341) refactor: 优化代码，relation_name 创建数据库唯一索引
+- [`e2b9366`](https://github.com/Duke1616/ecmdb/commit/e2b9366904fda3046c96040fee050d4afc99a70d) chore: 变更菜单
+- [`3895fa0`](https://github.com/Duke1616/ecmdb/commit/3895fa0e948c39ed9bdd6a6ac1378c5ce85f0980) fix: 修复程序无法启动
+- [`3dc137d`](https://github.com/Duke1616/ecmdb/commit/3dc137da4bda9288e510afaed83ce4deb6f55d3d) chore: v1.9.3 版本升级配置
+- [`f47601f`](https://github.com/Duke1616/ecmdb/commit/f47601fd10cf4fb373e572571233d359cfaef76e) chore: 处理 v1.9.3 版本异常处理
+- [`ed27de6`](https://github.com/Duke1616/ecmdb/commit/ed27de6ce49b80c4b75fa9f96c46e7862d6bae6c) refactor: 优化 mongo 自增 id，部分接口添加注释
+
 ## [v1.9.2](https://github.com/Duke1616/ecmdb/releases/tag/v1.9.2) - 2025-09-26
 
 - [`1fca303`](https://github.com/Duke1616/ecmdb/commit/1fca303f3e5d806505c78038dc7d7cfdab3c1fb9) fix: 加载策略失败，不直接 panic 处理

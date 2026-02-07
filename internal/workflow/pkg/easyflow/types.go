@@ -109,10 +109,14 @@ const (
 	FieldInput FieldType = "input"
 	// FieldTextarea 多行文本
 	FieldTextarea FieldType = "textarea"
-	// FieldDate 日期
-	FieldDate FieldType = "date"
 	// FieldNumber 数字
 	FieldNumber FieldType = "number"
+	// FieldDate 日期
+	FieldDate FieldType = "date"
+	// FieldSelect 下拉选择
+	FieldSelect FieldType = "select"
+	// FieldMultiSelect 多项选择
+	FieldMultiSelect FieldType = "multi_select"
 )
 
 type Option struct {
@@ -127,6 +131,9 @@ type Field struct {
 	Required bool              `json:"required"` // 是否必填
 	Options  []Option          `json:"options"`  // 选项列表（用于 select 等）
 	Props    map[string]string `json:"props"`    // 额外组件属性（如 placeholder）
+	Merge    bool              `json:"merge"`    // 如果 Merge 则在后续审批节点进行推送展示
+	Validate string            `json:"validate"` // 数据校验
+	Hidden   bool              `json:"hidden"`   // 字段需要，但是不展示，由系统补充
 }
 
 type UserProperty struct {

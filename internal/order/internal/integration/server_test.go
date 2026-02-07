@@ -132,7 +132,7 @@ func (s *BaseGRPCServerTestSuite) SetupTestSuite() {
 	// 初始化注册中心
 	etcdClient := startup.InitEtcdClient()
 	orderDao := dao.NewOrderDAO(s.db)
-	snapshotDao := dao.NewOrderSnapshotsDAO(s.db)
+	snapshotDao := dao.NewTaskFormDAO(s.db)
 	orderRepository := repository.NewOrderRepository(orderDao, snapshotDao)
 	orderServer := grpc2.NewWorkOrderServer(service.NewService(orderRepository, templateSvc, s.producer), templateSvc)
 	s.clientGRPCServer = startup.InitGrpcServer(orderServer, etcdClient)

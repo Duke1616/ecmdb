@@ -374,10 +374,10 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 	taskIds := slice.Map(ts, func(idx int, src model.Task) int {
 		return src.TaskID
 	})
-	taskDataMap, err := h.svc.FindSnapshotsBatch(ctx, taskIds)
+	taskDataMap, err := h.svc.FindTaskFormsBatch(ctx, taskIds)
 	if err != nil {
 		// h.l.Warn("获取任务快照失败", elog.FieldErr(err))
-		taskDataMap = make(map[int]map[string]interface{})
+		taskDataMap = make(map[int][]domain.FormValue)
 	}
 
 	// 4. 组装返回结果
@@ -395,7 +395,14 @@ func (h *Handler) TaskRecord(ctx *gin.Context, req RecordTaskReq) (ginx.Result, 
 			Comment:      src.Comment,
 			IsFinished:   src.IsFinished,
 			FinishedTime: src.FinishedTime,
-			ExtraData:    taskDataMap[src.TaskID],
+			FormValues: slice.Map(taskDataMap[src.TaskID], func(idx int, src domain.FormValue) FormValue {
+				return FormValue{
+					Name:  src.Name,
+					Key:   src.Key,
+					Type:  src.Type,
+					Value: src.Value,
+				}
+			}),
 		}
 	})
 

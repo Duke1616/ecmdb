@@ -49,19 +49,19 @@ type Service interface {
 	// MergeOrderData 合并工单数据（原子更新）
 	MergeOrderData(ctx context.Context, orderId int64, data map[string]interface{}) error
 
-	// RecordSnapshotsData 记录任务快照
-	RecordSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error
+	// CreateTaskForm 记录任务快照
+	CreateTaskForm(ctx context.Context, taskId int, orderId int64, fields []domain.FormValue) error
 
-	// FindSnapshotsBatch 批量查询任务快照
-	FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
+	// FindTaskFormsBatch 批量查询任务快照
+	FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error)
 }
 
-func (s *service) FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
-	return s.repo.FindSnapshotsBatch(ctx, taskIds)
+func (s *service) FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error) {
+	return s.repo.FindTaskFormsBatch(ctx, taskIds)
 }
 
-func (s *service) RecordSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error {
-	return s.repo.CreateSnapshotsData(ctx, taskId, data)
+func (s *service) CreateTaskForm(ctx context.Context, taskId int, orderId int64, fields []domain.FormValue) error {
+	return s.repo.CreateTaskForm(ctx, taskId, orderId, fields)
 }
 
 func (s *service) MergeOrderData(ctx context.Context, orderId int64, data map[string]interface{}) error {

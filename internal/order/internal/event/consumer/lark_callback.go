@@ -168,7 +168,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 					SetContent(feishu.NewFeishuCustom("text", content)).Build()
 
 				if err = c.handler.Send(ctx, msg); err != nil {
-					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %s, 工单ID: %s", err, taskId, orderId)
+					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %d, 工单ID: %d", err, taskId, orderId)
 				}
 
 				return err

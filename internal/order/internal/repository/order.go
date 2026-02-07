@@ -33,45 +33,56 @@ type OrderRepository interface {
 	// MergeOrderData 合并工单数据（原子更新）
 	MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error
 
-	// CreateSnapshotsData 创建任务数据快照
-	CreateSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error
-	// FindSnapshotsBatch 批量查询任务快照
-	FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error)
+	// CreateTaskForm 创建任务数据快照
+	CreateTaskForm(ctx context.Context, taskId int, orderId int64, fields []domain.FormValue) error
+	// FindTaskFormsBatch 批量查询任务快照
+	FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error)
 }
 
 func (repo *orderRepository) MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error {
 	return repo.dao.MergeOrderData(ctx, id, data)
 }
 
-func NewOrderRepository(dao dao.OrderDAO, snapshots dao.OrderSnapshotsDAO) OrderRepository {
+func NewOrderRepository(dao dao.OrderDAO, taskForms dao.TaskFormDAO) OrderRepository {
 	return &orderRepository{
 		dao:       dao,
-		snapshots: snapshots,
+		taskForms: taskForms,
 	}
 }
 
 type orderRepository struct {
 	dao       dao.OrderDAO
-	snapshots dao.OrderSnapshotsDAO
+	taskForms dao.TaskFormDAO
 }
 
-func (repo *orderRepository) CreateSnapshotsData(ctx context.Context, taskId int, data map[string]interface{}) error {
-	return repo.snapshots.Create(ctx, dao.TaskData{
-		TaskId: taskId,
-		Data:   data,
+func (repo *orderRepository) CreateTaskForm(ctx context.Context, taskId int, orderId int64, fields []domain.FormValue) error {
+	forms := slice.Map(fields, func(idx int, src domain.FormValue) dao.TaskForm {
+		return dao.TaskForm{
+			OrderId: orderId,
+			TaskId:  taskId,
+			Name:    src.Name,
+			Key:     src.Key,
+			Type:    src.Type,
+			Value:   src.Value,
+		}
 	})
+	return repo.taskForms.Create(ctx, forms)
 }
 
-func (repo *orderRepository) FindSnapshotsBatch(ctx context.Context, taskIds []int) (map[int]map[string]interface{}, error) {
-	datas, err := repo.snapshots.FindByTaskIds(ctx, taskIds)
+func (repo *orderRepository) FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error) {
+	forms, err := repo.taskForms.FindByTaskIds(ctx, taskIds)
 	if err != nil {
 		return nil, err
 	}
-	res := make(map[int]map[string]interface{}, len(datas))
-	for _, d := range datas {
-		// 这里假设一个 TaskID 只会有一次有效提交（针对审批场景），或者取最新的
-		// 我们的 FindByTaskIds 还没加排序，但审批记录一般只取最后一次
-		res[d.TaskId] = d.Data
+
+	res := make(map[int][]domain.FormValue)
+	for _, f := range forms {
+		res[f.TaskId] = append(res[f.TaskId], domain.FormValue{
+			Name:  f.Name,
+			Key:   f.Key,
+			Type:  f.Type,
+			Value: f.Value,
+		})
 	}
 	return res, nil
 }

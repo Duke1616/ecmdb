@@ -108,3 +108,10 @@ func (o *Order) Validate() error {
 type Process struct {
 	InstanceId int
 }
+
+type FormValue struct {
+	Name  string      // 字段名
+	Key   string      // 字段 key
+	Type  string      // 字段类型
+	Value interface{} // 字段值
+}

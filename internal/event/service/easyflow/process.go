@@ -210,8 +210,14 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 		return err
 	}
 
+	// 查看任务详情信息
+	t, err := engine.GetTaskInfo(TaskID)
+	if err != nil {
+		return err
+	}
+
 	// 如果是代理节点，需要查询代理节点的上级
-	nodeId, err := e.getTargetNodeID(ctx, PrevNode.NodeID, CurrentNode)
+	nodeId, err := e.getTargetNodeID(ctx, t.ProcInstID, PrevNode.NodeID, CurrentNode)
 	if err != nil {
 		return err
 	}
@@ -220,31 +226,25 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 
 	// 但凡是有驳回，一率进行处理
 	if rejectNum > 0 {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemReject, SystemRejectComment)
-	}
-
-	// 查看任务详情信息
-	t, err := engine.GetTaskInfo(TaskID)
-	if err != nil {
-		return err
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, t.ProcInstID, nodeId, SystemReject, SystemRejectComment)
 	}
 
 	// 如果不是会签节点，直接修改所有
 	if t.IsCosigned != 1 {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemPass, SystemPassComment)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, t.ProcInstID, nodeId, SystemPass, SystemPassComment)
 	}
 
 	// 会签节点 pass + task 数量相同才修改
 	if passNum == taskNum {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, nodeId, SystemPass, SystemPassComment)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, t.ProcInstID, nodeId, SystemPass, SystemPassComment)
 	}
 
 	return nil
 }
 
-func (e *ProcessEvent) getTargetNodeID(ctx context.Context, prevNodeID string, currentNode *model.Node) (string, error) {
+func (e *ProcessEvent) getTargetNodeID(ctx context.Context, processInstId int, prevNodeID string, currentNode *model.Node) (string, error) {
 	if currentNode.NodeName == SysProxyNodeName {
-		return e.engineSvc.GetProxyPrevNodeID(ctx, prevNodeID)
+		return e.engineSvc.GetProxyPrevNodeID(ctx, processInstId, prevNodeID)
 	}
 	return prevNodeID, nil
 }
@@ -254,6 +254,12 @@ func (e *ProcessEvent) getTargetNodeID(ctx context.Context, prevNodeID string, c
 func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
+
+	// 查看任务详情信息
+	taskInfo, err := engine.GetTaskInfo(TaskID)
+	if err != nil {
+		return err
+	}
 
 	// 查看错误数量
 	IsReject, err := e.engineSvc.IsReject(ctx, TaskID)
@@ -266,7 +272,7 @@ func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.
 		elog.Any("是否驳回", IsReject))
 
 	if IsReject {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, PrevNode.NodeID, SystemReject, SystemRejectComment)
 	}
 
 	return nil
@@ -298,7 +304,7 @@ func (e *ProcessEvent) EventConcurrentRejectCleanup(TaskID int, CurrentNode *mod
 	// 2. 调用服务层清理逻辑
 	// 使用 UpdateIsFinishedByPreNodeId 将同级任务置为 SystemReject (系统驳回/取消)
 	// 注意：这里使用的是 PrevNode.NodeID，即分支汇聚点（或分叉点）的ID
-	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemReject, SystemRejectComment)
+	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, PrevNode.NodeID, SystemReject, SystemRejectComment)
 }
 
 // EventGatewayConditionReject 如果回退前是代理节点，那么需要修改为正确的节点ID
@@ -361,7 +367,7 @@ func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *mode
 	// 4. 删除 proxy 节点
 	// NOTE: 驳回发生时，Proxy 节点已经完成了它的历史使命，需要删除，防止干扰后续流程
 	// 这与 EventUserNodeRejectProxyCleanup 的目的类似
-	err = e.engineSvc.DeleteProxyNodeByNodeId(ctx, proxyTask.NodeID)
+	err = e.engineSvc.DeleteProxyNodeByNodeId(ctx, taskInfo.ProcInstID, proxyTask.NodeID)
 	if err != nil {
 		e.logger.Error("删除 proxy 节点失败", elog.FieldErr(err))
 		// 删除失败不阻断主流程，因为 prev_node_id 已经修改成功，流程回退路径已修正
@@ -415,7 +421,7 @@ func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *
 	// 3. 删除 proxy 节点任务记录
 	// NOTE: 修改状态无法阻止工作流引擎的判断，必须直接删除任务记录
 	// 这里使用获取到的 proxyNodeID 进行精确删除
-	err = e.engineSvc.DeleteProxyNodeByNodeId(ctx, proxyNodeID)
+	err = e.engineSvc.DeleteProxyNodeByNodeId(ctx, taskInfo.ProcInstID, proxyNodeID)
 	if err != nil {
 		e.logger.Error("删除 proxy 节点任务记录失败", elog.FieldErr(err))
 		return err
@@ -556,5 +562,5 @@ func (e *ProcessEvent) EventInclusionPassCleanup(TaskID int, CurrentNode *model.
 	// 2. 调用服务层清理逻辑
 	// 使用 UpdateIsFinishedByPreNodeId 将同级任务置为 SystemPass (系统通过)
 	// 注意：这里使用的是 PrevNode.NodeID，即分支汇聚点（或分叉点）的ID
-	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, PrevNode.NodeID, SystemPass, SystemPassComment)
+	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, PrevNode.NodeID, SystemPass, SystemPassComment)
 }

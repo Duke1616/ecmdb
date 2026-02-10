@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package template.v1;
+
+import "ealert/notification/v1/notification.proto";
+
+option go_package = "ealert/template/v1;template";
+
+// Template definitions
+message ChannelTemplate {
+  int64 id = 1;
+  int64 owner_id = 2;
+  string name = 3;
+  string description = 4;
+  ealert.notification.v1.Channel channel = 5;
+  int64 active_version_id = 6;
+  int64 ctime = 7;
+  int64 utime = 8;
+  repeated ChannelTemplateVersion versions = 9;
+}
+
+message ChannelTemplateVersion {
+  int64 id = 1;
+  int64 channel_template_id = 2;
+  string name = 3;
+  string signature = 4;
+  string content = 5;
+  string desc = 6;
+  int64 ctime = 7;
+  int64 utime = 8;
+}
+
+// 模版服务
+service TemplateService {
+  // GetTemplateByID 根据ID获取模板
+  rpc GetTemplateByID(GetTemplateByIDRequest) returns (GetTemplateByIDResponse);
+  // CreateTemplate 创建模版
+  rpc CreateTemplate(CreateTemplateRequest) returns (CreateTemplateResponse);
+  // UpdateTemplate 更新模板
+  rpc UpdateTemplate(UpdateTemplateRequest) returns (UpdateTemplateResponse);
+  // PublishTemplate 发布模板，将指定版本设置为活跃版本
+  rpc PublishTemplate(PublishTemplateRequest) returns (PublishTemplateResponse);
+  // ListTemplates 获取模版列表
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse);
+  // CreateTemplateVersion 基于已有版本创建新版本
+  rpc CreateTemplateVersion(CreateTemplateVersionRequest) returns (CreateTemplateVersionResponse);
+}
+
+// GetTemplateByIDRequest 获取模板请求
+message GetTemplateByIDRequest {
+  int64 id = 1; // 模板ID
+}
+
+// GetTemplateByIDResponse 获取模板响应
+message GetTemplateByIDResponse {
+  ChannelTemplate template = 1; // 模板详情
+}
+
+// CreateTemplateRequest 创建模板请求
+message CreateTemplateRequest {
+  ChannelTemplate template = 1; // 模板信息
+}
+
+// CreateTemplateResponse 创建模板响应
+message CreateTemplateResponse {
+  ChannelTemplate template = 1; // 创建后的模板信息
+}
+
+// UpdateTemplateRequest 更新模板请求
+message UpdateTemplateRequest {
+  ChannelTemplate template = 1; // 待更新的模板信息
+}
+
+// UpdateTemplateResponse 更新模板响应
+message UpdateTemplateResponse {}
+
+
+// PublishTemplateRequest 发布模板请求
+message PublishTemplateRequest {
+  int64 template_id = 1; // 模板ID
+  int64 version_id = 2;  // 版本ID
+}
+
+// PublishTemplateResponse 发布模板响应
+message PublishTemplateResponse {}
+
+// ListTemplatesRequest 获取模版列表请求
+message ListTemplatesRequest {
+  int32 offset = 1; // 偏移量
+  int32 limit = 2;  // 限制数量
+}
+
+// ListTemplatesResponse 获取模版列表响应
+message ListTemplatesResponse {
+  repeated ChannelTemplate templates = 1; // 模版列表
+  int64 total = 2; // 总数
+}
+
+// CreateTemplateVersionRequest 创建版本请求
+message CreateTemplateVersionRequest {
+  int64 template_id = 1; // 模板ID
+  string name = 2;       // 版本名称
+  string signature = 3;  // 签名
+  string content = 4;    // 模板内容
+  string desc = 5;       // 版本描述
+}
+
+// CreateTemplateVersionResponse 创建版本响应
+message CreateTemplateVersionResponse {
+  ChannelTemplateVersion version = 1; // 创建后的版本信息
+}

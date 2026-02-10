@@ -1,7 +1,7 @@
 package ioc
 
 import (
-	taskv1 "github.com/Duke1616/ecmdb/api/proto/gen/task/v1"
+	taskv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/task/v1"
 	grpcpkg "github.com/Duke1616/ework-runner/pkg/grpc"
 	"github.com/Duke1616/ework-runner/pkg/grpc/registry"
 	"github.com/spf13/viper"

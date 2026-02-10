@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/errs"
-	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -34,52 +34,53 @@ func NewAutomationNotification(resultSvc FetcherResult, userSvc user.Service, te
 	}, nil
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
+func (n *AutomationNotification) Send(ctx context.Context, info StrategyInfo) (notification.NotificationResponse, error) {
 	// 获取当前节点信息
-	property, err := getNodeProperty[easyflow.AutomationProperty](notification.WfInfo, notification.CurrentNode.NodeID)
+	property, err := getNodeProperty[easyflow.AutomationProperty](info.WfInfo, info.CurrentNode.NodeID)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
 	// 判断是否开启消息发送，以及是否为立即发送
 	if !property.IsNotify {
-		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
 	// 判断模式如果不是理解发送则退出
 	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】节点未开启消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】节点未开启消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
 	// 查看返回的消息
-	wantResult, err := n.resultSvc.FetchResult(ctx, notification.InstanceId, notification.CurrentNode.NodeID)
+	wantResult, err := n.resultSvc.FetchResult(ctx, info.InstanceId, info.CurrentNode.NodeID)
 	if err != nil {
 		n.logger.Warn("执行错误或未开启消息通知",
 			elog.FieldErr(err),
-			elog.Any("instId", notification.InstanceId),
+			elog.Any("instId", info.InstanceId),
 		)
-		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
-	startUser, err := n.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
+	startUser, err := n.userSvc.FindByUsername(ctx, info.OrderInfo.CreateBy)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	// 获取模版名称
-	tName, err := n.getTemplateName(ctx, notification.OrderInfo)
+	tName, err := n.getTemplateName(ctx, info.OrderInfo)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
-	return n.sender.Send(ctx, domain.Notification{
-		Channel:  domain.ChannelLarkCard,
-		Receiver: startUser.FeishuInfo.UserId,
-		Template: domain.Template{
+	return n.sender.Send(ctx, notification.Notification{
+		Channel:    notification.ChannelFeishu,
+		WorkFlowID: info.WfInfo.Id,
+		Receiver:   startUser.FeishuInfo.UserId,
+		Template: notification.Template{
 			Name:     LarkTemplateApprovalName,
 			Title:    rule.GenerateAutoTitle("你提交", tName),
 			Fields:   n.getFields(wantResult),
-			Values:   []domain.Value{},
+			Values:   []notification.Value{},
 			HideForm: true,
 		},
 	})
@@ -95,21 +96,21 @@ func (n *AutomationNotification) getTemplateName(ctx context.Context, order orde
 	return "", nil
 }
 
-func (n *AutomationNotification) getFields(wantResult map[string]interface{}) []domain.Field {
+func (n *AutomationNotification) getFields(wantResult map[string]interface{}) []notification.Field {
 	num := 1
-	var fields []domain.Field
+	var fields []notification.Field
 
 	for field, value := range wantResult {
 		title := field
 
-		fields = append(fields, domain.Field{
+		fields = append(fields, notification.Field{
 			IsShort: true,
 			Tag:     "lark_md",
 			Content: fmt.Sprintf(`**%s:**\n%v`, title, value),
 		})
 
 		if num%2 == 0 {
-			fields = append(fields, domain.Field{
+			fields = append(fields, notification.Field{
 				IsShort: false,
 				Tag:     "lark_md",
 				Content: "",

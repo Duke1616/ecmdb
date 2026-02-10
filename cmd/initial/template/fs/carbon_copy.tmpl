@@ -1,0 +1,32 @@
+{
+  "schema": "2.0",
+  "config": {
+    "wide_screen_mode": true
+  },
+  "header": {
+    "title": {
+      "tag": "plain_text",
+      "text_size": "heading",
+      "content": "{{.Title}}"
+    },
+    "template": "green"
+  },
+  "body": {
+    "elements": [
+      {
+        "tag": "div",
+        "fields": [
+          {{- range $index, $field := .Fields}}
+          {
+            "is_short": {{.IsShort}},
+            "text": {
+              "tag": "{{.Tag}}",
+              "content": "{{.Content}}"
+            }
+          }{{if not (last $index $.Fields)}},{{end}}
+          {{- end}}
+        ]
+      }
+    ]
+  }
+}

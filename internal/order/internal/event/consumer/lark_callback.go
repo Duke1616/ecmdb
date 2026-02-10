@@ -18,6 +18,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -25,7 +27,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/enotify/notify"
 	"github.com/Duke1616/enotify/notify/feishu"
-	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/Duke1616/enotify/template"
 	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
@@ -40,8 +41,8 @@ import (
 )
 
 const (
-	LarkCardProgress            = "feishu-card-progress"
-	LarkCardProgressImageResult = "feishu-card-progress-image-result"
+	LarkCardProgress            = workflow.NotifyTypeProgress
+	LarkCardProgressImageResult = workflow.NotifyTypeProgressImageResult
 )
 
 type LarkCallbackEventConsumer struct {
@@ -49,6 +50,7 @@ type LarkCallbackEventConsumer struct {
 	callback         callback
 	tmpl             *template.Template
 	handler          notify.Handler
+	sender           sender.NotificationSender
 	workflowSvc      workflow.Service
 	userSvc          user.Service
 	engineSvc        engineSvc.Service
@@ -60,7 +62,7 @@ type LarkCallbackEventConsumer struct {
 }
 
 func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, engineProcessSvc service.ProcessEngine, service service.Service,
-	templateSvc templateSvc.Service, userSvc user.Service, workflowSvc workflow.Service, lark *lark.Client) (*LarkCallbackEventConsumer, error) {
+	templateSvc templateSvc.Service, sender sender.NotificationSender, userSvc user.Service, workflowSvc workflow.Service, lark *lark.Client) (*LarkCallbackEventConsumer, error) {
 	groupID := "lark_callback"
 	consumer, err := q.Consumer(event.LarkCallbackEventName, groupID)
 	if err != nil {
@@ -84,6 +86,7 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		userSvc:          userSvc,
 		workflowSvc:      workflowSvc,
 		handler:          handler,
+		sender:           sender,
 		callback:         getLarkCallbackConfig(),
 		templateSvc:      templateSvc,
 		Svc:              service,
@@ -159,7 +162,6 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			if strings.Contains(err.Error(), "已处理，无需操作") {
 				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
-
 			}
 
 			if errors.Is(err, errs.ValidationError) {
@@ -367,7 +369,7 @@ func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Or
 }
 
 func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {
-	var fields []card.Field
+	var fields []notification.Field
 	us, err := c.userSvc.FindByUsernames(ctx, approvalUsers)
 	if err != nil {
 		return err
@@ -385,25 +387,26 @@ func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *str
 		status = `**状态：<font color='green'> 审批中 </font>**`
 	}
 
-	fields = append(fields, card.Field{
+	fields = append(fields, notification.Field{
 		Tag:     "markdown",
 		Content: approval,
 	})
 
-	fields = append(fields, card.Field{
+	fields = append(fields, notification.Field{
 		Tag:     "markdown",
 		Content: status,
 	})
 
-	msg := feishu.NewCreateBuilder(userId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
-		SetContent(feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgressImageResult, card.NewApprovalCardBuilder().
-			SetToTitle("工单流程进度查看").
-			SetImageKey(*imageKey).
-			SetToFields(fields).
-			Build())).
-		Build()
-
-	if err = c.handler.Send(ctx, msg); err != nil {
+	if _, err = c.sender.Send(ctx, notification.Notification{
+		Receiver: userId,
+		Channel:  notification.ChannelFeishu,
+		Template: notification.Template{
+			Name:     LarkCardProgressImageResult,
+			Title:    "工单流程进度查看",
+			Fields:   fields,
+			ImageKey: *imageKey,
+		},
+	}); err != nil {
 		return fmt.Errorf("发送流程进度失败: %w", err)
 	}
 
@@ -502,23 +505,26 @@ func edgeToMap(edge easyflow.Edge) map[string]interface{} {
 	}
 }
 
-func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event.LarkCallback, wantResult string) error {
+func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event.LarkCallback, remark string) error {
 	// 获取模版详情信息
 	orderIdInt, err := callback.GetOrderIdInt()
 	if err != nil {
 		return err
 	}
 
+	// 获取工单详情
 	fOrder, err := c.Svc.Detail(ctx, orderIdInt)
 	if err != nil {
 		return err
 	}
 
+	// 查看模版详情
 	t, err := c.templateSvc.DetailTemplate(ctx, fOrder.TemplateId)
 	if err != nil {
 		return err
 	}
 
+	// 解析 rule 规则
 	rules, err := rule.ParseRules(t.Rules)
 	if err != nil {
 		return err
@@ -529,24 +535,26 @@ func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event
 		return err
 	}
 
-	msg := feishu.NewPatchBuilder(callback.GetMessageId()).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
-		SetContent(feishu.NewFeishuCustomCard(c.tmpl, LarkCardProgress,
-			card.NewApprovalCardBuilder().
-				SetToTitle(rule.GenerateTitle(userInfo.DisplayName, t.Name)).
-				SetToFields(toCardFields(ruleFields)).
-				SetToCallbackValue(getCallbackValue(callback)).
-				SetWantResult(wantResult).
-				Build(),
-		)).Build()
-
-	if err = c.handler.Send(ctx, msg); err != nil {
+	// 发送消息通知
+	if _, err = c.sender.Send(ctx, notification.Notification{
+		Receiver:  callback.GetUserId(),
+		MessageID: callback.GetMessageId(),
+		Channel:   notification.ChannelFeishu,
+		Template: notification.Template{
+			Name:   LarkCardProgress,
+			Title:  rule.GenerateTitle(userInfo.DisplayName, t.Name),
+			Fields: toDomainFields(ruleFields),
+			Values: getCallbackValue(callback),
+			Remark: remark,
+		},
+	}); err != nil {
 		return fmt.Errorf("修改飞书消息失败: %w", err)
 	}
 
 	return nil
 }
 
-func getCallbackValue(callback event.LarkCallback) []card.Value {
+func getCallbackValue(callback event.LarkCallback) []notification.Value {
 	fields := []struct {
 		Key   string
 		Value string
@@ -557,15 +565,15 @@ func getCallbackValue(callback event.LarkCallback) []card.Value {
 		{"action", string(event.Progress)},
 	}
 
-	value := make([]card.Value, 0, len(fields))
+	values := make([]notification.Value, 0, len(fields))
 	for _, field := range fields {
-		value = append(value, card.Value{
+		values = append(values, notification.Value{
 			Key:   field.Key,
 			Value: field.Value,
 		})
 	}
 
-	return value
+	return values
 }
 
 func (c *LarkCallbackEventConsumer) Stop(_ context.Context) error {
@@ -605,14 +613,12 @@ func scaleImage(buf []byte) ([]byte, error) {
 	return outBuf.Bytes(), nil
 }
 
-func toCardFields(fields []rule.Field) []card.Field {
-	var cardFields []card.Field
-	for _, f := range fields {
-		cardFields = append(cardFields, card.Field{
-			IsShort: f.IsShort,
-			Tag:     f.Tag,
-			Content: f.Content,
-		})
-	}
-	return cardFields
+func toDomainFields(fields []rule.Field) []notification.Field {
+	return slice.Map(fields, func(idx int, src rule.Field) notification.Field {
+		return notification.Field{
+			IsShort: src.IsShort,
+			Tag:     src.Tag,
+			Content: src.Content,
+		}
+	})
 }

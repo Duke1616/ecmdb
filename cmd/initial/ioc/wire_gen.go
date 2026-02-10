@@ -7,10 +7,12 @@
 package ioc
 
 import (
+	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1"
 	"github.com/Duke1616/ecmdb/cmd/initial/version"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/bootstrap"
 	"github.com/Duke1616/ecmdb/internal/department"
+	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/permission"
@@ -19,8 +21,16 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/internal/role"
 	"github.com/Duke1616/ecmdb/internal/user"
+	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/ioc"
+	grpc2 "github.com/Duke1616/ework-runner/pkg/grpc"
+	"github.com/Duke1616/ework-runner/pkg/grpc/registry"
+	"github.com/Duke1616/ework-runner/pkg/grpc/registry/etcd"
 	"github.com/google/wire"
+	"github.com/spf13/viper"
+	"go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -87,16 +97,31 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	loader := bootstrapModule.Svc
+	clientv3Client := ioc.InitEtcdClient()
+	registry := InitRegistry(clientv3Client)
+	clientConnInterface := InitEALERTGrpcClient(registry)
+	templateServiceClient := InitTemplateServiceClient(clientConnInterface)
+	engineModule, err := engine.InitModule(db)
+	if err != nil {
+		return nil, err
+	}
+	workflowModule, err := workflow.InitModule(mongo, engineModule)
+	if err != nil {
+		return nil, err
+	}
+	service5 := workflowModule.Svc
 	app := &App{
-		UserSvc:       service,
-		RoleSvc:       serviceService,
-		MenuSvc:       service2,
-		PermissionSvc: service3,
-		policySvc:     service4,
-		VerSvc:        versionService,
-		BootstrapSvc:  loader,
-		GormDB:        db,
-		DB:            mongo,
+		UserSvc:        service,
+		RoleSvc:        serviceService,
+		MenuSvc:        service2,
+		PermissionSvc:  service3,
+		policySvc:      service4,
+		VerSvc:         versionService,
+		BootstrapSvc:   loader,
+		TemplateClient: templateServiceClient,
+		WorkflowSvc:    service5,
+		GormDB:         db,
+		DB:             mongo,
 	}
 	return app, nil
 }
@@ -104,3 +129,36 @@ func InitApp() (*App, error) {
 // wire.go:
 
 var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRedisSearch, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.InitModuleCrypto)
+
+// InitRegistry 初始化统一的服务注册中心
+func InitRegistry(etcdClient *clientv3.Client) registry.Registry {
+	r, err := etcd.NewRegistry(etcdClient)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+// InitEALERTGrpcClient 初始化 EALERT gRPC 客户端
+func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
+	var cfg grpc2.ClientConfig
+	if err := viper.UnmarshalKey("grpc.client.ealert", &cfg); err != nil {
+		panic(err)
+	}
+
+	cc, err := grpc2.NewClientConn(
+		reg, grpc2.WithServiceName(cfg.Name), grpc2.WithClientJWTAuth(cfg.AuthToken), grpc2.WithDialOption(grpc.WithConnectParams(grpc.ConnectParams{
+			MinConnectTimeout: 3 * time.Second,
+		}), grpc.WithDefaultCallOptions(grpc.WaitForReady(false))),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	return cc
+}
+
+// InitTemplateServiceClient 初始化 template 服务客户端
+func InitTemplateServiceClient(cc grpc.ClientConnInterface) templatev1.TemplateServiceClient {
+	return templatev1.NewTemplateServiceClient(cc)
+}

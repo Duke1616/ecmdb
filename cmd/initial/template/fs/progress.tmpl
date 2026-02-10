@@ -1,0 +1,62 @@
+{
+  "schema": "2.0",
+  "config": {
+    "wide_screen_mode": true
+  },
+  "header": {
+    "title": {
+      "tag": "plain_text",
+      "text_size": "heading",
+      "content": "{{.Title}}"
+    },
+    "template": "green"
+  },
+  "body": {
+    "elements": [
+      {
+        "tag": "div",
+        "fields": [
+          {{- range $index, $field := .Fields}}
+          {
+            "is_short": {{.IsShort}},
+            "text": {
+              "tag": "{{.Tag}}",
+              "content": "{{.Content}}"
+            }
+          }{{if not (last $index $.Fields)}},{{end}}
+          {{- end}}
+        ]
+      },
+      {
+        "tag":"hr"
+      },
+      {
+        "tag": "div",
+        "icon":{
+          "tag":"standard_icon",
+          "token":"succeed_filled",
+          "color":"green"
+        },
+        "text": {
+          "tag": "lark_md",
+          "content": "{{ .WantContent }}"
+        },
+        "extra": {
+          "tag": "button",
+          "text": {
+            "tag": "lark_md",
+            "content": "查看进度"
+          },
+          "name": "progress",
+          "value": {
+            {{- range $index, $callback := .CallbackValue}}
+            "{{$callback.Key}}": "{{$callback.Value}}"{{if not (last $index $.CallbackValue)}},{{end}}
+            {{- end}}
+          },
+          "type": "laser",
+          "size": "medium"
+        }
+      }
+    ]
+  }
+}

@@ -7,7 +7,8 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
+	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
+	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/dataio"
@@ -21,6 +22,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/permission"
 	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -41,6 +43,7 @@ import (
 	"github.com/google/wire"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"time"
 )
 
 import (
@@ -133,7 +136,14 @@ func InitApp() (*App, error) {
 	}
 	handler8 := runnerModule.Hdl
 	larkClient := InitLarkClient()
-	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient)
+	registry := InitRegistry(client)
+	clientConnInterface := InitEALERTGrpcClient(registry)
+	notificationServiceClient := InitNotificationServiceClient(clientConnInterface)
+	serviceService := workflowModule.Svc
+	selectorBuilder := newSelectorBuilder(larkClient, notificationServiceClient, serviceService)
+	channel := newChannel(selectorBuilder)
+	notificationSender := sender.NewSender(channel)
+	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient, notificationSender)
 	if err != nil {
 		return nil, err
 	}
@@ -195,16 +205,13 @@ func InitApp() (*App, error) {
 	handler23 := dataioModule.Hdl
 	checkLoginMiddlewareBuilder := middleware.NewCheckLoginMiddlewareBuilder(provider)
 	component := InitWebServer(provider, checkPolicyMiddlewareBuilder, v, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, handler3, relationTypeHandler, handler4, handler5, handler6, handler7, handler8, handler9, handler10, groupHandler, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22, handler23, checkLoginMiddlewareBuilder)
-	registry := InitRegistry(client)
 	workOrderServer := orderModule.RpcServer
 	policyServer := module.RpcServer
 	endpointServer := endpointModule.RpcServer
 	userServer := userModule.RpcServer
 	rotaServer := rotaModule.RpcServer
 	server := InitGrpcServer(registry, workOrderServer, policyServer, endpointServer, userServer, rotaServer)
-	clientConnInterface := InitEALERTGrpcClient(registry)
-	notificationServiceClient := InitNotificationServiceClient(clientConnInterface)
-	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, departmentModule, larkClient, notificationServiceClient)
+	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, notificationSender, departmentModule, larkClient, notificationServiceClient)
 	if err != nil {
 		return nil, err
 	}
@@ -212,13 +219,13 @@ func InitApp() (*App, error) {
 	startTaskJob := taskModule.StartTaskJob
 	passProcessTaskJob := taskModule.PassProcessTaskJob
 	v2 := initCronJobs(startTaskJob, passProcessTaskJob)
-	serviceService := endpointModule.Svc
+	service2 := endpointModule.Svc
 	app := &App{
 		Web:    component,
 		Server: server,
 		Event:  processEvent,
 		Jobs:   v2,
-		Svc:    serviceService,
+		Svc:    service2,
 	}
 	return app, nil
 }
@@ -236,7 +243,9 @@ func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
 	}
 
 	cc, err := grpc2.NewClientConn(
-		reg, grpc2.WithServiceName(cfg.Name), grpc2.WithClientJWTAuth(cfg.AuthToken),
+		reg, grpc2.WithServiceName(cfg.Name), grpc2.WithClientJWTAuth(cfg.AuthToken), grpc2.WithDialOption(grpc.WithConnectParams(grpc.ConnectParams{
+			MinConnectTimeout: 3 * time.Second,
+		}), grpc.WithDefaultCallOptions(grpc.WaitForReady(false))),
 	)
 	if err != nil {
 		panic(err)
@@ -248,4 +257,9 @@ func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
 // InitNotificationServiceClient 初始化 notification 服务客户端
 func InitNotificationServiceClient(cc grpc.ClientConnInterface) notificationv1.NotificationServiceClient {
 	return notificationv1.NewNotificationServiceClient(cc)
+}
+
+// InitTemplateServiceClient 初始化 template 服务客户端
+func InitTemplateServiceClient(cc grpc.ClientConnInterface) templatev1.TemplateServiceClient {
+	return templatev1.NewTemplateServiceClient(cc)
 }

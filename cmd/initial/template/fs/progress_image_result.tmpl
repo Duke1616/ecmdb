@@ -1,0 +1,51 @@
+{
+  "schema": "2.0",
+  "config": {
+    "wide_screen_mode": true
+  },
+  "header": {
+    "title": {
+      "tag": "plain_text",
+      "text_size": "heading",
+      "content": "{{.Title}}"
+    },
+    "template": "green"
+  },
+  "body": {
+    "elements": [
+      {
+        "tag": "column_set",
+        "flex_mode": "none",
+        "background_style": "default",
+        "columns": [
+          {{- range $index, $field := .Fields}}
+          {
+            "tag": "column",
+            "width": "weighted",
+            "weight": 1,
+            "vertical_align": "top",
+            "elements": [{
+              "tag": "{{.Tag}}",
+              "content": "{{.Content | safeHTML}}"
+            }]
+          }{{if not (last $index $.Fields)}},{{end}}
+          {{- end}}
+        ]
+      },
+      {
+        "tag":"hr"
+      },
+      {
+      "tag": "img",
+      "img_key": "{{.ImageKey}}",
+      "alt": {
+        "tag": "plain_text",
+        "content": ""
+      },
+      "mode": "fit_horizontal",
+      "preview": true,
+      "compact_width": false
+      }
+    ]
+  }
+}

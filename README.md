@@ -92,6 +92,9 @@ docker compose -p ecmdb -f deploy/docker-compose.yaml up -d
 
 # 初始化系统
 docker exec -it ecmdb ./ecmdb init
+
+# 初始化工单飞书通知模版（ 可选 ）
+go run main.go init ticket-notify-template
 ```
 
 ### 默认账户

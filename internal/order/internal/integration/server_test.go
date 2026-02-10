@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	clientv1 "github.com/Duke1616/ecmdb/api/proto/gen/order/v1"
+	clientv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/order/v1"
 	evtmocks "github.com/Duke1616/ecmdb/internal/order/internal/event/mocks"
 	grpc2 "github.com/Duke1616/ecmdb/internal/order/internal/grpc"
 	"github.com/Duke1616/ecmdb/internal/order/internal/integration/startup"

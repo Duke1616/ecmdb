@@ -8,19 +8,14 @@ package event
 
 import (
 	engine2 "github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
+	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
-	"github.com/Duke1616/ecmdb/internal/event/service/channel"
 	"github.com/Duke1616/ecmdb/internal/event/service/easyflow"
-	"github.com/Duke1616/ecmdb/internal/event/service/provider"
-	"github.com/Duke1616/ecmdb/internal/event/service/provider/feishu"
-	"github.com/Duke1616/ecmdb/internal/event/service/provider/sequential"
-	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -35,7 +30,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, departmentModule *department.Module, lark2 *lark.Client, notificationSvc notificationv1.NotificationServiceClient) (*Module, error) {
+func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *task.Module, orderModule *order.Module, templateModule *template.Module, userModule *user.Module, workflowModule *workflow.Module, sender2 sender.NotificationSender, departmentModule *department.Module, lark2 *lark.Client, notificationSvc notificationv1.NotificationServiceClient) (*Module, error) {
 	service := engineModule.Svc
 	orderStatusModifyEventProducer, err := producer.NewOrderStatusModifyEventProducer(q)
 	if err != nil {
@@ -46,20 +41,17 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 	service3 := workflowModule.Svc
 	service4 := userModule.Svc
 	service5 := templateModule.Svc
-	selectorBuilder := newSelectorBuilder(lark2, notificationSvc)
-	channel := newChannel(selectorBuilder)
-	notificationSender := sender.NewSender(channel)
-	startNotification, err := strategy.NewStartNotification(service4, service5, notificationSender)
+	startNotification, err := strategy.NewStartNotification(service4, service5, sender2)
 	if err != nil {
 		return nil, err
 	}
 	fetcherResult := strategy.NewResult(serviceService)
-	automationNotification, err := strategy.NewAutomationNotification(fetcherResult, service4, service5, notificationSender)
+	automationNotification, err := strategy.NewAutomationNotification(fetcherResult, service4, service5, sender2)
 	if err != nil {
 		return nil, err
 	}
 	service6 := departmentModule.Svc
-	userNotification, err := strategy.NewUserNotification(service, service5, service2, service4, fetcherResult, service6, notificationSender, notificationSvc)
+	userNotification, err := strategy.NewUserNotification(service, service5, service2, service4, fetcherResult, service6, sender2, notificationSvc)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +66,6 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 // wire.go:
 
 var InitStrategySet = wire.NewSet(strategy.NewResult, strategy.NewUserNotification, strategy.NewAutomationNotification, strategy.NewStartNotification, strategy.NewDispatcher)
-
-var InitSender = wire.NewSet(
-	newSelectorBuilder,
-	newChannel, sender.NewSender,
-)
 
 var engineOnce = sync.Once{}
 
@@ -99,23 +86,4 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 pro
 	})
 
 	return event
-}
-
-func newChannel(builder *sequential.SelectorBuilder) channel.Channel {
-	return channel.NewDispatcher(map[domain.Channel]channel.Channel{domain.ChannelLarkCard: channel.NewLarkCardChannel(builder)})
-}
-
-func newSelectorBuilder(lark2 *lark.Client,
-	notificationSvc notificationv1.NotificationServiceClient,
-) *sequential.SelectorBuilder {
-
-	providers := make([]provider.Provider, 0)
-	cardProvider, err := feishu.NewLarkCardProvider(lark2)
-	if err != nil {
-		return nil
-	}
-
-	grpcNotificationProvider := feishu.NewGRPCProvider(notificationSvc)
-	providers = append(providers, grpcNotificationProvider, cardProvider)
-	return sequential.NewSelectorBuilder(providers)
 }

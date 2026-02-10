@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package ecmdb.order.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "ecmdb/order/v1;order";
+
+message CreateOrderRequest {
+  // 业务ID
+  int64 biz_id = 1;
+  // 业务唯一Key
+  string key = 2;
+  // 模版ID
+  int64 template_id = 3;
+  // 工单来源
+  Provider Provider = 4;
+  // 创建人
+  string CreateBy = 5;
+  // 工单参数
+  google.protobuf.Struct data = 6;
+}
+
+// 工单类型
+enum Provider {
+  // 未指定
+  PROVIDER_UNSPECIFIED = 0;
+  // SYSTEM 本系统
+  SYSTEM = 1;
+  // WECHAT 企业微信
+  WECHAT = 2;
+}
+
+message Response {}
+
+service WorkOrderService {
+  // 创建工单
+  rpc CreateWorkOrder(CreateOrderRequest) returns (Response);
+}

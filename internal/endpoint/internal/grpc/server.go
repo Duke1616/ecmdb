@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 
-	endpointv1 "github.com/Duke1616/ecmdb/api/proto/gen/endpoint/v1"
+	endpointv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/endpoint/v1"
 	"github.com/Duke1616/ecmdb/internal/endpoint/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/endpoint/internal/service"
 	"github.com/ecodeclub/ekit/slice"

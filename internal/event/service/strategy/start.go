@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/errs"
-	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -33,48 +33,49 @@ func NewStartNotification(userSvc user.Service, templateSvc template.Service, se
 	}, nil
 }
 
-func (s *StartNotification) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
+func (s *StartNotification) Send(ctx context.Context, info StrategyInfo) (notification.NotificationResponse, error) {
 	// 获取当前节点信息
-	property, err := getNodeProperty[easyflow.StartProperty](notification.WfInfo, notification.CurrentNode.NodeID)
+	property, err := getNodeProperty[easyflow.StartProperty](info.WfInfo, info.CurrentNode.NodeID)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
 	// 判断开始节点是否需要发送消息通知
-	if ok := s.isNotify(property, notification.InstanceId); !ok {
-		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
+	if ok := s.isNotify(property, info.InstanceId); !ok {
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
 	// 解析配置
-	rules, tName, err := s.getRules(ctx, notification.OrderInfo)
+	rules, tName, err := s.getRules(ctx, info.OrderInfo)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	// 获取工单创建用户
-	startUser, err := s.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
+	startUser, err := s.userSvc.FindByUsername(ctx, info.OrderInfo.CreateBy)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
-	ruleFields := rule.GetFields(rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
-	return s.sender.Send(ctx, domain.Notification{
-		Channel:  domain.ChannelLarkCard,
-		Receiver: startUser.FeishuInfo.UserId,
-		Template: domain.Template{
+	ruleFields := rule.GetFields(rules, info.OrderInfo.Provide.ToUint8(), info.OrderInfo.Data)
+	return s.sender.Send(ctx, notification.Notification{
+		Channel:    notification.ChannelFeishu,
+		WorkFlowID: info.WfInfo.Id,
+		Receiver:   startUser.FeishuInfo.UserId,
+		Template: notification.Template{
 			Name:  LarkTemplateApprovalRevokeName,
 			Title: rule.GenerateTitle("你提交的", tName),
-			Fields: slice.Map(ruleFields, func(idx int, src rule.Field) domain.Field {
-				return domain.Field{
+			Fields: slice.Map(ruleFields, func(idx int, src rule.Field) notification.Field {
+				return notification.Field{
 					IsShort: src.IsShort,
 					Tag:     src.Tag,
 					Content: src.Content,
 				}
 			}),
-			Values: []domain.Value{
+			Values: []notification.Value{
 				{
 					Key:   "order_id",
-					Value: notification.OrderInfo.Id,
+					Value: info.OrderInfo.Id,
 				},
 				{
 					Key:   "task_id",

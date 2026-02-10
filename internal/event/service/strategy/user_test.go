@@ -3,7 +3,7 @@ package strategy
 import (
 	"os"
 
-	clientv1 "github.com/Duke1616/ecmdb/api/proto/gen/order/v1"
+	clientv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/order/v1"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"

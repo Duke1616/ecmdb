@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/Bunny3th/easy-workflow/workflow/model"
-	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/department"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/errs"
-	"github.com/Duke1616/ecmdb/internal/event/service/sender"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	templateSvc "github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
@@ -74,37 +74,37 @@ func (n *UserNotification) isGlobalNotify(wf workflow.Workflow, instanceId int) 
 	return true
 }
 
-func (n *UserNotification) Send(ctx context.Context, notification domain.StrategyInfo) (domain.NotificationResponse, error) {
+func (n *UserNotification) Send(ctx context.Context, info StrategyInfo) (notification.NotificationResponse, error) {
 	// 获取流程节点信息
-	nodes, err := unmarshal(notification.WfInfo)
+	nodes, err := unmarshal(info.WfInfo)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeParseFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrParseMessage, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeParseFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrParseMessage, err)
 	}
 
 	// 获取当前节点属性
-	property, err := getProperty[easyflow.UserProperty](nodes, notification.CurrentNode.NodeID)
+	property, err := getProperty[easyflow.UserProperty](nodes, info.CurrentNode.NodeID)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
 	// 并行获取所需数据
-	data, err := n.fetchRequiredData(ctx, notification, nodes)
+	data, err := n.fetchRequiredData(ctx, info, nodes)
 	if err != nil {
-		return domain.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
 	// 为异步发送设置一个独立的超时 ctx，避免无限挂起
 	sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 
 	// 根据规则生成审批用户
-	if err = n.resolveRule(sendCtx, notification.InstanceId, property, data.startUser,
-		notification.OrderInfo, notification.CurrentNode); err != nil {
+	if err = n.resolveRule(sendCtx, info.InstanceId, property, data.startUser,
+		info.OrderInfo, info.CurrentNode); err != nil {
 		cancel() // 立即取消，因为发生了错误
 		n.logger.Error("解析规则失败",
 			elog.FieldErr(err),
-			elog.Int("instanceId", notification.InstanceId),
+			elog.Int("instanceId", info.InstanceId),
 			elog.String("rule", property.Rule.ToString()))
-		return domain.NewErrorResponse(string(errs.ErrorCodeResolveRuleFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrResolveRule, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeResolveRuleFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrResolveRule, err)
 	}
 
 	// 异步发送通知，将 cancel 函数传给异步任务
@@ -116,20 +116,20 @@ func (n *UserNotification) Send(ctx context.Context, notification domain.Strateg
 				n.logger.Error("异步发送通知发生panic", elog.Any("recover", r))
 			}
 		}()
-		n.asyncSendNotification(sendCtx, notification, property, data)
+		n.asyncSendNotification(sendCtx, info, property, data)
 	}()
 
-	return domain.NotificationResponse{}, nil
+	return notification.NotificationResponse{}, nil
 }
 
-func (n *UserNotification) asyncSendNotification(ctx context.Context, notification domain.StrategyInfo,
+func (n *UserNotification) asyncSendNotification(ctx context.Context, info StrategyInfo,
 	property easyflow.UserProperty, data *notificationData) {
 	// 1. 获取任务信息（带重试）
-	tasks, err := n.fetchTasksWithRetry(ctx, notification)
+	tasks, err := n.fetchTasksWithRetry(ctx, info)
 	if err != nil {
 		n.logger.Error("获取任务信息失败",
 			elog.FieldErr(err),
-			elog.Int("instanceId", notification.InstanceId))
+			elog.Int("instanceId", info.InstanceId))
 		return
 	}
 
@@ -154,7 +154,7 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 
 	// 4. 判断是否全局允许通知，若不允许则返回（确保自动通过已执行）
 	// 如果节点是抄送节点需要自动结束该节点，如果这块代码放到抄送逻辑前，会影响代码处理
-	if ok := n.isGlobalNotify(notification.WfInfo, notification.InstanceId); !ok {
+	if ok := n.isGlobalNotify(info.WfInfo, info.InstanceId); !ok {
 		return
 	}
 
@@ -166,8 +166,8 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 	userMap := analyzeUsers(users)
 
 	// 6、如果消息来源是告警转工单，则通过告警模版发送消息
-	if notification.OrderInfo.Provide.IsAlert() {
-		if err = n.send(ctx, tasks, notification.OrderInfo, userMap); err != nil {
+	if info.OrderInfo.Provide.IsAlert() {
+		if err = n.send(ctx, tasks, info.OrderInfo, userMap); err != nil {
 			n.logger.Error("告警转工单，消息发送失败", elog.FieldErr(err))
 		}
 
@@ -175,9 +175,9 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 	}
 
 	// 7、. 获取需要传递的信息字段
-	ruleFields := rule.GetFields(data.rules, notification.OrderInfo.Provide.ToUint8(), notification.OrderInfo.Data)
-	fields := slice.Map(ruleFields, func(idx int, src rule.Field) domain.Field {
-		return domain.Field{
+	ruleFields := rule.GetFields(data.rules, info.OrderInfo.Provide.ToUint8(), info.OrderInfo.Data)
+	fields := slice.Map(ruleFields, func(idx int, src rule.Field) notification.Field {
+		return notification.Field{
 			IsShort: src.IsShort,
 			Tag:     src.Tag,
 			Content: src.Content,
@@ -185,26 +185,27 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 	})
 
 	for field, value := range data.wantResult {
-		fields = append(fields, domain.Field{
+		fields = append(fields, notification.Field{
 			IsShort: true,
 			Tag:     "lark_md",
 			Content: fmt.Sprintf(`**%s:**\n%v`, field, value),
 		})
 	}
 
-	ns := slice.Map(tasks, func(idx int, src model.Task) domain.Notification {
+	ns := slice.Map(tasks, func(idx int, src model.Task) notification.Notification {
 		receiver, _ := userMap[src.UserID]
-		return domain.Notification{
-			Channel:  domain.ChannelLarkCard,
-			Receiver: receiver,
-			Template: domain.Template{
-				Name:   template,
+		return notification.Notification{
+			Channel:    notification.ChannelFeishu,
+			WorkFlowID: info.WfInfo.Id,
+			Receiver:   receiver,
+			Template: notification.Template{
+				Name:   workflow.NotifyType(template),
 				Title:  title,
 				Fields: fields,
-				Values: []domain.Value{
+				Values: []notification.Value{
 					{
 						Key:   "order_id",
-						Value: notification.OrderInfo.Id,
+						Value: info.OrderInfo.Id,
 					},
 					{
 						Key:   "task_id",
@@ -212,14 +213,14 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, notificati
 					},
 				},
 				HideForm: false,
-				InputFields: slice.Map(property.Fields, func(idx int, src easyflow.Field) domain.InputField {
-					return domain.InputField{
+				InputFields: slice.Map(property.Fields, func(idx int, src easyflow.Field) notification.InputField {
+					return notification.InputField{
 						Name:     src.Name,
 						Key:      src.Key,
-						Type:     domain.FieldType(src.Type),
+						Type:     notification.FieldType(src.Type),
 						Required: src.Required,
-						Options: slice.Map(src.Options, func(idx int, src easyflow.Option) domain.InputOption {
-							return domain.InputOption{
+						Options: slice.Map(src.Options, func(idx int, src easyflow.Option) notification.InputOption {
+							return notification.InputOption{
 								Label: src.Label,
 								Value: src.Value,
 							}
@@ -277,7 +278,7 @@ func (n *UserNotification) send(ctx context.Context, tasks []model.Task,
 }
 
 // 分解出的辅助方法
-func (n *UserNotification) fetchTasksWithRetry(ctx context.Context, notification domain.StrategyInfo) ([]model.Task, error) {
+func (n *UserNotification) fetchTasksWithRetry(ctx context.Context, notification StrategyInfo) ([]model.Task, error) {
 	strategy, err := retry.NewExponentialBackoffRetryStrategy(n.initialInterval, n.maxInterval, n.maxRetries)
 	if err != nil {
 		return nil, err
@@ -305,7 +306,7 @@ func (n *UserNotification) fetchTasksWithRetry(ctx context.Context, notification
 }
 
 // 提取的数据获取逻辑
-func (n *UserNotification) fetchRequiredData(ctx context.Context, notification domain.StrategyInfo,
+func (n *UserNotification) fetchRequiredData(ctx context.Context, info StrategyInfo,
 	nodes []easyflow.Node) (*notificationData, error) {
 	var data notificationData
 	errGroup, ctx := errgroup.WithContext(ctx)
@@ -313,21 +314,21 @@ func (n *UserNotification) fetchRequiredData(ctx context.Context, notification d
 	// 获取自动化任务执行结果
 	errGroup.Go(func() error {
 		var err error
-		data.wantResult, err = n.wantAllResult(ctx, notification.InstanceId, nodes)
+		data.wantResult, err = n.wantAllResult(ctx, info.InstanceId, nodes)
 		return err
 	})
 
 	// 解析配置
 	errGroup.Go(func() error {
 		var err error
-		data.rules, data.tName, err = n.getRules(ctx, notification.OrderInfo)
+		data.rules, data.tName, err = n.getRules(ctx, info.OrderInfo)
 		return err
 	})
 
 	// 获取工单创建用户
 	errGroup.Go(func() error {
 		var err error
-		data.startUser, err = n.userSvc.FindByUsername(ctx, notification.OrderInfo.CreateBy)
+		data.startUser, err = n.userSvc.FindByUsername(ctx, info.OrderInfo.CreateBy)
 		return err
 	})
 

@@ -17,8 +17,10 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	service.NewService,
 	repository.NewWorkflowRepository,
+	repository.NewNotifyBindingRepository,
 	dao.NewWorkflowDAO,
 	dao.NewSnapshotDAO,
+	dao.NewNotifyBindingDAO,
 	easyflow.NewLogicFlowToEngineConvert,
 )
 

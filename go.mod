@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.22
+	github.com/Duke1616/enotify v0.1.23
 	github.com/Duke1616/ework-runner v0.0.1
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/IBM/sarama v1.43.3

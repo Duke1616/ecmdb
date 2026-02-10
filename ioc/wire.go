@@ -3,7 +3,10 @@
 package ioc
 
 import (
-	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/notification/v1"
+	"time"
+
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
+	templatev1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/dataio"
@@ -74,7 +77,7 @@ func InitApp() (*App, error) {
 		strategy.InitModule,
 		wire.FieldsOf(new(*strategy.Module), "Hdl"),
 		workflow.InitModule,
-		wire.FieldsOf(new(*workflow.Module), "Hdl"),
+		wire.FieldsOf(new(*workflow.Module), "Hdl", "Svc"),
 		engine.InitModule,
 		wire.FieldsOf(new(*engine.Module), "Hdl"),
 		event.InitModule,
@@ -106,7 +109,11 @@ func InitApp() (*App, error) {
 		initCronJobs,
 		InitWebServer,
 		InitGrpcServer,
-		InitGinMiddlewares)
+		InitGinMiddlewares,
+
+		// 消息通知
+		InitSender,
+	)
 	return new(App), nil
 }
 
@@ -117,10 +124,17 @@ func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
 		panic(err)
 	}
 
+	// 通过 WaitForReady 控制，如果地址不通直接返回错误
 	cc, err := grpcpkg.NewClientConn(
 		reg,
 		grpcpkg.WithServiceName(cfg.Name),
 		grpcpkg.WithClientJWTAuth(cfg.AuthToken),
+		grpcpkg.WithDialOption(grpc.WithConnectParams(grpc.ConnectParams{
+			MinConnectTimeout: 3 * time.Second,
+		}),
+			grpc.WithDefaultCallOptions(
+				grpc.WaitForReady(false),
+			)),
 	)
 	if err != nil {
 		panic(err)
@@ -132,4 +146,9 @@ func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
 // InitNotificationServiceClient 初始化 notification 服务客户端
 func InitNotificationServiceClient(cc grpc.ClientConnInterface) notificationv1.NotificationServiceClient {
 	return notificationv1.NewNotificationServiceClient(cc)
+}
+
+// InitTemplateServiceClient 初始化 template 服务客户端
+func InitTemplateServiceClient(cc grpc.ClientConnInterface) templatev1.TemplateServiceClient {
+	return templatev1.NewTemplateServiceClient(cc)
 }

@@ -34,23 +34,73 @@ type Service interface {
 	GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.Workflow, error)
 	// FindInstanceFlow 获取流程实例对应的流程定义（包含历史快照回溯与降级逻辑）
 	FindInstanceFlow(ctx context.Context, workflowID int64, processID, version int) (domain.Workflow, error)
+
+	// AdminNotifyBinding 管理侧：通知绑定配置
+	AdminNotifyBinding() AdminNotifyBindingService
+}
+
+type AdminNotifyBindingService interface {
+	// Create 创建通知绑定
+	Create(ctx context.Context, n domain.NotifyBinding) (int64, error)
+	// Update 更新通知绑定
+	Update(ctx context.Context, n domain.NotifyBinding) (int64, error)
+	// Delete 删除通知绑定
+	Delete(ctx context.Context, id int64) (int64, error)
+	// List 查询流程下的绑定配置
+	List(ctx context.Context, workflowId int64) ([]domain.NotifyBinding, error)
+	// GetEffective 获取最终生效的配置 (含默认兜底逻辑)
+	GetEffective(ctx context.Context, workflowId int64, notifyType domain.NotifyType, channel string) (domain.NotifyBinding, error)
 }
 
 type service struct {
 	repo         repository.WorkflowRepository
+	bindingRepo  repository.NotifyBindingRepository
 	engineSvc    engine.Service
 	engineCovert easyflow.ProcessEngineConvert
+}
+
+// 内部实现：Binding Service
+type adminNotifyBindingService struct {
+	repo repository.NotifyBindingRepository
+}
+
+func (s *adminNotifyBindingService) Create(ctx context.Context, n domain.NotifyBinding) (int64, error) {
+	return s.repo.Create(ctx, n)
+}
+
+func (s *adminNotifyBindingService) Update(ctx context.Context, n domain.NotifyBinding) (int64, error) {
+	return s.repo.Update(ctx, n)
+}
+
+func (s *adminNotifyBindingService) Delete(ctx context.Context, id int64) (int64, error) {
+	return s.repo.Delete(ctx, id)
+}
+
+func (s *adminNotifyBindingService) List(ctx context.Context, workflowId int64) ([]domain.NotifyBinding, error) {
+	return s.repo.List(ctx, workflowId)
+}
+
+func (s *adminNotifyBindingService) GetEffective(ctx context.Context, workflowId int64, notifyType domain.NotifyType, channel string) (domain.NotifyBinding, error) {
+	return s.repo.GetEffective(ctx, workflowId, notifyType, channel)
 }
 
 func (s *service) GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error) {
 	return s.engineCovert.GetAutomationProperty(workflow, nodeId)
 }
 
-func NewService(repo repository.WorkflowRepository, engineSvc engine.Service, engineCovert easyflow.ProcessEngineConvert) Service {
+func NewService(repo repository.WorkflowRepository, bindingRepo repository.NotifyBindingRepository,
+	engineSvc engine.Service, engineCovert easyflow.ProcessEngineConvert) Service {
 	return &service{
 		repo:         repo,
+		bindingRepo:  bindingRepo,
 		engineSvc:    engineSvc,
 		engineCovert: engineCovert,
+	}
+}
+
+func (s *service) AdminNotifyBinding() AdminNotifyBindingService {
+	return &adminNotifyBindingService{
+		repo: s.bindingRepo,
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/order/internal/web"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/template"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
@@ -33,7 +34,7 @@ var ProviderSet = wire.NewSet(
 )
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engineModule *engine.Module,
-	templateModule *template.Module, userModule *user.Module, lark *lark.Client) (*Module, error) {
+	templateModule *template.Module, userModule *user.Module, lark *lark.Client, sender sender.NotificationSender) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		event.NewCreateProcessEventProducer,
@@ -81,8 +82,10 @@ func InitModifyStatusConsumer(q mq.MQ, svc service.Service) *consumer.OrderStatu
 }
 
 func InitLardCallbackConsumer(q mq.MQ, engineSvc engine.Service, lark *lark.Client, userSvc user.Service,
-	templateSvc template.Service, svc service.Service, engineProcessSvc service.ProcessEngine, workflowSvc workflow.Service) *consumer.LarkCallbackEventConsumer {
-	c, err := consumer.NewLarkCallbackEventConsumer(q, engineSvc, engineProcessSvc, svc, templateSvc, userSvc, workflowSvc, lark)
+	templateSvc template.Service, svc service.Service, engineProcessSvc service.ProcessEngine,
+	workflowSvc workflow.Service, sender sender.NotificationSender) *consumer.LarkCallbackEventConsumer {
+	c, err := consumer.NewLarkCallbackEventConsumer(q, engineSvc, engineProcessSvc, svc, templateSvc,
+		sender, userSvc, workflowSvc, lark)
 	if err != nil {
 		return nil
 	}

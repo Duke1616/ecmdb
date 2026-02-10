@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 
-	policyv1 "github.com/Duke1616/ecmdb/api/proto/gen/policy/v1"
+	policyv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/policy/v1"
 	"github.com/Duke1616/ecmdb/internal/policy/internal/service"
 	"google.golang.org/grpc"
 )

@@ -8,7 +8,6 @@ import (
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event/domain"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
 	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/order"
@@ -64,8 +63,8 @@ func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node
 	// 查看工单关联
 	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
 
-	_, err = e.strategy.Send(ctx, domain.StrategyInfo{
-		NodeName:    domain.Start,
+	_, err = e.strategy.Send(ctx, strategy.StrategyInfo{
+		NodeName:    strategy.Start,
 		OrderInfo:   orderInfo,
 		WfInfo:      wfInfo,
 		InstanceId:  ProcessInstanceID,
@@ -171,12 +170,12 @@ func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Nod
 	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
 
 	// 判断消息的来源，处理不同的消息通知模式
-	nodeMethod := domain.User
+	nodeMethod := strategy.User
 	if len(CurrentNode.UserIDs) == 1 && CurrentNode.UserIDs[0] == "automation" {
-		nodeMethod = domain.Automation
+		nodeMethod = strategy.Automation
 	}
 
-	_, err = e.strategy.Send(ctx, domain.StrategyInfo{
+	_, err = e.strategy.Send(ctx, strategy.StrategyInfo{
 		NodeName:    nodeMethod,
 		OrderInfo:   orderInfo,
 		WfInfo:      wfInfo,

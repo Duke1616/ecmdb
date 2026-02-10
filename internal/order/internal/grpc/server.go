@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 
-	orderv1 "github.com/Duke1616/ecmdb/api/proto/gen/order/v1"
+	orderv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/order/v1"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
 	"github.com/Duke1616/ecmdb/internal/template"

@@ -69,8 +69,16 @@ func (h *Handler) GetTaskFormConfig(ctx *gin.Context, req TaskFormConfigReq) (gi
 		return systemErrorResult, err
 	}
 
+	// 获取流程实例详情，拿到对应的版本号
+	inst, err := h.engineSvc.GetInstanceByID(ctx, info.ProcInstID)
+	if err != nil {
+		{
+			return systemErrorResult, err
+		}
+	}
+
 	// 查看流程引擎信息
-	wf, err := h.workflowSvc.Find(ctx, req.WorkflowId)
+	wf, err := h.workflowSvc.FindInstanceFlow(ctx, req.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
 		return systemErrorResult, err
 	}

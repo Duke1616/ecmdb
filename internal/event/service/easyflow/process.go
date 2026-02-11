@@ -84,6 +84,8 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
+	e.logger.Debug("自动化任务触发, 开始创建任务", elog.Int("ProcessInstanceID", ProcessInstanceID),
+		elog.String("current_node_id", CurrentNode.NodeID))
 	// 使用goroutine执行任务创建，并等待其完成
 	var err error
 	done := make(chan struct{})

@@ -25,9 +25,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/enotify/notify"
-	"github.com/Duke1616/enotify/notify/feishu"
-	"github.com/Duke1616/enotify/template"
 	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
@@ -48,8 +45,6 @@ const (
 type LarkCallbackEventConsumer struct {
 	Svc              service.Service
 	callback         callback
-	tmpl             *template.Template
-	handler          notify.Handler
 	sender           sender.NotificationSender
 	workflowSvc      workflow.Service
 	userSvc          user.Service
@@ -69,28 +64,16 @@ func NewLarkCallbackEventConsumer(q mq.MQ, engineSvc engineSvc.Service, enginePr
 		return nil, err
 	}
 
-	tmpl, err := template.FromGlobs([]string{})
-	if err != nil {
-		return nil, err
-	}
-
-	handler, err := feishu.NewHandler(lark)
-	if err != nil {
-		return nil, err
-	}
-
 	return &LarkCallbackEventConsumer{
 		consumer:         consumer,
 		engineSvc:        engineSvc,
 		engineProcessSvc: engineProcessSvc,
 		userSvc:          userSvc,
 		workflowSvc:      workflowSvc,
-		handler:          handler,
 		sender:           sender,
 		callback:         getLarkCallbackConfig(),
 		templateSvc:      templateSvc,
 		Svc:              service,
-		tmpl:             tmpl,
 		lark:             lark,
 		logger:           elog.DefaultLogger,
 	}, nil
@@ -166,12 +149,6 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 
 			if errors.Is(err, errs.ValidationError) {
 				content := fmt.Sprintf(`{"text": "%s"}`, err.Error())
-				//msg := feishu.NewCreateBuilder(evt.UserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
-				//	SetContent(feishu.NewFeishuCustom("text", content)).Build()
-				//
-				//if err = c.handler.Send(ctx, msg); err != nil {
-				//	return fmt.Errorf("触发发送信息失败: %w, 任务ID: %d, 工单ID: %d", err, taskId, orderId)
-				//}
 				if _, err = c.sender.Send(ctx, notification.Notification{
 					Receiver: evt.UserId,
 					Channel:  notification.ChannelLarkText,

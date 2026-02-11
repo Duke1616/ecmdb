@@ -156,7 +156,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, cryptoRegistry)
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, cryptoRegistry, notificationSender)
 	if err != nil {
 		return nil, err
 	}

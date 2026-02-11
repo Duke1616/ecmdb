@@ -11,6 +11,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/event"
 	"github.com/Duke1616/ecmdb/internal/task/internal/job"
@@ -41,7 +42,7 @@ var ProviderSet = wire.NewSet(
 func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module,
 	engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module,
 	runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module,
-	lark *lark.Client, crypto *cryptox.CryptoRegistry) (*Module, error) {
+	lark *lark.Client, crypto *cryptox.CryptoRegistry, sender sender.NotificationSender) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initStartTaskJob,
@@ -63,8 +64,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 }
 
 func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
-	userSvc user.Service, lark *lark.Client) *event.ExecuteResultConsumer {
-	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, lark)
+	userSvc user.Service, sender sender.NotificationSender) *event.ExecuteResultConsumer {
+	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, sender)
 	if err != nil {
 		panic(err)
 	}

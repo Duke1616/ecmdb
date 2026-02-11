@@ -6,19 +6,18 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/codebook"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/enotify/notify"
-	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
-	lark "github.com/larksuite/oapi-sdk-go/v3"
 )
 
 type ExecuteResultConsumer struct {
 	consumer    mq.Consumer
-	handler     notify.Handler
+	sender      sender.NotificationSender
 	codebookSvc codebook.Service
 	userSvc     user.Service
 	svc         service.Service
@@ -26,15 +25,10 @@ type ExecuteResultConsumer struct {
 }
 
 func NewExecuteResultConsumer(q mq.MQ, svc service.Service, codebookSvc codebook.Service,
-	userSvc user.Service, lark *lark.Client) (
+	userSvc user.Service, sender sender.NotificationSender) (
 	*ExecuteResultConsumer, error) {
 	groupID := "task_receive_execute"
 	consumer, err := q.Consumer(ExecuteResultEventName, groupID)
-	if err != nil {
-		return nil, err
-	}
-
-	handler, err := feishu.NewHandler(lark)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +38,7 @@ func NewExecuteResultConsumer(q mq.MQ, svc service.Service, codebookSvc codebook
 		svc:         svc,
 		codebookSvc: codebookSvc,
 		userSvc:     userSvc,
-		handler:     handler,
+		sender:      sender,
 		logger:      elog.DefaultLogger,
 	}, nil
 }
@@ -103,11 +97,13 @@ func (c *ExecuteResultConsumer) failedNotify(ctx context.Context, id int64) erro
 
 	content := fmt.Sprintf(`{"text": "任务执行失败, 请通过平台进行查看，任务ID: %d, 工作节点: %s"}`,
 		id, t.WorkerName)
-
-	msg := feishu.NewCreateBuilder(u.FeishuInfo.UserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
-		SetContent(feishu.NewFeishuCustom("text", content)).Build()
-
-	if err = c.handler.Send(ctx, msg); err != nil {
+	if _, err = c.sender.Send(ctx, notification.Notification{
+		Receiver: u.FeishuInfo.UserId,
+		Channel:  notification.ChannelLarkText,
+		Template: notification.Template{
+			Text: content,
+		},
+	}); err != nil {
 		return fmt.Errorf("任务执行失败，触发发送信息失败: %w, 工单ID: %d", err, id)
 	}
 

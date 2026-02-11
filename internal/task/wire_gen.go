@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/event"
 	"github.com/Duke1616/ecmdb/internal/task/internal/job"
@@ -34,7 +35,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module, lark2 *lark.Client, crypto *cryptox.CryptoRegistry) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module, lark2 *lark.Client, crypto *cryptox.CryptoRegistry, sender2 sender.NotificationSender) (*Module, error) {
 	taskDAO := dao.NewTaskDAO(db)
 	taskRepository := repository.NewTaskRepository(taskDAO)
 	serviceService := orderModule.Svc
@@ -50,7 +51,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service8 := discoveryModule.Svc
 	service9 := service.NewService(taskRepository, serviceService, service2, service3, service4, cronjob, service6, service7, execService, service8)
 	handler := web.NewHandler(service9)
-	executeResultConsumer := initConsumer(service9, q, service3, service7, lark2)
+	executeResultConsumer := initConsumer(service9, q, service3, service7, sender2)
 	startTaskJob := initStartTaskJob(service9)
 	passProcessTaskJob := initPassProcessTaskJob(service9, service6)
 	recoveryTaskJob := initRecoveryTaskJob(service9, execService, cronjob)
@@ -70,8 +71,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewExecService, service.NewService, service.NewCronjob, repository.NewTaskRepository, dao.NewTaskDAO)
 
 func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
-	userSvc user.Service, lark2 *lark.Client) *event.ExecuteResultConsumer {
-	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, lark2)
+	userSvc user.Service, sender2 sender.NotificationSender) *event.ExecuteResultConsumer {
+	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, sender2)
 	if err != nil {
 		panic(err)
 	}

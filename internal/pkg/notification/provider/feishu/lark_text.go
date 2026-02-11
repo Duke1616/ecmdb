@@ -21,7 +21,7 @@ func NewLarkTextProvider(lark *lark.Client) (provider.Provider, error) {
 		return nil, err
 	}
 
-	return &larkCardProvider{
+	return &larkTextProvider{
 		handler: handler,
 	}, nil
 }

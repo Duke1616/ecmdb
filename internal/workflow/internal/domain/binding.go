@@ -13,8 +13,6 @@ const (
 	NotifyTypeProgressImageResult NotifyType = "progress-image-result"
 	// NotifyTypeRevoke 撤销通知
 	NotifyTypeRevoke NotifyType = "revoke"
-	// NotifyTypeText 文本通知
-	NotifyTypeText NotifyType = "text"
 )
 
 type NotifyBinding struct {

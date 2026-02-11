@@ -26,17 +26,4 @@ const (
 	NotifyTypeProgress            NotifyType = domain.NotifyTypeProgress
 	NotifyTypeProgressImageResult NotifyType = domain.NotifyTypeProgressImageResult
 	NotifyTypeRevoke              NotifyType = domain.NotifyTypeRevoke
-	NotifyTypeText                NotifyType = domain.NotifyTypeText
 )
-
-// NotifyMethodToString 将 NotifyMethod 转换为对应的文字描述
-func NotifyMethodToString(method NotifyMethod) string {
-	switch method {
-	case domain.Feishu:
-		return "feishu"
-	case domain.Wechat:
-		return "wechat"
-	default:
-		return "Unknown"
-	}
-}

@@ -47,6 +47,7 @@ type Notification struct {
 	Channel    Channel  `json:"channel"`     // 发送渠道
 	WorkFlowID int64    `json:"workflow_id"` // 工作流定义ID
 	MessageID  string   `json:"message_id"`  // 消息ID（用于更新消息）
+
 }
 
 func (n Notification) IsPatch() bool {
@@ -60,8 +61,9 @@ func (n Notification) IsProgressImageResult() bool {
 type Channel string
 
 const (
-	ChannelFeishu Channel = "feishu"
-	ChannelWechat Channel = "wechat"
+	ChannelLarkCard Channel = "LARK_CARD"
+	ChannelLarkText Channel = "LARK_TEXT"
+	ChannelWechat   Channel = "WECHAT"
 )
 
 func (c Channel) String() string {
@@ -108,6 +110,7 @@ type Template struct {
 	HideForm    bool                `json:"hide_form"`    // 隐藏
 	Remark      string              `json:"remark"`       // 备注信息
 	ImageKey    string              `json:"image_key"`    // 图片地址
+	Text        string              `json:"text"`         // 文本信息
 }
 
 type Field struct {

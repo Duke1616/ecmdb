@@ -166,10 +166,19 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 
 			if errors.Is(err, errs.ValidationError) {
 				content := fmt.Sprintf(`{"text": "%s"}`, err.Error())
-				msg := feishu.NewCreateBuilder(evt.UserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
-					SetContent(feishu.NewFeishuCustom("text", content)).Build()
-
-				if err = c.handler.Send(ctx, msg); err != nil {
+				//msg := feishu.NewCreateBuilder(evt.UserId).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+				//	SetContent(feishu.NewFeishuCustom("text", content)).Build()
+				//
+				//if err = c.handler.Send(ctx, msg); err != nil {
+				//	return fmt.Errorf("触发发送信息失败: %w, 任务ID: %d, 工单ID: %d", err, taskId, orderId)
+				//}
+				if _, err = c.sender.Send(ctx, notification.Notification{
+					Receiver: evt.UserId,
+					Channel:  notification.ChannelLarkText,
+					Template: notification.Template{
+						Text: content,
+					},
+				}); err != nil {
 					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %d, 工单ID: %d", err, taskId, orderId)
 				}
 
@@ -399,7 +408,7 @@ func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *str
 
 	if _, err = c.sender.Send(ctx, notification.Notification{
 		Receiver: userId,
-		Channel:  notification.ChannelFeishu,
+		Channel:  notification.ChannelLarkCard,
 		Template: notification.Template{
 			Name:     LarkCardProgressImageResult,
 			Title:    "工单流程进度查看",
@@ -539,7 +548,7 @@ func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event
 	if _, err = c.sender.Send(ctx, notification.Notification{
 		Receiver:  callback.GetUserId(),
 		MessageID: callback.GetMessageId(),
-		Channel:   notification.ChannelFeishu,
+		Channel:   notification.ChannelLarkCard,
 		Template: notification.Template{
 			Name:   LarkCardProgress,
 			Title:  rule.GenerateTitle(userInfo.DisplayName, t.Name),

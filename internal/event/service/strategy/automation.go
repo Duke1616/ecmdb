@@ -73,7 +73,7 @@ func (n *AutomationNotification) Send(ctx context.Context, info StrategyInfo) (n
 	}
 
 	return n.sender.Send(ctx, notification.Notification{
-		Channel:    notification.ChannelFeishu,
+		Channel:    notification.ChannelLarkCard,
 		WorkFlowID: info.WfInfo.Id,
 		Receiver:   startUser.FeishuInfo.UserId,
 		Template: notification.Template{

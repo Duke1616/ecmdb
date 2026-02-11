@@ -55,6 +55,7 @@ func (repo *workflowRepository) List(ctx context.Context, offset, limit int64) (
 		return repo.toDomain(src)
 	}), err
 }
+
 func (repo *workflowRepository) Total(ctx context.Context) (int64, error) {
 	return repo.dao.Count(ctx)
 }

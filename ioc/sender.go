@@ -15,22 +15,24 @@ import (
 
 var InitSender = wire.NewSet(
 	sender.NewSender,
-	newSelectorBuilder,
+	newCardSelectorBuilder,
+	newTextSelectorBuilder,
 	newChannel,
 )
 
-func newChannel(builder *sequential.SelectorBuilder) channel.Channel {
+func newChannel(card *sequential.CardSelectorBuilder, text *sequential.TextSelectorBuilder) channel.Channel {
 	return channel.NewDispatcher(map[notification.Channel]channel.Channel{
-		notification.ChannelFeishu: channel.NewLarkCardChannel(builder),
+		notification.ChannelLarkCard: channel.NewLarkCardChannel(card),
+		notification.ChannelLarkText: channel.NewLarkTextChannel(text),
 	})
 }
 
-func newSelectorBuilder(
+func newCardSelectorBuilder(
 	lark *lark.Client,
 	notificationSvc notificationv1.NotificationServiceClient,
 	workflowSvc workflow.Service,
-) *sequential.SelectorBuilder {
-	// 构建SMS供应商
+) *sequential.CardSelectorBuilder {
+	// 构建飞书卡片供应商
 	providers := make([]provider.Provider, 0)
 	cardProvider, err := feishu.NewLarkCardProvider(lark)
 	if err != nil {
@@ -39,5 +41,20 @@ func newSelectorBuilder(
 
 	grpcNotificationProvider := feishu.NewGRPCProvider(notificationSvc, workflowSvc)
 	providers = append(providers, grpcNotificationProvider, cardProvider)
-	return sequential.NewSelectorBuilder(providers)
+	// 构造 SelectorBuilder 并包装成 CardSelectorBuilder
+	return &sequential.CardSelectorBuilder{SelectorBuilder: sequential.NewSelectorBuilder(providers)}
+}
+
+func newTextSelectorBuilder(
+	lark *lark.Client,
+) *sequential.TextSelectorBuilder {
+	// 构建飞书文本供应商
+	providers := make([]provider.Provider, 0)
+	provideText, err := feishu.NewLarkTextProvider(lark)
+	if err != nil {
+		return nil
+	}
+	providers = append(providers, provideText)
+	// 构造 SelectorBuilder 并包装成 TextSelectorBuilder
+	return &sequential.TextSelectorBuilder{SelectorBuilder: sequential.NewSelectorBuilder(providers)}
 }

@@ -195,7 +195,7 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, info Strat
 	ns := slice.Map(tasks, func(idx int, src model.Task) notification.Notification {
 		receiver, _ := userMap[src.UserID]
 		return notification.Notification{
-			Channel:    notification.ChannelFeishu,
+			Channel:    notification.ChannelLarkCard,
 			WorkFlowID: info.WfInfo.Id,
 			Receiver:   receiver,
 			Template: notification.Template{

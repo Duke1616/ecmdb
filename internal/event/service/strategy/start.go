@@ -59,7 +59,7 @@ func (s *StartNotification) Send(ctx context.Context, info StrategyInfo) (notifi
 
 	ruleFields := rule.GetFields(rules, info.OrderInfo.Provide.ToUint8(), info.OrderInfo.Data)
 	return s.sender.Send(ctx, notification.Notification{
-		Channel:    notification.ChannelFeishu,
+		Channel:    notification.ChannelLarkCard,
 		WorkFlowID: info.WfInfo.Id,
 		Receiver:   startUser.FeishuInfo.UserId,
 		Template: notification.Template{

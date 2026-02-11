@@ -172,14 +172,29 @@ func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 func (s *service) GetWorkflowSnapshot(ctx context.Context, processID, version int) (domain.Workflow, error) {
 	return s.repo.FindSnapshot(ctx, processID, version)
 }
+
 func (s *service) FindInstanceFlow(ctx context.Context, workflowID int64, processID, version int) (domain.Workflow, error) {
-	// 优先读取快照（实例版本锁定）
-	if snapshot, err := s.repo.FindSnapshot(ctx, processID, version); err == nil {
+	// 获取最新版元数据
+	latest, err := s.Find(ctx, workflowID)
+
+	// 如果主记录找不到了，尝试纯靠快照恢复
+	if err != nil {
+		snapshot, snapErr := s.repo.FindSnapshot(ctx, processID, version)
+		if snapErr != nil {
+			return domain.Workflow{}, err
+		}
+
 		return snapshot, nil
 	}
 
-	// fallback 最新定义
-	return s.Find(ctx, workflowID)
+	// 尝试读取锁定的快照
+	snapshot, err := s.repo.FindSnapshot(ctx, processID, version)
+	if err == nil {
+		// 覆盖 FlowData (Snapshot 现在是 domain.Workflow)
+		latest.FlowData = snapshot.FlowData
+	}
+
+	return latest, nil
 }
 
 func (s *service) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error) {

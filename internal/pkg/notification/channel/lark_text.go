@@ -5,12 +5,12 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type larkCardChannel struct {
+type larkTextChannel struct {
 	baseChannel
 }
 
-func NewLarkCardChannel(builder provider.SelectorBuilder) Channel {
-	return &larkCardChannel{
+func NewLarkTextChannel(builder provider.SelectorBuilder) Channel {
+	return &larkTextChannel{
 		baseChannel{
 			builder: builder,
 			logger:  elog.DefaultLogger,

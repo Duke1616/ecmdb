@@ -140,8 +140,9 @@ func InitApp() (*App, error) {
 	clientConnInterface := InitEALERTGrpcClient(registry)
 	notificationServiceClient := InitNotificationServiceClient(clientConnInterface)
 	serviceService := workflowModule.Svc
-	selectorBuilder := newSelectorBuilder(larkClient, notificationServiceClient, serviceService)
-	channel := newChannel(selectorBuilder)
+	cardSelectorBuilder := newCardSelectorBuilder(larkClient, notificationServiceClient, serviceService)
+	textSelectorBuilder := newTextSelectorBuilder(larkClient)
+	channel := newChannel(cardSelectorBuilder, textSelectorBuilder)
 	notificationSender := sender.NewSender(channel)
 	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient, notificationSender)
 	if err != nil {

@@ -3,8 +3,8 @@ package web
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	"github.com/Bunny3th/easy-workflow/workflow/model"
@@ -545,8 +545,7 @@ func (h *Handler) Progress(ctx *gin.Context, req ProgressReq) (ginx.Result, erro
 	}
 
 	// 保存截图到文件
-	err = ioutil.WriteFile("logicflow.png", buf, 0644)
-	if err != nil {
+	if err = os.WriteFile("logicflow.png", buf, 0644); err != nil {
 		return ginx.Result{}, err
 	}
 

@@ -2,7 +2,10 @@ package easyflow
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
@@ -19,13 +22,14 @@ import (
 )
 
 const (
-	SystemPass          = 3
-	SystemReject        = 4
-	UserRevoke          = 5
-	SystemPassComment   = "其余节点审批通过，系统判定无法继续审批"
-	SystemRejectComment = "其余节点进行驳回，系统判定无法继续审批"
-	SysAutoUser         = "sys_auto"
-	SysProxyNodeName    = "系统代理流转"
+	SystemPass           = 3
+	SystemReject         = 4
+	SystemSkipped        = 5 // 条件不满足，系统自动跳过
+	SystemPassComment    = "其余节点审批通过，系统判定无法继续审批"
+	SystemRejectComment  = "其余节点进行驳回，系统判定无法继续审批"
+	SystemSkippedComment = "条件不满足，系统自动跳过"
+	SysAutoUser          = "sys_auto"
+	SysProxyNodeName     = "系统代理流转"
 )
 
 // ProcessEvent easy-workflow 流程引擎事件处理
@@ -239,6 +243,119 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 	// 会签节点 pass + task 数量相同才修改
 	if passNum == taskNum {
 		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, t.ProcInstID, nodeId, SystemPass, SystemPassComment)
+	}
+
+	return nil
+}
+
+func (e *ProcessEvent) EventSelectiveGatewaySplit(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	e.logger.Info("条件并行网关分叉处理", elog.Int("processInstanceID", ProcessInstanceID), elog.String("nodeID", CurrentNode.NodeID))
+
+	// 1. 加载流程定义
+	inst, err := e.engineSvc.GetInstanceByID(ctx, ProcessInstanceID)
+	if err != nil {
+		e.logger.Error("获取流程实例失败", elog.FieldErr(err))
+		return err
+	}
+
+	processDefine, err := e.engineSvc.GetProcessDefineByVersion(ctx, inst.ProcID, inst.ProcVersion)
+	if err != nil {
+		e.logger.Error("获取流程定义失败", elog.FieldErr(err))
+		return err
+	}
+
+	// 2. 构建节点映射
+	nodeMap := make(map[string]model.Node)
+	for _, node := range processDefine.Nodes {
+		nodeMap[node.NodeID] = node
+	}
+
+	// 3. 获取 Selective 网关的下级节点（应该是 Condition 节点）
+	// InevitableNodes 包含了所有分支的入口节点
+	conditionNodeIDs := CurrentNode.GWConfig.InevitableNodes
+	if len(conditionNodeIDs) == 0 {
+		e.logger.Warn("Selective 网关没有配置下级节点", elog.String("nodeID", CurrentNode.NodeID))
+		return nil
+	}
+
+	// 4. 遍历每个 Condition 节点
+	for _, condNodeID := range conditionNodeIDs {
+		condNode, exists := nodeMap[condNodeID]
+		if !exists {
+			e.logger.Error("找不到 Condition 节点", elog.String("condNodeID", condNodeID))
+			continue
+		}
+
+		// 5. Condition 节点应该有自己的条件配置
+		if len(condNode.GWConfig.Conditions) == 0 {
+			e.logger.Info("Condition 节点没有条件配置，默认通过", elog.String("nodeID", condNodeID))
+			continue
+		}
+
+		// 6. 计算 Condition 节点的每个条件
+		allConditionsFailed := true
+		for _, cond := range condNode.GWConfig.Conditions {
+			expression := cond.Expression
+
+			// 正则表达式，匹配以$开头的字母、数字、下划线
+			reg := regexp.MustCompile(`[$]\w+`)
+			variables := reg.FindAllString(expression, -1)
+
+			// 替换表达式中的变量为值
+			kv, err := engine.ResolveVariables(ProcessInstanceID, variables)
+			if err != nil {
+				e.logger.Error("计算条件时解析变量失败", elog.FieldErr(err), elog.String("expr", expression))
+				return err
+			}
+
+			for k, v := range kv {
+				// SQL 转义逻辑
+				v = strings.Replace(v, "'", "\\'", -1)
+				expression = strings.Replace(expression, k, fmt.Sprintf("'%s'", v), -1)
+			}
+
+			// 适配 JSON 数组的 IN 查询
+			jsonArrayInPattern := regexp.MustCompile(`'(\[.*?])'\s+(?i)in\s+\(\s*'([^']+)'\s*\)`)
+			if jsonArrayInPattern.MatchString(expression) {
+				expression = jsonArrayInPattern.ReplaceAllString(expression, `JSON_CONTAINS('$1', '"$2"')`)
+			}
+
+			// 计算表达式
+			passed, err := engine.ExpressionEvaluator(expression)
+			if err != nil {
+				e.logger.Error("计算表达式失败", elog.FieldErr(err), elog.String("expr", expression))
+				return err
+			}
+
+			if passed {
+				allConditionsFailed = false
+				e.logger.Info("条件满足，分支正常执行",
+					elog.String("condNodeID", condNodeID),
+					elog.String("targetNodeID", cond.NodeID))
+				break // 只要有一个条件满足就继续执行
+			}
+		}
+
+		// 7. 如果所有条件都不满足，跳过 Condition 指向的目标节点
+		if allConditionsFailed {
+			// 遍历该 Condition 的所有目标节点并跳过
+			for _, cond := range condNode.GWConfig.Conditions {
+				e.logger.Info("条件不满足，自动跳过目标节点",
+					elog.String("condNodeID", condNodeID),
+					elog.String("targetNodeID", cond.NodeID),
+					elog.String("prevNodeID", PrevNode.NodeID))
+
+				// 插入假任务，标记目标节点为已完成
+				// PrevNodeID 使用 Selective Gateway 的前置节点，与 Engine 行为保持一致
+				if err = e.engineSvc.CreateSkippedTask(ctx, ProcessInstanceID, cond.NodeID, PrevNode.NodeID, SystemSkippedComment, SystemSkipped); err != nil {
+					e.logger.Error("创建跳过任务失败", elog.FieldErr(err))
+					return err
+				}
+			}
+		}
 	}
 
 	return nil

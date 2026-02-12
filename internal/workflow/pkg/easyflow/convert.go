@@ -89,6 +89,8 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 			l.Parallel(node)
 		case "inclusion":
 			l.Inclusion(node)
+		case "selective":
+			l.Selective(node)
 		case "automation":
 			l.Automation(node)
 		}
@@ -178,12 +180,32 @@ func (l *logicFlow) Inclusion(node Node) {
 		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
 	})
 
-	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
+	gwInclusion := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
 	preNodeIds := l.findAndProxySrcNodes(node)
 
 	n := model.Node{NodeID: node.ID, NodeName: "包容网关",
-		NodeType: 2, GWConfig: gwParallel,
+		NodeType: 2, GWConfig: gwInclusion,
 		PrevNodeIDs: preNodeIds,
+	}
+
+	l.NodeList = append(l.NodeList, n)
+}
+
+func (l *logicFlow) Selective(node Node) {
+	// 查看下级 node 节点 id
+	edgesDst := l.FindTargetNodeId(node.ID)
+	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
+		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
+	})
+	gwSelective := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 1}
+
+	// 查看上级 node 节点 id
+	preNodeIds := l.findAndProxySrcNodes(node)
+
+	n := model.Node{NodeID: node.ID, NodeName: "条件并行网关",
+		NodeType: 2, GWConfig: gwSelective,
+		PrevNodeIDs:     preNodeIds,
+		NodeStartEvents: []string{"EventSelectiveGatewaySplit"},
 	}
 
 	l.NodeList = append(l.NodeList, n)
@@ -313,7 +335,7 @@ func addEvent(events *[]string, exist map[string]struct{}, event string) {
 }
 
 func isGateway(t string) bool {
-	return t == "parallel" || t == "inclusion"
+	return t == "parallel" || t == "inclusion" || t == "selective"
 }
 
 func (l *logicFlow) getRejectEvents(nodeId string) []string {
@@ -332,7 +354,7 @@ func (l *logicFlow) getRejectEvents(nodeId string) []string {
 		// Gateway -> Condition -> Me
 		// ------------------------------------------------
 		if p.Type == "condition" &&
-			hasType(grandParents, "parallel", "inclusion") {
+			hasType(grandParents, "parallel", "inclusion", "selective") {
 			addEvent(&events, existEvent, "EventConcurrentRejectCleanup")
 		}
 
@@ -451,6 +473,8 @@ func (l *logicFlow) createProxyWaitNode(prevNodeId, eventNodeId string) string {
 		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
 	} else if info.Type == "inclusion" {
 		n.TaskFinishEvents = []string{"EventTaskInclusionNodePass"}
+	} else if info.Type == "selective" {
+		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
 	}
 
 	l.NodeList = append(l.NodeList, n)
@@ -465,7 +489,7 @@ func (l *logicFlow) getProxyTargetNodeId(sourceId, targetId string) string {
 	// 我们只需要检查 Target 类型。
 
 	targetInfo := l.GetNodeInfo(targetId)
-	if targetInfo.Type == "parallel" || targetInfo.Type == "inclusion" {
+	if targetInfo.Type == "parallel" || targetInfo.Type == "inclusion" || targetInfo.Type == "selective" {
 		return "proxy_" + sourceId + "_" + targetId
 	}
 	return targetId
@@ -474,9 +498,9 @@ func (l *logicFlow) getProxyTargetNodeId(sourceId, targetId string) string {
 func (l *logicFlow) findAndProxySrcNodes(node Node) []string {
 	edgesSrc := l.FindSourceNodeId(node.ID)
 	return slice.Map(edgesSrc, func(idx int, src Edge) string {
-		// 检查上级节点类型，如果是 Condition / Parallel / Inclusion，则通过中间节点桥接
+		// 检查上级节点类型，如果是 Condition / Parallel / Inclusion / Selective，则通过中间节点桥接
 		srcNodeInfo := l.GetNodeInfo(src.SourceNodeId)
-		if srcNodeInfo.Type == "condition" || srcNodeInfo.Type == "parallel" || srcNodeInfo.Type == "inclusion" {
+		if srcNodeInfo.Type == "condition" || srcNodeInfo.Type == "parallel" || srcNodeInfo.Type == "inclusion" || srcNodeInfo.Type == "selective" {
 			proxyNodeId := l.createProxyWaitNode(src.SourceNodeId, node.ID)
 			return proxyNodeId
 		}

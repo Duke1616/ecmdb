@@ -141,8 +141,21 @@ func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Resu
 		return ginx.Result{}, err
 	}
 
+	// 3. 获取任务记录，用于识别 status=5 的跳过分支
+	tasks, _, err := h.engineSvc.TaskRecord(ctx, req.ProcessInstanceId, 0, 1000)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 构建 nodeID -> status 映射 (取最新状态)
+	nodeStatusMap := make(map[string]int)
+	for _, task := range tasks {
+		// 如果有多个任务，取最新的状态（通常按时间倒序或升序，简化处理直接覆盖）
+		nodeStatusMap[task.NodeID] = task.Status
+	}
+
 	// 4. 获取点亮的边
-	edgeMap, err := h.engineSvc.GetTraversedEdges(ctx, req.ProcessInstanceId, flow.ProcessId, req.Status)
+	edgeMap, err := h.engineSvc.GetTraversedEdges(ctx, tasks, req.ProcessInstanceId, flow.ProcessId, req.Status)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -154,21 +167,7 @@ func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Resu
 		return systemErrorResult, err
 	}
 
-	for i, edge := range edges {
-		targets, ok := edgeMap[edge.SourceNodeId]
-		if !ok {
-			continue
-		}
-
-		if slice.Contains(targets, edge.TargetNodeId) {
-			properties, ok := edge.Properties.(map[string]interface{})
-			if !ok {
-				properties = make(map[string]interface{})
-			}
-			properties["is_pass"] = true
-			edges[i].Properties = properties
-		}
-	}
+	edges = easyflow.UpdateEdgeProperties(edges, edgeMap, nodeStatusMap)
 
 	// 将处理后的 edges 转回 map 结构
 	var newEdges []map[string]interface{}

@@ -39,6 +39,8 @@ type ProcessEngineRepository interface {
 	DeleteProxyNodeByNodeId(ctx context.Context, processInstId int, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
+	// CreateSkippedTask 创建一个被条件跳过的已完成任务
+	CreateSkippedTask(ctx context.Context, task model.Task) error
 
 	// GetInstanceByID 获取流程实例详情 (用于获取版本号)
 	GetInstanceByID(ctx context.Context, processInstId int) (domain.Instance, error)
@@ -54,6 +56,10 @@ type processEngineRepository struct {
 
 func (repo *processEngineRepository) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
 	return repo.engineDao.UpdateTaskPrevNodeID(ctx, taskId, prevNodeId)
+}
+
+func (repo *processEngineRepository) CreateSkippedTask(ctx context.Context, task model.Task) error {
+	return repo.engineDao.CreateSkippedTask(ctx, task)
 }
 
 func (repo *processEngineRepository) GetProxyNodeID(ctx context.Context, processInstId int, prevNodeID string) (model.Task, error) {

@@ -148,12 +148,11 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 			}
 
 			if errors.Is(err, errs.ValidationError) {
-				content := fmt.Sprintf(`{"text": "%s"}`, err.Error())
 				if _, err = c.sender.Send(ctx, notification.Notification{
 					Receiver: evt.UserId,
 					Channel:  notification.ChannelLarkText,
 					Template: notification.Template{
-						Text: content,
+						Text: err.Error(),
 					},
 				}); err != nil {
 					return fmt.Errorf("触发发送信息失败: %w, 任务ID: %d, 工单ID: %d", err, taskId, orderId)
@@ -274,13 +273,13 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 	}
 
 	// 解析连接线、SRC => DST、标注为通过
-	edges, approvalUsers, err := c.parserEdges(taskCtx, orderDetail, wf.ProcessId)
+	edges, nodeStatusMap, approvalUsers, err := c.parserEdges(taskCtx, orderDetail, wf.ProcessId)
 	if err != nil {
 		return err
 	}
 
 	// 获取代码
-	injectData, err := c.getJsCode(wf, edges)
+	injectData, err := c.getJsCode(wf, edges, nodeStatusMap)
 	if err != nil {
 		return err
 	}
@@ -330,11 +329,11 @@ func (c *LarkCallbackEventConsumer) progress(orderId int64, userId string) error
 }
 
 func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Order,
-	processId int) (map[string][]string, []string, error) {
+	processId int) (map[string][]string, map[string]int, []string, error) {
 	// 查看审批记录（用于获取当前审批人）
-	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 20)
+	record, _, err := c.engineSvc.TaskRecord(ctx, o.Process.InstanceId, 0, 1000)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	users := slice.FilterMap(record, func(idx int, src model.Task) (string, bool) {
@@ -345,13 +344,19 @@ func (c *LarkCallbackEventConsumer) parserEdges(ctx context.Context, o domain.Or
 		return "", false
 	})
 
-	// 使用 Engine Service 获取已遍历的边
-	edges, err := c.engineSvc.GetTraversedEdges(ctx, o.Process.InstanceId, processId, o.Status.ToUint8())
-	if err != nil {
-		return nil, nil, err
+	// 构建 nodeID -> status 映射
+	nodeStatusMap := make(map[string]int)
+	for _, task := range record {
+		nodeStatusMap[task.NodeID] = task.Status
 	}
 
-	return edges, users, nil
+	// 使用 Engine Service 获取已遍历的边
+	edges, err := c.engineSvc.GetTraversedEdges(ctx, record, o.Process.InstanceId, processId, o.Status.ToUint8())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return edges, nodeStatusMap, users, nil
 }
 
 func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *string, approvalUsers []string, userId string) error {
@@ -422,73 +427,11 @@ func (c *LarkCallbackEventConsumer) uploadImage(ctx context.Context, buf []byte)
 	return resp.Data.ImageKey, nil
 }
 
-func (c *LarkCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string][]string) (string, error) {
-	edgesJSON, err := json.Marshal(wf.FlowData.Edges)
-	if err != nil {
-		return "", err
-	}
-
-	var edges []easyflow.Edge
-	err = json.Unmarshal(edgesJSON, &edges)
-	if err != nil {
-		return "", err
-	}
-
-	for i, edge := range edges {
-		properties, ok := edge.Properties.(map[string]interface{})
-		if !ok {
-			properties = make(map[string]interface{})
-		}
-
-		targetNodeIDs, ok := edgeMap[edge.SourceNodeId]
-		if !ok {
-			continue
-		}
-
-		// 检查当前边的 Target 是否在 targets 列表中
-		isMatched := false
-		for _, tid := range targetNodeIDs {
-			if tid == edge.TargetNodeId {
-				isMatched = true
-				break
-			}
-		}
-
-		if !isMatched {
-			continue
-		}
-
-		// 只更新 IsPass 字段，保留其他字段
-		properties["is_pass"] = true
-		edges[i].Properties = properties
-	}
-
-	var edgesMap []map[string]interface{}
-	for _, edge := range edges {
-		edgesMap = append(edgesMap, edgeToMap(edge))
-	}
-
-	wf.FlowData.Edges = edgesMap
-	easyFlowData, err := json.Marshal(wf.FlowData)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(`window.__DATA__ = %s;`, easyFlowData), nil
-}
-
-func edgeToMap(edge easyflow.Edge) map[string]interface{} {
-	return map[string]interface{}{
-		"type":         edge.Type,
-		"sourceNodeId": edge.SourceNodeId,
-		"targetNodeId": edge.TargetNodeId,
-		"properties":   edge.Properties,
-		"id":           edge.ID,
-		"startPoint":   edge.StartPoint,
-		"endPoint":     edge.EndPoint,
-		"pointsList":   edge.PointsList,
-		"text":         edge.Text,
-	}
+func (c *LarkCallbackEventConsumer) getJsCode(wf workflow.Workflow, edgeMap map[string][]string, nodeStatusMap map[string]int) (string, error) {
+	return easyflow.GetJsCode(easyflow.LogicFlow{
+		Edges: wf.FlowData.Edges,
+		Nodes: wf.FlowData.Nodes,
+	}, edgeMap, nodeStatusMap)
 }
 
 func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event.LarkCallback, remark string) error {

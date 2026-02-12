@@ -45,6 +45,8 @@ type ProcessEngineDAO interface {
 	DeleteProxyNodeByNodeId(ctx context.Context, processInstId int, nodeId string) error
 	// UpdateTaskPrevNodeID 修改任务的上级节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
+	// CreateSkippedTask 创建一个被条件跳过的已完成任务
+	CreateSkippedTask(ctx context.Context, task model.Task) error
 
 	// GetInstanceByID 获取流程实例详情 (用于获取版本号)
 	GetInstanceByID(ctx context.Context, processInstId int) (Instance, error)
@@ -60,6 +62,11 @@ type processEngineDAO struct {
 
 func (g *processEngineDAO) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
 	return g.db.WithContext(ctx).Table("proc_task").Where("id = ?", taskId).Update("prev_node_id", prevNodeId).Error
+}
+
+func (g *processEngineDAO) CreateSkippedTask(ctx context.Context, task model.Task) error {
+	// NOTE: proc_task 表中没有 name 列，需要明确忽略 ProcName 字段
+	return g.db.WithContext(ctx).Table("proc_task").Omit("name").Create(&task).Error
 }
 
 func (g *processEngineDAO) GetProxyNodeID(ctx context.Context, processInstId int, prevNodeID string) (model.Task, error) {

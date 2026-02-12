@@ -2,6 +2,7 @@ package feishu
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
@@ -28,11 +29,15 @@ func NewLarkTextProvider(lark *lark.Client) (provider.Provider, error) {
 
 func (f *larkTextProvider) Send(ctx context.Context, src notification.Notification) (
 	notification.NotificationResponse, error) {
-	content := fmt.Sprintf(`{"text": "%s"}`, src.Template.Text)
-	msg := feishu.NewCreateBuilder(src.Receiver).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
-		SetContent(feishu.NewFeishuCustom("text", content)).Build()
+	content, err := json.Marshal(map[string]string{"text": src.Template.Text})
+	if err != nil {
+		return notification.NotificationResponse{}, fmt.Errorf("序列化文本消息失败: %w", err)
+	}
 
-	if err := f.handler.Send(ctx, msg); err != nil {
+	msg := feishu.NewCreateBuilder(src.Receiver).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+		SetContent(feishu.NewFeishuCustom("text", string(content))).Build()
+
+	if err = f.handler.Send(ctx, msg); err != nil {
 		return notification.NotificationResponse{}, fmt.Errorf("触发发送信息失败: %w", err)
 	}
 

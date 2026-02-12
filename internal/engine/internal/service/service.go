@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/Bunny3th/easy-workflow/workflow/database"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/engine/internal/domain"
@@ -56,13 +57,15 @@ type Service interface {
 	// UpdateTaskPrevNodeID 修改任务节点ID
 	UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error
 	// GetTraversedEdges 获取已流转的边
-	GetTraversedEdges(ctx context.Context, processInstId, processId int, status uint8) (map[string][]string, error)
+	GetTraversedEdges(ctx context.Context, records []model.Task, processInstId, processId int, status uint8) (map[string][]string, error)
 	// GetInstanceByID 获取流程实例详情 (用于获取版本号)
 	GetInstanceByID(ctx context.Context, processInstId int) (domain.Instance, error)
 	// GetProcessDefineByVersion 获取指定版本的流程定义 (包含历史版本)
 	GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error)
 	// GetLatestProcessVersion 获取流程的最新版本号
 	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
+	// CreateSkippedTask 创建一个被条件跳过的已完成任务
+	CreateSkippedTask(ctx context.Context, processInstId int, nodeId, prevNodeId, comment string, status uint8) error
 }
 
 type service struct {
@@ -161,6 +164,35 @@ func (s *service) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNode
 	return s.repo.UpdateTaskPrevNodeID(ctx, taskId, prevNodeId)
 }
 
+func (s *service) CreateSkippedTask(ctx context.Context, processInstId int, nodeId, prevNodeId, comment string, status uint8) error {
+	// 构建任务对象
+	// 获取流程实例信息以填充辅助字段
+	inst, err := s.repo.GetInstanceByID(ctx, processInstId)
+	if err != nil {
+		return err
+	}
+
+	now := database.LTime.Now()
+	task := model.Task{
+		ProcInstID:         processInstId,
+		ProcID:             inst.ProcID,
+		BusinessID:         inst.BusinessID,
+		Starter:            inst.Starter,
+		NodeID:             nodeId,
+		NodeName:           easyflow.SysProxyNodeName,
+		PrevNodeID:         prevNodeId,
+		UserID:             "sys_skipped",
+		Status:             int(status),
+		IsFinished:         1,
+		Comment:            comment,
+		CreateTime:         &now,
+		FinishedTime:       &now,
+		ProcInstCreateTime: inst.CreateTime,
+	}
+
+	return s.repo.CreateSkippedTask(ctx, task)
+}
+
 func (s *service) TaskRecord(ctx context.Context, processInstId, offset, limit int) ([]model.Task, int64, error) {
 	var (
 		eg      errgroup.Group
@@ -239,11 +271,14 @@ func (s *service) ListByStartUser(ctx context.Context, userId, processName strin
 	return ts, total, nil
 }
 
-func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processId int, status uint8) (map[string][]string, error) {
+func (s *service) GetTraversedEdges(ctx context.Context, record []model.Task, processInstId, processId int, status uint8) (map[string][]string, error) {
 	// 1. 获取任务历史记录
-	record, _, err := s.TaskRecord(ctx, processInstId, 0, 1000)
-	if err != nil {
-		return nil, err
+	if len(record) == 0 {
+		var err error
+		record, _, err = s.TaskRecord(ctx, processInstId, 0, 1000)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// 2. 获取流程实例详情，拿到对应的版本号
@@ -284,7 +319,8 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 		s.recursiveReset(task.NodeID, litEdges, nodesMap)
 
 		// 2.2 处理入边 (Incoming): Prev -> Current
-		// 业务规则：Status!=2 (驳回) 且 Status!=3 (自动跳过) 且当前批次未被污染
+		// 业务规则：Status!=2 (驳回) 且 Status!=3 (系统通过) 且当前批次未被污染
+		// 注意：Status=5 (条件跳过) 也需要点亮，但会在前端标记为特殊样式
 		if task.Status != 2 && task.Status != 3 && task.PrevNodeID != "" {
 			if analyzer.IsBatchTainted(task.NodeID, task.BatchCode) {
 				continue
@@ -309,6 +345,12 @@ func (s *service) GetTraversedEdges(ctx context.Context, processInstId, processI
 			}
 
 			// 探索后续节点
+			nextNodes := topology.ResolveNextNodes(task.NodeID)
+			for _, nextID := range nextNodes {
+				s.lightUpForward(task.NodeID, nextID, litEdges, nodesMap, topology.effectiveGraph)
+			}
+		} else if task.Status == 5 {
+			// 新增逻辑：如果是被跳过的节点，也要把它的出边点亮（作为 skip 路径）
 			nextNodes := topology.ResolveNextNodes(task.NodeID)
 			for _, nextID := range nextNodes {
 				s.lightUpForward(task.NodeID, nextID, litEdges, nodesMap, topology.effectiveGraph)

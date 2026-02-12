@@ -95,7 +95,7 @@ func (c *ExecuteResultConsumer) failedNotify(ctx context.Context, id int64) erro
 		return err
 	}
 
-	content := fmt.Sprintf(`{"text": "任务执行失败, 请通过平台进行查看，任务ID: %d, 工作节点: %s"}`,
+	content := fmt.Sprintf("任务执行失败, 请通过平台进行查看，任务ID: %d, 工作节点: %s",
 		id, t.WorkerName)
 	if _, err = c.sender.Send(ctx, notification.Notification{
 		Receiver: u.FeishuInfo.UserId,

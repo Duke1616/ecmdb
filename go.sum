@@ -59,8 +59,8 @@ github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbi
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/Duke1616/easy-workflow v1.0.5 h1:p2JXLUUSRhhOMvuJREMciJTjCqUzSCATjfdR9xFHzXU=
 github.com/Duke1616/easy-workflow v1.0.5/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
-github.com/Duke1616/enotify v0.1.23 h1:4bGsTPhWEfIFU2XVytVZb9TsgMY9T9TI9ZZP/3etNXg=
-github.com/Duke1616/enotify v0.1.23/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
+github.com/Duke1616/enotify v0.1.24 h1:f6KZjmkDDztIOrZ0YrqJntpb0oNT7b7UWoeWLyP9v1o=
+github.com/Duke1616/enotify v0.1.24/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
 github.com/Duke1616/ework-runner v0.0.1 h1:5K8XP/ijF8CFQLA5Uh1b2YDWWy1O/0hF/QF/Fw578Us=
 github.com/Duke1616/ework-runner v0.0.1/go.mod h1:RaREsfowWf2OQukBwQHR7TkgvWqan2xpJq79DVp2o4k=
 github.com/Duke1616/vuefinder-go v1.1.0 h1:4QAxNo8filt8lU0orUk/88MN7hWsPWPBAip7dmKmAuA=

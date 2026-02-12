@@ -13,6 +13,8 @@ func toCardInputFields(fields []notification.InputField) []card.InputField {
 			Type:     card.FieldType(src.Type),
 			Key:      src.Key,
 			Required: src.Required,
+			ReadOnly: src.ReadOnly,
+			Value:    src.Value,
 			Options: slice.Map(src.Options, func(idx int, src notification.InputOption) card.InputOption {
 				return card.InputOption{
 					Label: src.Label,

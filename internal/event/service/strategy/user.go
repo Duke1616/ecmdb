@@ -199,7 +199,7 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, info Strat
 			WorkFlowID: info.WfInfo.Id,
 			Receiver:   receiver,
 			Template: notification.Template{
-				Name:   workflow.NotifyType(template),
+				Name:   template,
 				Title:  title,
 				Fields: fields,
 				Values: []notification.Value{
@@ -219,6 +219,8 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, info Strat
 						Key:      src.Key,
 						Type:     notification.FieldType(src.Type),
 						Required: src.Required,
+						Value:    src.Value,
+						ReadOnly: src.ReadOnly,
 						Options: slice.Map(src.Options, func(idx int, src easyflow.Option) notification.InputOption {
 							return notification.InputOption{
 								Label: src.Label,

@@ -117,6 +117,8 @@ const (
 	FieldSelect FieldType = "select"
 	// FieldMultiSelect 多项选择
 	FieldMultiSelect FieldType = "multi_select"
+	// FieldTips 提示选项
+	FieldTips FieldType = "tips"
 )
 
 type Option struct {
@@ -134,6 +136,8 @@ type Field struct {
 	Merge    bool              `json:"merge"`    // 如果 Merge 则在后续审批节点进行推送展示
 	Validate string            `json:"validate"` // 数据校验
 	Hidden   bool              `json:"hidden"`   // 字段需要，但是不展示，由系统补充
+	Value    string            `json:"value"`    // 数据值
+	ReadOnly bool              `json:"readonly"` // 只读字段，比如提示用户时候使用
 }
 
 type UserProperty struct {

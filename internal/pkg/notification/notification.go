@@ -72,21 +72,6 @@ func (c Channel) String() string {
 
 type FieldType string
 
-const (
-	// FieldInput 单行文本
-	FieldInput FieldType = "input"
-	// FieldTextarea 多行文本
-	FieldTextarea FieldType = "textarea"
-	// FieldNumber 数字
-	FieldNumber FieldType = "number"
-	// FieldDate 日期
-	FieldDate FieldType = "date"
-	// FieldSelect 下拉选择
-	FieldSelect FieldType = "select"
-	// FieldMultiSelect 多项选择
-	FieldMultiSelect FieldType = "multi_select"
-)
-
 type InputOption struct {
 	Label string `json:"label"` // 选项显示名
 	Value string `json:"value"` // 选项值
@@ -99,6 +84,8 @@ type InputField struct {
 	Required bool              `json:"required"` // 是否必填
 	Options  []InputOption     `json:"options"`  // 选项列表（用于 select 等）
 	Props    map[string]string `json:"props"`    // 额外组件属性（如 placeholder）
+	Value    string            `json:"value"`    // 数据值
+	ReadOnly bool              `json:"readonly"` // 只读字段，比如提示用户时候使用
 }
 
 type Template struct {

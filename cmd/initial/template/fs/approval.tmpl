@@ -38,7 +38,7 @@
           {{- range $rowIndex, $row := .InputRows}}
           {
             "tag": "column_set",
-            "flex_mode": "bisect",
+            "flex_mode": "{{if eq (len $row) 1}}none{{else}}bisect{{end}}",
             "background_style": "default",
             "horizontal_spacing": "8px",
             "columns": [
@@ -57,7 +57,16 @@
                       "text_size": "normal"
                     }
                   }
-                  {{- if or (eq $input.Type "input") (eq $input.Type "textarea") (eq $input.Type "number") }}
+                  {{- if $input.Readonly }}
+                  ,{
+                    "tag": "div",
+                    "text": {
+                      "tag": "lark_md",
+                      "content": "<font color='grey'>{{$input.Value}}</font>",
+                      "text_size": "normal"
+                    }
+                  }
+                  {{- else if or (eq $input.Type "input") (eq $input.Type "textarea") (eq $input.Type "number") }}
                   ,{
                     "tag": "input",
                     "name": "{{$input.Key}}",
@@ -146,6 +155,14 @@
             "width": "fill",
             "required": false
           },
+          {{- if .Tips }}
+          {
+            "tag": "markdown",
+            "content": "{{- range $index, $tip := .Tips}}{{if $index}}\n{{end}}**💡 提示：** {{$tip}}{{- end}}",
+            "text_align": "left",
+            "text_size": "notation"
+          },
+          {{- end}}
           {
             "tag": "column_set",
             "flex_mode": "bisect",
@@ -189,8 +206,7 @@
                     "action_type": "form_submit",
                     "name": "reject",
                     "text": {
-                      "conten
-                      t": "拒绝",
+                      "content": "拒绝",
                       "tag": "lark_md"
                     },
                     "value": {
@@ -211,4 +227,3 @@
     ]
   }
 }
-

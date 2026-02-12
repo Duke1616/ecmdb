@@ -54,6 +54,13 @@ type Service interface {
 
 	// FindTaskFormsBatch 批量查询任务快照
 	FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error)
+
+	// FindTaskFormsByOrderID 查询工单所属的最新数据
+	FindTaskFormsByOrderID(ctx context.Context, orderID int64) ([]domain.FormValue, error)
+}
+
+func (s *service) FindTaskFormsByOrderID(ctx context.Context, orderID int64) ([]domain.FormValue, error) {
+	return s.repo.FindTaskFormsByOrderID(ctx, orderID)
 }
 
 func (s *service) FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error) {

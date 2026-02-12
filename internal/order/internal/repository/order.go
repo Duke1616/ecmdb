@@ -37,6 +37,8 @@ type OrderRepository interface {
 	CreateTaskForm(ctx context.Context, taskId int, orderId int64, fields []domain.FormValue) error
 	// FindTaskFormsBatch 批量查询任务快照
 	FindTaskFormsBatch(ctx context.Context, taskIds []int) (map[int][]domain.FormValue, error)
+	// FindTaskFormsByOrderID 查询工单所属的最新数据
+	FindTaskFormsByOrderID(ctx context.Context, orderID int64) ([]domain.FormValue, error)
 }
 
 func (repo *orderRepository) MergeOrderData(ctx context.Context, id int64, data map[string]interface{}) error {
@@ -53,6 +55,19 @@ func NewOrderRepository(dao dao.OrderDAO, taskForms dao.TaskFormDAO) OrderReposi
 type orderRepository struct {
 	dao       dao.OrderDAO
 	taskForms dao.TaskFormDAO
+}
+
+func (repo *orderRepository) FindTaskFormsByOrderID(ctx context.Context, orderID int64) ([]domain.FormValue, error) {
+	forms, err := repo.taskForms.FindByOrderID(ctx, orderID)
+
+	return slice.Map(forms, func(idx int, src dao.TaskForm) domain.FormValue {
+		return domain.FormValue{
+			Name:  src.Name,
+			Key:   src.Key,
+			Type:  src.Type,
+			Value: src.Value,
+		}
+	}), err
 }
 
 func (repo *orderRepository) CreateTaskForm(ctx context.Context, taskId int, orderId int64, fields []domain.FormValue) error {

@@ -349,20 +349,31 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 		return err
 	}
 
-	// 7. 确定任务状态和定时配置
+	// 7、获取用户表单写入数据
+	formValue, err := s.orderSvc.FindTaskFormsByOrderID(ctx, orderResp.Id)
+	if err != nil {
+		return err
+	}
+
+	// 8、录入数据到参数中
+	for _, value := range formValue {
+		args[value.Key] = value.Value
+	}
+
+	// 9. 确定任务状态和定时配置
 	status, timing := s.determineTaskStatus(automation, orderResp.Data)
 
-	// 8. 构建任务更新数据
+	// 10. 构建任务更新数据
 	taskUpdate := s.prepareTaskUpdate(orderResp, task, flow, codebookResp, runnerResp, args,
 		status, timing, automation)
 
-	// 9. 更新任务
+	// 11. 更新任务
 	_, err = s.repo.UpdateTask(ctx, taskUpdate)
 	if err != nil {
 		return err
 	}
 
-	// 10. 处理定时任务
+	// 12. 处理定时任务
 	if automation.IsTiming {
 		go func() {
 			_ = s.cronjobSvc.Create(ctx, taskUpdate)

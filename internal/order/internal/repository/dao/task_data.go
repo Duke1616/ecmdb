@@ -7,6 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -19,6 +20,9 @@ type TaskFormDAO interface {
 
 	// FindByTaskIds 批量查询任务快照
 	FindByTaskIds(ctx context.Context, taskIds []int) ([]TaskForm, error)
+
+	// FindByOrderID 根据工单ID获取
+	FindByOrderID(ctx context.Context, orderID int64) ([]TaskForm, error)
 }
 
 type taskFormDAO struct {
@@ -60,6 +64,32 @@ func (dao *taskFormDAO) FindByTaskIds(ctx context.Context, taskIds []int) ([]Tas
 	if err != nil {
 		return nil, fmt.Errorf("查询任务表单数据失败: %w", err)
 	}
+
+	var res []TaskForm
+	if err = cursor.All(ctx, &res); err != nil {
+		return nil, fmt.Errorf("解码任务表单数据失败: %w", err)
+	}
+	return res, nil
+}
+
+func (dao *taskFormDAO) FindByOrderID(ctx context.Context, orderID int64) ([]TaskForm, error) {
+	col := dao.db.Collection(TaskDataCollection)
+
+	pipeline := mongo.Pipeline{
+		bson.D{{Key: "$match", Value: bson.D{{Key: "order_id", Value: orderID}}}},
+		bson.D{{Key: "$sort", Value: bson.D{{Key: "ctime", Value: -1}}}},
+		bson.D{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$key"},
+			{Key: "result", Value: bson.D{{Key: "$first", Value: "$$ROOT"}}},
+		}}},
+		bson.D{{Key: "$replaceRoot", Value: bson.D{{Key: "newRoot", Value: "$result"}}}},
+	}
+
+	cursor, err := col.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, fmt.Errorf("查询任务表单数据失败: %w", err)
+	}
+	defer cursor.Close(ctx)
 
 	var res []TaskForm
 	if err = cursor.All(ctx, &res); err != nil {

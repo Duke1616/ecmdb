@@ -21,11 +21,11 @@ type Handler struct {
 	workerSvc   worker.Service
 	workflowSvc workflow.Service
 	codebookSvc codebook.Service
-	crypto      cryptox.Crypto[string]
+	crypto      cryptox.Crypto
 }
 
 func NewHandler(svc service.Service, workerSvc worker.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service, crypto cryptox.Crypto[string]) *Handler {
+	codebookSvc codebook.Service, crypto cryptox.Crypto) *Handler {
 	return &Handler{
 		svc:         svc,
 		workerSvc:   workerSvc,

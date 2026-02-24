@@ -40,7 +40,7 @@ func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflow
 	return new(Module), nil
 }
 
-func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 	return reg.Runner
 }
 

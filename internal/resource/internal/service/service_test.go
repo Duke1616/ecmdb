@@ -16,9 +16,9 @@ import (
 
 const AesKey = "1234567890"
 
-func crypto() cryptox.Crypto[string] {
-	return cryptox.NewCryptoManager[string]("V1").
-		RegisterAesAlgorithm("V1", "1234567890")
+func crypto() cryptox.Crypto {
+	return cryptox.NewCryptoManager("V1").
+		Register("V1", cryptox.MustNewAESCrypto("1234567890"))
 }
 
 func Test_BatchUpdate_Resources(t *testing.T) {
@@ -100,8 +100,8 @@ func Test_BatchUpdate_Resources(t *testing.T) {
 			defer ctrl.Finish()
 
 			svc, attrSvc := tc.mock(ctrl)
-			crypto := cryptox.NewCryptoManager[string]("V1").
-				RegisterAesAlgorithm("V1", "1234567890")
+			crypto := cryptox.NewCryptoManager("V1").
+				Register("V1", cryptox.MustNewAESCrypto("1234567890"))
 			encryptedSvc := NewEncryptedResourceService(svc, attrSvc, crypto)
 
 			_, err := encryptedSvc.BatchUpdateResources(context.Background(), tc.input)

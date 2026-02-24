@@ -15,10 +15,10 @@ type ExecService interface {
 }
 type execService struct {
 	workerSvc worker.Service
-	crypto    cryptox.Crypto[string]
+	crypto    cryptox.Crypto
 }
 
-func NewExecService(workerSvc worker.Service, crypto cryptox.Crypto[string]) ExecService {
+func NewExecService(workerSvc worker.Service, crypto cryptox.Crypto) ExecService {
 	return &execService{workerSvc: workerSvc, crypto: crypto}
 }
 

@@ -23,7 +23,7 @@ type EncryptedSvc interface {
 type EncryptedResourceService struct {
 	Service
 	attrSvc attribute.Service
-	crypto  cryptox.Crypto[string]
+	crypto  cryptox.Crypto
 	logger  *elog.Component
 }
 
@@ -43,7 +43,7 @@ func (s *EncryptedResourceService) ListAndDecryptBeforeUtime(ctx context.Context
 	return resources, nil
 }
 
-func NewEncryptedResourceService(inner Service, attrSvc attribute.Service, crypto cryptox.Crypto[string]) EncryptedSvc {
+func NewEncryptedResourceService(inner Service, attrSvc attribute.Service, crypto cryptox.Crypto) EncryptedSvc {
 	return &EncryptedResourceService{
 		Service: inner,
 		attrSvc: attrSvc,

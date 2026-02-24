@@ -46,7 +46,7 @@ func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflow
 
 var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewRunnerRepository, dao.NewRunnerDAO)
 
-func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 	return reg.Runner
 }
 

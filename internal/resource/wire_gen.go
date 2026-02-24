@@ -67,15 +67,15 @@ func NewService(repo repository.ResourceRepository) Service {
 	return service.NewService(repo)
 }
 
-func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service, cryptox2 cryptox.Crypto[string]) EncryptedSvc {
+func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service, cryptox2 cryptox.Crypto) EncryptedSvc {
 	return service.NewEncryptedResourceService(baseSvc, attrSvc, cryptox2)
 }
 
-func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 	return reg.Resource
 }
 
-func initConsumer(q mq.MQ, svc service.EncryptedSvc, cryptox2 cryptox.Crypto[string]) *event.FieldSecureAttrChangeConsumer {
+func initConsumer(q mq.MQ, svc service.EncryptedSvc, cryptox2 cryptox.Crypto) *event.FieldSecureAttrChangeConsumer {
 	consumer, err := event.NewFieldSecureAttrChangeConsumer(q, svc, 20, cryptox2)
 	if err != nil {
 		panic(err)

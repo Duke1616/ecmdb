@@ -81,7 +81,7 @@ func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
 	return consumer
 }
 
-func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 	return reg.Runner
 }
 

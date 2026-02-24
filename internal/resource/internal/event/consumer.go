@@ -23,7 +23,7 @@ type FieldSecureAttrChangeConsumer struct {
 	consumer     mq.Consumer
 	svc          service.EncryptedSvc
 	logger       *elog.Component
-	crypto       cryptox.Crypto[string]
+	crypto       cryptox.Crypto
 	workers      sync.Map
 	idleDuration time.Duration
 	limit        int64
@@ -31,7 +31,7 @@ type FieldSecureAttrChangeConsumer struct {
 }
 
 func NewFieldSecureAttrChangeConsumer(q mq.MQ, svc service.EncryptedSvc, limit int64,
-	crypto cryptox.Crypto[string]) (*FieldSecureAttrChangeConsumer, error) {
+	crypto cryptox.Crypto) (*FieldSecureAttrChangeConsumer, error) {
 	consumer, err := q.Consumer(FieldSecureAttrChangeName, "field_secure_change")
 	if err != nil {
 		return nil, fmt.Errorf("获取消息失败: %w", err)

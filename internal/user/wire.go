@@ -32,7 +32,7 @@ func InitLdapUserCache(conn *redisearch.Client) cache.RedisearchLdapUserCache {
 	return cache.NewRedisearchLdapUserCache(conn)
 }
 
-func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto[string] {
+func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 	return reg.User
 }
 

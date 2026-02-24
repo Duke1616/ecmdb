@@ -41,14 +41,17 @@ func InitCryptoRegistry() *cryptox.CryptoRegistry {
 
 	// 进行注册
 	reg := &cryptox.CryptoRegistry{
-		User: cryptox.NewCryptoManager[string](cfg.User.Version).
-			RegisterAesAlgorithm(cfg.User.Version, cfg.User.Key).
+		User: cryptox.NewCryptoManager("V2").
+			Register("V2", cryptox.MustNewAESCryptoV2(cfg.User.Key)).
+			Register(cfg.User.Version, cryptox.MustNewAESCrypto(cfg.User.Key)).
 			WithLegacyAlgo(cfg.User.Version),
-		Resource: cryptox.NewCryptoManager[string](cfg.Resource.Version).
-			RegisterAesAlgorithm(cfg.Resource.Version, cfg.Resource.Key).
+		Resource: cryptox.NewCryptoManager("V2").
+			Register("V2", cryptox.MustNewAESCryptoV2(cfg.Resource.Key)).
+			Register(cfg.Resource.Version, cryptox.MustNewAESCrypto(cfg.Resource.Key)).
 			WithLegacyAlgo(cfg.User.Version),
-		Runner: cryptox.NewCryptoManager[string](cfg.Runner.Version).
-			RegisterAesAlgorithm(cfg.Runner.Version, cfg.Runner.Key).
+		Runner: cryptox.NewCryptoManager("V2").
+			Register("V2", cryptox.MustNewAESCryptoV2(cfg.Runner.Key)).
+			Register(cfg.Runner.Version, cryptox.MustNewAESCrypto(cfg.Runner.Key)).
 			WithLegacyAlgo(cfg.User.Version),
 	}
 

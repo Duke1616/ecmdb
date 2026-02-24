@@ -10,85 +10,12 @@ import (
 	"io"
 )
 
-// CryptoAES AES 加密器实现
-type CryptoAES[T any] struct {
-	key string
+// CryptoAES AES 加密器实现 (遗留 V1)
+type CryptoAES struct {
+	aead cipher.AEAD
 }
 
-// NewAESCrypto 创建新的 AES 加密器
-func NewAESCrypto[T any](key string) Crypto[T] {
-	return &CryptoAES[T]{key: key}
-}
-
-// Encrypt 加密任意类型的数据
-func (a *CryptoAES[T]) Encrypt(data T) (string, error) {
-	plainText, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-
-	paddedKey, err := padKey(a.key)
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(paddedKey)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, plainText, nil)
-	return hex.EncodeToString(ciphertext), nil
-}
-
-// Decrypt 解密数据到指定类型
-func (a *CryptoAES[T]) Decrypt(encryptedText string) (T, error) {
-	var result T
-	decodedText, err := hex.DecodeString(encryptedText)
-	if err != nil {
-		return result, err
-	}
-
-	paddedKey, err := padKey(a.key)
-	if err != nil {
-		return result, err
-	}
-
-	block, err := aes.NewCipher(paddedKey)
-	if err != nil {
-		return result, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return result, err
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(decodedText) < nonceSize {
-		return result, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := decodedText[:nonceSize], decodedText[nonceSize:]
-	plainText, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return result, err
-	}
-
-	err = json.Unmarshal(plainText, &result)
-	return result, err
-}
-
+// padKey 兼容之前的密钥填充逻辑
 func padKey(key string) ([]byte, error) {
 	keyLength := 16
 	if len(key) > keyLength {
@@ -102,4 +29,77 @@ func padKey(key string) ([]byte, error) {
 	}
 
 	return []byte(key), nil
+}
+
+// NewAESCrypto 创建 AES 加密器 (遗留 V1 版本，带 JSON 序列化和截断密钥)
+func NewAESCrypto(key string) (*CryptoAES, error) {
+	paddedKey, err := padKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(paddedKey)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CryptoAES{
+		aead: gcm,
+	}, nil
+}
+
+// MustNewAESCrypto 包装 NewAESCrypto，出错时直接 panic (配合 Builder 模式使用)
+func MustNewAESCrypto(key string) Crypto {
+	algo, err := NewAESCrypto(key)
+	if err != nil {
+		panic("failed to init legacy aes crypto: " + err.Error())
+	}
+	return algo
+}
+
+// Encrypt 加密
+func (a *CryptoAES) Encrypt(plainText string) (string, error) {
+	nonce := make([]byte, a.aead.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	// 兼容之前的 json 序列化逻辑，保证产生的密文和旧版本完全一致
+	ptBytes, err := json.Marshal(plainText)
+	if err != nil {
+		return "", err
+	}
+
+	// aead.Seal 是并发安全的
+	ciphertext := a.aead.Seal(nonce, nonce, ptBytes, nil)
+	return hex.EncodeToString(ciphertext), nil
+}
+
+// Decrypt 解密
+func (a *CryptoAES) Decrypt(encryptedText string) (string, error) {
+	decodedText, err := hex.DecodeString(encryptedText)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := a.aead.NonceSize()
+	if len(decodedText) < nonceSize {
+		return "", errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := decodedText[:nonceSize], decodedText[nonceSize:]
+	ptBytes, err := a.aead.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// 兼容之前的 json 反序列化逻辑
+	var result string
+	err = json.Unmarshal(ptBytes, &result)
+	return result, err
 }

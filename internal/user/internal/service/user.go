@@ -71,10 +71,10 @@ type service struct {
 	repo      repository.UserRepository
 	policySvc policy.Service
 	logger    *elog.Component
-	crypto    cryptox.Crypto[string]
+	crypto    cryptox.Crypto
 }
 
-func NewService(repo repository.UserRepository, policySvc policy.Service, crypto cryptox.Crypto[string]) Service {
+func NewService(repo repository.UserRepository, policySvc policy.Service, crypto cryptox.Crypto) Service {
 	return &service{
 		repo:      repo,
 		policySvc: policySvc,

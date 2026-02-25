@@ -23,7 +23,7 @@ services:
       --explicit_defaults_for_timestamp=true
     volumes:
       - mysql:/var/lib/mysql
-      - ./init-db-user/create_user.sh:/docker-entrypoint-initdb.d/create_user.sh
+      - ./scripts/create_user.sh:/docker-entrypoint-initdb.d/create_user.sh
   db-init:
     image: registry.cn-qingdao.aliyuncs.com/duke1616/mysql:8.0.37
     container_name: db-init
@@ -39,7 +39,7 @@ services:
       - MYSQL_ETASK_USERNAME=etask
       - MYSQL_ETASK_PASSWORD=123456
     volumes:
-      - ./init-db-user/create_user.sh:/create_user.sh
+      - ./scripts/create_user.sh:/create_user.sh
     command: bash -c "while ! mysqladmin ping -h mysql -uroot -p$$MYSQL_ROOT_PASSWORD --silent; do sleep 1; done; sh /create_user.sh"
   mongo:
     restart: always

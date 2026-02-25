@@ -23,7 +23,7 @@ func InitGrpcServer(orderRpc *order.RpcServer, ecli *clientv3.Client) *grpcx.Ser
 	if err != nil {
 		panic(err)
 	}
-	
+
 	jwtInterceptor := jwt.NewJwtAuth(cfg.Key)
 	server := grpc.NewServer(grpc.UnaryInterceptor(
 		jwtInterceptor.JwtAuthInterceptor(),

@@ -60,16 +60,16 @@ func TestVersionEqual(t *testing.T) {
 func TestVersionSorting(t *testing.T) {
 	// 模拟注册表中的版本
 	versions := []string{"v1.9.2", "v1.2.3", "v1.5.0", "v1.3.0"}
-	
+
 	// 手动排序测试
 	sort.SliceStable(versions, func(i, j int) bool {
 		v1 := version.ParseVersion(versions[i])
 		v2 := version.ParseVersion(versions[j])
 		return version.Compare(v2, v1) // 升序排序
 	})
-	
+
 	expected := []string{"v1.2.3", "v1.3.0", "v1.5.0", "v1.9.2"}
-	
+
 	for i, version := range versions {
 		if version != expected[i] {
 			t.Errorf("排序错误: 位置 %d, 得到 %s, 期望 %s", i, version, expected[i])

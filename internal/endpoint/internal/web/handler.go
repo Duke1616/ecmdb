@@ -42,13 +42,13 @@ func (h *Handler) BatchRegister(ctx *gin.Context, req RegisterEndpointsReq) (gin
 	for i, ep := range req.RegisterEndpoint {
 		endpoints[i] = h.toDomain(ep)
 	}
-	
+
 	// 直接调用 service 的按 Resource 注册方法
 	count, err := h.svc.BatchRegisterByResource(ctx, req.Resource, endpoints)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	
+
 	return ginx.Result{
 		Msg:  "批量注册端点成功",
 		Data: count,

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -20,33 +19,47 @@ import (
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
 
 type Service interface {
-	// CreateTask 创建任务
+	// CreateTask 仅仅做任务数据的抢占式登记创建，默认设定为等待状态
 	CreateTask(ctx context.Context, processInstId int, nodeId string) (int64, error)
-	// StartTask 启动任务
+
+	// StartTask 在节点触发时被调起，会聚合工单、工作流信息、调度 Worker 规则以驱动下层引擎开火
 	StartTask(ctx context.Context, processInstId int, nodeId string) error
+
+	// RetryTask 对执行异常失败的节点任务启动安全重试补发机制
 	RetryTask(ctx context.Context, id int64) error
+
+	// UpdateTaskStatus 被底层异步执行通道回调更新回调结果
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
+
+	// UpdateArgs 动态修改参数上下文环境信息
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
+
+	// UpdateVariables 修改执行环境变量内容（带有敏感字段防篡改规则）
 	UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error)
-	// ListTaskByStatus 列表任务
+
+	// ListTaskByStatus 用于平台展示过滤指定生命周期下的节点任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
+
+	// ListTask 全景展示系统大盘所积累的所有执行节点情况
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
+
+	// ListTaskByInstanceId 查看某个流程跑过哪些流水线环节实体
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error)
 
+	// ListSuccessTasksByUtime 事件中心提取增量处理完毕结果集的调度窗口方法
 	ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, int64, error)
 
-	// FindTaskResult 查找自动化任务
+	// FindTaskResult 供周边探针寻找某固定流转节点输出成效
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 
-	// Detail 查看任务信息
+	// Detail 完整还原某一子执行节点的细节与过程属性
 	Detail(ctx context.Context, id int64) (domain.Task, error)
 
-	// MarkTaskAsAutoPassed 自动化通过处理成功标记
+	// MarkTaskAsAutoPassed 在引擎收到通知并向前流转后打点忽略重复消息投递验证
 	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
 }
 
@@ -175,34 +188,24 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 }
 
 func (s *service) StartTask(ctx context.Context, processInstId int, nodeId string) error {
-	// 先创建任务、以防后续失败，导致无法溯源
-	task, err := s.repo.FindByProcessInstId(ctx, processInstId, nodeId)
-	if !errors.Is(err, mongo.ErrNoDocuments) {
-		return s.process(ctx, task)
-	}
-
-	// 新建工作记录
-	taskId, err := s.repo.CreateTask(ctx, domain.Task{
+	// 避免并发双写和流程空洞：原子化创建或查找当前流程的任务挂载点
+	task, err := s.repo.FindOrCreate(ctx, domain.Task{
 		ProcessInstId:   processInstId,
-		TriggerPosition: "开始节点",
 		CurrentNodeId:   nodeId,
+		TriggerPosition: "准备启动节点",
 		Status:          domain.SCHEDULE,
 	})
 
-	// 追加赋值
-	task.Id = taskId
-	task.ProcessInstId = processInstId
-	task.CurrentNodeId = nodeId
-
 	if err != nil {
-		elog.Error("创建任务失败",
-			elog.Any("错误信息", err),
+		s.logger.Error("获取任务工作锚点失败",
+			elog.FieldErr(err),
 			elog.Any("流程实例ID", processInstId),
 			elog.Any("当前节点ID", nodeId),
 		)
 		return err
 	}
 
+	// 驱动其正式跑起来
 	return s.process(ctx, task)
 }
 
@@ -306,140 +309,175 @@ func (s *service) retry(ctx context.Context, task domain.Task) error {
 	return s.execSvc.Execute(ctx, task)
 }
 
+// taskProcessContext 封装了流转任务执行时所需的完整依赖链路元数据
+type taskProcessContext struct {
+	order      order.Order
+	inst       engine.Instance
+	flow       workflow.Workflow
+	automation easyflow.AutomationProperty
+	runner     runner.Runner
+	codebook   codebook.Codebook
+}
+
 func (s *service) process(ctx context.Context, task domain.Task) error {
+	// 1. 获取并聚合所有前置运行依赖的上下文（工单、流程快照、规则、被调度的执行节点等）
+	pCtx, err := s.buildTaskProcessContext(ctx, task)
+	if err != nil {
+		return err // 内部已处理状态变迁与打点，直接冒泡报错
+	}
+
+	// 2. 合成包含用户凭单上下文等在运行时的最终参数
+	args, err := s.assembleRuntimeArgs(ctx, pCtx.order)
+	if err != nil {
+		// 装配参数属于偏业务态的软异常或数据缺失，通常暂不强退节点状态（保持原逻辑）
+		return err
+	}
+
+	// 3. 计算节点的触发模式（定时阻塞调度，还是立即开火）
+	status, timing := s.determineTaskStatus(pCtx.automation, pCtx.order.Data)
+
+	// 4. 将以上所有快照合并更新到该任务条目的实体存盘上
+	taskUpdate := s.prepareTaskUpdate(
+		pCtx.order, task, pCtx.flow, pCtx.codebook,
+		pCtx.runner, args, status, timing, pCtx.automation,
+	)
+
+	if _, err = s.repo.UpdateTask(ctx, taskUpdate); err != nil {
+		return err // 存盘失败抛出
+	}
+
+	// 5. 最终路由分配
+	return s.dispatchTask(ctx, taskUpdate, pCtx.automation)
+}
+
+func (s *service) dispatchTask(ctx context.Context, task domain.Task, automation easyflow.AutomationProperty) error {
+	if automation.IsTiming {
+		go func() {
+			_ = s.cronjobSvc.Create(ctx, task)
+		}()
+		return nil
+	}
+
+	return s.execSvc.Execute(ctx, task)
+}
+
+func (s *service) buildTaskProcessContext(ctx context.Context, task domain.Task) (*taskProcessContext, error) {
 	// 1. 获取工单信息
 	orderResp, err := s.orderSvc.DetailByProcessInstId(ctx, task.ProcessInstId)
 	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "获取工单失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, "获取工单失败", domain.FAILED, err)
 	}
 
 	// 2. 获取流程实例详情，拿到对应的版本号
 	inst, err := s.engineSvc.GetInstanceByID(ctx, task.ProcessInstId)
 	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "获取流程实例失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, "获取流程实例失败", domain.FAILED, err)
 	}
 
-	// 3. 尝试获取历史快照 (Version-Aware)
+	// 3. 尝试获取历史快照
 	flow, err := s.workflowSvc.FindInstanceFlow(ctx, orderResp.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "获取流程信息失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, "获取流程信息失败", domain.FAILED, err)
 	}
 
 	// 4. 获取自动化配置
 	automation, err := s.getAutomationProperties(ctx, flow, task)
 	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)
 	}
 
-	// 4. 获取调度节点
+	// 5. 获取调度节点
 	runnerResp, err := s.getScheduleRunner(ctx, automation, orderResp)
 	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.PENDING, err)
+		return nil, s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.PENDING, err)
 	}
 
-	// 5. 获取代码模板
+	// 6. 获取代码模板
 	codebookResp, err := s.codebookSvc.FindByUid(ctx, runnerResp.CodebookUid)
 	if err != nil {
-		return s.handleTaskError(ctx, task.Id, "获取任务模版失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, "获取任务模版失败", domain.FAILED, err)
 	}
 
-	// 6. 准备用户参数
+	return &taskProcessContext{
+		order:      orderResp,
+		inst:       inst,
+		flow:       flow,
+		automation: automation,
+		runner:     runnerResp,
+		codebook:   codebookResp,
+	}, nil
+}
+
+func (s *service) assembleRuntimeArgs(ctx context.Context, orderResp order.Order) (map[string]interface{}, error) {
+	// 获取基础表单参数
 	args, err := s.prepareUserArgs(ctx, orderResp)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// 7、获取用户表单写入数据
+	// 获取用户审批提交的增量表单数据
 	formValue, err := s.orderSvc.FindTaskFormsByOrderID(ctx, orderResp.Id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// 8、录入数据到参数中
+	// 覆盖合并
 	for _, value := range formValue {
 		args[value.Key] = value.Value
 	}
 
-	// 9. 确定任务状态和定时配置
-	status, timing := s.determineTaskStatus(automation, orderResp.Data)
-
-	// 10. 构建任务更新数据
-	taskUpdate := s.prepareTaskUpdate(orderResp, task, flow, codebookResp, runnerResp, args,
-		status, timing, automation)
-
-	// 11. 更新任务
-	_, err = s.repo.UpdateTask(ctx, taskUpdate)
-	if err != nil {
-		return err
-	}
-
-	// 12. 处理定时任务
-	if automation.IsTiming {
-		go func() {
-			_ = s.cronjobSvc.Create(ctx, taskUpdate)
-		}()
-		return nil
-	}
-
-	// TODO 查看节点状态，禁用 离线 是否可以堆积到消息队列中
-	// TODO 暂时不考虑离线情况
-	//switch workerResp.Status {
-	//case worker.STOPPING:
-	//case worker.OFFLINE:
-	//	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
-	//		Id:              task.Id,
-	//		TriggerPosition: "调度任务节点失败, 工作节点离线",
-	//		Status:          domain.FAILED,
-	//		Result:          "调度任务节点失败, 工作节点离线",
-	//	})
-	//	return err
-	//}
-
-	return s.execSvc.Execute(ctx, task)
+	return args, nil
 }
 
 func (s *service) getScheduleRunner(ctx context.Context, automation easyflow.AutomationProperty,
 	orderResp order.Order) (runner.Runner, error) {
-	// 如果配置自动发现、将自动寻找匹配的调度节点
+
+	// 动态路由：自动根据表单提交字段动态匹配调度节点
 	if automation.Tag == "auto" {
-		ds, total, err := s.discoverySvc.ListByTemplateId(ctx, 0, 100, orderResp.TemplateId)
-		if err != nil {
-			return runner.Runner{}, err
-		}
-
-		if total == 0 {
-			return runner.Runner{}, fmt.Errorf("没有自动发现的规则")
-		}
-
-		ids := make([]int64, 0)
-		for _, d := range ds {
-			val, ok := orderResp.Data[d.Field]
-			if !ok {
-				continue
-			}
-
-			if val == d.Value {
-				ids = append(ids, d.RunnerId)
-			}
-		}
-
-		if len(ids) == 0 {
-			return runner.Runner{}, fmt.Errorf("没有匹配自动发现规则")
-		}
-
-		rs, err := s.runnerSvc.ListByIds(ctx, ids)
-		if err != nil {
-			return runner.Runner{}, err
-		}
-
-		for _, r := range rs {
-			if r.CodebookUid == automation.CodebookUid {
-				return r, nil
-			}
-		}
+		return s.autoDiscoverRunner(ctx, automation, orderResp)
 	}
 
+	// 静态路由：根据明确指定的标签 (比如 default 等) 查找对应的 Worker
 	return s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
+}
+
+func (s *service) autoDiscoverRunner(ctx context.Context, automation easyflow.AutomationProperty,
+	orderResp order.Order) (runner.Runner, error) {
+	// 1. 获取该模版相关的全部自动发现规则探针
+	discoveries, total, err := s.discoverySvc.ListByTemplateId(ctx, 0, 100, orderResp.TemplateId)
+	if err != nil {
+		return runner.Runner{}, err
+	}
+	if total == 0 {
+		return runner.Runner{}, fmt.Errorf("该模版尚未配置可用的节点自动发现策略规则")
+	}
+
+	// 2. 根据工单表单中用户实际填写的业务数据，过滤出符合匹配特征的调度网关 Runner IDs
+	matchedRunnerIDs := slice.FilterMap(discoveries, func(idx int, d discovery.Discovery) (int64, bool) {
+		val, ok := orderResp.Data[d.Field]
+		return d.RunnerId, ok && val == d.Value
+	})
+
+	if len(matchedRunnerIDs) == 0 {
+		return runner.Runner{}, fmt.Errorf("当前工单填写的业务参数，未能触及任何匹配的自动发现策略")
+	}
+
+	// 3. 批量拉取符合特征的这些远端 Runner 实体
+	runners, err := s.runnerSvc.ListByIds(ctx, matchedRunnerIDs)
+	if err != nil {
+		return runner.Runner{}, err
+	}
+
+	// 4. 从中筛选具备承接目前这个任务剧本 (CodebookUid) 能力的最终调配网关
+	matchedRunner, found := slice.Find(runners, func(src runner.Runner) bool {
+		return src.CodebookUid == automation.CodebookUid
+	})
+
+	if !found {
+		return runner.Runner{}, fmt.Errorf("未能在匹配到的工作节点群落中，找到能够承载当前剧本(UID: %s)的可用网关", automation.CodebookUid)
+	}
+
+	return matchedRunner, nil
 }
 
 func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,
@@ -532,68 +570,72 @@ func (s *service) determineTaskStatus(automation easyflow.AutomationProperty, da
 }
 
 func (s *service) calculateTiming(automation easyflow.AutomationProperty, data map[string]interface{}) domain.Timing {
-	timing := domain.Timing{}
-	if automation.IsTiming {
-		switch automation.ExecMethod {
-		case "template":
-			timing.Unit = domain.HOUR
-			quantity, exist := data[automation.TemplateField]
-			if !exist {
-				s.logger.Warn("字段不存在, 赋值默认值 2 H")
-				timing.Quantity = 2
-				break
-			}
-
-			switch v := quantity.(type) {
-			case int64:
-				timing.Quantity = v
-			case int:
-				timing.Quantity = int64(v)
-			case float64:
-				timing.Quantity = int64(v)
-			case string:
-				parsedQuantity, err := strconv.ParseInt(v, 10, 64)
-				if err != nil {
-					s.logger.Error("解析失败, 赋值默认值 2 H",
-						elog.FieldErr(err),
-						elog.Any("value", v),
-					)
-					timing.Quantity = 2
-				} else {
-					timing.Quantity = parsedQuantity
-				}
-			default:
-				s.logger.Warn("类型未知, 赋值默认值 2 H",
-					elog.Any("type", v),
-					elog.Any("value", quantity),
-				)
-				timing.Quantity = 2
-			}
-		case "hand":
-			timing.Unit = domain.Unit(automation.Unit)
-			timing.Quantity = automation.Quantity
-		}
+	if !automation.IsTiming {
+		return domain.Timing{}
 	}
 
-	// 解析 stime（Unix 时间戳，单位：毫秒）
-	stime := time.UnixMilli(time.Now().UnixMilli())
-
-	// 计算时间差
-	var duration time.Duration
-	switch timing.Unit {
-	case domain.MINUTE: // 分钟
-		duration = time.Duration(timing.Quantity) * time.Minute
-	case domain.HOUR: // 小时
-		duration = time.Duration(timing.Quantity) * time.Hour
-	case domain.DAY: // 天
-		duration = time.Duration(timing.Quantity) * 24 * time.Hour
-	default:
-		duration = time.Duration(timing.Quantity) * time.Hour
-		s.logger.Warn("未知的时间单位，按照小时进行计算")
+	timing := domain.Timing{
+		Unit:     domain.HOUR,
+		Quantity: 2,
 	}
 
-	// 计算开始执行的时间
-	timing.Stime = stime.Add(duration).UnixMilli()
+	// 1. 根据执行方式初始化调度单位和时长
+	switch automation.ExecMethod {
+	case "template":
+		timing.Quantity = s.parseTemplateQuantity(automation.TemplateField, data)
+	case "hand":
+		timing.Unit = domain.Unit(automation.Unit)
+		timing.Quantity = automation.Quantity
+	}
+
+	// 2. 根据单位计算时差并合成最终执行毫米级时间戳
+	duration := s.calculateDuration(timing.Unit, timing.Quantity)
+	timing.Stime = time.Now().Add(duration).UnixMilli()
 
 	return timing
+}
+
+// parseTemplateQuantity 尝试从动态表单上下文中提取并转换为合法的时长 (int64)
+func (s *service) parseTemplateQuantity(field string, data map[string]interface{}) int64 {
+	const defaultQuantity = 2
+
+	quantityVal, exist := data[field]
+	if !exist {
+		s.logger.Warn("字段不存在, 赋值默认值 2 H", elog.String("field", field))
+		return defaultQuantity
+	}
+
+	switch v := quantityVal.(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case float64:
+		return int64(v)
+	case string:
+		parsedQuantity, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			s.logger.Error("解析失败, 赋值默认值 2 H", elog.FieldErr(err), elog.Any("value", v))
+			return defaultQuantity
+		}
+		return parsedQuantity
+	default:
+		s.logger.Warn("类型未知, 赋值默认值 2 H", elog.Any("type", fmt.Sprintf("%T", v)), elog.Any("value", v))
+		return defaultQuantity
+	}
+}
+
+// calculateDuration 将业务域的时间单位转化为 Go 中的标准 time.Duration
+func (s *service) calculateDuration(unit domain.Unit, quantity int64) time.Duration {
+	switch unit {
+	case domain.MINUTE:
+		return time.Duration(quantity) * time.Minute
+	case domain.DAY:
+		return time.Duration(quantity) * 24 * time.Hour
+	case domain.HOUR:
+		return time.Duration(quantity) * time.Hour
+	default:
+		s.logger.Warn("未知的时间单位，按照小时进行计算", elog.Any("unit", unit))
+		return time.Duration(quantity) * time.Hour
+	}
 }

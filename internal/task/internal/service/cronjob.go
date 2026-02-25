@@ -10,6 +10,7 @@ import (
 )
 
 type Cronjob interface {
+	// Create 使用 cron.Cron 向系统事件循环池打入一条后台预载好的可被回调的调度点
 	Create(ctx context.Context, task domain.Task) error
 }
 

@@ -21,10 +21,10 @@ func TestGenerateInsertSQL(t *testing.T) {
 	}
 
 	sql := provider.generateInsertSQL("test_table", rowData)
-	
+
 	// 验证 SQL 语句包含正确的表名
 	assert.Contains(t, sql, "INSERT INTO test_table")
-	
+
 	// 验证包含所有字段
 	assert.Contains(t, sql, "id")
 	assert.Contains(t, sql, "name")
@@ -32,13 +32,13 @@ func TestGenerateInsertSQL(t *testing.T) {
 	assert.Contains(t, sql, "score")
 	assert.Contains(t, sql, "description")
 	assert.Contains(t, sql, "create_time")
-	
+
 	// 验证值处理
-	assert.Contains(t, sql, "844")           // int
-	assert.Contains(t, sql, "'test'")        // string
-	assert.Contains(t, sql, "1")             // bool true
-	assert.Contains(t, sql, "95.5")          // float
-	assert.Contains(t, sql, "NULL")          // nil
+	assert.Contains(t, sql, "844")                   // int
+	assert.Contains(t, sql, "'test'")                // string
+	assert.Contains(t, sql, "1")                     // bool true
+	assert.Contains(t, sql, "95.5")                  // float
+	assert.Contains(t, sql, "NULL")                  // nil
 	assert.Contains(t, sql, "'2025-09-26 16:13:20'") // time string
 }
 
@@ -52,7 +52,7 @@ func TestGenerateInsertSQLWithSpecialChars(t *testing.T) {
 	}
 
 	sql := provider.generateInsertSQL("test_table", rowData)
-	
+
 	// 验证单引号被正确转义
 	assert.Contains(t, sql, "'test''s value with ''quotes'''")
 	assert.Contains(t, sql, "'normal description'")
@@ -74,14 +74,14 @@ func TestGenerateInsertSQLWithDifferentTypes(t *testing.T) {
 	}
 
 	sql := provider.generateInsertSQL("test_table", rowData)
-	
+
 	// 验证各种类型的值
 	assert.Contains(t, sql, "100")
 	assert.Contains(t, sql, "200")
 	assert.Contains(t, sql, "3.14")
 	assert.Contains(t, sql, "2.718")
-	assert.Contains(t, sql, "1")    // bool true
-	assert.Contains(t, sql, "0")    // bool false
+	assert.Contains(t, sql, "1") // bool true
+	assert.Contains(t, sql, "0") // bool false
 	assert.Contains(t, sql, "'hello world'")
 	assert.Contains(t, sql, "NULL")
 }

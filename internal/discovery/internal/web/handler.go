@@ -75,7 +75,7 @@ func (h *Handler) Sync(ctx *gin.Context, req SyncDiscoveryReq) (ginx.Result, err
 			Msg: "没有可同步数据",
 		}, nil
 	}
-	
+
 	if err != nil {
 		return systemErrorResult, err
 	}

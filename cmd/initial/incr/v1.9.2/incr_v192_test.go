@@ -49,9 +49,9 @@ func TestVersion192Logic(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-		currentVerSlice := version.ParseVersion(tc.currentVersion)
-		targetVerSlice := version.ParseVersion(tc.targetVersion)
-		versionSlice := version.ParseVersion(tc.version)
+			currentVerSlice := version.ParseVersion(tc.currentVersion)
+			targetVerSlice := version.ParseVersion(tc.targetVersion)
+			versionSlice := version.ParseVersion(tc.version)
 
 			// 检查是否应该执行
 			shouldExecute := version.Compare(versionSlice, currentVerSlice) &&
@@ -107,7 +107,7 @@ func TestBackupCollectionName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// 模拟备份集合名称生成
 			collectionName := fmt.Sprintf("c_menu_backup_%s_%s", tc.version, "20240101_120000")
-			
+
 			if !strings.HasPrefix(collectionName, tc.expected) {
 				t.Errorf("备份集合名称错误: 期望前缀 %s, 得到 %s", tc.expected, collectionName)
 			}

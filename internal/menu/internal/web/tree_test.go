@@ -56,7 +56,7 @@ func TestGetMenusTree(t *testing.T) {
 			if len(result) != tt.expected {
 				t.Errorf("GetMenusTree() 根节点数量 = %v, 期望 %v", len(result), tt.expected)
 			}
-			
+
 			// 打印结果用于调试
 			t.Logf("测试 %s: 根节点数量 = %d", tt.name, len(result))
 			for i, root := range result {

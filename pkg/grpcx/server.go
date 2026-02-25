@@ -69,7 +69,7 @@ func (s *Server) register(ctx context.Context, port string) error {
 			s.L.Debug("续约：", elog.String("resp", chResp.String()))
 		}
 	}()
-	
+
 	// metadata 我们这里没啥要提供的
 	return em.AddEndpoint(ctx, s.etcdKey,
 		endpoints.Endpoint{Addr: addr}, clientv3.WithLease(leaseResp.ID))

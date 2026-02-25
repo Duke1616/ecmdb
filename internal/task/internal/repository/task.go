@@ -11,22 +11,55 @@ import (
 )
 
 type TaskRepository interface {
+	// CreateTask 创建新的任务领域模型实例
 	CreateTask(ctx context.Context, req domain.Task) (int64, error)
+
+	// FindByProcessInstId 根据流程实例与节点提取对应任务节点模型
 	FindByProcessInstId(ctx context.Context, processInstId int, nodeId string) (domain.Task, error)
+
+	// FindOrCreate 查询指定任务，若不存在则创建缺省记录避免丢数
 	FindOrCreate(ctx context.Context, req domain.Task) (domain.Task, error)
+
+	// FindById 依据标识 ID 获取领域模型
 	FindById(ctx context.Context, id int64) (domain.Task, error)
+
+	// UpdateTask 更新任务数据并落库
 	UpdateTask(ctx context.Context, req domain.Task) (int64, error)
+
+	// UpdateTaskStatus 同步更新当前任务的状态和最终执行结果
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
+
+	// UpdateVariables 对任务环境变量字段进行修补变更
 	UpdateVariables(ctx context.Context, id int64, variables []domain.Variables) (int64, error)
+
+	// ListTask 拉取分页的全部任务集合
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, error)
+
+	// ListTaskByStatus 拉取某具体状态项的分页集合
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
+
+	// Total 计算任务集合总量
 	Total(ctx context.Context, status uint8) (int64, error)
+
+	// UpdateArgs 动态更新调度派发的额外业务配置参数
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
+
+	// ListSuccessTasksByUtime 拉取满足特定更新时间游标且尚未读取跳过的已成行成功任务池
 	ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, error)
+
+	// TotalByUtime 测算该更新时间范围下成功任务条目数量
 	TotalByUtime(ctx context.Context, utime int64) (int64, error)
+
+	// FindTaskResult 请求匹配的工作流特定节点的成活结果镜像封装
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
+
+	// ListTaskByInstanceId 基于给定的流程树全量列出所有已触发分配的从属任务实例群落
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, error)
+
+	// TotalByInstanceId 查询指定工单/流程触发的工作任务实体子节点计数
 	TotalByInstanceId(ctx context.Context, instanceId int) (int64, error)
+
+	// MarkTaskAsAutoPassed 将执行完成的任务打上流程驱动完毕可直接跳过的标记
 	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
 }
 
@@ -105,8 +138,8 @@ func (repo *taskRepository) FindOrCreate(ctx context.Context, req domain.Task) (
 		return domain.Task{}, err
 	}
 
-	task.Id = taskId
-	return repo.toDomain(task), err
+	req.Id = taskId
+	return req, nil
 }
 
 func (repo *taskRepository) FindByProcessInstId(ctx context.Context, processInstId int, nodeId string) (

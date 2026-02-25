@@ -114,7 +114,7 @@ func (p *MySQLBackupProvider) Backup(ctx context.Context, tableName string, opts
 	for _, rowData := range bsonData {
 		// 生成 INSERT 语句
 		sqlStatement := p.generateInsertSQL(tableName, rowData)
-		
+
 		dataDoc := MySQLBackupData{
 			BackupID:     backupID,
 			OriginalID:   rowData["id"],
@@ -322,7 +322,6 @@ func (p *MySQLBackupProvider) CleanupOldBackups(ctx context.Context, sourceName 
 	return nil
 }
 
-
 // generateInsertSQL 生成 INSERT SQL 语句
 func (p *MySQLBackupProvider) generateInsertSQL(tableName string, rowData bson.M) string {
 	var columns []string
@@ -330,7 +329,7 @@ func (p *MySQLBackupProvider) generateInsertSQL(tableName string, rowData bson.M
 
 	for col, val := range rowData {
 		columns = append(columns, col)
-		
+
 		// 简单处理，直接转换
 		switch v := val.(type) {
 		case string:
@@ -361,7 +360,6 @@ func (p *MySQLBackupProvider) generateInsertSQL(tableName string, rowData bson.M
 		strings.Join(columns, ", "),
 		strings.Join(values, ", "))
 }
-
 
 // generateBackupID 生成备份批次ID
 func (p *MySQLBackupProvider) generateBackupID(version, sourceName string) string {

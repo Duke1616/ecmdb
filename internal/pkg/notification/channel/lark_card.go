@@ -1,4 +1,3 @@
-
 package channel
 
 import (

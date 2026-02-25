@@ -179,16 +179,16 @@ func TestHashCalculator_Consistency(t *testing.T) {
 			name: "不同方法计算相同数据的一致性",
 			validate: func(t *testing.T) {
 				menus := GetInjectMenus()
-				
+
 				hash1, err1 := calculator.CalculateMenuDataHash(menus)
 				require.NoError(t, err1)
-				
+
 				hash2, err2 := calculator.CalculateMenuHash()
 				require.NoError(t, err2)
-				
+
 				hash3, err3 := calculator.CalculateProjectMenuHash()
 				require.NoError(t, err3)
-				
+
 				assert.Equal(t, hash1, hash2)
 				assert.Equal(t, hash2, hash3)
 			},

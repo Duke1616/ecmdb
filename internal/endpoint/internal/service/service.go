@@ -35,11 +35,10 @@ func (s *service) BatchRegisterByResource(ctx context.Context, resource string, 
 	if len(req) == 0 {
 		return 0, nil
 	}
-	
+
 	// 直接调用 repository 的按 Resource 注册方法
 	return s.repo.BatchRegisterByResource(ctx, resource, req)
 }
-
 
 func (s *service) ListEndpoints(ctx context.Context, offset, limit int64, path string) ([]domain.Endpoint, int64, error) {
 	var (

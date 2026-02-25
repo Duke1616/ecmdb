@@ -13,7 +13,7 @@ type AttributeExecutor interface {
 	// ExecuteGroups 执行属性分组创建，直接使用 domain.AttributeGroup
 	ExecuteGroups(ctx context.Context, modelUid string, groups []attribute.AttributeGroup) (
 		[]attribute.AttributeGroup, error)
-	
+
 	// ExecuteFields 执行字段创建，直接使用 domain.Attribute
 	ExecuteFields(ctx context.Context, modelUid string, attrs []attribute.Attribute) error
 }

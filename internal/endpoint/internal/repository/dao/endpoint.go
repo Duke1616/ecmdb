@@ -16,14 +16,14 @@ const EndpointCollection = "c_endpoint"
 type EndpointDAO interface {
 	// CreateEndpoint 创建单个端点
 	CreateEndpoint(ctx context.Context, t Endpoint) (int64, error)
-	
+
 	// BatchCreateByResource 按 Resource 批量同步端点
 	// 支持智能同步：插入新端点、更新已存在端点、删除不再存在的端点
 	BatchCreateByResource(ctx context.Context, resource string, req []Endpoint) (int64, error)
-	
+
 	// ListEndpoint 获取端点列表
 	ListEndpoint(ctx context.Context, offset, limit int64, path string) ([]Endpoint, error)
-	
+
 	// Count 获取端点总数
 	Count(ctx context.Context, path string) (int64, error)
 }

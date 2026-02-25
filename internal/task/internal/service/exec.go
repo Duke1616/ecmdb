@@ -11,6 +11,7 @@ import (
 )
 
 type ExecService interface {
+	// Execute 实际执行触发函数，组装参数与语言模板，连通执行后端并在密码库中清洗安全变量等
 	Execute(ctx context.Context, task domain.Task) error
 }
 type execService struct {

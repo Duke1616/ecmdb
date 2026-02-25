@@ -14,21 +14,52 @@ import (
 const TaskCollection = "c_task"
 
 type TaskDAO interface {
+	// CreateTask 创建一个新的任务入库，内部会自动生成 Ctime 和 Utime
 	CreateTask(ctx context.Context, t Task) (int64, error)
+
+	// FindByProcessInstId 根据流程实例 ID 和节点 ID 查询对应的任务
 	FindByProcessInstId(ctx context.Context, processInstId int, nodeId string) (Task, error)
+
+	// FindById 根据主键 ID 获取唯一任务
 	FindById(ctx context.Context, id int64) (Task, error)
+
+	// UpdateTask 更新任务的全量核心信息，如：模版代码、主题、关联工单等
 	UpdateTask(ctx context.Context, t Task) (int64, error)
+
+	// UpdateTaskStatus 仅更新任务的执行状态、期望结果与实际执行成果等
 	UpdateTaskStatus(ctx context.Context, req Task) (int64, error)
+
+	// UpdateVariables 更新任务所绑定的环境变量信息
 	UpdateVariables(ctx context.Context, id int64, variables []Variables) (int64, error)
+
+	// ListTask 分页获取所有任务列表，按创建时间倒序
 	ListTask(ctx context.Context, offset, limit int64) ([]Task, error)
+
+	// ListTaskByStatus 分页获取特定状态下的任务列表，当 status 不为 0 时进行筛选匹配
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
+
+	// Count 统计指定状态下的任务总数，当 status 为 0 时获取全量文档数
 	Count(ctx context.Context, status uint8) (int64, error)
+
+	// UpdateArgs 更新任务的局部执行参数（UserArgs）
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
+
+	// ListSuccessTasksByUtime 根据更新时间拉取已经执行成功且尚未被标记跳过的任务列表
 	ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]Task, error)
+
+	// TotalByUtime 统计指定更新时间前已执行成功的任务总数
 	TotalByUtime(ctx context.Context, utime int64) (int64, error)
+
+	// FindTaskResult 根据流程实例获取对应节点的任务结果记录
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error)
+
+	// ListTaskByInstanceId 根据工作流实例 ID 批量查阅此实例关联的所有任务分页列表
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]Task, error)
+
+	// TotalByInstanceId 统计特定工作流实例名下的任务总数
 	TotalByInstanceId(ctx context.Context, instanceId int) (int64, error)
+
+	// MarkTaskAsAutoPassed 将对应任务的状态标识为自动通过（MarkPassed = true）
 	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
 }
 
@@ -48,10 +79,10 @@ func (dao *taskDAO) ListTaskByInstanceId(ctx context.Context, offset, limit int6
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
+	defer cursor.Close(ctx)
 
 	var result []Task
 	if err = cursor.All(ctx, &result); err != nil {
@@ -104,10 +135,10 @@ func (dao *taskDAO) ListSuccessTasksByUtime(ctx context.Context, offset, limit i
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
+	defer cursor.Close(ctx)
 
 	var result []Task
 	if err = cursor.All(ctx, &result); err != nil {
@@ -161,10 +192,10 @@ func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, 
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
+	defer cursor.Close(ctx)
 
 	var result []Task
 	if err = cursor.All(ctx, &result); err != nil {
@@ -329,10 +360,10 @@ func (dao *taskDAO) ListTaskByStatus(ctx context.Context, offset, limit int64, s
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
+	defer cursor.Close(ctx)
 
 	var result []Task
 	if err = cursor.All(ctx, &result); err != nil {

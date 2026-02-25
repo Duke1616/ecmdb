@@ -28,7 +28,7 @@ var backupMongoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		collectionName := args[0]
-		
+
 		// 初始化 Ioc 注册
 		app, err := ioc.InitApp()
 		cobra.CheckErr(err)
@@ -41,7 +41,7 @@ var backupMongoCmd = &cobra.Command{
 			Version:     version,
 			Description: description,
 			Tags: map[string]string{
-				"type": "mongo",
+				"type":       "mongo",
 				"collection": collectionName,
 			},
 		}
@@ -70,7 +70,7 @@ var backupMySQLCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		tableName := args[0]
-		
+
 		// 初始化 Ioc 注册
 		app, err := ioc.InitApp()
 		cobra.CheckErr(err)
@@ -83,7 +83,7 @@ var backupMySQLCmd = &cobra.Command{
 			Version:     version,
 			Description: description,
 			Tags: map[string]string{
-				"type": "mysql",
+				"type":  "mysql",
 				"table": tableName,
 			},
 		}
@@ -113,7 +113,7 @@ var listBackupCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		sourceName := args[0]
 		providerType := args[1]
-		
+
 		// 初始化 Ioc 注册
 		app, err := ioc.InitApp()
 		cobra.CheckErr(err)
@@ -157,7 +157,7 @@ var restoreMongoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		collectionName := args[0]
 		backupID := args[1]
-		
+
 		// 初始化 Ioc 注册
 		app, err := ioc.InitApp()
 		cobra.CheckErr(err)
@@ -187,7 +187,7 @@ var restoreMySQLCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		tableName := args[0]
 		backupID := args[1]
-		
+
 		// 初始化 Ioc 注册
 		app, err := ioc.InitApp()
 		cobra.CheckErr(err)

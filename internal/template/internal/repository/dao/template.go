@@ -252,10 +252,10 @@ func (dao *templateDAO) Pipeline(ctx context.Context) ([]TemplatePipeline, error
 
 func (dao *templateDAO) FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Template, error) {
 	col := dao.db.Collection(TemplateCollection)
-	
+
 	// 默认为空查询
 	filter := bson.M{}
-	
+
 	// 如果关键字不为空，则添加过滤条件
 	if keyword != "" {
 		filter["$or"] = []bson.M{
@@ -263,7 +263,7 @@ func (dao *templateDAO) FindByKeyword(ctx context.Context, keyword string, offse
 			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
 		}
 	}
-	
+
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -288,10 +288,10 @@ func (dao *templateDAO) FindByKeyword(ctx context.Context, keyword string, offse
 
 func (dao *templateDAO) CountByKeyword(ctx context.Context, keyword string) (int64, error) {
 	col := dao.db.Collection(TemplateCollection)
-	
+
 	// 默认为空查询
 	filter := bson.M{}
-	
+
 	// 如果关键字不为空，则添加过滤条件
 	if keyword != "" {
 		filter["$or"] = []bson.M{
@@ -299,11 +299,11 @@ func (dao *templateDAO) CountByKeyword(ctx context.Context, keyword string) (int
 			{"desc": bson.M{"$regex": keyword, "$options": "i"}},
 		}
 	}
-	
+
 	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
-	
+
 	return count, nil
 }

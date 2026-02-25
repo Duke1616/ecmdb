@@ -29,11 +29,11 @@ type MongoBackupData struct {
 
 // MySQLBackupData MySQL 备份数据
 type MySQLBackupData struct {
-	BackupID     string      `bson:"backup_id"`      // 关联的备份ID
-	OriginalID   interface{} `bson:"original_id"`    // 原始记录ID
-	Data         interface{} `bson:"data"`           // 原始数据（保留兼容性）
-	SQLStatement string      `bson:"sql_statement"`  // SQL 语句
-	CreatedAt    time.Time   `bson:"created_at"`     // 创建时间
+	BackupID     string      `bson:"backup_id"`     // 关联的备份ID
+	OriginalID   interface{} `bson:"original_id"`   // 原始记录ID
+	Data         interface{} `bson:"data"`          // 原始数据（保留兼容性）
+	SQLStatement string      `bson:"sql_statement"` // SQL 语句
+	CreatedAt    time.Time   `bson:"created_at"`    // 创建时间
 }
 
 // Result 备份结果

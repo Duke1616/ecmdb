@@ -179,7 +179,7 @@ func (p *MongoBackupProvider) Restore(ctx context.Context, collectionName string
 		if data, ok := backupDoc["data"].(bson.M); ok {
 			// 使用 _id 作为过滤条件进行替换
 			filter := bson.M{"_id": data["_id"]}
-			
+
 			// 创建 ReplaceOneModel 操作
 			operation := mongo.NewReplaceOneModel().
 				SetFilter(filter).
@@ -194,7 +194,7 @@ func (p *MongoBackupProvider) Restore(ctx context.Context, collectionName string
 		// 设置批量写入选项
 		opts := options.BulkWrite().
 			SetOrdered(false) // 允许并行执行，提高性能
-		
+
 		_, err = targetCollection.BulkWrite(ctx, operations, opts)
 		if err != nil {
 			p.logger.Error("批量替换文档失败",

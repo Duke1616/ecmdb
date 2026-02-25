@@ -188,13 +188,13 @@ func (dao *userDao) FindByDepartmentIds(ctx context.Context, departmentIds []int
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
-	
+
 	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误: %w", err)
 	}
 	defer cursor.Close(ctx)
-	
+
 	var result []User
 	if err = cursor.All(ctx, &result); err != nil {
 		return nil, fmt.Errorf("解码错误: %w", err)

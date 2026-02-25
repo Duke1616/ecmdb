@@ -14,13 +14,33 @@ services:
       - MYSQL_EALERT_DATABASE=ealert
       - MYSQL_EALERT_USERNAME=ealert
       - MYSQL_EALERT_PASSWORD=123456
+      - MYSQL_ETASK_DATABASE=etask
+      - MYSQL_ETASK_USERNAME=etask
+      - MYSQL_ETASK_PASSWORD=123456
     command:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_general_ci
       --explicit_defaults_for_timestamp=true
     volumes:
       - mysql:/var/lib/mysql
-      - ./create_user.sh:/docker-entrypoint-initdb.d/create_user.sh
+      - ./init-db-user/create_user.sh:/docker-entrypoint-initdb.d/create_user.sh
+  db-init:
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/mysql:8.0.37
+    container_name: db-init
+    depends_on:
+      - mysql
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_EALERT_DATABASE=ealert
+      - MYSQL_EALERT_USERNAME=ealert
+      - MYSQL_EALERT_PASSWORD=123456
+      - MYSQL_ETASK_DATABASE=etask
+      - MYSQL_ETASK_USERNAME=etask
+      - MYSQL_ETASK_PASSWORD=123456
+    volumes:
+      - ./init-db-user/create_user.sh:/create_user.sh
+    command: bash -c "while ! mysqladmin ping -h mysql -uroot -p$$MYSQL_ROOT_PASSWORD --silent; do sleep 1; done; sh /create_user.sh"
   mongo:
     restart: always
     container_name: ecmdb-mongo
@@ -110,7 +130,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - ./prod.yaml:/app/config/prod.yaml
+      - ./config/prod-ecmdb.yaml:/app/config/prod.yaml
       - /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai
     depends_on:
       - mysql
@@ -129,7 +149,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - ./prod-ealert.yaml:/app/config/prod.yaml
+      - ./config/prod-ealert.yaml:/app/config/prod.yaml
       - /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai
     depends_on:
       - mysql
@@ -144,7 +164,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./config/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - ecmdb
       - ealert

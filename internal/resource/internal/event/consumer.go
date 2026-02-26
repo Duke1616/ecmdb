@@ -54,6 +54,7 @@ func (c *FieldSecureAttrChangeConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				c.logger.Error("模型安全属性字段变更，同步资产数据变更失败", elog.Any("错误信息", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

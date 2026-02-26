@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
 	"github.com/Duke1616/ecmdb/internal/order/internal/service"
@@ -38,6 +39,7 @@ func (c *OrderStatusModifyEventConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				c.logger.Error("同步事件失败", elog.Any("err", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

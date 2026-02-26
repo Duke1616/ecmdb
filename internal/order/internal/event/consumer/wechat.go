@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
@@ -47,6 +48,7 @@ func (c *WechatOrderConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				elog.Error("同步企业微信工单创建工单事件失败", elog.Any("err", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

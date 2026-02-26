@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
@@ -49,6 +50,7 @@ func (c *ExecuteResultConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				c.logger.Error("同步修改任务执行状态失败", elog.Any("错误信息", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

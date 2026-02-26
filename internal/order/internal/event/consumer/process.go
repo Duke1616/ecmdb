@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/event"
@@ -42,6 +43,7 @@ func (c *ProcessEventConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				c.logger.Error("同步创建流程实例事件失败", elog.Any("err", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

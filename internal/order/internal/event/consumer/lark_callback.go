@@ -99,6 +99,7 @@ func (c *LarkCallbackEventConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				c.logger.Error("同步飞书回调事件失败", elog.Any("err", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

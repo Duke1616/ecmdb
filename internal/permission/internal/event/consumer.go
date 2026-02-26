@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/menu"
 	"github.com/Duke1616/ecmdb/internal/permission/internal/domain"
@@ -39,6 +40,7 @@ func (c *MenuChangeEventConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				c.logger.Error("同步事件失败", elog.Any("err", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

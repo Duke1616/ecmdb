@@ -7,8 +7,11 @@
 package event
 
 import (
+	"log"
+	"sync"
+
 	engine2 "github.com/Bunny3th/easy-workflow/workflow/engine"
-	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/department"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/event/producer"
@@ -22,10 +25,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
-	"github.com/larksuite/oapi-sdk-go/v3"
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"gorm.io/gorm"
-	"log"
-	"sync"
 )
 
 // Injectors from wire.go:

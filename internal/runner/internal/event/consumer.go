@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/domain"
@@ -38,6 +39,7 @@ func (c *TaskRunnerConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				slog.Error("同步事件失败", err)
+				time.Sleep(time.Second)
 			}
 		}
 	}()

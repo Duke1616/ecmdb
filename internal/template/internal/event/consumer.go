@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Duke1616/ecmdb/internal/template/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
@@ -41,6 +42,7 @@ func (c *WechatApprovalCallbackConsumer) Start(ctx context.Context) {
 			err := c.Consume(ctx)
 			if err != nil {
 				elog.Error("创建企业微信工单事件失败", elog.Any("err", err))
+				time.Sleep(time.Second)
 			}
 		}
 	}()

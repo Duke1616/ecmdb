@@ -67,7 +67,8 @@ func NewService(repo repository.ResourceRepository) Service {
 	return service.NewService(repo)
 }
 
-func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service, cryptox2 cryptox.Crypto) EncryptedSvc {
+func NewEncryptedService(baseSvc service.Service, attrSvc attribute.Service, cryptox2 cryptox.Crypto,
+) EncryptedSvc {
 	return service.NewEncryptedResourceService(baseSvc, attrSvc, cryptox2)
 }
 

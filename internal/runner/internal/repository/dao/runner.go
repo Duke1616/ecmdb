@@ -18,17 +18,37 @@ const (
 	RunnerCollection = "c_runner"
 )
 
+// RunnerDAO 执行器数据访问接口
+// 提供与底层数据库（如 MongoDB）交互的基础 CRUD 及聚合统计方法
 type RunnerDAO interface {
-	CreateRunner(ctx context.Context, r Runner) (int64, error)
+	// Create 在数据库中插入一条新的执行器文档记录
+	Create(ctx context.Context, r Runner) (int64, error)
+	// Update 局部更新指定的执行器文档，内部维护修改时间等信息
 	Update(ctx context.Context, req Runner) (int64, error)
+	// Delete 根据自增或逻辑 ID 删除对应的执行器存盘文档
 	Delete(ctx context.Context, id int64) (int64, error)
-	Detail(ctx context.Context, id int64) (Runner, error)
-	ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error)
-	Count(ctx context.Context) (int64, error)
-	FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error)
+	// FindById 根据逻辑 ID 从数据库加载执行器文档实体
+	FindById(ctx context.Context, id int64) (Runner, error)
+	// List 返回根据时间戳等规则排序的执行器分页文档列表
+	List(ctx context.Context, offset, limit int64, keyword, runMode string) ([]Runner, error)
+	// Count 统计数据库中当前有效的执行器总文档数
+	Count(ctx context.Context, keyword, runMode string) (int64, error)
+	// FindByCodebookUidAndTag 通过参数 UID 和内部 tags 匹配查找对应的执行器文档
+	FindByCodebookUidAndTag(ctx context.Context, codebookUid string, tag string) (Runner, error)
+	// ListByCodebookUid 查出关联到对应独立脚本 UID 的所有挂载执行器文档节点
+	ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error)
+	// CountByCodebookUid 统计通过脚本 UID 获取的具有承载特性的数据量
+	CountByCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error)
+	// ListExcludeCodebookUid 用以返回过滤掉指定脚本 UID 后剩余可用的那些备选执行器列表
+	ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error)
+	// CountExcludeCodebookUid 统计未关联某特征 UID 剩余执行器的池大小
+	CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error)
+	// ListByCodebookUids 通过脚本 UID 列表，用 $in 批量获取其对应的执行器文档
 	ListByCodebookUids(ctx context.Context, codebookUids []string) ([]Runner, error)
+	// ListByIds 使用给定的指定 ID 列表过滤拉取所有的关联文档
 	ListByIds(ctx context.Context, ids []int64) ([]Runner, error)
-	ListTagsPipelineByCodebookUid(ctx context.Context) ([]RunnerPipeline, error)
+	// AggregateTags 利用 Mongo pipeline 等方式聚合每个脚本绑定的节点和队列标记
+	AggregateTags(ctx context.Context) ([]RunnerPipeline, error)
 }
 
 func NewRunnerDAO(db *mongox.Mongo) RunnerDAO {
@@ -71,7 +91,105 @@ func (dao *runnerDAO) ListByCodebookUids(ctx context.Context, codebookUids []str
 	return result, nil
 }
 
-func (dao *runnerDAO) Detail(ctx context.Context, id int64) (Runner, error) {
+func (dao *runnerDAO) ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"codebook_uid": codebookUid}
+	if keyword != "" {
+		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
+	}
+	if runMode != "" {
+		filter["run_mode"] = runMode
+	}
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("按UID查询错误: %w", err)
+	}
+
+	var result []Runner
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *runnerDAO) CountByCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"codebook_uid": codebookUid}
+	if keyword != "" {
+		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
+	}
+	if runMode != "" {
+		filter["run_mode"] = runMode
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("按UID计数错误: %w", err)
+	}
+
+	return count, nil
+}
+
+func (dao *runnerDAO) ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"codebook_uid": bson.M{"$ne": codebookUid}}
+	if keyword != "" {
+		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
+	}
+	if runMode != "" {
+		filter["run_mode"] = runMode
+	}
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	defer cursor.Close(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("排除UID查询错误: %w", err)
+	}
+
+	var result []Runner
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
+func (dao *runnerDAO) CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error) {
+	col := dao.db.Collection(RunnerCollection)
+	filter := bson.M{"codebook_uid": bson.M{"$ne": codebookUid}}
+	if keyword != "" {
+		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
+	}
+	if runMode != "" {
+		filter["run_mode"] = runMode
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("排除UID计数错误: %w", err)
+	}
+
+	return count, nil
+}
+
+func (dao *runnerDAO) FindById(ctx context.Context, id int64) (Runner, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{"id": id}
 
@@ -101,8 +219,11 @@ func (dao *runnerDAO) Update(ctx context.Context, req Runner) (int64, error) {
 		"$set": bson.M{
 			"name":            req.Name,
 			"codebook_secret": req.CodebookSecret,
-			"worker_name":     req.WorkerName,
-			"topic":           req.Topic,
+			"run_mode":        req.RunMode,
+			"worker_name":     req.Worker.WorkerName,
+			"topic":           req.Worker.Topic,
+			"service_name":    req.Execute.ServiceName,
+			"handler":         req.Execute.Handler,
 			"tags":            req.Tags,
 			"desc":            req.Desc,
 			"variables":       req.Variables,
@@ -118,7 +239,7 @@ func (dao *runnerDAO) Update(ctx context.Context, req Runner) (int64, error) {
 	return count.ModifiedCount, nil
 }
 
-func (dao *runnerDAO) FindByCodebookUid(ctx context.Context, codebookUid string, tag string) (Runner, error) {
+func (dao *runnerDAO) FindByCodebookUidAndTag(ctx context.Context, codebookUid string, tag string) (Runner, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{}
 	filter["codebook_uid"] = codebookUid
@@ -134,7 +255,7 @@ func (dao *runnerDAO) FindByCodebookUid(ctx context.Context, codebookUid string,
 	return result, nil
 }
 
-func (dao *runnerDAO) CreateRunner(ctx context.Context, r Runner) (int64, error) {
+func (dao *runnerDAO) Create(ctx context.Context, r Runner) (int64, error) {
 	r.Id = dao.db.GetIdGenerator(RunnerCollection)
 	col := dao.db.Collection(RunnerCollection)
 	now := time.Now()
@@ -148,9 +269,15 @@ func (dao *runnerDAO) CreateRunner(ctx context.Context, r Runner) (int64, error)
 	return r.Id, nil
 }
 
-func (dao *runnerDAO) ListRunner(ctx context.Context, offset, limit int64) ([]Runner, error) {
+func (dao *runnerDAO) List(ctx context.Context, offset, limit int64, keyword, runMode string) ([]Runner, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{}
+	if keyword != "" {
+		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
+	}
+	if runMode != "" {
+		filter["run_mode"] = runMode
+	}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
@@ -173,11 +300,17 @@ func (dao *runnerDAO) ListRunner(ctx context.Context, offset, limit int64) ([]Ru
 	return result, nil
 }
 
-func (dao *runnerDAO) Count(ctx context.Context) (int64, error) {
+func (dao *runnerDAO) Count(ctx context.Context, keyword, runMode string) (int64, error) {
 	col := dao.db.Collection(RunnerCollection)
-	filer := bson.M{}
+	filter := bson.M{}
+	if keyword != "" {
+		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
+	}
+	if runMode != "" {
+		filter["run_mode"] = runMode
+	}
 
-	count, err := col.CountDocuments(ctx, filer)
+	count, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -185,15 +318,15 @@ func (dao *runnerDAO) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (dao *runnerDAO) ListTagsPipelineByCodebookUid(ctx context.Context) ([]RunnerPipeline, error) {
+func (dao *runnerDAO) AggregateTags(ctx context.Context) ([]RunnerPipeline, error) {
 	col := dao.db.Collection(RunnerCollection)
 	pipeline := mongo.Pipeline{
-		{{"$group", bson.D{
-			{"_id", "$codebook_uid"},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$codebook_uid"},
 			// 使用 $push 累加器将选择的字段添加到 runners 数组中
-			{"runner_tags", bson.D{{"$push", bson.D{
-				{"tags", "$tags"},
-				{"topic", "$topic"},
+			{Key: "runner_tags", Value: bson.D{{Key: "$push", Value: bson.D{
+				{Key: "tags", Value: "$tags"},
+				{Key: "topic", Value: "$topic"},
 			}}}},
 		}}},
 	}
@@ -215,19 +348,32 @@ func (dao *runnerDAO) ListTagsPipelineByCodebookUid(ctx context.Context) ([]Runn
 	return result, nil
 }
 
+type Worker struct {
+	WorkerName string `bson:"worker_name"`
+	Topic      string `bson:"topic"`
+}
+
+type Execute struct {
+	ServiceName string `bson:"service_name"`
+	Handler     string `bson:"handler"`
+}
+
 type Runner struct {
-	Id             int64       `bson:"id"`
-	Name           string      `bson:"name"`
-	CodebookUid    string      `bson:"codebook_uid"`
-	CodebookSecret string      `bson:"codebook_secret"`
-	WorkerName     string      `bson:"worker_name"`
-	Topic          string      `bson:"topic"`
-	Tags           []string    `bson:"tags"`
-	Action         uint8       `bson:"action"`
-	Desc           string      `bson:"desc"`
-	Variables      []Variables `bson:"variables"`
-	Ctime          int64       `bson:"ctime"`
-	Utime          int64       `bson:"utime"`
+	Id             int64  `bson:"id"`
+	Name           string `bson:"name"`
+	CodebookUid    string `bson:"codebook_uid"`
+	CodebookSecret string `bson:"codebook_secret"`
+	RunMode        string `bson:"run_mode"`
+	// Worker 和 Execute 采用 bson:",inline" 模式平铺写入 MongoDB，
+	// 存储时字段在文档根层（如 worker_name、topic），Go 代码中依然以 r.Worker.WorkerName 访问
+	Worker    Worker      `bson:",inline"`
+	Execute   Execute     `bson:",inline"`
+	Tags      []string    `bson:"tags"`
+	Action    uint8       `bson:"action"`
+	Desc      string      `bson:"desc"`
+	Variables []Variables `bson:"variables"`
+	Ctime     int64       `bson:"ctime"`
+	Utime     int64       `bson:"utime"`
 }
 
 type Variables struct {

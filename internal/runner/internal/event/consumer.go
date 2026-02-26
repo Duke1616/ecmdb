@@ -69,7 +69,7 @@ func (c *TaskRunnerConsumer) Consume(ctx context.Context) error {
 	}
 
 	// 注册服务
-	if _, err = c.svc.Register(ctx, c.toDomain(evt)); err != nil {
+	if _, err = c.svc.Create(ctx, c.toDomain(evt)); err != nil {
 		slog.Error("runner 注册失败", err)
 	}
 
@@ -84,10 +84,14 @@ func (c *TaskRunnerConsumer) toDomain(req TaskRunnerEvent) domain.Runner {
 	return domain.Runner{
 		CodebookUid:    req.CodebookUid,
 		CodebookSecret: req.CodebookSecret,
-		WorkerName:     req.WorkerName,
-		Name:           req.Name,
-		Tags:           req.Tags,
-		Desc:           req.Desc,
-		Action:         domain.Action(req.Action),
+		Worker: &domain.Worker{
+			WorkerName: req.WorkerName,
+			Topic:      req.Topic,
+		},
+		Name:    req.Name,
+		Tags:    req.Tags,
+		Desc:    req.Desc,
+		RunMode: domain.RunModeWorker,
+		Action:  domain.Action(req.Action),
 	}
 }

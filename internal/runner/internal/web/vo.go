@@ -17,8 +17,9 @@ type RegisterRunnerReq struct {
 	Name           string      `json:"name"`
 	CodebookUid    string      `json:"codebook_uid"`
 	CodebookSecret string      `json:"codebook_secret"`
-	WorkerName     string      `json:"worker_name"`
-	Topic          string      `json:"topic"`
+	RunMode        string      `json:"run_mode"`
+	Worker         *Worker     `json:"worker,omitempty"`
+	Execute        *Execute    `json:"execute,omitempty"`
 	Tags           []string    `json:"tags"`
 	Desc           string      `json:"desc"`
 	Variables      []Variables `json:"variables"`
@@ -29,8 +30,9 @@ type UpdateRunnerReq struct {
 	Name           string      `json:"name"`
 	CodebookUid    string      `json:"codebook_uid"`
 	CodebookSecret string      `json:"codebook_secret"`
-	WorkerName     string      `json:"worker_name"`
-	Topic          string      `json:"topic"`
+	RunMode        string      `json:"run_mode"`
+	Worker         *Worker     `json:"worker,omitempty"`
+	Execute        *Execute    `json:"execute,omitempty"`
 	Tags           []string    `json:"tags"`
 	Desc           string      `json:"desc"`
 	Variables      []Variables `json:"variables"`
@@ -38,6 +40,13 @@ type UpdateRunnerReq struct {
 
 type ListByWorkflowIdReq struct {
 	WorkflowId int64 `json:"workflow_id"`
+}
+
+type ListByCodebookIdReq struct {
+	Page
+	CodebookUid string `json:"codebook_uid"`
+	Keyword     string `json:"keyword"`
+	RunMode     string `json:"run_mode"`
 }
 
 type DeleteRunnerReq struct {
@@ -60,13 +69,27 @@ type Page struct {
 
 type ListRunnerReq struct {
 	Page
+	Keyword string `json:"keyword"`
+	RunMode string `json:"run_mode"`
+}
+
+type Worker struct {
+	WorkerName string `json:"worker_name"`
+	Topic      string `json:"topic"`
+}
+
+type Execute struct {
+	ServiceName string `json:"service_name"`
+	Handler     string `json:"handler"`
 }
 
 type Runner struct {
 	Id          int64       `json:"id"`
 	Name        string      `json:"name"`
+	RunMode     string      `json:"run_mode"`
 	CodebookUid string      `json:"codebook_uid"`
-	WorkerName  string      `json:"worker_name"`
+	Worker      *Worker     `json:"worker,omitempty"`
+	Execute     *Execute    `json:"execute,omitempty"`
 	Tags        []string    `json:"tags"`
 	Variables   []Variables `json:"variables"`
 	Desc        string      `json:"desc"`

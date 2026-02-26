@@ -438,7 +438,7 @@ func (s *service) getScheduleRunner(ctx context.Context, automation easyflow.Aut
 	}
 
 	// 静态路由：根据明确指定的标签 (比如 default 等) 查找对应的 Worker
-	return s.runnerSvc.FindByCodebookUid(ctx, automation.CodebookUid, automation.Tag)
+	return s.runnerSvc.FindByCodebookUidAndTag(ctx, automation.CodebookUid, automation.Tag)
 }
 
 func (s *service) autoDiscoverRunner(ctx context.Context, automation easyflow.AutomationProperty,
@@ -484,11 +484,23 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 	codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
 	status domain.Status, timing domain.Timing, automation easyflow.AutomationProperty) domain.Task {
 
+	workerName := ""
+	topic := ""
+
+	if runnerResp.IsModeWorker() {
+		workerName = runnerResp.Worker.WorkerName
+		topic = runnerResp.Worker.Topic
+	} else {
+		workerName = runnerResp.Execute.Handler
+		topic = runnerResp.Execute.ServiceName
+	}
+
 	return domain.Task{
 		// 可选字段
 		Id:            task.Id,
+		WorkerName:    workerName,
+		Topic:         topic,
 		ProcessInstId: task.ProcessInstId,
-		WorkerName:    runnerResp.WorkerName,
 		WorkflowId:    flow.Id,
 		CodebookUid:   codebookResp.Identifier,
 		CodebookName:  codebookResp.Name,
@@ -496,7 +508,6 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 		// 必填字段
 		OrderId:  orderResp.Id,
 		Code:     codebookResp.Code,
-		Topic:    runnerResp.Topic,
 		Language: codebookResp.Language,
 		Status:   status,
 		Args:     args,

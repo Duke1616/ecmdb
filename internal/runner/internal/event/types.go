@@ -8,6 +8,7 @@ type TaskRunnerEvent struct {
 	CodebookUid    string
 	CodebookSecret string
 	WorkerName     string
+	Topic          string
 	Name           string
 	Tags           []string
 	Desc           string

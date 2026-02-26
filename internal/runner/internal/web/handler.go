@@ -44,22 +44,58 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/delete", ginx.WrapBody[DeleteRunnerReq](h.DeleteRunner))
 	g.POST("/list/by_workflow_id", ginx.WrapBody[ListByWorkflowIdReq](h.ListByWorkflowId))
 	g.POST("/list/by_ids", ginx.WrapBody[ListRunnerByIds](h.ListByIds))
+	g.POST("/list/by_codebook_uid", ginx.WrapBody[ListByCodebookIdReq](h.ListByCodebookId))
+	g.POST("/list/exclude_codebook_uid", ginx.WrapBody[ListByCodebookIdReq](h.ListExcludeCodebookUid))
 }
 
 func (h *Handler) Register(ctx *gin.Context, req RegisterRunnerReq) (ginx.Result, error) {
 	// 数据校验
-	err := h.validation(ctx, req.CodebookUid, req.CodebookSecret, req.WorkerName)
+	err := h.validation(ctx, req)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	// 注册
-	_, err = h.svc.Register(ctx, h.toDomain(req))
+	_, err = h.svc.Create(ctx, h.toDomain(req))
 	if err != nil {
 		return validationErrorResult, err
 	}
 	return ginx.Result{
 		Msg: "注册成功",
+	}, nil
+}
+
+func (h *Handler) ListByCodebookId(ctx *gin.Context, req ListByCodebookIdReq) (ginx.Result, error) {
+	rs, total, err := h.svc.ListByCodebookUid(ctx, req.Offset, req.Limit, req.CodebookUid, req.Keyword, req.RunMode)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询 runner 列表成功",
+		Data: RetrieveWorkers{
+			Total: total,
+			Runners: slice.Map(rs, func(idx int, src domain.Runner) Runner {
+				return h.toRunnerVo(src)
+			}),
+		},
+	}, nil
+}
+
+func (h *Handler) ListExcludeCodebookUid(ctx *gin.Context, req ListByCodebookIdReq) (ginx.Result, error) {
+	rs, total, err := h.svc.ListExcludeCodebookUid(ctx, req.Offset, req.Limit, req.CodebookUid, req.Keyword, req.RunMode)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "查询 runner 列表成功",
+		Data: RetrieveWorkers{
+			Total: total,
+			Runners: slice.Map(rs, func(idx int, src domain.Runner) Runner {
+				return h.toRunnerVo(src)
+			}),
+		},
 	}, nil
 }
 
@@ -136,7 +172,7 @@ func (h *Handler) DeleteRunner(ctx *gin.Context, req DeleteRunnerReq) (ginx.Resu
 }
 
 func (h *Handler) ListRunner(ctx *gin.Context, req ListRunnerReq) (ginx.Result, error) {
-	ws, total, err := h.svc.ListRunner(ctx, req.Offset, req.Limit)
+	ws, total, err := h.svc.List(ctx, req.Offset, req.Limit, req.Keyword, req.RunMode)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -153,7 +189,13 @@ func (h *Handler) ListRunner(ctx *gin.Context, req ListRunnerReq) (ginx.Result, 
 
 func (h *Handler) UpdateRunner(ctx *gin.Context, req UpdateRunnerReq) (ginx.Result, error) {
 	// 数据校验
-	err := h.validation(ctx, req.CodebookUid, req.CodebookSecret, req.WorkerName)
+	err := h.validation(ctx, RegisterRunnerReq{
+		RunMode:        req.RunMode,
+		Worker:         req.Worker,
+		Execute:        req.Execute,
+		CodebookUid:    req.CodebookUid,
+		CodebookSecret: req.CodebookSecret,
+	})
 	if err != nil {
 		return validationErrorResult, err
 	}
@@ -173,24 +215,26 @@ func (h *Handler) UpdateRunner(ctx *gin.Context, req UpdateRunnerReq) (ginx.Resu
 	}, nil
 }
 
-func (h *Handler) validation(ctx context.Context, codebookUid, codebookSecret, workerName string) error {
+func (h *Handler) validation(ctx context.Context, req RegisterRunnerReq) error {
 	//  验证代码模版密钥是否正确
-	exist, err := h.codebookSvc.ValidationSecret(ctx, codebookUid, codebookSecret)
+	exist, err := h.codebookSvc.ValidationSecret(ctx, req.CodebookUid, req.CodebookSecret)
 	if exist != true {
 		return err
 	}
 
 	// 验证节点是否存在
-	exist, err = h.workerSvc.ValidationByName(ctx, workerName)
-	if exist != true {
-		return err
+	if req.RunMode == "worker" && req.Worker != nil {
+		exist, err = h.workerSvc.ValidationByName(ctx, req.Worker.WorkerName)
+		if exist != true {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
-	tags, err := h.svc.ListTagsPipelineByCodebookUid(ctx)
+	tags, err := h.svc.AggregateTags(ctx)
 	if err != nil {
 		return ginx.Result{}, err
 	}
@@ -222,20 +266,34 @@ func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
 }
 
 func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
-	return domain.Runner{
+	r := domain.Runner{
 		Name:           req.Name,
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
-		Topic:          req.Topic,
-		WorkerName:     req.WorkerName,
 		Tags:           req.Tags,
+		RunMode:        domain.RunMode(req.RunMode),
 		Variables:      h.toVariablesDomain(req.Variables),
 		Action:         domain.Action(REGISTER),
 	}
+
+	if req.Worker != nil {
+		r.Worker = &domain.Worker{
+			WorkerName: req.Worker.WorkerName,
+			Topic:      req.Worker.Topic,
+		}
+	}
+	if req.Execute != nil {
+		r.Execute = &domain.Execute{
+			ServiceName: req.Execute.ServiceName,
+			Handler:     req.Execute.Handler,
+		}
+	}
+
+	return r
 }
 
 func (h *Handler) toUpdateDomain(ctx context.Context, req UpdateRunnerReq) (domain.Runner, error) {
-	runner, err := h.svc.Detail(ctx, req.Id)
+	runner, err := h.svc.FindById(ctx, req.Id)
 	if err != nil {
 		return domain.Runner{}, err
 	}
@@ -244,17 +302,31 @@ func (h *Handler) toUpdateDomain(ctx context.Context, req UpdateRunnerReq) (doma
 		return element.Key
 	})
 
-	return domain.Runner{
+	r := domain.Runner{
 		Id:             req.Id,
 		Name:           req.Name,
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
-		WorkerName:     req.WorkerName,
-		Topic:          req.Topic,
 		Tags:           req.Tags,
+		RunMode:        domain.RunMode(req.RunMode),
 		Variables:      h.toUpdateVariablesDomain(oldVars, req.Variables),
 		Action:         domain.Action(REGISTER),
-	}, nil
+	}
+
+	if req.Worker != nil {
+		r.Worker = &domain.Worker{
+			WorkerName: req.Worker.WorkerName,
+			Topic:      req.Worker.Topic,
+		}
+	}
+	if req.Execute != nil {
+		r.Execute = &domain.Execute{
+			ServiceName: req.Execute.ServiceName,
+			Handler:     req.Execute.Handler,
+		}
+	}
+
+	return r, nil
 }
 
 func (h *Handler) toUpdateVariablesDomain(oldVars map[string]domain.Variables, req []Variables) []domain.Variables {
@@ -303,9 +375,10 @@ func (h *Handler) toVariablesDomain(req []Variables) []domain.Variables {
 }
 
 func (h *Handler) toRunnerVo(req domain.Runner) Runner {
-	return Runner{
+	r := Runner{
 		Id:          req.Id,
 		Name:        req.Name,
+		RunMode:     req.RunMode.ToString(),
 		CodebookUid: req.CodebookUid,
 		Tags:        req.Tags,
 		Desc:        req.Desc,
@@ -322,6 +395,19 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 				Value:  src.Value,
 			}
 		}),
-		WorkerName: req.WorkerName,
 	}
+
+	if req.Worker != nil {
+		r.Worker = &Worker{
+			WorkerName: req.Worker.WorkerName,
+			Topic:      req.Worker.Topic,
+		}
+	}
+	if req.Execute != nil {
+		r.Execute = &Execute{
+			ServiceName: req.Execute.ServiceName,
+			Handler:     req.Execute.Handler,
+		}
+	}
+	return r
 }

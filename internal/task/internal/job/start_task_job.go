@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/ecodeclub/ekit/retry"
 	"github.com/gotomicro/ego/core/elog"
@@ -41,33 +41,39 @@ func (c *StartTaskJob) Name() string {
 
 func (c *StartTaskJob) Run(ctx context.Context) error {
 	for {
-		tasks, total, err := c.svc.ListTaskByStatus(ctx, 0, c.limit, domain.WAITING.ToUint8())
+		tasks, err := c.svc.ListReadyTasks(ctx, c.limit)
 		if err != nil {
-			return fmt.Errorf("获取任务列表失败: %w", err)
+			return fmt.Errorf("捞取就绪任务失败: %w", err)
 		}
 
-		// 并行启动任务
+		// 无任务则退出本次循环
+		if len(tasks) == 0 {
+			break
+		}
+
+		// 顺序/并发由具体业务决定，这里采用并发启动以提升吞吐
 		for _, task := range tasks {
 			go func(t domain.Task) {
-				err = c.start(ctx, t.ProcessInstId, t.CurrentNodeId) // 重新声明局部 err
+				// 独立 Context 避免受 Job 周期 Context 过期影响
+				err = c.start(context.Background(), t.Id)
 				if err != nil {
-					c.logger.Error("自动化任务启动失败", elog.FieldErr(err), elog.Int64("task_id", t.Id))
+					c.logger.Error("就绪任务启动失败", elog.FieldErr(err), elog.Int64("taskId", t.Id))
 				}
 			}(task)
 		}
 
+		// 如果捞取的任务少于 limit，说明当前周期已处理完
 		if len(tasks) < int(c.limit) {
 			break
 		}
 
-		if c.limit >= total {
-			break
-		}
+		// 避免过于频繁的循环，稍微喘息
+		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
 }
 
-func (c *StartTaskJob) start(ctx context.Context, processInstId int, currentNodeId string) error {
+func (c *StartTaskJob) start(ctx context.Context, id int64) error {
 	strategy, er := retry.NewExponentialBackoffRetryStrategy(c.initialInterval, c.maxInterval, c.maxRetries)
 	if er != nil {
 		return er
@@ -77,15 +83,15 @@ func (c *StartTaskJob) start(ctx context.Context, processInstId int, currentNode
 	for {
 		d, ok := strategy.Next()
 		if !ok {
-			c.logger.Warn("处理执行任务超过最大重试次数",
-				elog.Any("processInstId", processInstId),
-				elog.Any("currentNodeId", currentNodeId),
+			c.logger.Warn("启动就绪任务超过最大重试次数",
+				elog.Int64("taskId", id),
 			)
 			return fmt.Errorf("超过最大重试次数")
 		}
 
-		err = c.svc.StartTask(ctx, processInstId, currentNodeId)
+		err = c.svc.StartTask(ctx, id)
 		if err != nil {
+			c.logger.Warn("任务启动重试中", elog.Int64("taskId", id), elog.FieldErr(err))
 			time.Sleep(d)
 			continue
 		}

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
@@ -32,7 +32,7 @@ func NewKafkaService(workerSvc worker.Service, crypto cryptox.Crypto) TaskDispat
 }
 
 func (e *kafkaService) Dispatch(ctx context.Context, task domain.Task) error {
-	if task.IsTiming && task.Timing.Stime > time.Now().UnixMilli() {
+	if task.IsTiming && task.ScheduledTime > time.Now().UnixMilli() {
 		return e.scheduleTimingTask(ctx, task)
 	}
 
@@ -51,7 +51,7 @@ func (e *kafkaService) immediateDispatch(ctx context.Context, task domain.Task) 
 }
 
 func (e *kafkaService) scheduleTimingTask(ctx context.Context, task domain.Task) error {
-	jobTime := time.UnixMilli(task.Timing.Stime).Format("05 04 15 02 01 ?")
+	jobTime := time.UnixMilli(task.ScheduledTime).Format("05 04 15 02 01 ?")
 	_, err := e.cron.AddFunc(jobTime, func() {
 		if err := e.immediateDispatch(ctx, task); err != nil {
 			e.logger.Error("Worker 定时任务执行失败", elog.FieldErr(err), elog.Int64("taskId", task.Id))

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	executorv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
@@ -207,16 +207,16 @@ func (h *Handler) Retry(ctx *gin.Context, req RetryReq) (ginx.Result, error) {
 func (h *Handler) toTaskVo(req domain.Task) Task {
 	args, _ := json.Marshal(req.Args)
 
-	// NOTE: 定时任务以 Timing.Stime 作为计划开始时间；普通任务则以 Utime 兜底
-	startTime := time.UnixMilli(req.Utime).Format("2006-01-02 15:04:05")
+	// NOTE: 定时任务以 ScheduledTime 作为计划开始时间；普通任务则以 Utime 兜底
+	scheduledTime := time.UnixMilli(req.Utime).Format("2006-01-02 15:04:05")
 	if req.IsTiming {
-		startTime = time.UnixMilli(req.Timing.Stime).Format("2006-01-02 15:04:05")
+		scheduledTime = time.UnixMilli(req.ScheduledTime).Format("2006-01-02 15:04:05")
 	}
 
 	// NOTE: 真实的任务执行开始/结束时间存储在 StartTime、EndTime 字段，值为 0 表示尚未执行
-	var realStartTime, endTime string
+	var startTime, endTime string
 	if req.StartTime > 0 {
-		realStartTime = time.UnixMilli(req.StartTime).Format("2006-01-02 15:04:05")
+		startTime = time.UnixMilli(req.StartTime).Format("2006-01-02 15:04:05")
 	}
 	if req.EndTime > 0 {
 		endTime = time.UnixMilli(req.EndTime).Format("2006-01-02 15:04:05")
@@ -234,16 +234,12 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		Result:          req.Result,
 		Args:            string(args),
 		IsTiming:        req.IsTiming,
+		ScheduledTime:   scheduledTime,
 		StartTime:       startTime,
 		EndTime:         endTime,
 		RetryCount:      req.RetryCount,
 		TriggerPosition: req.TriggerPosition,
 		Variables:       desensitization(req.Variables),
-	}
-
-	// NOTE: 引用 realStartTime 作为真实调度开始时间覆盖计划时间（若存在）
-	if realStartTime != "" {
-		taskVO.StartTime = realStartTime
 	}
 
 	if req.Worker != nil {

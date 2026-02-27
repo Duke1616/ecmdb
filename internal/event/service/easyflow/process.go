@@ -90,12 +90,24 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 
 	e.logger.Debug("自动化任务触发, 开始创建任务", elog.Int("ProcessInstanceID", ProcessInstanceID),
 		elog.String("current_node_id", CurrentNode.NodeID))
+
+	// 获取流程变量中记录的工单ID
+	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, ProcessInstanceID)
+	if err != nil {
+		return err
+	}
+
+	// 转换为 int64
+	orderID, err := strconv.ParseInt(orderId, 10, 64)
+	if err != nil {
+		return err
+	}
+
 	// 使用goroutine执行任务创建，并等待其完成
-	var err error
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		_, err = e.taskSvc.CreateTask(ctx, ProcessInstanceID, CurrentNode.NodeID)
+		_, err = e.taskSvc.CreateTask(ctx, orderID, ProcessInstanceID, CurrentNode.NodeID)
 		if err != nil {
 			e.logger.Error("创建自动化任务失败",
 				elog.Any("流程ID", ProcessInstanceID),
@@ -103,7 +115,6 @@ func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model
 				elog.Any("错误信息", err),
 			)
 		}
-
 	}()
 
 	// 等待goroutine完成或超时

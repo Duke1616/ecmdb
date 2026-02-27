@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -15,7 +15,7 @@ const TaskCollection = "c_task"
 
 type TaskDAO interface {
 	// CreateTask 创建一个新的任务入库，内部会自动生成 Ctime 和 Utime
-	CreateTask(ctx context.Context, t Task) (int64, error)
+	CreateTask(ctx context.Context, t Task) (Task, error)
 
 	// FindByProcessInstId 根据流程实例 ID 和节点 ID 查询对应的任务
 	FindByProcessInstId(ctx context.Context, processInstId int, nodeId string) (Task, error)
@@ -58,6 +58,9 @@ type TaskDAO interface {
 
 	// FindTaskResult 根据流程实例获取对应节点的任务结果记录
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (Task, error)
+
+	// ListReadyTasks 捞取已经准备好可以执行的 WAITING 任务（定时任务需满足执行时间）
+	ListReadyTasks(ctx context.Context, limit int64) ([]Task, error)
 
 	// ListTaskByInstanceId 根据工作流实例 ID 批量查阅此实例关联的所有任务分页列表
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]Task, error)
@@ -324,12 +327,8 @@ func (dao *taskDAO) UpdateTask(ctx context.Context, t Task) (int64, error) {
 			"external_id":      t.ExternalId,
 			"trigger_position": t.TriggerPosition,
 			"is_timing":        t.IsTiming,
-			"timing": bson.M{
-				"stime":    t.Timing.Stime,
-				"unit":     t.Timing.Unit,
-				"quantity": t.Timing.Quantity,
-			},
-			"utime": time.Now().UnixMilli(),
+			"scheduled_time":   t.ScheduledTime,
+			"utime":            time.Now().UnixMilli(),
 		},
 	}
 	filter := bson.M{"id": t.Id}
@@ -376,7 +375,7 @@ func (dao *taskDAO) UpdateTaskStatus(ctx context.Context, t Task) (int64, error)
 	return count.ModifiedCount, nil
 }
 
-func (dao *taskDAO) CreateTask(ctx context.Context, t Task) (int64, error) {
+func (dao *taskDAO) CreateTask(ctx context.Context, t Task) (Task, error) {
 	now := time.Now()
 	t.Ctime, t.Utime = now.UnixMilli(), now.UnixMilli()
 	t.MarkPassed = false
@@ -385,10 +384,10 @@ func (dao *taskDAO) CreateTask(ctx context.Context, t Task) (int64, error) {
 
 	_, err := col.InsertOne(ctx, t)
 	if err != nil {
-		return 0, fmt.Errorf("插入数据错误: %w", err)
+		return Task{}, fmt.Errorf("插入数据错误: %w", err)
 	}
 
-	return t.Id, nil
+	return t, nil
 }
 
 func (dao *taskDAO) ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error) {
@@ -511,7 +510,7 @@ type Task struct {
 	Ctime           int64                  `bson:"ctime"`
 	Utime           int64                  `bson:"utime"`
 	IsTiming        bool                   `bson:"is_timing"`
-	Timing          Timing                 `bson:"timing"`
+	ScheduledTime   int64                  `bson:"scheduled_time"`
 	StartTime       int64                  `bson:"start_time"`
 	EndTime         int64                  `bson:"end_time"`
 	RetryCount      int                    `bson:"retry_count"`
@@ -527,14 +526,40 @@ type Execute struct {
 	Handler     string `bson:"handler"`
 }
 
-type Timing struct {
-	Stime    int64 `bson:"stime"`
-	Unit     uint8 `bson:"unit"`
-	Quantity int64 `bson:"quantity"`
-}
-
 type Variables struct {
 	Key    string `bson:"key"`
 	Value  string `bson:"value"`
 	Secret bool   `bson:"secret"`
+}
+
+func (dao *taskDAO) ListReadyTasks(ctx context.Context, limit int64) ([]Task, error) {
+	col := dao.db.Collection(TaskCollection)
+
+	// 过滤条件：状态为 WAITING，且是定时任务，且计划执行时间已到
+	now := time.Now().UnixMilli()
+	filter := bson.M{
+		"status":         domain.WAITING,
+		"is_timing":      true,
+		"scheduled_time": bson.M{"$lte": now},
+	}
+
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: 1}}, // 按创建时间正序，先入先出
+		Limit: &limit,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var result []Task
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
 }

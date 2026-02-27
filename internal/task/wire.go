@@ -4,6 +4,7 @@ package task
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	executorv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
@@ -37,7 +38,7 @@ var ProviderSet = wire.NewSet(
 	dispatch.NewTaskDispatcher,
 	service.NewService,
 	repository.NewTaskRepository,
-	dao.NewTaskDAO,
+	InitTaskDAO,
 	scheduler.NewScheduler,
 )
 
@@ -65,6 +66,22 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module), nil
+}
+
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongox.Mongo) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitTaskDAO(db *mongox.Mongo) dao.TaskDAO {
+	InitCollectionOnce(db)
+	return dao.NewTaskDAO(db)
 }
 
 func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,

@@ -56,7 +56,7 @@ type Task struct {
 	Execute         *Execute `json:"execute,omitempty"`
 	Status          Status   `json:"status"`
 	IsTiming        bool     `json:"is_timing"`
-	Timing          Timing   `json:"timing"`
+	ScheduledTime   string   `json:"scheduled_time"`
 	StartTime       string   `json:"start_time"`
 	EndTime         string   `json:"end_time"`
 	RetryCount      int      `json:"retry_count"`
@@ -66,12 +66,6 @@ type Task struct {
 	Variables       string   `json:"variables"`
 	Result          string   `json:"result"`
 	TriggerPosition string   `json:"trigger_position"`
-}
-
-type Timing struct {
-	Stime    int64 `json:"stime"`
-	Unit     uint8 `json:"unit"`
-	Quantity int64 `json:"quantity"`
 }
 
 type RetryReq struct {

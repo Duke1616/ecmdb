@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -12,7 +12,7 @@ import (
 
 type TaskRepository interface {
 	// CreateTask 创建新的任务领域模型实例
-	CreateTask(ctx context.Context, req domain.Task) (int64, error)
+	CreateTask(ctx context.Context, req domain.Task) (domain.Task, error)
 
 	// FindByProcessInstId 根据流程实例与节点提取对应任务节点模型
 	FindByProcessInstId(ctx context.Context, processInstId int, nodeId string) (domain.Task, error)
@@ -59,6 +59,9 @@ type TaskRepository interface {
 	// FindTaskResult 请求匹配的工作流特定节点的成活结果镜像封装
 	FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error)
 
+	// ListReadyTasks 捞取已经准备好可以执行的 WAITING 任务（定时任务需满足执行时间）
+	ListReadyTasks(ctx context.Context, limit int64) ([]domain.Task, error)
+
 	// ListTaskByInstanceId 基于给定的流程树全量列出所有已触发分配的从属任务实例群落
 	ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, error)
 
@@ -83,9 +86,24 @@ func (repo *taskRepository) TotalByInstanceId(ctx context.Context, instanceId in
 func (repo *taskRepository) ListTaskByInstanceId(ctx context.Context, offset, limit int64,
 	instanceId int) ([]domain.Task, error) {
 	ts, err := repo.dao.ListTaskByInstanceId(ctx, offset, limit, instanceId)
+	if err != nil {
+		return nil, err
+	}
+
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
-	}), err
+	}), nil
+}
+
+func (repo *taskRepository) ListReadyTasks(ctx context.Context, limit int64) ([]domain.Task, error) {
+	ts, err := repo.dao.ListReadyTasks(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
+		return repo.toDomain(src)
+	}), nil
 }
 
 func (repo *taskRepository) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
@@ -146,13 +164,12 @@ func (repo *taskRepository) FindOrCreate(ctx context.Context, req domain.Task) (
 		return repo.toDomain(task), nil
 	}
 
-	taskId, err := repo.dao.CreateTask(ctx, repo.toEntity(req))
+	t, err := repo.dao.CreateTask(ctx, repo.toEntity(req))
 	if err != nil {
 		return domain.Task{}, err
 	}
 
-	req.Id = taskId
-	return req, nil
+	return repo.toDomain(t), nil
 }
 
 func (repo *taskRepository) FindByProcessInstId(ctx context.Context, processInstId int, nodeId string) (
@@ -191,8 +208,13 @@ func (repo *taskRepository) UpdateTaskStatus(ctx context.Context, req domain.Tas
 	return repo.dao.UpdateTaskStatus(ctx, repo.toUpdateEntity(req))
 }
 
-func (repo *taskRepository) CreateTask(ctx context.Context, req domain.Task) (int64, error) {
-	return repo.dao.CreateTask(ctx, repo.toEntity(req))
+func (repo *taskRepository) CreateTask(ctx context.Context, req domain.Task) (domain.Task, error) {
+	t, err := repo.dao.CreateTask(ctx, repo.toEntity(req))
+	if err != nil {
+		return domain.Task{}, err
+	}
+
+	return repo.toDomain(t), nil
 }
 
 func NewTaskRepository(dao dao.TaskDAO) TaskRepository {
@@ -230,11 +252,7 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		RunMode:         string(req.RunMode),
 		ExternalId:      req.ExternalId,
 		IsTiming:        req.IsTiming,
-		Timing: dao.Timing{
-			Stime:    req.Timing.Stime,
-			Unit:     req.Timing.Unit.ToUint8(),
-			Quantity: req.Timing.Quantity,
-		},
+		ScheduledTime:   req.ScheduledTime,
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
 			return dao.Variables{
 				Key:    src.Key,
@@ -274,11 +292,7 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		RunMode:       domain.RunMode(req.RunMode),
 		ExternalId:    req.ExternalId,
 		IsTiming:      req.IsTiming,
-		Timing: domain.Timing{
-			Stime:    req.Timing.Stime,
-			Unit:     domain.Unit(req.Timing.Unit),
-			Quantity: req.Timing.Quantity,
-		},
+		ScheduledTime: req.ScheduledTime,
 		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
 			return domain.Variables{
 				Key:    src.Key,

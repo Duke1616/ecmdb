@@ -55,13 +55,13 @@ type Task struct {
 	Status          Status
 	IsTiming        bool
 	Utime           int64
-	Timing          Timing
+	ScheduledTime   int64
 	Variables       []Variables
 	Args            map[string]interface{}
 	RunMode         RunMode
 	Worker          *Worker
 	Execute         *Execute
-	ExternalId      string // 外部任务 ID (如分布式平台生成的实例 ID)
+	ExternalId      string // 外部任务 ID (如分布式任务平台生成的实例 ID)
 	StartTime       int64  // 任务实际开始执行时间
 	EndTime         int64  // 任务完成或失败时间
 	RetryCount      int    // 自动重试次数，超过阈值后转为 BLOCKED 等待人工干预
@@ -75,28 +75,6 @@ type Worker struct {
 type Execute struct {
 	ServiceName string
 	Handler     string
-}
-
-type Unit uint8
-
-func (s Unit) ToUint8() uint8 {
-	return uint8(s)
-}
-
-const (
-	// MINUTE 分钟
-	MINUTE Unit = 1
-	// HOUR 小时
-	HOUR Unit = 2
-	// DAY 天
-	DAY Unit = 3
-)
-
-// Timing 定时执行
-type Timing struct {
-	Stime    int64
-	Unit     Unit
-	Quantity int64
 }
 
 type TaskResult struct {

@@ -12,7 +12,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/runner"
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service/dispatch"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service/scheduler"
@@ -24,12 +24,23 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type Service interface {
-	// CreateTask 仅仅做任务数据的抢占式登记创建，默认设定为等待状态
-	CreateTask(ctx context.Context, processInstId int, nodeId string) (int64, error)
+type Unit uint8
 
-	// StartTask 在节点触发时被调起，会聚合工单、工作流信息、调度 Worker 规则以驱动下层引擎开火
-	StartTask(ctx context.Context, processInstId int, nodeId string) error
+const (
+	// MINUTE 分钟
+	MINUTE Unit = 1
+	// HOUR 小时
+	HOUR Unit = 2
+	// DAY 天
+	DAY Unit = 3
+)
+
+type Service interface {
+	// CreateTask 创建任务并在 Event 触发时同步初始化（查找 Runner、计算执行时间、装填参数）
+	CreateTask(ctx context.Context, orderId int64, processInstId int, nodeId string) (domain.Task, error)
+
+	// StartTask 在节点触发时被调起，接收已经通过 CreateTask 初始化好的就绪任务跑起来
+	StartTask(ctx context.Context, id int64) error
 
 	// RetryTask 人工手动触发重试，会重置重试计数器
 	RetryTask(ctx context.Context, id int64) error
@@ -72,6 +83,9 @@ type Service interface {
 
 	// UpdateExternalId 绑定外部分布式平台的任务 ID
 	UpdateExternalId(ctx context.Context, id int64, externalId string) error
+
+	// ListReadyTasks 捞取已经准备好可以执行的 WAITING 任务（定时任务需满足执行时间）
+	ListReadyTasks(ctx context.Context, limit int64) ([]domain.Task, error)
 }
 
 type service struct {
@@ -196,15 +210,36 @@ func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.T
 	return ts, total, nil
 }
 
-func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId string) (int64, error) {
-	taskId, err := s.repo.CreateTask(ctx, domain.Task{
+func (s *service) CreateTask(ctx context.Context, orderId int64, processInstId int, nodeId string) (domain.Task, error) {
+	task, err := s.repo.CreateTask(ctx, domain.Task{
 		ProcessInstId:   processInstId,
 		TriggerPosition: domain.TriggerPositionTaskWaiting.ToString(),
 		CurrentNodeId:   nodeId,
 		Status:          domain.WAITING,
+		OrderId:         orderId,
 	})
+	if err != nil {
+		return domain.Task{}, err
+	}
 
-	return taskId, err
+	task, err = s.prepareTask(ctx, task)
+	if err != nil {
+		s.logger.Error("任务初始化准备参数失败", elog.FieldErr(err), elog.Int64("taskId", task.Id))
+		return task, err
+	}
+
+	//  如果不是定时任务，立即触发下发执行，无需等待 Job 扫描
+	if !task.IsTiming {
+		if startErr := s.StartTask(ctx, task.Id); startErr != nil {
+			s.logger.Error("即时任务自动启动失败", elog.FieldErr(startErr), elog.Int64("taskId", task.Id))
+		}
+	}
+
+	return task, err
+}
+
+func (s *service) ListReadyTasks(ctx context.Context, limit int64) ([]domain.Task, error) {
+	return s.repo.ListReadyTasks(ctx, limit)
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
@@ -226,26 +261,18 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 	}
 }
 
-func (s *service) StartTask(ctx context.Context, processInstId int, nodeId string) error {
-	// 避免并发双写和流程空洞：原子化创建或查找当前流程的任务挂载点
-	task, err := s.repo.FindOrCreate(ctx, domain.Task{
-		ProcessInstId:   processInstId,
-		CurrentNodeId:   nodeId,
-		TriggerPosition: domain.TriggerPositionReadyToStartNode.ToString(),
-		Status:          domain.WAITING,
-	})
-
+func (s *service) StartTask(ctx context.Context, id int64) error {
+	task, err := s.repo.FindById(ctx, id)
 	if err != nil {
-		s.logger.Error("获取任务工作锚点失败",
+		s.logger.Error("获取准备就绪任务详情失败",
 			elog.FieldErr(err),
-			elog.Any("流程实例ID", processInstId),
-			elog.Any("当前节点ID", nodeId),
+			elog.Int64("taskId", id),
 		)
 		return err
 	}
 
-	// 驱动其正式跑起来
-	return s.process(ctx, task)
+	// 驱动正式下发
+	return s.dispatchTask(ctx, task)
 }
 
 func (s *service) RetryTask(ctx context.Context, id int64) error {
@@ -266,7 +293,8 @@ func (s *service) RetryTask(ctx context.Context, id int64) error {
 
 	// 证明这个任务是失败的，应该重新获取数据
 	if task.OrderId == 0 {
-		return s.process(ctx, task)
+		_, err = s.prepareTask(ctx, task)
+		return err
 	}
 
 	return s.retry(ctx, task, false)
@@ -412,35 +440,44 @@ type taskProcessContext struct {
 	codebook   codebook.Codebook
 }
 
-func (s *service) process(ctx context.Context, task domain.Task) error {
+func (s *service) prepareTask(ctx context.Context, task domain.Task) (domain.Task, error) {
 	// 1. 获取并聚合所有前置运行依赖的上下文（工单、流程快照、规则、被调度的执行节点等）
 	pCtx, err := s.buildTaskProcessContext(ctx, task)
 	if err != nil {
-		return err // 内部已处理状态变迁与打点，直接冒泡报错
+		return domain.Task{}, err // 内部已处理状态变迁与打点，直接冒泡报错
 	}
 
 	// 2. 合成包含用户凭单上下文等在运行时的最终参数
 	args, err := s.assembleRuntimeArgs(ctx, pCtx.order)
 	if err != nil {
 		// 装配参数属于偏业务态的软异常或数据缺失，通常暂不强退节点状态（保持原逻辑）
-		return err
+		return domain.Task{}, err
 	}
 
-	// 3. 计算节点的触发模式（定时阻塞调度，还是立即开火）
-	status, timing := s.determineTaskStatus(pCtx.automation, pCtx.order.Data)
+	// 3. 计算预计执行时间
+	scheduledTime := time.Now().UnixMilli()
+	if pCtx.automation.IsTiming {
+		scheduledTime = s.calculateScheduledTime(pCtx.automation, pCtx.order.Data)
+	}
 
 	// 4. 将以上所有快照合并更新到该任务条目的实体存盘上
 	taskUpdate := s.prepareTaskUpdate(
 		pCtx.order, task, pCtx.flow, pCtx.codebook,
-		pCtx.runner, args, status, timing, pCtx.automation,
+		pCtx.runner, args, domain.WAITING, scheduledTime, pCtx.automation,
 	)
 
-	if _, err = s.repo.UpdateTask(ctx, taskUpdate); err != nil {
-		return err // 存盘失败抛出
+	// 修改触发位置以清晰反映定时倒计时状态
+	if pCtx.automation.IsTiming {
+		taskUpdate.TriggerPosition = fmt.Sprintf("预计 %s 触发", time.UnixMilli(scheduledTime).Format("2006-01-02 15:04:05"))
+	} else {
+		taskUpdate.TriggerPosition = domain.TriggerPositionTaskWaiting.ToString()
 	}
 
-	// 5. 最终路由分配
-	return s.dispatchTask(ctx, taskUpdate)
+	if _, err = s.repo.UpdateTask(ctx, taskUpdate); err != nil {
+		return domain.Task{}, err // 存盘失败抛出
+	}
+
+	return taskUpdate, nil
 }
 
 func (s *service) dispatchTask(ctx context.Context, task domain.Task) error {
@@ -600,7 +637,7 @@ func (s *service) autoDiscoverRunner(ctx context.Context, automation easyflow.Au
 
 func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,
 	codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
-	status domain.Status, timing domain.Timing, automation easyflow.AutomationProperty) domain.Task {
+	status domain.Status, scheduledTime int64, automation easyflow.AutomationProperty) domain.Task {
 
 	t := domain.Task{
 		Id:              task.Id,
@@ -615,7 +652,7 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 		Args:            args,
 		TriggerPosition: domain.TriggerPositionReadyToStartNode.ToString(),
 		IsTiming:        automation.IsTiming,
-		Timing:          timing,
+		ScheduledTime:   scheduledTime,
 		Variables:       s.toDomainVariables(runnerResp.Variables),
 	}
 
@@ -697,41 +734,26 @@ func (s *service) handleTaskError(ctx context.Context, taskID int64, triggerPosi
 	return err
 }
 
-func (s *service) determineTaskStatus(automation easyflow.AutomationProperty, data map[string]interface{}) (domain.Status, domain.Timing) {
-	status := domain.SCHEDULED
-	timing := domain.Timing{Stime: time.Now().UnixMilli()}
-
-	if automation.IsTiming {
-		status = domain.SCHEDULED
-		timing = s.calculateTiming(automation, data)
-	}
-	return status, timing
-}
-
-func (s *service) calculateTiming(automation easyflow.AutomationProperty, data map[string]interface{}) domain.Timing {
+func (s *service) calculateScheduledTime(automation easyflow.AutomationProperty, data map[string]interface{}) int64 {
 	if !automation.IsTiming {
-		return domain.Timing{}
+		return time.Now().UnixMilli()
 	}
 
-	timing := domain.Timing{
-		Unit:     domain.HOUR,
-		Quantity: 2,
-	}
+	var unit Unit = HOUR
+	var quantity int64 = 2
 
 	// 1. 根据执行方式初始化调度单位和时长
 	switch automation.ExecMethod {
 	case "template":
-		timing.Quantity = s.parseTemplateQuantity(automation.TemplateField, data)
+		quantity = s.parseTemplateQuantity(automation.TemplateField, data)
 	case "hand":
-		timing.Unit = domain.Unit(automation.Unit)
-		timing.Quantity = automation.Quantity
+		unit = Unit(automation.Unit)
+		quantity = automation.Quantity
 	}
 
 	// 2. 根据单位计算时差并合成最终执行毫米级时间戳
-	duration := s.calculateDuration(timing.Unit, timing.Quantity)
-	timing.Stime = time.Now().Add(duration).UnixMilli()
-
-	return timing
+	duration := s.calculateDuration(unit, quantity)
+	return time.Now().Add(duration).UnixMilli()
 }
 
 // parseTemplateQuantity 尝试从动态表单上下文中提取并转换为合法的时长 (int64)
@@ -765,13 +787,13 @@ func (s *service) parseTemplateQuantity(field string, data map[string]interface{
 }
 
 // calculateDuration 将业务域的时间单位转化为 Go 中的标准 time.Duration
-func (s *service) calculateDuration(unit domain.Unit, quantity int64) time.Duration {
+func (s *service) calculateDuration(unit Unit, quantity int64) time.Duration {
 	switch unit {
-	case domain.MINUTE:
+	case MINUTE:
 		return time.Duration(quantity) * time.Minute
-	case domain.DAY:
+	case DAY:
 		return time.Duration(quantity) * 24 * time.Hour
-	case domain.HOUR:
+	case HOUR:
 		return time.Duration(quantity) * time.Hour
 	default:
 		s.logger.Warn("未知的时间单位，按照小时进行计算", elog.Any("unit", unit))

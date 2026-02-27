@@ -13,6 +13,8 @@ const (
 	TriggerPositionReadyToStartNode      TriggerPosition = "准备启动节点"
 	TriggerPositionDispatchDelivered     TriggerPosition = "分发已送达执行端，当前任务执行中"
 	TriggerPositionRemoteSchedulerReturn TriggerPosition = "远程调度节点返回"
+	TriggerPositionTaskExecutionSuccess  TriggerPosition = "任务执行成功"
+	TriggerPositionTaskExecutionFailed   TriggerPosition = "任务执行失败"
 
 	// 重试与恢复相关
 	TriggerPositionManualRetry            TriggerPosition = "人工手动重试"

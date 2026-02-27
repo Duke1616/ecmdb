@@ -8,7 +8,7 @@ import (
 	"time"
 
 	executorv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/task/ecron"
@@ -129,14 +129,14 @@ func (c *TaskExecutionSyncJob) batchSyncTaskExecutions(ctx context.Context, task
 					Id:              t.Id,
 					Status:          domain.SUCCESS,
 					Result:          "任务执行成功",
-					TriggerPosition: domain.TriggerPositionRemoteSchedulerReturn.ToString(),
+					TriggerPosition: domain.TriggerPositionTaskExecutionSuccess.ToString(),
 				})
 			case executorv1.ExecutionStatus_FAILED, executorv1.ExecutionStatus_FAILED_RETRYABLE, executorv1.ExecutionStatus_FAILED_RESCHEDULABLE:
 				_, updateErr = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
 					Id:              t.Id,
 					Status:          domain.FAILED,
 					Result:          "任务执行失败",
-					TriggerPosition: domain.TriggerPositionRemoteSchedulerReturn.ToString(),
+					TriggerPosition: domain.TriggerPositionTaskExecutionFailed.ToString(),
 				})
 			default:
 				// 如 RUNNING, UNKNOWN 暂不更新本地状态

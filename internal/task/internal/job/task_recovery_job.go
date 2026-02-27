@@ -7,7 +7,7 @@ import (
 
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/gotomicro/ego/core/elog"
 )
@@ -43,7 +43,7 @@ func (c *TaskRecoveryJob) Run(ctx context.Context) error {
 		now := time.Now().UnixMilli()
 		for _, t := range tasks {
 			// 定时任务判定：如果当前时间还没到计划开始时间，跳过恢复（等待 StartTaskJob 正常触发）
-			if t.IsTiming && now < t.Timing.Stime {
+			if t.IsTiming && now < t.ScheduledTime {
 				continue
 			}
 

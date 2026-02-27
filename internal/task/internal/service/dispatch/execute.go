@@ -8,7 +8,7 @@ import (
 	"time"
 
 	taskv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/task/v1"
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
@@ -39,8 +39,8 @@ func (e *executeService) Dispatch(ctx context.Context, task domain.Task) error {
 	// 核心逻辑：始终生成一个明确的 Cron 点对点表达式
 	// 如果是即时任务，默认设定为 2 秒后执行（给平台预留接收处理时间）实现“立即运行”的效果
 	executeTime := time.Now().Add(time.Second * 2)
-	if task.IsTiming && task.Timing.Stime > time.Now().UnixMilli() {
-		executeTime = time.UnixMilli(task.Timing.Stime)
+	if task.IsTiming && task.ScheduledTime > time.Now().UnixMilli() {
+		executeTime = time.UnixMilli(task.ScheduledTime)
 	}
 
 	// 启动任务

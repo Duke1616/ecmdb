@@ -4,7 +4,7 @@ import (
 	"context"
 
 	taskv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/task/v1"
-	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"

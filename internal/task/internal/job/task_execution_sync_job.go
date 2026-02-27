@@ -37,8 +37,6 @@ func (c *TaskExecutionSyncJob) Name() string {
 }
 
 func (c *TaskExecutionSyncJob) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
-
 	offset := int64(0)
 	for {
 		// 分页只拉取 RUNNING 状态且属于 Execute 分布式模式的任务
@@ -53,17 +51,27 @@ func (c *TaskExecutionSyncJob) Run(ctx context.Context) error {
 			c.logger.Info("sync task execution job start", elog.Int64("total", total))
 		}
 
+		var syncTasks []domain.Task
+		var taskIds []int64
+
 		for _, task := range tasks {
-			// 只同步分布式平台执行的任务，且已经生成 external_id 的
-			if task.RunMode != domain.RunModeExecute || task.ExternalId == "" {
+			// 已经生成 external_id 的
+			if task.ExternalId == "" {
 				continue
 			}
 
-			wg.Add(1)
-			go func(t domain.Task) {
-				defer wg.Done()
-				c.syncTaskExecution(context.Background(), t)
-			}(task)
+			taskId, err1 := strconv.ParseInt(task.ExternalId, 10, 64)
+			if err1 != nil {
+				c.logger.Error("sync: 解析 external_id 失败", elog.FieldErr(err), elog.String("external_id", task.ExternalId))
+				continue
+			}
+
+			syncTasks = append(syncTasks, task)
+			taskIds = append(taskIds, taskId)
+		}
+
+		if len(taskIds) > 0 {
+			c.batchSyncTaskExecutions(ctx, taskIds, syncTasks)
 		}
 
 		if int64(len(tasks)) < c.limit {
@@ -75,68 +83,72 @@ func (c *TaskExecutionSyncJob) Run(ctx context.Context) error {
 		}
 	}
 
-	wg.Wait()
 	return nil
 }
 
-func (c *TaskExecutionSyncJob) syncTaskExecution(ctx context.Context, task domain.Task) {
-	taskId, err := strconv.ParseInt(task.ExternalId, 10, 64)
-	if err != nil {
-		c.logger.Error("sync: 解析 external_id 失败", elog.FieldErr(err), elog.String("external_id", task.ExternalId))
-		return
-	}
-
-	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+func (c *TaskExecutionSyncJob) batchSyncTaskExecutions(ctx context.Context, taskIds []int64, syncTasks []domain.Task) {
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	resp, err := c.executorSvc.ListTaskExecutions(reqCtx, &executorv1.ListTaskExecutionsRequest{
-		TaskId: taskId,
+	resp, err := c.executorSvc.BatchListTaskExecutions(reqCtx, &executorv1.BatchListTaskExecutionsRequest{
+		TaskIds: taskIds,
 	})
 	if err != nil {
-		c.logger.Error("sync: 查询远程任务执行记录失败", elog.FieldErr(err), elog.Int64("task_id", taskId))
+		c.logger.Error("sync: 批量查询远程任务执行记录失败", elog.FieldErr(err))
 		return
 	}
 
-	if len(resp.Executions) == 0 {
-		return
-	}
+	var wg sync.WaitGroup
+	for _, task := range syncTasks {
+		taskId, _ := strconv.ParseInt(task.ExternalId, 10, 64)
+		execList, ok := resp.Results[taskId]
 
-	// 取最新执行记录（通常可以依据 ID 或 StartTime 决定）
-	var latest *executorv1.TaskExecution
-	for _, exec := range resp.Executions {
-		if latest == nil || exec.Id > latest.Id {
-			latest = exec
+		if !ok || len(execList.Executions) == 0 {
+			continue
 		}
-	}
 
-	if latest == nil {
-		return
-	}
+		// 取最新执行记录
+		var latest *executorv1.TaskExecution
+		for _, exec := range execList.Executions {
+			if latest == nil || exec.Id > latest.Id {
+				latest = exec
+			}
+		}
 
-	// 根据执行节点状态来更新本地的 task
-	switch latest.Status {
-	case executorv1.ExecutionStatus_SUCCESS:
-		_, err = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			Status:          domain.SUCCESS,
-			Result:          "任务执行成功",
-			TriggerPosition: "远程调度节点返回",
-		})
-	case executorv1.ExecutionStatus_FAILED, executorv1.ExecutionStatus_FAILED_RETRYABLE, executorv1.ExecutionStatus_FAILED_RESCHEDULABLE:
-		_, err = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
-			Id:              task.Id,
-			Status:          domain.FAILED,
-			Result:          "任务执行失败",
-			TriggerPosition: "远程调度节点返回",
-		})
-	default:
-		// 如 RUNNING, UNKNOWN 暂不更新本地状态
-		return
-	}
+		if latest == nil {
+			continue
+		}
 
-	if err != nil {
-		c.logger.Error("sync: 更新本地任务状态失败", elog.FieldErr(err), elog.Int64("task_id", task.Id))
-	} else {
-		c.logger.Info("sync: 同步任务状态成功", elog.Int64("task_id", task.Id), elog.Any("status", latest.Status))
+		wg.Add(1)
+		go func(t domain.Task, latestStatus executorv1.ExecutionStatus) {
+			defer wg.Done()
+			var updateErr error
+			switch latestStatus {
+			case executorv1.ExecutionStatus_SUCCESS:
+				_, updateErr = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
+					Id:              t.Id,
+					Status:          domain.SUCCESS,
+					Result:          "任务执行成功",
+					TriggerPosition: "远程调度节点返回",
+				})
+			case executorv1.ExecutionStatus_FAILED, executorv1.ExecutionStatus_FAILED_RETRYABLE, executorv1.ExecutionStatus_FAILED_RESCHEDULABLE:
+				_, updateErr = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
+					Id:              t.Id,
+					Status:          domain.FAILED,
+					Result:          "任务执行失败",
+					TriggerPosition: "远程调度节点返回",
+				})
+			default:
+				// 如 RUNNING, UNKNOWN 暂不更新本地状态
+				return
+			}
+
+			if updateErr != nil {
+				c.logger.Error("sync: 更新本地任务状态失败", elog.FieldErr(updateErr), elog.Int64("task_id", t.Id))
+			} else {
+				c.logger.Info("sync: 同步任务状态成功", elog.Int64("task_id", t.Id), elog.Any("status", latestStatus))
+			}
+		}(task, latest.Status)
 	}
+	wg.Wait()
 }

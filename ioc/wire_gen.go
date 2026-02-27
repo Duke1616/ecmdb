@@ -223,7 +223,8 @@ func InitApp() (*App, error) {
 	startTaskJob := taskModule.StartTaskJob
 	passProcessTaskJob := taskModule.PassProcessTaskJob
 	taskExecutionSyncJob := taskModule.TaskExecutionSyncJob
-	v2 := initCronJobs(startTaskJob, passProcessTaskJob, taskExecutionSyncJob)
+	taskRecoveryJob := taskModule.TaskRecoveryJob
+	v2 := initCronJobs(startTaskJob, passProcessTaskJob, taskExecutionSyncJob, taskRecoveryJob)
 	service2 := endpointModule.Svc
 	app := &App{
 		Web:    component,

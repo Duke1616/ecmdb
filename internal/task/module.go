@@ -11,6 +11,6 @@ type Module struct {
 	c                    *event.ExecuteResultConsumer
 	StartTaskJob         *StartTaskJob
 	PassProcessTaskJob   *PassProcessTaskJob
-	RecoveryTaskJob      *RecoveryTaskJob
+	TaskRecoveryJob      *TaskRecoveryJob
 	TaskExecutionSyncJob *TaskExecutionSyncJob
 }

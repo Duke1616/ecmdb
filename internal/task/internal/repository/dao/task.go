@@ -352,6 +352,21 @@ func (dao *taskDAO) UpdateTaskStatus(ctx context.Context, t Task) (int64, error)
 			"trigger_position": t.TriggerPosition,
 		},
 	}
+
+	if t.StartTime > 0 {
+		updateDoc["$set"].(bson.M)["start_time"] = t.StartTime
+	}
+	if t.EndTime > 0 {
+		updateDoc["$set"].(bson.M)["end_time"] = t.EndTime
+	}
+	if t.RetryCount > 0 {
+		// NOTE: 使用 $inc 而非 $set，保证并发安全的原子递增
+		updateDoc["$inc"] = bson.M{"retry_count": t.RetryCount}
+	} else if t.RetryCount < 0 {
+		// NOTE: 约定传 -1 时重置为 0，用于人工手动重试场景
+		updateDoc["$set"].(bson.M)["retry_count"] = 0
+	}
+
 	filter := bson.M{"id": t.Id}
 	count, err := col.UpdateOne(ctx, filter, updateDoc)
 	if err != nil {
@@ -497,6 +512,9 @@ type Task struct {
 	Utime           int64                  `bson:"utime"`
 	IsTiming        bool                   `bson:"is_timing"`
 	Timing          Timing                 `bson:"timing"`
+	StartTime       int64                  `bson:"start_time"`
+	EndTime         int64                  `bson:"end_time"`
+	RetryCount      int                    `bson:"retry_count"`
 }
 
 type Worker struct {

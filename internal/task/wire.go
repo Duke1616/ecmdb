@@ -4,7 +4,6 @@ package task
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	executorv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
@@ -31,7 +30,6 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
-	"github.com/spf13/viper"
 )
 
 var ProviderSet = wire.NewSet(
@@ -52,7 +50,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 		ProviderSet,
 		initStartTaskJob,
 		initPassProcessTaskJob,
-		initRecoveryTaskJob,
+		initTaskRecoveryJob,
 		initTaskExecutionSyncJob,
 		initConsumer,
 		InitCrypto,
@@ -92,28 +90,9 @@ func initStartTaskJob(svc service.Service) *StartTaskJob {
 	return job.NewStartTaskJob(svc, limit, initialInterval, maxInterval, maxRetries)
 }
 
-func initRecoveryTaskJob(svc service.Service) *RecoveryTaskJob {
+func initTaskRecoveryJob(svc service.Service) *TaskRecoveryJob {
 	limit := int64(100)
-	recovery := job.NewRecoveryTaskJob(svc, limit)
-
-	type Config struct {
-		Enabled bool `mapstructure:"enabled"`
-	}
-
-	var cfg Config
-	if err := viper.UnmarshalKey("cronjob", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into structure: %v", err))
-	}
-
-	if !cfg.Enabled {
-		return recovery
-	}
-
-	go func() {
-		_ = recovery.Run(context.Background())
-	}()
-
-	return recovery
+	return job.NewTaskRecoveryJob(svc, limit)
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {

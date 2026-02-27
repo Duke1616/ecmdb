@@ -123,10 +123,16 @@ service TaskExecutionService {
   rpc ListTaskExecutions(ListTaskExecutionsRequest) returns (ListTaskExecutionsResponse);
   // 获取执行日志
   rpc GetExecutionLogs(GetExecutionLogsRequest) returns (GetExecutionLogsResponse);
+  // 批量列出任务执行记录
+  rpc BatchListTaskExecutions(BatchListTaskExecutionsRequest) returns (BatchListTaskExecutionsResponse);
 }
 
 message ListTaskExecutionsRequest {
   int64 task_id = 1;
+}
+
+message BatchListTaskExecutionsRequest {
+  repeated int64 task_ids = 1;
 }
 
 message TaskExecution {
@@ -142,6 +148,14 @@ message TaskExecution {
 
 message ListTaskExecutionsResponse {
   repeated TaskExecution executions = 1;
+}
+
+message TaskExecutionList {
+  repeated TaskExecution executions = 1;
+}
+
+message BatchListTaskExecutionsResponse {
+  map<int64, TaskExecutionList> results = 1; // key is task_id
 }
 
 message GetExecutionLogsRequest {

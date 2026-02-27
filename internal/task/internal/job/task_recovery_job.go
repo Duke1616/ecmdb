@@ -10,21 +10,25 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type RecoveryTaskJob struct {
+type TaskRecoveryJob struct {
 	svc    service.Service
 	logger *elog.Component
 	limit  int64
 }
 
-func NewRecoveryTaskJob(svc service.Service, limit int64) *RecoveryTaskJob {
-	return &RecoveryTaskJob{
+func NewTaskRecoveryJob(svc service.Service, limit int64) *TaskRecoveryJob {
+	return &TaskRecoveryJob{
 		svc:    svc,
 		logger: elog.DefaultLogger,
 		limit:  limit,
 	}
 }
 
-func (c *RecoveryTaskJob) Run(ctx context.Context) error {
+func (c *TaskRecoveryJob) Name() string {
+	return "TaskRecoveryJob"
+}
+
+func (c *TaskRecoveryJob) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	for {
@@ -38,8 +42,8 @@ func (c *RecoveryTaskJob) Run(ctx context.Context) error {
 			wg.Add(1)
 			go func(task domain.Task) {
 				defer wg.Done()
-				// 调用 service 层的重新派发，因为那里有防御锁
-				_ = c.svc.RetryTask(ctx, task.Id)
+				// 调用 service 层的自动补发逻辑，带计数上限控制
+				_ = c.svc.AutoRetryTask(ctx, task.Id)
 			}(task)
 		}
 

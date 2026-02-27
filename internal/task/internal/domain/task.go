@@ -62,6 +62,9 @@ type Task struct {
 	Worker          *Worker
 	Execute         *Execute
 	ExternalId      string // 外部任务 ID (如分布式平台生成的实例 ID)
+	StartTime       int64  // 任务实际开始执行时间
+	EndTime         int64  // 任务完成或失败时间
+	RetryCount      int    // 自动重试次数，超过阈值后转为 BLOCKED 等待人工干预
 }
 
 type Worker struct {
@@ -103,6 +106,9 @@ type TaskResult struct {
 	Result          string `json:"result"`
 	Status          Status `json:"status"`
 	time            time.Time
+	StartTime       int64
+	EndTime         int64
+	RetryCount      int // 每次重试时传 1，由 DAO 用 $inc 原子递增
 }
 
 type Variables struct {

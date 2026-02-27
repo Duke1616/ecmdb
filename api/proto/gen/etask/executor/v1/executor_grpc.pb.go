@@ -353,8 +353,9 @@ var AgentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	TaskExecutionService_ListTaskExecutions_FullMethodName = "/etask.executor.v1.TaskExecutionService/ListTaskExecutions"
-	TaskExecutionService_GetExecutionLogs_FullMethodName   = "/etask.executor.v1.TaskExecutionService/GetExecutionLogs"
+	TaskExecutionService_ListTaskExecutions_FullMethodName      = "/etask.executor.v1.TaskExecutionService/ListTaskExecutions"
+	TaskExecutionService_GetExecutionLogs_FullMethodName        = "/etask.executor.v1.TaskExecutionService/GetExecutionLogs"
+	TaskExecutionService_BatchListTaskExecutions_FullMethodName = "/etask.executor.v1.TaskExecutionService/BatchListTaskExecutions"
 )
 
 // TaskExecutionServiceClient is the client API for TaskExecutionService service.
@@ -365,6 +366,8 @@ type TaskExecutionServiceClient interface {
 	ListTaskExecutions(ctx context.Context, in *ListTaskExecutionsRequest, opts ...grpc.CallOption) (*ListTaskExecutionsResponse, error)
 	// 获取执行日志
 	GetExecutionLogs(ctx context.Context, in *GetExecutionLogsRequest, opts ...grpc.CallOption) (*GetExecutionLogsResponse, error)
+	// 批量列出任务执行记录
+	BatchListTaskExecutions(ctx context.Context, in *BatchListTaskExecutionsRequest, opts ...grpc.CallOption) (*BatchListTaskExecutionsResponse, error)
 }
 
 type taskExecutionServiceClient struct {
@@ -395,6 +398,16 @@ func (c *taskExecutionServiceClient) GetExecutionLogs(ctx context.Context, in *G
 	return out, nil
 }
 
+func (c *taskExecutionServiceClient) BatchListTaskExecutions(ctx context.Context, in *BatchListTaskExecutionsRequest, opts ...grpc.CallOption) (*BatchListTaskExecutionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchListTaskExecutionsResponse)
+	err := c.cc.Invoke(ctx, TaskExecutionService_BatchListTaskExecutions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TaskExecutionServiceServer is the server API for TaskExecutionService service.
 // All implementations must embed UnimplementedTaskExecutionServiceServer
 // for forward compatibility.
@@ -403,6 +416,8 @@ type TaskExecutionServiceServer interface {
 	ListTaskExecutions(context.Context, *ListTaskExecutionsRequest) (*ListTaskExecutionsResponse, error)
 	// 获取执行日志
 	GetExecutionLogs(context.Context, *GetExecutionLogsRequest) (*GetExecutionLogsResponse, error)
+	// 批量列出任务执行记录
+	BatchListTaskExecutions(context.Context, *BatchListTaskExecutionsRequest) (*BatchListTaskExecutionsResponse, error)
 	mustEmbedUnimplementedTaskExecutionServiceServer()
 }
 
@@ -418,6 +433,9 @@ func (UnimplementedTaskExecutionServiceServer) ListTaskExecutions(context.Contex
 }
 func (UnimplementedTaskExecutionServiceServer) GetExecutionLogs(context.Context, *GetExecutionLogsRequest) (*GetExecutionLogsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetExecutionLogs not implemented")
+}
+func (UnimplementedTaskExecutionServiceServer) BatchListTaskExecutions(context.Context, *BatchListTaskExecutionsRequest) (*BatchListTaskExecutionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchListTaskExecutions not implemented")
 }
 func (UnimplementedTaskExecutionServiceServer) mustEmbedUnimplementedTaskExecutionServiceServer() {}
 func (UnimplementedTaskExecutionServiceServer) testEmbeddedByValue()                              {}
@@ -476,6 +494,24 @@ func _TaskExecutionService_GetExecutionLogs_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TaskExecutionService_BatchListTaskExecutions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchListTaskExecutionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskExecutionServiceServer).BatchListTaskExecutions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TaskExecutionService_BatchListTaskExecutions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskExecutionServiceServer).BatchListTaskExecutions(ctx, req.(*BatchListTaskExecutionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TaskExecutionService_ServiceDesc is the grpc.ServiceDesc for TaskExecutionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -490,6 +526,10 @@ var TaskExecutionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetExecutionLogs",
 			Handler:    _TaskExecutionService_GetExecutionLogs_Handler,
+		},
+		{
+			MethodName: "BatchListTaskExecutions",
+			Handler:    _TaskExecutionService_BatchListTaskExecutions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

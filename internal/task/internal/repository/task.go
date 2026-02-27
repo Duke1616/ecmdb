@@ -208,6 +208,9 @@ func (repo *taskRepository) toUpdateEntity(req domain.TaskResult) dao.Task {
 		WantResult:      req.WantResult,
 		Status:          req.Status.ToUint8(),
 		TriggerPosition: req.TriggerPosition,
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		RetryCount:      req.RetryCount,
 	}
 }
 
@@ -239,7 +242,9 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 				Secret: src.Secret,
 			}
 		}),
-		Status: req.Status.ToUint8(),
+		Status:    req.Status.ToUint8(),
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
 	}
 
 	if req.Worker != nil {
@@ -286,6 +291,9 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		Result:     req.Result,
 		WantResult: req.WantResult,
 		Status:     domain.Status(req.Status),
+		StartTime:  req.StartTime,
+		EndTime:    req.EndTime,
+		RetryCount: req.RetryCount,
 	}
 
 	if req.RunMode == "" {

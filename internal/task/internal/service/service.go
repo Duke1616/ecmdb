@@ -31,8 +31,11 @@ type Service interface {
 	// StartTask 在节点触发时被调起，会聚合工单、工作流信息、调度 Worker 规则以驱动下层引擎开火
 	StartTask(ctx context.Context, processInstId int, nodeId string) error
 
-	// RetryTask 对执行异常失败的节点任务启动安全重试补发机制
+	// RetryTask 人工手动触发重试，会重置重试计数器
 	RetryTask(ctx context.Context, id int64) error
+
+	// AutoRetryTask 背景定时任务自动补发，会累加重试计数器
+	AutoRetryTask(ctx context.Context, id int64) error
 
 	// UpdateTaskStatus 被底层异步执行通道回调更新回调结果
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
@@ -246,13 +249,18 @@ func (s *service) StartTask(ctx context.Context, processInstId int, nodeId strin
 }
 
 func (s *service) RetryTask(ctx context.Context, id int64) error {
-	task, err := s.repo.FindById(ctx, id)
+	// NOTE: 人工点击重试，首先重置重试计数器为 0
+	if _, err := s.UpdateTaskStatus(ctx, domain.TaskResult{
+		Id:              id,
+		TriggerPosition: "人工触发手动重试",
+		RetryCount:      -1, // 特殊约定：-1 表示重置为 0
+	}); err != nil {
+		s.logger.Error("手动重试重置计数器失败", elog.Int64("taskId", id), elog.FieldErr(err))
+	}
 
+	task, err := s.repo.FindById(ctx, id)
 	if err != nil {
-		elog.Error("重试任务失败",
-			elog.Any("错误信息", err),
-			elog.Any("任务ID", id),
-		)
+		elog.Error("获取任务失败", elog.FieldErr(err), elog.Int64("taskId", id))
 		return err
 	}
 
@@ -261,7 +269,17 @@ func (s *service) RetryTask(ctx context.Context, id int64) error {
 		return s.process(ctx, task)
 	}
 
-	return s.retry(ctx, task)
+	return s.retry(ctx, task, false)
+}
+
+func (s *service) AutoRetryTask(ctx context.Context, id int64) error {
+	task, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// 自动重试需要增加计数，并受 MaxRetry 限制
+	return s.retry(ctx, task, true)
 }
 
 func (s *service) UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error) {
@@ -337,20 +355,51 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 		s.scheduler.Remove(req.Id)
 	}
 
+	// NOTE: 自动补充时间戳，避免上层调用方分散管理时间记录
+	now := time.Now().UnixMilli()
+	switch req.Status {
+	case domain.RUNNING:
+		// 任务正式开始执行，记录真实开始时间
+		req.StartTime = now
+	case domain.SUCCESS, domain.FAILED:
+		// 任务进入终态，记录结束时间
+		req.EndTime = now
+	}
+
 	return s.repo.UpdateTaskStatus(ctx, req)
 }
 
-func (s *service) retry(ctx context.Context, task domain.Task) error {
-	// 主动释放调度锁
-	s.scheduler.Remove(task.Id)
+func (s *service) retry(ctx context.Context, task domain.Task, auto bool) error {
+	if auto {
+		const maxRetryCount = 5
+		if task.RetryCount >= maxRetryCount {
+			s.logger.Warn("任务自动重试次数已达上限，转为 BLOCKED 等待人工介入",
+				elog.Int64("taskId", task.Id),
+				elog.Int("retryCount", task.RetryCount),
+			)
+			_, _ = s.UpdateTaskStatus(ctx, domain.TaskResult{
+				Id:              task.Id,
+				TriggerPosition: "自动恢复失败：超过最大重试次数",
+				Status:          domain.BLOCKED,
+			})
+			return nil
+		}
+	}
 
-	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+	res := domain.TaskResult{
 		Id:              task.Id,
-		TriggerPosition: "重试任务",
+		TriggerPosition: "自动补发任务",
 		Status:          domain.SCHEDULED,
-	})
+	}
+	if !auto {
+		res.TriggerPosition = "人工手动重试"
+	} else {
+		res.RetryCount = 1
+	}
 
-	return s.dispatcher.Dispatch(ctx, task)
+	_, _ = s.UpdateTaskStatus(ctx, res)
+
+	return s.dispatchTask(ctx, task)
 }
 
 // taskProcessContext 封装了流转任务执行时所需的完整依赖链路元数据
@@ -395,32 +444,36 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 }
 
 func (s *service) dispatchTask(ctx context.Context, task domain.Task) error {
-	// 对于定时任务，为了防止 offine_recovery 和普通重试导致的并发重复触发，使用内存锁
-	if task.IsTiming {
-		if !s.scheduler.Add(task.Id) {
-			s.logger.Info("任务已驻留调度内存组，跳过重复向执行器或本地 Cron 派发", elog.Int64("taskId", task.Id))
-			return nil
-		}
+	// 对所有任务都使用内存锁防重，而不只是定时任务。
+	// 原因：非定时任务在 Dispatch 成功到 UpdateTaskStatus(RUNNING) 写库完成之间存在时间窗口，
+	// 若此期间 offine_recovery 轮询，会误判状态仍为 SCHEDULED 并触发重复派发。
+	// 锁会在 UpdateTaskStatus 将状态变更为非调度态时（RUNNING/SUCCESS/FAILED）自动 Remove。
+	if !s.scheduler.Add(task.Id) {
+		s.logger.Info("任务正在派发中或已在内存调度组，跳过重复派发", elog.Int64("taskId", task.Id))
+		return nil
 	}
 
-	err := s.dispatcher.Dispatch(ctx, task)
-	if err != nil {
-		if task.IsTiming {
-			// 派发失败，释放锁，以便下一次重试轮询可以继续调度
-			s.scheduler.Remove(task.Id)
-		}
-		return err // 派发失败直接退出，等待轮询重试
+	if err := s.dispatcher.Dispatch(ctx, task); err != nil {
+		// 派发失败，释放锁，以便下一次重试轮询可以继续调度
+		s.scheduler.Remove(task.Id)
+		return err
 	}
 
 	// === 统一在此处变更状态 === //
 	// 只要 Dispatch 没报错，意味着无论是入库队列还是发远端，任务都已正式“上路”。
 	// 只有当任务是 Worker 模式且为本地定时任务时，才保留在 SCHEDULED 状态让本地内存 Cron 调度及宕机恢复。
 	if !task.IsTiming || task.RunMode == domain.RunModeExecute {
-		_, _ = s.UpdateTaskStatus(ctx, domain.TaskResult{
+		// 此处若更新失败，任务实际已路由到执行端，状态库仍停在 SCHEDULED，
+		if _, statusErr := s.UpdateTaskStatus(ctx, domain.TaskResult{
 			Id:              task.Id,
 			Status:          domain.RUNNING,
 			TriggerPosition: "分发已送达执行端，当前任务执行中",
-		})
+		}); statusErr != nil {
+			s.logger.Error("任务已派发但状态更新 RUNNING 失败，存在重复调度风险",
+				elog.Int64("taskId", task.Id),
+				elog.FieldErr(statusErr),
+			)
+		}
 	}
 
 	return nil
@@ -632,19 +685,15 @@ func (s *service) getAutomationProperties(ctx context.Context, flow workflow.Wor
 }
 
 func (s *service) handleTaskError(ctx context.Context, taskID int64, triggerPosition string, status domain.Status, err error) error {
-	if updateErr := s.updateTaskStatus(ctx, taskID, triggerPosition, status, err.Error()); updateErr != nil {
-		s.logger.Error("更新任务状态失败", elog.FieldErr(updateErr))
-	}
-	return err
-}
-
-func (s *service) updateTaskStatus(ctx context.Context, taskID int64, triggerPosition string, status domain.Status, result string) error {
-	_, err := s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
+	_, updateErr := s.UpdateTaskStatus(ctx, domain.TaskResult{
 		Id:              taskID,
 		TriggerPosition: triggerPosition,
 		Status:          status,
-		Result:          result,
+		Result:          err.Error(),
 	})
+	if updateErr != nil {
+		s.logger.Error("更新任务状态失败", elog.FieldErr(updateErr))
+	}
 	return err
 }
 

@@ -52,7 +52,7 @@ func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowMo
 	service8 := discoveryModule.Svc
 	schedulerScheduler := scheduler.NewScheduler()
 	service9 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6, taskDispatcher, service8, schedulerScheduler)
-	handler := web.NewHandler(service9)
+	handler := web.NewHandler(service9, executorClient)
 	executeResultConsumer := initConsumer(service9, q, service3, service6, sender2)
 	startTaskJob := initStartTaskJob(service9)
 	passProcessTaskJob := initPassProcessTaskJob(service9, service5)

@@ -286,14 +286,15 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 				Secret: src.Secret,
 			}
 		}),
-		Language:   req.Language,
-		Utime:      req.Utime,
-		Result:     req.Result,
-		WantResult: req.WantResult,
-		Status:     domain.Status(req.Status),
-		StartTime:  req.StartTime,
-		EndTime:    req.EndTime,
-		RetryCount: req.RetryCount,
+		Language:        req.Language,
+		Utime:           req.Utime,
+		Result:          req.Result,
+		WantResult:      req.WantResult,
+		TriggerPosition: req.TriggerPosition,
+		Status:          domain.Status(req.Status),
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		RetryCount:      req.RetryCount,
 	}
 
 	if req.RunMode == "" {

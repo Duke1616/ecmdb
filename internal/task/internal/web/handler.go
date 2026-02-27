@@ -2,6 +2,9 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	executorv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
@@ -17,9 +20,10 @@ type Handler struct {
 	executorSvc executorv1.TaskExecutionServiceClient
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, executorSvc executorv1.TaskExecutionServiceClient) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:         svc,
+		executorSvc: executorSvc,
 	}
 }
 
@@ -31,6 +35,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/update/variables", ginx.WrapBody[UpdateVariablesReq](h.UpdateVariableReq))
 	g.POST("/retry", ginx.WrapBody[RetryReq](h.Retry))
 	g.POST("/success", ginx.WrapBody[UpdateStatusToSuccessReq](h.UpdateStatusToSuccess))
+	g.GET("/logs/:task_id", ginx.Wrap(h.Logs))
 }
 
 func (h *Handler) ListTask(ctx *gin.Context, req ListTaskReq) (ginx.Result, error) {
@@ -69,7 +74,7 @@ func (h *Handler) ListTaskByInstanceId(ctx *gin.Context, req ListTaskByInstanceI
 func (h *Handler) UpdateStatusToSuccess(ctx *gin.Context, req UpdateStatusToSuccessReq) (ginx.Result, error) {
 	count, err := h.svc.UpdateTaskStatus(ctx, domain.TaskResult{
 		Id:              req.Id,
-		TriggerPosition: "手动修改状态为成功",
+		TriggerPosition: domain.TriggerPositionManualSuccess.ToString(),
 		WantResult:      "",
 		Result:          "",
 		Status:          domain.SUCCESS,
@@ -82,6 +87,82 @@ func (h *Handler) UpdateStatusToSuccess(ctx *gin.Context, req UpdateStatusToSucc
 	return ginx.Result{
 		Data: count,
 		Msg:  "消息状态修改为成功",
+	}, nil
+}
+
+func (h *Handler) Logs(ctx *gin.Context) (ginx.Result, error) {
+	idStr := ctx.Param("task_id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	tInfo, err := h.svc.Detail(ctx, id)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 如果是 worker 模式直接返回 result 数据
+	if tInfo.RunMode == domain.RunModeWorker {
+		return ginx.Result{
+			Code: 0,
+			Msg:  "获取日志成功",
+			Data: tInfo.Result,
+		}, nil
+	}
+
+	// 如果是 EXECUTE 模式，但还没派发（没有 ExternalId），返回空提示
+	if tInfo.ExternalId == "" {
+		return ginx.Result{
+			Code: 0,
+			Msg:  "任务尚未派发或正在队列中，暂无执行日志",
+			Data: "任务尚未派发或正在队列中，暂无执行日志",
+		}, nil
+	}
+
+	externalTaskId, err := strconv.ParseInt(tInfo.ExternalId, 10, 64)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("非法 ExternalId: %w", err)
+	}
+
+	// 1. 获取该任务的所有执行历史
+	executionsResp, err := h.executorSvc.ListTaskExecutions(ctx, &executorv1.ListTaskExecutionsRequest{
+		TaskId: externalTaskId,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	if len(executionsResp.Executions) == 0 {
+		return ginx.Result{
+			Code: 0,
+			Msg:  "暂无执行记录",
+			Data: "暂无执行记录",
+		}, nil
+	}
+
+	// 2. 取最后一次执行记录（最新的执行记录）
+	executionId := executionsResp.Executions[len(executionsResp.Executions)-1].Id
+
+	// 3. 分页拉取（这里先拉取前 1000 条，基本覆盖绝大多数 shell 脚本场景）
+	logsResp, err := h.executorSvc.GetExecutionLogs(ctx, &executorv1.GetExecutionLogsRequest{
+		ExecutionId: executionId,
+		Limit:       1000,
+	})
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 4. 聚合日志行
+	var sb strings.Builder
+	for _, l := range logsResp.Logs {
+		sb.WriteString(l.Content)
+	}
+
+	return ginx.Result{
+		Code: 0,
+		Msg:  "获取日志成功",
+		Data: sb.String(),
 	}, nil
 }
 
@@ -142,21 +223,22 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 	}
 
 	taskVO := Task{
-		Id:           req.Id,
-		OrderId:      req.OrderId,
-		Language:     req.Language,
-		Code:         req.Code,
-		RunMode:      string(req.RunMode),
-		CodebookUid:  req.CodebookUid,
-		CodebookName: req.CodebookName,
-		Status:       Status(req.Status),
-		Result:       req.Result,
-		Args:         string(args),
-		IsTiming:     req.IsTiming,
-		StartTime:    startTime,
-		EndTime:      endTime,
-		RetryCount:   req.RetryCount,
-		Variables:    desensitization(req.Variables),
+		Id:              req.Id,
+		OrderId:         req.OrderId,
+		Language:        req.Language,
+		Code:            req.Code,
+		RunMode:         string(req.RunMode),
+		CodebookUid:     req.CodebookUid,
+		CodebookName:    req.CodebookName,
+		Status:          Status(req.Status),
+		Result:          req.Result,
+		Args:            string(args),
+		IsTiming:        req.IsTiming,
+		StartTime:       startTime,
+		EndTime:         endTime,
+		RetryCount:      req.RetryCount,
+		TriggerPosition: req.TriggerPosition,
+		Variables:       desensitization(req.Variables),
 	}
 
 	// NOTE: 引用 realStartTime 作为真实调度开始时间覆盖计划时间（若存在）

@@ -129,14 +129,14 @@ func (c *TaskExecutionSyncJob) batchSyncTaskExecutions(ctx context.Context, task
 					Id:              t.Id,
 					Status:          domain.SUCCESS,
 					Result:          "任务执行成功",
-					TriggerPosition: "远程调度节点返回",
+					TriggerPosition: domain.TriggerPositionRemoteSchedulerReturn.ToString(),
 				})
 			case executorv1.ExecutionStatus_FAILED, executorv1.ExecutionStatus_FAILED_RETRYABLE, executorv1.ExecutionStatus_FAILED_RESCHEDULABLE:
 				_, updateErr = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
 					Id:              t.Id,
 					Status:          domain.FAILED,
 					Result:          "任务执行失败",
-					TriggerPosition: "远程调度节点返回",
+					TriggerPosition: domain.TriggerPositionRemoteSchedulerReturn.ToString(),
 				})
 			default:
 				// 如 RUNNING, UNKNOWN 暂不更新本地状态

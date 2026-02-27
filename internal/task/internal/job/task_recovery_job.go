@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
 	"github.com/gotomicro/ego/core/elog"
@@ -38,13 +40,25 @@ func (c *TaskRecoveryJob) Run(ctx context.Context) error {
 		}
 		c.logger.Info("recovery task job start", elog.Int64("total", total))
 
-		for _, task := range tasks {
+		now := time.Now().UnixMilli()
+		for _, t := range tasks {
+			// 定时任务判定：如果当前时间还没到计划开始时间，跳过恢复（等待 StartTaskJob 正常触发）
+			if t.IsTiming && now < t.Timing.Stime {
+				continue
+			}
+
+			// 普通任务判定：给 1 分钟的「派发宽限期」。
+			// 只有 Utime 超过 1 分钟的任务才被视为「卡在 SCHEDULED 状态」需要补发
+			if !t.IsTiming && now < t.Utime+60*1000 {
+				continue
+			}
+
 			wg.Add(1)
 			go func(task domain.Task) {
 				defer wg.Done()
 				// 调用 service 层的自动补发逻辑，带计数上限控制
 				_ = c.svc.AutoRetryTask(ctx, task.Id)
-			}(task)
+			}(t)
 		}
 
 		if len(tasks) < int(c.limit) {

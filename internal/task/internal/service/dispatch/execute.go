@@ -12,6 +12,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/google/uuid"
 	"github.com/gotomicro/ego/core/elog"
 )
 
@@ -44,7 +45,7 @@ func (e *executeService) Dispatch(ctx context.Context, task domain.Task) error {
 
 	// 启动任务
 	createTask, err := e.grpcClient.CreateTask(ctx, &taskv1.CreateTaskRequest{
-		Name:     task.CodebookName,
+		Name:     fmt.Sprintf("%s_%s", task.CodebookName, uuid.New().String()),
 		Type:     taskv1.TaskType_ONE_TIME,
 		CronExpr: executeTime.Format("05 04 15 02 01 ?"),
 		GrpcConfig: &taskv1.GrpcConfig{

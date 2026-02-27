@@ -199,7 +199,7 @@ func (s *service) ListTask(ctx context.Context, offset, limit int64) ([]domain.T
 func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId string) (int64, error) {
 	taskId, err := s.repo.CreateTask(ctx, domain.Task{
 		ProcessInstId:   processInstId,
-		TriggerPosition: "任务等待",
+		TriggerPosition: domain.TriggerPositionTaskWaiting.ToString(),
 		CurrentNodeId:   nodeId,
 		Status:          domain.WAITING,
 	})
@@ -231,7 +231,7 @@ func (s *service) StartTask(ctx context.Context, processInstId int, nodeId strin
 	task, err := s.repo.FindOrCreate(ctx, domain.Task{
 		ProcessInstId:   processInstId,
 		CurrentNodeId:   nodeId,
-		TriggerPosition: "准备启动节点",
+		TriggerPosition: domain.TriggerPositionReadyToStartNode.ToString(),
 		Status:          domain.WAITING,
 	})
 
@@ -252,7 +252,7 @@ func (s *service) RetryTask(ctx context.Context, id int64) error {
 	// NOTE: 人工点击重试，首先重置重试计数器为 0
 	if _, err := s.UpdateTaskStatus(ctx, domain.TaskResult{
 		Id:              id,
-		TriggerPosition: "人工触发手动重试",
+		TriggerPosition: domain.TriggerPositionManualRetry.ToString(),
 		RetryCount:      -1, // 特殊约定：-1 表示重置为 0
 	}); err != nil {
 		s.logger.Error("手动重试重置计数器失败", elog.Int64("taskId", id), elog.FieldErr(err))
@@ -379,7 +379,7 @@ func (s *service) retry(ctx context.Context, task domain.Task, auto bool) error 
 			)
 			_, _ = s.UpdateTaskStatus(ctx, domain.TaskResult{
 				Id:              task.Id,
-				TriggerPosition: "自动恢复失败：超过最大重试次数",
+				TriggerPosition: domain.TriggerPositionAutoRetryLimitExceeded.ToString(),
 				Status:          domain.BLOCKED,
 			})
 			return nil
@@ -388,11 +388,11 @@ func (s *service) retry(ctx context.Context, task domain.Task, auto bool) error 
 
 	res := domain.TaskResult{
 		Id:              task.Id,
-		TriggerPosition: "自动补发任务",
+		TriggerPosition: domain.TriggerPositionAutoRetry.ToString(),
 		Status:          domain.SCHEDULED,
 	}
 	if !auto {
-		res.TriggerPosition = "人工手动重试"
+		res.TriggerPosition = domain.TriggerPositionManualRetry.ToString()
 	} else {
 		res.RetryCount = 1
 	}
@@ -467,7 +467,7 @@ func (s *service) dispatchTask(ctx context.Context, task domain.Task) error {
 		if _, statusErr := s.UpdateTaskStatus(ctx, domain.TaskResult{
 			Id:              task.Id,
 			Status:          domain.RUNNING,
-			TriggerPosition: "分发已送达执行端，当前任务执行中",
+			TriggerPosition: domain.TriggerPositionDispatchDelivered.ToString(),
 		}); statusErr != nil {
 			s.logger.Error("任务已派发但状态更新 RUNNING 失败，存在重复调度风险",
 				elog.Int64("taskId", task.Id),
@@ -483,37 +483,37 @@ func (s *service) buildTaskProcessContext(ctx context.Context, task domain.Task)
 	// 1. 获取工单信息
 	orderResp, err := s.orderSvc.DetailByProcessInstId(ctx, task.ProcessInstId)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "获取工单失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorGetOrder.ToString(), domain.FAILED, err)
 	}
 
 	// 2. 获取流程实例详情，拿到对应的版本号
 	inst, err := s.engineSvc.GetInstanceByID(ctx, task.ProcessInstId)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "获取流程实例失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorGetProcessInst.ToString(), domain.FAILED, err)
 	}
 
 	// 3. 尝试获取历史快照
 	flow, err := s.workflowSvc.FindInstanceFlow(ctx, orderResp.WorkflowId, inst.ProcID, inst.ProcVersion)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "获取流程信息失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorGetProcessInfo.ToString(), domain.FAILED, err)
 	}
 
 	// 4. 获取自动化配置
 	automation, err := s.getAutomationProperties(ctx, flow, task)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "提取自动化信息失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorExtractAutomationInfo.ToString(), domain.FAILED, err)
 	}
 
 	// 5. 获取调度节点
 	runnerResp, err := s.getScheduleRunner(ctx, automation, orderResp)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.BLOCKED, err)
+		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorGetDispatcherNode.ToString(), domain.BLOCKED, err)
 	}
 
 	// 6. 获取代码模板
 	codebookResp, err := s.codebookSvc.FindByUid(ctx, runnerResp.CodebookUid)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "获取任务模版失败", domain.FAILED, err)
+		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorGetTaskTemplate.ToString(), domain.FAILED, err)
 	}
 
 	return &taskProcessContext{
@@ -613,7 +613,7 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 		Language:        codebookResp.Language,
 		Status:          status,
 		Args:            args,
-		TriggerPosition: "准备启动节点",
+		TriggerPosition: domain.TriggerPositionReadyToStartNode.ToString(),
 		IsTiming:        automation.IsTiming,
 		Timing:          timing,
 		Variables:       s.toDomainVariables(runnerResp.Variables),

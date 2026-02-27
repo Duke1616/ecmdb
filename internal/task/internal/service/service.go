@@ -14,6 +14,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/task/internal/service/dispatch"
+	"github.com/Duke1616/ecmdb/internal/task/internal/service/scheduler"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
@@ -44,6 +46,9 @@ type Service interface {
 	// ListTaskByStatus 用于平台展示过滤指定生命周期下的节点任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 
+	// ListTaskByStatusAndMode 用于过滤指定生命周期和运行模式的任务
+	ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, int64, error)
+
 	// ListTask 全景展示系统大盘所积累的所有执行节点情况
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
 
@@ -61,10 +66,14 @@ type Service interface {
 
 	// MarkTaskAsAutoPassed 在引擎收到通知并向前流转后打点忽略重复消息投递验证
 	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
+
+	// UpdateExternalId 绑定外部分布式平台的任务 ID
+	UpdateExternalId(ctx context.Context, id int64, externalId string) error
 }
 
 type service struct {
 	repo         repository.TaskRepository
+	scheduler    scheduler.Scheduler
 	logger       *elog.Component
 	orderSvc     order.Service
 	userSvc      user.Service
@@ -73,8 +82,7 @@ type service struct {
 	workflowSvc  workflow.Service
 	codebookSvc  codebook.Service
 	runnerSvc    runner.Service
-	execSvc      ExecService
-	cronjobSvc   Cronjob
+	dispatcher   dispatch.TaskDispatcher
 }
 
 func (s *service) ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error) {
@@ -100,6 +108,29 @@ func (s *service) ListTaskByInstanceId(ctx context.Context, offset, limit int64,
 	return ts, total, nil
 }
 
+func (s *service) ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, int64, error) {
+	var (
+		eg    errgroup.Group
+		ts    []domain.Task
+		total int64
+	)
+	eg.Go(func() error {
+		var err error
+		ts, err = s.repo.ListTaskByStatusAndMode(ctx, offset, limit, status, mode)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		total, err = s.repo.TotalByStatusAndMode(ctx, status, mode)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		return ts, total, err
+	}
+	return ts, total, nil
+}
+
 func (s *service) Detail(ctx context.Context, id int64) (domain.Task, error) {
 	return s.repo.FindById(ctx, id)
 }
@@ -110,6 +141,10 @@ func (s *service) FindTaskResult(ctx context.Context, instanceId int, nodeId str
 
 func (s *service) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
 	return s.repo.MarkTaskAsAutoPassed(ctx, id)
+}
+
+func (s *service) UpdateExternalId(ctx context.Context, id int64, externalId string) error {
+	return s.repo.UpdateExternalId(ctx, id, externalId)
 }
 
 func (s *service) ListSuccessTasksByUtime(ctx context.Context, offset, limit int64, utime int64) ([]domain.Task, int64, error) {
@@ -170,8 +205,9 @@ func (s *service) CreateTask(ctx context.Context, processInstId int, nodeId stri
 }
 
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
-	codebookSvc codebook.Service, runnerSvc runner.Service, cronjobSvc Cronjob, engineSvc engine.Service,
-	userSvc user.Service, execSvc ExecService, discoverySvc discovery.Service) Service {
+	codebookSvc codebook.Service, runnerSvc runner.Service, engineSvc engine.Service,
+	userSvc user.Service, dispatcher dispatch.TaskDispatcher, discoverySvc discovery.Service,
+	sch scheduler.Scheduler) Service {
 	return &service{
 		repo:         repo,
 		logger:       elog.DefaultLogger,
@@ -181,9 +217,9 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 		runnerSvc:    runnerSvc,
 		engineSvc:    engineSvc,
 		userSvc:      userSvc,
-		execSvc:      execSvc,
-		cronjobSvc:   cronjobSvc,
+		dispatcher:   dispatcher,
 		discoverySvc: discoverySvc,
+		scheduler:    sch,
 	}
 }
 
@@ -193,7 +229,7 @@ func (s *service) StartTask(ctx context.Context, processInstId int, nodeId strin
 		ProcessInstId:   processInstId,
 		CurrentNodeId:   nodeId,
 		TriggerPosition: "准备启动节点",
-		Status:          domain.SCHEDULE,
+		Status:          domain.WAITING,
 	})
 
 	if err != nil {
@@ -296,17 +332,25 @@ func (s *service) ListTaskByStatus(ctx context.Context, offset, limit int64, sta
 }
 
 func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {
+	// 如果状态发生流转变迁且不再是待调度类别的，清理它被加上的调度内存锁，这样以后一旦 Retry 断线重发等机制激活，才能再次派发成功。
+	if req.Status != domain.SCHEDULED && req.Status != domain.WAITING {
+		s.scheduler.Remove(req.Id)
+	}
+
 	return s.repo.UpdateTaskStatus(ctx, req)
 }
 
 func (s *service) retry(ctx context.Context, task domain.Task) error {
+	// 主动释放调度锁
+	s.scheduler.Remove(task.Id)
+
 	_, _ = s.repo.UpdateTaskStatus(ctx, domain.TaskResult{
 		Id:              task.Id,
 		TriggerPosition: "重试任务",
-		Status:          domain.RETRY,
+		Status:          domain.SCHEDULED,
 	})
 
-	return s.execSvc.Execute(ctx, task)
+	return s.dispatcher.Dispatch(ctx, task)
 }
 
 // taskProcessContext 封装了流转任务执行时所需的完整依赖链路元数据
@@ -347,18 +391,39 @@ func (s *service) process(ctx context.Context, task domain.Task) error {
 	}
 
 	// 5. 最终路由分配
-	return s.dispatchTask(ctx, taskUpdate, pCtx.automation)
+	return s.dispatchTask(ctx, taskUpdate)
 }
 
-func (s *service) dispatchTask(ctx context.Context, task domain.Task, automation easyflow.AutomationProperty) error {
-	if automation.IsTiming {
-		go func() {
-			_ = s.cronjobSvc.Create(ctx, task)
-		}()
-		return nil
+func (s *service) dispatchTask(ctx context.Context, task domain.Task) error {
+	// 对于定时任务，为了防止 offine_recovery 和普通重试导致的并发重复触发，使用内存锁
+	if task.IsTiming {
+		if !s.scheduler.Add(task.Id) {
+			s.logger.Info("任务已驻留调度内存组，跳过重复向执行器或本地 Cron 派发", elog.Int64("taskId", task.Id))
+			return nil
+		}
 	}
 
-	return s.execSvc.Execute(ctx, task)
+	err := s.dispatcher.Dispatch(ctx, task)
+	if err != nil {
+		if task.IsTiming {
+			// 派发失败，释放锁，以便下一次重试轮询可以继续调度
+			s.scheduler.Remove(task.Id)
+		}
+		return err // 派发失败直接退出，等待轮询重试
+	}
+
+	// === 统一在此处变更状态 === //
+	// 只要 Dispatch 没报错，意味着无论是入库队列还是发远端，任务都已正式“上路”。
+	// 只有当任务是 Worker 模式且为本地定时任务时，才保留在 SCHEDULED 状态让本地内存 Cron 调度及宕机恢复。
+	if !task.IsTiming || task.RunMode == domain.RunModeExecute {
+		_, _ = s.UpdateTaskStatus(ctx, domain.TaskResult{
+			Id:              task.Id,
+			Status:          domain.RUNNING,
+			TriggerPosition: "分发已送达执行端，当前任务执行中",
+		})
+	}
+
+	return nil
 }
 
 func (s *service) buildTaskProcessContext(ctx context.Context, task domain.Task) (*taskProcessContext, error) {
@@ -389,7 +454,7 @@ func (s *service) buildTaskProcessContext(ctx context.Context, task domain.Task)
 	// 5. 获取调度节点
 	runnerResp, err := s.getScheduleRunner(ctx, automation, orderResp)
 	if err != nil {
-		return nil, s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.PENDING, err)
+		return nil, s.handleTaskError(ctx, task.Id, "获取调度节点失败", domain.BLOCKED, err)
 	}
 
 	// 6. 获取代码模板
@@ -484,45 +549,59 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 	codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
 	status domain.Status, timing domain.Timing, automation easyflow.AutomationProperty) domain.Task {
 
-	workerName := ""
-	topic := ""
-
-	if runnerResp.IsModeWorker() {
-		workerName = runnerResp.Worker.WorkerName
-		topic = runnerResp.Worker.Topic
-	} else {
-		workerName = runnerResp.Execute.Handler
-		topic = runnerResp.Execute.ServiceName
+	t := domain.Task{
+		Id:              task.Id,
+		ProcessInstId:   task.ProcessInstId,
+		OrderId:         orderResp.Id,
+		WorkflowId:      flow.Id,
+		CodebookUid:     codebookResp.Identifier,
+		CodebookName:    codebookResp.Name,
+		Code:            codebookResp.Code,
+		Language:        codebookResp.Language,
+		Status:          status,
+		Args:            args,
+		TriggerPosition: "准备启动节点",
+		IsTiming:        automation.IsTiming,
+		Timing:          timing,
+		Variables:       s.toDomainVariables(runnerResp.Variables),
 	}
 
-	return domain.Task{
-		// 可选字段
-		Id:            task.Id,
-		WorkerName:    workerName,
-		Topic:         topic,
-		ProcessInstId: task.ProcessInstId,
-		WorkflowId:    flow.Id,
-		CodebookUid:   codebookResp.Identifier,
-		CodebookName:  codebookResp.Name,
+	// 填充模式差异化运行参数
+	s.applyRunnerConfig(&t, runnerResp)
 
-		// 必填字段
-		OrderId:  orderResp.Id,
-		Code:     codebookResp.Code,
-		Language: codebookResp.Language,
-		Status:   status,
-		Args:     args,
-		Variables: slice.Map(runnerResp.Variables, func(idx int, src runner.Variables) domain.Variables {
-			return domain.Variables{
-				Key:    src.Key,
-				Value:  src.Value,
-				Secret: src.Secret,
-			}
-		}),
+	return t
+}
 
-		// 定时任务
-		IsTiming: automation.IsTiming,
-		Timing:   timing,
+func (s *service) applyRunnerConfig(t *domain.Task, r runner.Runner) {
+	if r.IsModeWorker() {
+		t.RunMode = domain.RunModeWorker
+		t.WorkerName = r.Worker.WorkerName
+		t.Topic = r.Worker.Topic
+		t.Worker = &domain.Worker{
+			WorkerName: r.Worker.WorkerName,
+			Topic:      r.Worker.Topic,
+		}
+		return
 	}
+
+	// 默认为分布式执行模式 (EXECUTE)
+	t.RunMode = domain.RunModeExecute
+	t.WorkerName = r.Execute.Handler
+	t.Topic = r.Execute.ServiceName
+	t.Execute = &domain.Execute{
+		ServiceName: r.Execute.ServiceName,
+		Handler:     r.Execute.Handler,
+	}
+}
+
+func (s *service) toDomainVariables(vars []runner.Variables) []domain.Variables {
+	return slice.Map(vars, func(idx int, src runner.Variables) domain.Variables {
+		return domain.Variables{
+			Key:    src.Key,
+			Value:  src.Value,
+			Secret: src.Secret,
+		}
+	})
 }
 
 func (s *service) prepareUserArgs(ctx context.Context, orderResp order.Order) (map[string]interface{}, error) {
@@ -570,11 +649,11 @@ func (s *service) updateTaskStatus(ctx context.Context, taskID int64, triggerPos
 }
 
 func (s *service) determineTaskStatus(automation easyflow.AutomationProperty, data map[string]interface{}) (domain.Status, domain.Timing) {
-	status := domain.RUNNING
+	status := domain.SCHEDULED
 	timing := domain.Timing{Stime: time.Now().UnixMilli()}
 
 	if automation.IsTiming {
-		status = domain.TIMING
+		status = domain.SCHEDULED
 		timing = s.calculateTiming(automation, data)
 	}
 	return status, timing

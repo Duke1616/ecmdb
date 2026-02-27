@@ -2,6 +2,19 @@ package domain
 
 import "time"
 
+type RunMode string
+
+const (
+	// RunModeWorker 工作节点 kafka 推送
+	RunModeWorker RunMode = "WORKER"
+	// RunModeExecute 绑定分布式任务平台执行节点
+	RunModeExecute RunMode = "EXECUTE"
+)
+
+func (s RunMode) ToString() string {
+	return string(s)
+}
+
 type Status uint8
 
 func (s Status) ToUint8() uint8 {
@@ -12,20 +25,15 @@ const (
 	// SUCCESS 成功
 	SUCCESS Status = 1
 	// FAILED 失败
-	failed
 	FAILED Status = 2
 	// RUNNING 运行中
 	RUNNING Status = 3
-	// WAITING 等待运行
+	// WAITING 等待/初始化: 流程刚流转到该节点，刚入库
 	WAITING Status = 4
-	// PENDING 运行某处意外无法执行
-	PENDING Status = 5
-	// SCHEDULE 等待调度
-	SCHEDULE Status = 6
-	//RETRY 重试
-	RETRY Status = 7
-	// TIMING 定时任务
-	TIMING Status = 8
+	// BLOCKED 挂起/阻塞: 找不到执行路由或参数缺失等异常，流程无法推进
+	BLOCKED Status = 5
+	// SCHEDULED 已分配/已就绪: 任务已提交给 Dispatcher，或处于定时等待触发的状态
+	SCHEDULED Status = 6
 )
 
 type Task struct {
@@ -50,6 +58,20 @@ type Task struct {
 	Timing          Timing
 	Variables       []Variables
 	Args            map[string]interface{}
+	RunMode         RunMode
+	Worker          *Worker
+	Execute         *Execute
+	ExternalId      string // 外部任务 ID (如分布式平台生成的实例 ID)
+}
+
+type Worker struct {
+	WorkerName string
+	Topic      string
+}
+
+type Execute struct {
+	ServiceName string
+	Handler     string
 }
 
 type Unit uint8

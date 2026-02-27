@@ -38,8 +38,14 @@ type TaskDAO interface {
 	// ListTaskByStatus 分页获取特定状态下的任务列表，当 status 不为 0 时进行筛选匹配
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]Task, error)
 
+	// ListTaskByStatusAndMode 分页获取特定状态和运行模式的任务列表
+	ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]Task, error)
+
 	// Count 统计指定状态下的任务总数，当 status 为 0 时获取全量文档数
 	Count(ctx context.Context, status uint8) (int64, error)
+
+	// CountByStatusAndMode 统计特定状态和运行模式的任务总数
+	CountByStatusAndMode(ctx context.Context, status uint8, mode string) (int64, error)
 
 	// UpdateArgs 更新任务的局部执行参数（UserArgs）
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
@@ -61,6 +67,9 @@ type TaskDAO interface {
 
 	// MarkTaskAsAutoPassed 将对应任务的状态标识为自动通过（MarkPassed = true）
 	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
+
+	// UpdateExternalId 绑定外部分布式平台的任务 ID
+	UpdateExternalId(ctx context.Context, id int64, externalId string) error
 }
 
 type taskDAO struct {
@@ -181,6 +190,23 @@ func (dao *taskDAO) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (dao *taskDAO) UpdateExternalId(ctx context.Context, id int64, externalId string) error {
+	col := dao.db.Collection(TaskCollection)
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"external_id": externalId,
+			"utime":       time.Now().UnixMilli(),
+		},
+	}
+	filter := bson.M{"id": id}
+	_, err := col.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return fmt.Errorf("修改文档操作: %w", err)
+	}
+
+	return nil
+}
+
 func (dao *taskDAO) ListTask(ctx context.Context, offset, limit int64) ([]Task, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
@@ -282,16 +308,20 @@ func (dao *taskDAO) UpdateTask(ctx context.Context, t Task) (int64, error) {
 		"$set": bson.M{
 			"code":             t.Code,
 			"order_id":         t.OrderId,
-			"worker_name":      t.WorkerName,
 			"codebook_uid":     t.CodebookUid,
 			"codebook_name":    t.CodebookName,
 			"workflow_id":      t.WorkflowId,
-			"topic":            t.Topic,
 			"language":         t.Language,
 			"args":             t.Args,
 			"variables":        t.Variables,
 			"status":           t.Status,
 			"result":           t.Result,
+			"run_mode":         t.RunMode,
+			"worker_name":      t.Worker.WorkerName,
+			"topic":            t.Topic,
+			"service_name":     t.Execute.ServiceName,
+			"handler":          t.Execute.Handler,
+			"external_id":      t.ExternalId,
 			"trigger_position": t.TriggerPosition,
 			"is_timing":        t.IsTiming,
 			"timing": bson.M{
@@ -375,11 +405,61 @@ func (dao *taskDAO) ListTaskByStatus(ctx context.Context, offset, limit int64, s
 	return result, nil
 }
 
+func (dao *taskDAO) ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]Task, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+	if status != 0 {
+		filter["status"] = status
+	}
+	if mode != "" {
+		filter["run_mode"] = mode
+	}
+
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+		Limit: &limit,
+		Skip:  &offset,
+	}
+
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误, %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var result []Task
+	if err = cursor.All(ctx, &result); err != nil {
+		return nil, fmt.Errorf("解码错误: %w", err)
+	}
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("游标遍历错误: %w", err)
+	}
+	return result, nil
+}
+
 func (dao *taskDAO) Count(ctx context.Context, status uint8) (int64, error) {
 	col := dao.db.Collection(TaskCollection)
 	filter := bson.M{}
 	if status != 0 {
 		filter["status"] = status
+	}
+
+	count, err := col.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
+
+	return count, nil
+}
+
+func (dao *taskDAO) CountByStatusAndMode(ctx context.Context, status uint8, mode string) (int64, error) {
+	col := dao.db.Collection(TaskCollection)
+	filter := bson.M{}
+	if status != 0 {
+		filter["status"] = status
+	}
+	if mode != "" {
+		filter["run_mode"] = mode
 	}
 
 	count, err := col.CountDocuments(ctx, filter)
@@ -403,6 +483,10 @@ type Task struct {
 	Language        string                 `bson:"language"`
 	Args            map[string]interface{} `bson:"args"`
 	Variables       []Variables            `bson:"variables"`
+	RunMode         string                 `bson:"run_mode"`
+	Worker          Worker                 `bson:",inline"`
+	Execute         Execute                `bson:",inline"`
+	ExternalId      string                 `bson:"external_id"`
 	Status          uint8                  `bson:"status"`
 	Result          string                 `bson:"result"`
 	WantResult      string                 `bson:"want_result"`
@@ -413,6 +497,16 @@ type Task struct {
 	Utime           int64                  `bson:"utime"`
 	IsTiming        bool                   `bson:"is_timing"`
 	Timing          Timing                 `bson:"timing"`
+}
+
+type Worker struct {
+	WorkerName string `bson:"worker_name"`
+	Topic      string `bson:"topic"`
+}
+
+type Execute struct {
+	ServiceName string `bson:"service_name"`
+	Handler     string `bson:"handler"`
 }
 
 type Timing struct {

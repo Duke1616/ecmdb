@@ -245,3 +245,253 @@ var ExecutorService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "etask/executor/v1/executor.proto",
 }
+
+const (
+	AgentService_PullTask_FullMethodName = "/etask.executor.v1.AgentService/PullTask"
+)
+
+// AgentServiceClient is the client API for AgentService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// AgentService 专门供边缘执行节点回调和拉取的拉取接口（只应跑在调度中心）
+type AgentServiceClient interface {
+	PullTask(ctx context.Context, in *PullTaskRequest, opts ...grpc.CallOption) (*PullTaskResponse, error)
+}
+
+type agentServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewAgentServiceClient(cc grpc.ClientConnInterface) AgentServiceClient {
+	return &agentServiceClient{cc}
+}
+
+func (c *agentServiceClient) PullTask(ctx context.Context, in *PullTaskRequest, opts ...grpc.CallOption) (*PullTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PullTaskResponse)
+	err := c.cc.Invoke(ctx, AgentService_PullTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AgentServiceServer is the server API for AgentService service.
+// All implementations must embed UnimplementedAgentServiceServer
+// for forward compatibility.
+//
+// AgentService 专门供边缘执行节点回调和拉取的拉取接口（只应跑在调度中心）
+type AgentServiceServer interface {
+	PullTask(context.Context, *PullTaskRequest) (*PullTaskResponse, error)
+	mustEmbedUnimplementedAgentServiceServer()
+}
+
+// UnimplementedAgentServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedAgentServiceServer struct{}
+
+func (UnimplementedAgentServiceServer) PullTask(context.Context, *PullTaskRequest) (*PullTaskResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PullTask not implemented")
+}
+func (UnimplementedAgentServiceServer) mustEmbedUnimplementedAgentServiceServer() {}
+func (UnimplementedAgentServiceServer) testEmbeddedByValue()                      {}
+
+// UnsafeAgentServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AgentServiceServer will
+// result in compilation errors.
+type UnsafeAgentServiceServer interface {
+	mustEmbedUnimplementedAgentServiceServer()
+}
+
+func RegisterAgentServiceServer(s grpc.ServiceRegistrar, srv AgentServiceServer) {
+	// If the following call panics, it indicates UnimplementedAgentServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&AgentService_ServiceDesc, srv)
+}
+
+func _AgentService_PullTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PullTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServiceServer).PullTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentService_PullTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServiceServer).PullTask(ctx, req.(*PullTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// AgentService_ServiceDesc is the grpc.ServiceDesc for AgentService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var AgentService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "etask.executor.v1.AgentService",
+	HandlerType: (*AgentServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "PullTask",
+			Handler:    _AgentService_PullTask_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "etask/executor/v1/executor.proto",
+}
+
+const (
+	TaskExecutionService_ListTaskExecutions_FullMethodName = "/etask.executor.v1.TaskExecutionService/ListTaskExecutions"
+	TaskExecutionService_GetExecutionLogs_FullMethodName   = "/etask.executor.v1.TaskExecutionService/GetExecutionLogs"
+)
+
+// TaskExecutionServiceClient is the client API for TaskExecutionService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type TaskExecutionServiceClient interface {
+	// 列出任务执行记录
+	ListTaskExecutions(ctx context.Context, in *ListTaskExecutionsRequest, opts ...grpc.CallOption) (*ListTaskExecutionsResponse, error)
+	// 获取执行日志
+	GetExecutionLogs(ctx context.Context, in *GetExecutionLogsRequest, opts ...grpc.CallOption) (*GetExecutionLogsResponse, error)
+}
+
+type taskExecutionServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewTaskExecutionServiceClient(cc grpc.ClientConnInterface) TaskExecutionServiceClient {
+	return &taskExecutionServiceClient{cc}
+}
+
+func (c *taskExecutionServiceClient) ListTaskExecutions(ctx context.Context, in *ListTaskExecutionsRequest, opts ...grpc.CallOption) (*ListTaskExecutionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTaskExecutionsResponse)
+	err := c.cc.Invoke(ctx, TaskExecutionService_ListTaskExecutions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *taskExecutionServiceClient) GetExecutionLogs(ctx context.Context, in *GetExecutionLogsRequest, opts ...grpc.CallOption) (*GetExecutionLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetExecutionLogsResponse)
+	err := c.cc.Invoke(ctx, TaskExecutionService_GetExecutionLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// TaskExecutionServiceServer is the server API for TaskExecutionService service.
+// All implementations must embed UnimplementedTaskExecutionServiceServer
+// for forward compatibility.
+type TaskExecutionServiceServer interface {
+	// 列出任务执行记录
+	ListTaskExecutions(context.Context, *ListTaskExecutionsRequest) (*ListTaskExecutionsResponse, error)
+	// 获取执行日志
+	GetExecutionLogs(context.Context, *GetExecutionLogsRequest) (*GetExecutionLogsResponse, error)
+	mustEmbedUnimplementedTaskExecutionServiceServer()
+}
+
+// UnimplementedTaskExecutionServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedTaskExecutionServiceServer struct{}
+
+func (UnimplementedTaskExecutionServiceServer) ListTaskExecutions(context.Context, *ListTaskExecutionsRequest) (*ListTaskExecutionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTaskExecutions not implemented")
+}
+func (UnimplementedTaskExecutionServiceServer) GetExecutionLogs(context.Context, *GetExecutionLogsRequest) (*GetExecutionLogsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetExecutionLogs not implemented")
+}
+func (UnimplementedTaskExecutionServiceServer) mustEmbedUnimplementedTaskExecutionServiceServer() {}
+func (UnimplementedTaskExecutionServiceServer) testEmbeddedByValue()                              {}
+
+// UnsafeTaskExecutionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TaskExecutionServiceServer will
+// result in compilation errors.
+type UnsafeTaskExecutionServiceServer interface {
+	mustEmbedUnimplementedTaskExecutionServiceServer()
+}
+
+func RegisterTaskExecutionServiceServer(s grpc.ServiceRegistrar, srv TaskExecutionServiceServer) {
+	// If the following call panics, it indicates UnimplementedTaskExecutionServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&TaskExecutionService_ServiceDesc, srv)
+}
+
+func _TaskExecutionService_ListTaskExecutions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTaskExecutionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskExecutionServiceServer).ListTaskExecutions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TaskExecutionService_ListTaskExecutions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskExecutionServiceServer).ListTaskExecutions(ctx, req.(*ListTaskExecutionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TaskExecutionService_GetExecutionLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExecutionLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskExecutionServiceServer).GetExecutionLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TaskExecutionService_GetExecutionLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskExecutionServiceServer).GetExecutionLogs(ctx, req.(*GetExecutionLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// TaskExecutionService_ServiceDesc is the grpc.ServiceDesc for TaskExecutionService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var TaskExecutionService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "etask.executor.v1.TaskExecutionService",
+	HandlerType: (*TaskExecutionServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ListTaskExecutions",
+			Handler:    _TaskExecutionService_ListTaskExecutions_Handler,
+		},
+		{
+			MethodName: "GetExecutionLogs",
+			Handler:    _TaskExecutionService_GetExecutionLogs_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "etask/executor/v1/executor.proto",
+}

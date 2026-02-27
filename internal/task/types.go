@@ -15,3 +15,5 @@ type StartTaskJob = job.StartTaskJob
 type PassProcessTaskJob = job.PassProcessTaskJob
 
 type RecoveryTaskJob = job.RecoveryTaskJob
+
+type TaskExecutionSyncJob = job.TaskExecutionSyncJob

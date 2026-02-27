@@ -9,6 +9,8 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
+	"github.com/Duke1616/ecmdb/api/proto/gen/etask/task/v1"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
@@ -20,6 +22,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/Duke1616/ecmdb/internal/task/internal/service/dispatch"
+	"github.com/Duke1616/ecmdb/internal/task/internal/service/scheduler"
 	"github.com/Duke1616/ecmdb/internal/task/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -35,40 +39,42 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module, lark2 *lark.Client, crypto *cryptox.CryptoRegistry, sender2 sender.NotificationSender) (*Module, error) {
+func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module, engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module, runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module, lark2 *lark.Client, crypto *cryptox.CryptoRegistry, sender2 sender.NotificationSender, taskClient taskv1.TaskServiceClient, executorClient executorv1.TaskExecutionServiceClient) (*Module, error) {
 	taskDAO := dao.NewTaskDAO(db)
 	taskRepository := repository.NewTaskRepository(taskDAO)
 	serviceService := orderModule.Svc
 	service2 := workflowModule.Svc
 	service3 := codebookModule.Svc
 	service4 := runnerModule.Svc
-	service5 := workerModule.Svc
+	service5 := engineModule.Svc
+	service6 := userModule.Svc
+	service7 := workerModule.Svc
 	cryptoxCrypto := InitCrypto(crypto)
-	execService := service.NewExecService(service5, cryptoxCrypto)
-	cronjob := service.NewCronjob(execService)
-	service6 := engineModule.Svc
-	service7 := userModule.Svc
+	taskDispatcher := dispatch.NewTaskDispatcher(service7, taskClient, taskRepository, cryptoxCrypto)
 	service8 := discoveryModule.Svc
-	service9 := service.NewService(taskRepository, serviceService, service2, service3, service4, cronjob, service6, service7, execService, service8)
+	schedulerScheduler := scheduler.NewScheduler()
+	service9 := service.NewService(taskRepository, serviceService, service2, service3, service4, service5, service6, taskDispatcher, service8, schedulerScheduler)
 	handler := web.NewHandler(service9)
-	executeResultConsumer := initConsumer(service9, q, service3, service7, sender2)
+	executeResultConsumer := initConsumer(service9, q, service3, service6, sender2)
 	startTaskJob := initStartTaskJob(service9)
-	passProcessTaskJob := initPassProcessTaskJob(service9, service6)
-	recoveryTaskJob := initRecoveryTaskJob(service9, execService, cronjob)
+	passProcessTaskJob := initPassProcessTaskJob(service9, service5)
+	recoveryTaskJob := initRecoveryTaskJob(service9)
+	taskExecutionSyncJob := initTaskExecutionSyncJob(service9, service5, executorClient)
 	module := &Module{
-		Svc:                service9,
-		Hdl:                handler,
-		c:                  executeResultConsumer,
-		StartTaskJob:       startTaskJob,
-		PassProcessTaskJob: passProcessTaskJob,
-		RecoveryTaskJob:    recoveryTaskJob,
+		Svc:                  service9,
+		Hdl:                  handler,
+		c:                    executeResultConsumer,
+		StartTaskJob:         startTaskJob,
+		PassProcessTaskJob:   passProcessTaskJob,
+		RecoveryTaskJob:      recoveryTaskJob,
+		TaskExecutionSyncJob: taskExecutionSyncJob,
 	}
 	return module, nil
 }
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewExecService, service.NewService, service.NewCronjob, repository.NewTaskRepository, dao.NewTaskDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, dispatch.NewTaskDispatcher, service.NewService, repository.NewTaskRepository, dao.NewTaskDAO, scheduler.NewScheduler)
 
 func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
 	userSvc user.Service, sender2 sender.NotificationSender) *event.ExecuteResultConsumer {
@@ -93,9 +99,9 @@ func initStartTaskJob(svc service.Service) *StartTaskJob {
 	return job.NewStartTaskJob(svc, limit, initialInterval, maxInterval, maxRetries)
 }
 
-func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSvc service.Cronjob) *RecoveryTaskJob {
+func initRecoveryTaskJob(svc service.Service) *RecoveryTaskJob {
 	limit := int64(100)
-	recovery := job.NewRecoveryTaskJob(svc, execSvc, jobSvc, limit)
+	recovery := job.NewRecoveryTaskJob(svc, limit)
 
 	type Config struct {
 		Enabled bool `mapstructure:"enabled"`
@@ -114,7 +120,7 @@ func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSv
 		_ = recovery.Run(context.Background())
 	}()
 
-	return nil
+	return recovery
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {
@@ -122,4 +128,9 @@ func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *Pass
 	seconds := int64(10)
 	limit := int64(100)
 	return job.NewPassProcessTaskJob(svc, engineSvc, minutes, seconds, limit)
+}
+
+func initTaskExecutionSyncJob(svc service.Service, engineSvc engine.Service, executorSvc executorv1.TaskExecutionServiceClient) *TaskExecutionSyncJob {
+	limit := int64(100)
+	return job.NewTaskExecutionSyncJob(svc, executorSvc, limit)
 }

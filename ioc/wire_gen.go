@@ -156,7 +156,10 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, cryptoRegistry, notificationSender)
+	taskClientConn := InitTASKGrpcClient(registry)
+	taskServiceClient := InitTaskServiceClient(taskClientConn)
+	taskExecutionServiceClient := InitTaskExecutionServiceClient(taskClientConn)
+	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, cryptoRegistry, notificationSender, taskServiceClient, taskExecutionServiceClient)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +222,8 @@ func InitApp() (*App, error) {
 	processEvent := eventModule.Event
 	startTaskJob := taskModule.StartTaskJob
 	passProcessTaskJob := taskModule.PassProcessTaskJob
-	v2 := initCronJobs(startTaskJob, passProcessTaskJob)
+	taskExecutionSyncJob := taskModule.TaskExecutionSyncJob
+	v2 := initCronJobs(startTaskJob, passProcessTaskJob, taskExecutionSyncJob)
 	service2 := endpointModule.Svc
 	app := &App{
 		Web:    component,

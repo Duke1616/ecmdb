@@ -9,7 +9,7 @@ import (
 	"github.com/gotomicro/ego/task/ecron"
 )
 
-func initCronJobs(tJob *task.StartTaskJob, pJob *task.PassProcessTaskJob) []*ecron.Component {
+func initCronJobs(tJob *task.StartTaskJob, pJob *task.PassProcessTaskJob, sJob *task.TaskExecutionSyncJob) []*ecron.Component {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 
 	return []*ecron.Component{
@@ -21,6 +21,12 @@ func initCronJobs(tJob *task.StartTaskJob, pJob *task.PassProcessTaskJob) []*ecr
 		),
 		ecron.DefaultContainer().Build(
 			ecron.WithJob(funcJobWrapper(pJob)),
+			ecron.WithSeconds(),
+			ecron.WithSpec("*/10 * * * * *"),
+			ecron.WithLocation(loc),
+		),
+		ecron.DefaultContainer().Build(
+			ecron.WithJob(funcJobWrapper(sJob)),
 			ecron.WithSeconds(),
 			ecron.WithSpec("*/10 * * * * *"),
 			ecron.WithLocation(loc),

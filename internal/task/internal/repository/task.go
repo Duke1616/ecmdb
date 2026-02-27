@@ -38,8 +38,14 @@ type TaskRepository interface {
 	// ListTaskByStatus 拉取某具体状态项的分页集合
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 
+	// ListTaskByStatusAndMode 拉取特定状态和运行模式的分页集合
+	ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, error)
+
 	// Total 计算任务集合总量
 	Total(ctx context.Context, status uint8) (int64, error)
+
+	// TotalByStatusAndMode 统计特定状态和运行模式的任务总数
+	TotalByStatusAndMode(ctx context.Context, status uint8, mode string) (int64, error)
 
 	// UpdateArgs 动态更新调度派发的额外业务配置参数
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
@@ -61,6 +67,9 @@ type TaskRepository interface {
 
 	// MarkTaskAsAutoPassed 将执行完成的任务打上流程驱动完毕可直接跳过的标记
 	MarkTaskAsAutoPassed(ctx context.Context, id int64) error
+
+	// UpdateExternalId 绑定外部分布式平台的任务 ID
+	UpdateExternalId(ctx context.Context, id int64, externalId string) error
 }
 
 type taskRepository struct {
@@ -81,6 +90,10 @@ func (repo *taskRepository) ListTaskByInstanceId(ctx context.Context, offset, li
 
 func (repo *taskRepository) MarkTaskAsAutoPassed(ctx context.Context, id int64) error {
 	return repo.dao.MarkTaskAsAutoPassed(ctx, id)
+}
+
+func (repo *taskRepository) UpdateExternalId(ctx context.Context, id int64, externalId string) error {
+	return repo.dao.UpdateExternalId(ctx, id, externalId)
 }
 
 func (repo *taskRepository) FindTaskResult(ctx context.Context, instanceId int, nodeId string) (domain.Task, error) {
@@ -159,8 +172,19 @@ func (repo *taskRepository) ListTaskByStatus(ctx context.Context, offset, limit 
 	}), err
 }
 
+func (repo *taskRepository) ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, error) {
+	ts, err := repo.dao.ListTaskByStatusAndMode(ctx, offset, limit, status, mode)
+	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
+		return repo.toDomain(src)
+	}), err
+}
+
 func (repo *taskRepository) Total(ctx context.Context, status uint8) (int64, error) {
 	return repo.dao.Count(ctx, status)
+}
+
+func (repo *taskRepository) TotalByStatusAndMode(ctx context.Context, status uint8, mode string) (int64, error) {
+	return repo.dao.CountByStatusAndMode(ctx, status, mode)
 }
 
 func (repo *taskRepository) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {
@@ -188,7 +212,7 @@ func (repo *taskRepository) toUpdateEntity(req domain.TaskResult) dao.Task {
 }
 
 func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
-	return dao.Task{
+	t := dao.Task{
 		Id:              req.Id,
 		ProcessInstId:   req.ProcessInstId,
 		TriggerPosition: req.TriggerPosition,
@@ -196,12 +220,12 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		OrderId:         req.OrderId,
 		CodebookUid:     req.CodebookUid,
 		CodebookName:    req.CodebookName,
-		WorkerName:      req.WorkerName,
 		WorkflowId:      req.WorkflowId,
 		Code:            req.Code,
-		Topic:           req.Topic,
 		Language:        req.Language,
 		Args:            req.Args,
+		RunMode:         string(req.RunMode),
+		ExternalId:      req.ExternalId,
 		IsTiming:        req.IsTiming,
 		Timing: dao.Timing{
 			Stime:    req.Timing.Stime,
@@ -217,21 +241,33 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		}),
 		Status: req.Status.ToUint8(),
 	}
+
+	if req.Worker != nil {
+		t.Worker.WorkerName = req.Worker.WorkerName
+		t.Worker.Topic = req.Worker.Topic
+	}
+
+	if req.Execute != nil {
+		t.Execute.ServiceName = req.Execute.ServiceName
+		t.Execute.Handler = req.Execute.Handler
+	}
+
+	return t
 }
 
 func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
-	return domain.Task{
+	t := domain.Task{
 		Id:            req.Id,
 		ProcessInstId: req.ProcessInstId,
 		CurrentNodeId: req.CurrentNodeId,
 		OrderId:       req.OrderId,
 		CodebookUid:   req.CodebookUid,
 		CodebookName:  req.CodebookName,
-		WorkerName:    req.WorkerName,
 		WorkflowId:    req.WorkflowId,
 		Code:          req.Code,
-		Topic:         req.Topic,
 		Args:          req.Args,
+		RunMode:       domain.RunMode(req.RunMode),
+		ExternalId:    req.ExternalId,
 		IsTiming:      req.IsTiming,
 		Timing: domain.Timing{
 			Stime:    req.Timing.Stime,
@@ -251,4 +287,24 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		WantResult: req.WantResult,
 		Status:     domain.Status(req.Status),
 	}
+
+	if req.RunMode == "" {
+		t.RunMode = domain.RunModeWorker
+	}
+
+	if req.Worker.WorkerName != "" {
+		t.Worker = &domain.Worker{
+			WorkerName: req.Worker.WorkerName,
+			Topic:      req.Worker.Topic,
+		}
+	}
+
+	if req.Execute.ServiceName != "" {
+		t.Execute = &domain.Execute{
+			ServiceName: req.Execute.ServiceName,
+			Handler:     req.Execute.Handler,
+		}
+	}
+
+	return t
 }

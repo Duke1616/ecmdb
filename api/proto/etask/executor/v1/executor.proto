@@ -95,3 +95,68 @@ message PrepareRequest {
 message PrepareResponse {
   map<string, string> params = 1;
 }
+
+// ==================== 拉取模式 (Pull) 新增 ====================
+
+// 执行节点长轮询发起请求获取活儿
+message PullTaskRequest {
+  string service_name = 1;     // 这个机器所属的分组 ServiceName (比如：ework-executor-node1)
+  repeated string handlers = 2; // 这台机器目前可支持的所有 Handler 名字 (如 shell, demo)
+  string node_id = 3;           // 具体这台机器的唯一实例 ID
+}
+
+message PullTaskResponse {
+  bool has_task = 1;         // 是否取到活儿了
+  // 如果取到了，直接复用刚才的 ExecuteRequest 下发给它！
+  ExecuteRequest task_req = 2;
+}
+
+// AgentService 专门供边缘执行节点回调和拉取的拉取接口（只应跑在调度中心）
+service AgentService {
+  rpc PullTask(PullTaskRequest) returns (PullTaskResponse);
+}
+
+// ==================== 任务执行管理 (Management) ====================
+
+service TaskExecutionService {
+  // 列出任务执行记录
+  rpc ListTaskExecutions(ListTaskExecutionsRequest) returns (ListTaskExecutionsResponse);
+  // 获取执行日志
+  rpc GetExecutionLogs(GetExecutionLogsRequest) returns (GetExecutionLogsResponse);
+}
+
+message ListTaskExecutionsRequest {
+  int64 task_id = 1;
+}
+
+message TaskExecution {
+  int64 id = 1;
+  int64 task_id = 2;
+  string task_name = 3;
+  int64 start_time = 4;
+  int64 end_time = 5;
+  ExecutionStatus status = 6;
+  int32 running_progress = 7;
+  string executor_node_id = 8;
+}
+
+message ListTaskExecutionsResponse {
+  repeated TaskExecution executions = 1;
+}
+
+message GetExecutionLogsRequest {
+  int64 execution_id = 1;
+  int64 min_id = 2;
+  int32 limit = 3;
+}
+
+message ExecutionLog {
+  int64 id = 1;
+  int64 time = 2;
+  string content = 3;
+}
+
+message GetExecutionLogsResponse {
+  repeated ExecutionLog logs = 1;
+  int64 max_id = 2;
+}

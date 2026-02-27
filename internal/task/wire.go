@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	executorv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/executor/v1"
+	taskv1 "github.com/Duke1616/ecmdb/api/proto/gen/etask/task/v1"
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
@@ -18,6 +20,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
+	"github.com/Duke1616/ecmdb/internal/task/internal/service/dispatch"
+	"github.com/Duke1616/ecmdb/internal/task/internal/service/scheduler"
 	"github.com/Duke1616/ecmdb/internal/task/internal/web"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/worker"
@@ -32,22 +36,24 @@ import (
 
 var ProviderSet = wire.NewSet(
 	web.NewHandler,
-	service.NewExecService,
+	dispatch.NewTaskDispatcher,
 	service.NewService,
-	service.NewCronjob,
 	repository.NewTaskRepository,
 	dao.NewTaskDAO,
+	scheduler.NewScheduler,
 )
 
 func InitModule(q mq.MQ, db *mongox.Mongo, orderModule *order.Module, workflowModule *workflow.Module,
 	engineModule *engine.Module, codebookModule *codebook.Module, workerModule *worker.Module,
 	runnerModule *runner.Module, userModule *user.Module, discoveryModule *discovery.Module,
-	lark *lark.Client, crypto *cryptox.CryptoRegistry, sender sender.NotificationSender) (*Module, error) {
+	lark *lark.Client, crypto *cryptox.CryptoRegistry, sender sender.NotificationSender,
+	taskClient taskv1.TaskServiceClient, executorClient executorv1.TaskExecutionServiceClient) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		initStartTaskJob,
 		initPassProcessTaskJob,
 		initRecoveryTaskJob,
+		initTaskExecutionSyncJob,
 		initConsumer,
 		InitCrypto,
 		wire.FieldsOf(new(*order.Module), "Svc"),
@@ -86,9 +92,9 @@ func initStartTaskJob(svc service.Service) *StartTaskJob {
 	return job.NewStartTaskJob(svc, limit, initialInterval, maxInterval, maxRetries)
 }
 
-func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSvc service.Cronjob) *RecoveryTaskJob {
+func initRecoveryTaskJob(svc service.Service) *RecoveryTaskJob {
 	limit := int64(100)
-	recovery := job.NewRecoveryTaskJob(svc, execSvc, jobSvc, limit)
+	recovery := job.NewRecoveryTaskJob(svc, limit)
 
 	type Config struct {
 		Enabled bool `mapstructure:"enabled"`
@@ -107,7 +113,7 @@ func initRecoveryTaskJob(svc service.Service, execSvc service.ExecService, jobSv
 		_ = recovery.Run(context.Background())
 	}()
 
-	return nil
+	return recovery
 }
 
 func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *PassProcessTaskJob {
@@ -115,4 +121,9 @@ func initPassProcessTaskJob(svc service.Service, engineSvc engine.Service) *Pass
 	seconds := int64(10)
 	limit := int64(100)
 	return job.NewPassProcessTaskJob(svc, engineSvc, minutes, seconds, limit)
+}
+
+func initTaskExecutionSyncJob(svc service.Service, engineSvc engine.Service, executorSvc executorv1.TaskExecutionServiceClient) *TaskExecutionSyncJob {
+	limit := int64(100)
+	return job.NewTaskExecutionSyncJob(svc, executorSvc, limit)
 }

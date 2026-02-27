@@ -207,13 +207,13 @@ func (h *Handler) Retry(ctx *gin.Context, req RetryReq) (ginx.Result, error) {
 func (h *Handler) toTaskVo(req domain.Task) Task {
 	args, _ := json.Marshal(req.Args)
 
-	// NOTE: 定时任务以 ScheduledTime 作为计划开始时间；普通任务则以 Utime 兜底
+	// 定时任务以 ScheduledTime 作为计划开始时间；普通任务则以 Utime 兜底
 	scheduledTime := time.UnixMilli(req.Utime).Format("2006-01-02 15:04:05")
 	if req.IsTiming {
 		scheduledTime = time.UnixMilli(req.ScheduledTime).Format("2006-01-02 15:04:05")
 	}
 
-	// NOTE: 真实的任务执行开始/结束时间存储在 StartTime、EndTime 字段，值为 0 表示尚未执行
+	// 真实的任务执行开始/结束时间存储在 StartTime、EndTime 字段，值为 0 表示尚未执行
 	var startTime, endTime string
 	if req.StartTime > 0 {
 		startTime = time.UnixMilli(req.StartTime).Format("2006-01-02 15:04:05")

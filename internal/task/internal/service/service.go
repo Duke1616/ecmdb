@@ -518,7 +518,7 @@ func (s *service) dispatchTask(ctx context.Context, task domain.Task) error {
 
 func (s *service) buildTaskProcessContext(ctx context.Context, task domain.Task) (*taskProcessContext, error) {
 	// 1. 获取工单信息
-	orderResp, err := s.orderSvc.DetailByProcessInstId(ctx, task.ProcessInstId)
+	orderResp, err := s.orderSvc.Detail(ctx, task.OrderId)
 	if err != nil {
 		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorGetOrder.ToString(), domain.FAILED, err)
 	}

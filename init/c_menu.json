@@ -10,10 +10,10 @@
     "path": "/cmdb/process",
     "pid": "0",
     "redirect": "/cmdb/process/index",
-    "sort": "4",
+    "sort": "6000",
     "status": "1",
     "type": "1",
-    "utime": "1758897424032"
+    "utime": "1770271006340"
   },
   {
     "_id": "66b5aa340017f6391e4feb9f",
@@ -42,10 +42,10 @@
     "path": "/cmdb/task",
     "pid": "0",
     "redirect": "/cmdb/task/codebook",
-    "sort": "5",
+    "sort": "7000",
     "status": "1",
     "type": "1",
-    "utime": "1758897424032"
+    "utime": "1770271006340"
   },
   {
     "_id": "66b7063fdd76ba0f5d3fbb8b",
@@ -69,7 +69,7 @@
     "ctime": "1723271087360",
     "endpoints": "[ ]",
     "id": "10",
-    "meta": "{ \"title\" : \"工作节点\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"worker\" }",
+    "meta": "{ \"title\" : \"执行节点\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"worker\" }",
     "name": "task-worker",
     "path": "worker",
     "pid": "8",
@@ -77,7 +77,7 @@
     "sort": "2",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1772005416634"
   },
   {
     "_id": "66baeaf51246cddd8f64abec",
@@ -90,10 +90,10 @@
     "path": "/cmdb/model",
     "pid": "0",
     "redirect": "/cmdb/model/index",
-    "sort": "1",
+    "sort": "1750",
     "status": "1",
     "type": "1",
-    "utime": "1758897424032"
+    "utime": "1770271706770"
   },
   {
     "_id": "66baeb201246cddd8f64abed",
@@ -106,10 +106,10 @@
     "path": "/cmdb/resource",
     "pid": "0",
     "redirect": "/cmdb/resource/index",
-    "sort": "2",
+    "sort": "4000",
     "status": "1",
     "type": "1",
-    "utime": "1758897424032"
+    "utime": "1770271006340"
   },
   {
     "_id": "66baeb5d1246cddd8f64abee",
@@ -122,10 +122,10 @@
     "path": "/cmdb/order",
     "pid": "0",
     "redirect": "/cmdb/order/index",
-    "sort": "3",
+    "sort": "5000",
     "status": "1",
     "type": "1",
-    "utime": "1758897424032"
+    "utime": "1770271006340"
   },
   {
     "_id": "66baf191997ef9afad60c416",
@@ -138,10 +138,10 @@
     "path": "/cmdb/system",
     "pid": "0",
     "redirect": "/cmdb/system/menu",
-    "sort": "11",
+    "sort": "13000",
     "status": "1",
     "type": "1",
-    "utime": "1765535409584"
+    "utime": "1770271006340"
   },
   {
     "_id": "66baf1ce997ef9afad60c417",
@@ -157,7 +157,7 @@
     "sort": "1",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1770263936102"
   },
   {
     "_id": "66baf208997ef9afad60c418",
@@ -173,7 +173,7 @@
     "sort": "2",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1770263936102"
   },
   {
     "_id": "66baf254997ef9afad60c419",
@@ -189,7 +189,7 @@
     "sort": "3",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1770263936102"
   },
   {
     "_id": "66baf28d997ef9afad60c41a",
@@ -205,7 +205,7 @@
     "sort": "4",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1770263936102"
   },
   {
     "_id": "66bafec3997ef9afad60c420",
@@ -442,10 +442,10 @@
     "path": "",
     "pid": "291",
     "redirect": "",
-    "sort": "2",
+    "sort": "1001",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1770271771743"
   },
   {
     "_id": "66bc97e4241a9ddb3f030cde",
@@ -707,7 +707,7 @@
     "_id": "66bdb2c54817141bf5b90ae6",
     "component": "",
     "ctime": "1723708101590",
-    "endpoints": "[ ]",
+    "endpoints": "[ { \"path\" : \"/api/task/logs/:task_id\", \"method\" : \"GET\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "75",
     "meta": "{ \"title\" : \"任务输出\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "task_output",
@@ -717,7 +717,7 @@
     "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1772177794013"
   },
   {
     "_id": "66bdb2e64817141bf5b90ae7",
@@ -1411,9 +1411,9 @@
     "_id": "66bdc15ace7b5a67a43e8cae",
     "component": "",
     "ctime": "1723711834541",
-    "endpoints": "[ { \"path\" : \"/api/template/list/pipeline\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/template/favorite/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/favorite/toggle\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/list/pipeline\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "121",
-    "meta": "{ \"title\" : \"工单模版列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "meta": "{ \"title\" : \"模版列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_order_template",
     "path": "",
     "pid": "31",
@@ -1421,7 +1421,7 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1772248445774"
   },
   {
     "_id": "66bdc19ace7b5a67a43e8caf",
@@ -1475,7 +1475,7 @@
     "_id": "66bdc225ce7b5a67a43e8cb2",
     "component": "",
     "ctime": "1723712037418",
-    "endpoints": "[ { \"path\" : \"/api/worker/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/worker/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/executor/list\", \"method\" : \"GET\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
     "id": "125",
     "meta": "{ \"title\" : \"工作节点列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_worker",
@@ -1485,7 +1485,7 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1771999918026"
   },
   {
     "_id": "66bdc24bce7b5a67a43e8cb3",
@@ -1578,10 +1578,10 @@
     "path": "/",
     "pid": "0",
     "redirect": "/cmdb/dashboard",
-    "sort": "0",
+    "sort": "875",
     "status": "1",
     "type": "1",
-    "utime": "1758897424032"
+    "utime": "1770271710814"
   },
   {
     "_id": "66dfba61d127c16c37257a28",
@@ -1594,10 +1594,10 @@
     "path": "/cmdb/dashboard",
     "pid": "133",
     "redirect": "",
-    "sort": "1",
+    "sort": "1000",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1770271021898"
   },
   {
     "_id": "66dfbaafd127c16c37257a29",
@@ -1610,10 +1610,10 @@
     "path": "/cmdb/dashboard/search",
     "pid": "133",
     "redirect": "",
-    "sort": "2",
+    "sort": "0",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1770269533517"
   },
   {
     "_id": "66dfebfdd913c3e091401229",
@@ -1818,10 +1818,10 @@
     "path": "/cmdb/rota",
     "pid": "0",
     "redirect": "/cmdb/rota",
-    "sort": "10",
+    "sort": "12000",
     "status": "1",
     "type": "1",
-    "utime": "1765535406202"
+    "utime": "1770271006340"
   },
   {
     "_id": "6735a6de821c391e24e27224",
@@ -2250,10 +2250,10 @@
     "path": "/alert/notify",
     "pid": "0",
     "redirect": "/alert/notify/template",
-    "sort": "9",
+    "sort": "11000",
     "status": "1",
     "type": "1",
-    "utime": "1765535402520"
+    "utime": "1770271006340"
   },
   {
     "_id": "68d904d21fc47ae9102ccdde",
@@ -2426,10 +2426,10 @@
     "path": "/alert/manager",
     "pid": "0",
     "redirect": "/alert/manager/current",
-    "sort": "8",
+    "sort": "10000",
     "status": "1",
     "type": "1",
-    "utime": "1765535388180"
+    "utime": "1770271876422"
   },
   {
     "_id": "68d908961fc47ae9102ccde9",
@@ -2634,10 +2634,10 @@
     "path": "/alert/manager/datasource",
     "pid": "185",
     "redirect": "",
-    "sort": "2",
+    "sort": "0",
     "status": "1",
     "type": "2",
-    "utime": "1759055403214"
+    "utime": "1770271916068"
   },
   {
     "_id": "68d90e401fc47ae9102ccdf9",
@@ -2682,10 +2682,10 @@
     "path": "/alert/workbench",
     "pid": "0",
     "redirect": "/alert/workbench/workspace",
-    "sort": "6",
+    "sort": "8000",
     "status": "1",
     "type": "1",
-    "utime": "1759057249195"
+    "utime": "1770283500332"
   },
   {
     "_id": "68d910ec1fc47ae9102ccdfc",
@@ -4074,10 +4074,10 @@
     "path": "/alert/time_series",
     "pid": "0",
     "redirect": "/alert/time_series/query",
-    "sort": "7",
+    "sort": "9000",
     "status": "1",
     "type": "1",
-    "utime": "1765535375607"
+    "utime": "1770271006340"
   },
   {
     "_id": "693bef19d48e7fdc5bf41f5f",
@@ -4366,5 +4366,21 @@
     "status": "1",
     "type": "3",
     "utime": "1770263446002"
+  },
+  {
+    "_id": "699fec7b634f6fbcadda3871",
+    "component": "",
+    "ctime": "1772088443475",
+    "endpoints": "[ { \"path\" : \"/api/runner/list/exclude_codebook_uid\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/runner/list/by_codebook_uid\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "306",
+    "meta": "{ \"title\" : \"绑定执行单元\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "9",
+    "redirect": "",
+    "sort": "6",
+    "status": "1",
+    "type": "3",
+    "utime": "1772088495687"
   }
 ]

@@ -42,7 +42,7 @@ func (e *kafkaService) Dispatch(ctx context.Context, task domain.Task) error {
 func (e *kafkaService) immediateDispatch(ctx context.Context, task domain.Task) error {
 	return e.workerSvc.Execute(ctx, worker.Execute{
 		TaskId:    task.Id,
-		Topic:     task.Topic,
+		Topic:     task.Worker.Topic,
 		Code:      task.Code,
 		Language:  task.Language,
 		Args:      task.Args,

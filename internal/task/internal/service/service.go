@@ -638,7 +638,6 @@ func (s *service) autoDiscoverRunner(ctx context.Context, automation easyflow.Au
 func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,
 	codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
 	status domain.Status, scheduledTime int64, automation easyflow.AutomationProperty) domain.Task {
-
 	t := domain.Task{
 		Id:              task.Id,
 		ProcessInstId:   task.ProcessInstId,
@@ -650,38 +649,28 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 		Language:        codebookResp.Language,
 		Status:          status,
 		Args:            args,
+		RunMode:         domain.RunMode(runnerResp.RunMode),
 		TriggerPosition: domain.TriggerPositionReadyToStartNode.ToString(),
 		IsTiming:        automation.IsTiming,
 		ScheduledTime:   scheduledTime,
 		Variables:       s.toDomainVariables(runnerResp.Variables),
 	}
 
-	// 填充模式差异化运行参数
-	s.applyRunnerConfig(&t, runnerResp)
+	if runnerResp.Execute != nil {
+		t.Execute = &domain.Execute{
+			ServiceName: runnerResp.Execute.ServiceName,
+			Handler:     runnerResp.Execute.Handler,
+		}
+	}
+
+	if runnerResp.Worker != nil {
+		t.Worker = &domain.Worker{
+			WorkerName: runnerResp.Worker.WorkerName,
+			Topic:      runnerResp.Worker.Topic,
+		}
+	}
 
 	return t
-}
-
-func (s *service) applyRunnerConfig(t *domain.Task, r runner.Runner) {
-	if r.IsModeWorker() {
-		t.RunMode = domain.RunModeWorker
-		t.WorkerName = r.Worker.WorkerName
-		t.Topic = r.Worker.Topic
-		t.Worker = &domain.Worker{
-			WorkerName: r.Worker.WorkerName,
-			Topic:      r.Worker.Topic,
-		}
-		return
-	}
-
-	// 默认为分布式执行模式 (EXECUTE)
-	t.RunMode = domain.RunModeExecute
-	t.WorkerName = r.Execute.Handler
-	t.Topic = r.Execute.ServiceName
-	t.Execute = &domain.Execute{
-		ServiceName: r.Execute.ServiceName,
-		Handler:     r.Execute.Handler,
-	}
 }
 
 func (s *service) toDomainVariables(vars []runner.Variables) []domain.Variables {

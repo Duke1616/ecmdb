@@ -321,7 +321,7 @@ func (dao *taskDAO) UpdateTask(ctx context.Context, t Task) (int64, error) {
 			"result":           t.Result,
 			"run_mode":         t.RunMode,
 			"worker_name":      t.Worker.WorkerName,
-			"topic":            t.Topic,
+			"topic":            t.Worker.Topic,
 			"service_name":     t.Execute.ServiceName,
 			"handler":          t.Execute.Handler,
 			"external_id":      t.ExternalId,
@@ -490,10 +490,8 @@ type Task struct {
 	ProcessInstId   int                    `bson:"process_inst_id"`
 	CodebookName    string                 `bson:"codebook_name"`
 	CodebookUid     string                 `bson:"codebook_uid"`
-	WorkerName      string                 `bson:"worker_name"`
 	WorkflowId      int64                  `bson:"workflow_id"`
 	Code            string                 `bson:"code"`
-	Topic           string                 `bson:"topic"`
 	Language        string                 `bson:"language"`
 	Args            map[string]interface{} `bson:"args"`
 	Variables       []Variables            `bson:"variables"`

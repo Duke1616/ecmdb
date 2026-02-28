@@ -45,10 +45,8 @@ type Task struct {
 	OrderId         int64
 	CodebookName    string
 	CodebookUid     string
-	WorkerName      string
 	WorkflowId      int64
 	Code            string
-	Topic           string
 	Language        string
 	Result          string
 	WantResult      string

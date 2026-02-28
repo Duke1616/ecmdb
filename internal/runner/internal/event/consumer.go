@@ -85,7 +85,7 @@ func (c *TaskRunnerConsumer) toDomain(req TaskRunnerEvent) domain.Runner {
 		CodebookUid:    req.CodebookUid,
 		CodebookSecret: req.CodebookSecret,
 		Target:         req.Topic,
-		Handler:        "", // 默认暂无
+		Handler:        req.Handler,
 		Name:           req.Name,
 		Tags:           req.Tags,
 		Desc:           req.Desc,

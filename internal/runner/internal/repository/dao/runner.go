@@ -325,6 +325,7 @@ func (dao *runnerDAO) AggregateTags(ctx context.Context) ([]RunnerPipeline, erro
 			{Key: "runner_tags", Value: bson.D{{Key: "$push", Value: bson.D{
 				{Key: "tags", Value: "$tags"},
 				{Key: "target", Value: "$target"},
+				{Key: "handler", Value: "$handler"},
 			}}}},
 		}}},
 	}
@@ -374,6 +375,7 @@ type RunnerPipeline struct {
 }
 
 type RunnerTags struct {
-	Target string   `bson:"target"`
-	Tags   []string `json:"tags"`
+	Target  string   `bson:"target"`
+	Handler string   `bson:"handler"`
+	Tags    []string `json:"tags"`
 }

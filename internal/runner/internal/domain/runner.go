@@ -51,6 +51,9 @@ type Variables struct {
 }
 
 type RunnerTags struct {
-	CodebookUid       string
+	CodebookUid string
+	// Tag -> Target
 	TagsMappingTarget map[string]string
+	// Tag -> Handler
+	TagsMappingHandler map[string]string
 }

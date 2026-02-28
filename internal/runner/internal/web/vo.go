@@ -91,9 +91,10 @@ type RetrieveWorkers struct {
 }
 
 type RunnerTags struct {
-	CodebookName      string            `json:"codebook_name"`
-	CodebookUid       string            `json:"codebook_uid"`
-	TagsMappingTarget map[string]string `json:"tags_target"`
+	CodebookName       string            `json:"codebook_name"`
+	CodebookUid        string            `json:"codebook_uid"`
+	TagsMappingTarget  map[string]string `json:"tags_target"`
+	TagsMappingHandler map[string]string `json:"tags_handler"`
 }
 
 type RetrieveRunnerTags struct {

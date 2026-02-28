@@ -1,5 +1,9 @@
 package web
 
+type ToggleFavoriteReq struct {
+	TemplateId int64 `json:"template_id"`
+}
+
 type CreateTemplateReq struct {
 	Name       string `json:"name"`
 	WorkflowId int64  `json:"workflow_id"`

@@ -15,22 +15,36 @@ import (
 var ErrDataNotFound = mongo.ErrNoDocuments
 
 type TemplateDAO interface {
+	// CreateTemplate 创建模板记录，返回模板 ID
 	CreateTemplate(ctx context.Context, t Template) (int64, error)
+	// FindByHash 通过哈希值获取模板信息，用于判断是否重复
 	FindByHash(ctx context.Context, hash string) (Template, error)
+	// FindByExternalTemplateId 通过外部模板 ID（如企微 OA 模板 ID）获取模板信息
 	FindByExternalTemplateId(ctx context.Context, externalTemplateId string) (Template, error)
+	// DetailTemplate 获取单个模板的详细信息
 	DetailTemplate(ctx context.Context, id int64) (Template, error)
+	// DetailTemplateByExternalTemplateId 通过外部模板 ID 获取单个模板的详细信息
 	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (Template, error)
+	// DeleteTemplate 根据 ID 删除模板，返回被删除的记录数
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
+	// UpdateTemplate 更新指定的模板信息
 	UpdateTemplate(ctx context.Context, t Template) (int64, error)
+	// ListTemplate 分页获取模板列表
 	ListTemplate(ctx context.Context, offset, limit int64) ([]Template, error)
+	// Pipeline 获取模板分组分类及各组下模板的信息组合
 	Pipeline(ctx context.Context) ([]TemplatePipeline, error)
+	// Count 统计模板总数
 	Count(ctx context.Context) (int64, error)
 
+	// FindByTemplateIds 根据模板 ID 列表批量获取模板信息
 	FindByTemplateIds(ctx context.Context, ids []int64) ([]Template, error)
 
+	// GetByWorkflowId 通过工作流 ID 获取关联的模板列表
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]Template, error)
 
+	// FindByKeyword 通过关键字分页搜索模板列表
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]Template, error)
+	// CountByKeyword 根据关键字获取符合条件的模板总数
 	CountByKeyword(ctx context.Context, keyword string) (int64, error)
 }
 

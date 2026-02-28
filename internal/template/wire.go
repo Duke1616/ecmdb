@@ -21,6 +21,7 @@ var ProviderSet = wire.NewSet(
 	service.NewService,
 	repository.NewTemplateRepository,
 	dao.NewTemplateDAO,
+	dao.NewFavoriteDAO,
 	web.NewGroupHandler,
 	service.NewGroupService,
 	repository.NewTemplateGroupRepository,

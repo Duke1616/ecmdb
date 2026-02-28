@@ -16,42 +16,43 @@ import (
 type Service interface {
 	// FindOrCreateByWechat 创建或查询来自企业微信的 OA 模版，会把企业微信的 OA 模版同步到本系统存储
 	FindOrCreateByWechat(ctx context.Context, req domain.WechatInfo) (domain.Template, error)
-
-	// CreateTemplate 创建模版
+	// CreateTemplate 创建模版，并返回模版 ID
 	CreateTemplate(ctx context.Context, req domain.Template) (int64, error)
-
-	// DetailTemplate 查询模版详情
+	// DetailTemplate 获取对应 ID 的模版详情配置
 	DetailTemplate(ctx context.Context, id int64) (domain.Template, error)
-
-	// FindByTemplateIds 根据 IDS 获取模版列表
+	// FindByTemplateIds 根据一系列 ID 获取对应的模版领域模型列表
 	FindByTemplateIds(ctx context.Context, ids []int64) ([]domain.Template, error)
-
-	// DetailTemplateByExternalTemplateId 查询外部模版，比如集成飞书OA之类的，统一一个ID
+	// DetailTemplateByExternalTemplateId 通过外部关联系统 ID (如飞书、企业微信) 获取对应系统内对应模版详情
 	DetailTemplateByExternalTemplateId(ctx context.Context, externalId string) (domain.Template, error)
-
-	// ListTemplate 获取模版列表
+	// ListTemplate 分页获取所有模版列表并返回包含所有模版的合计数目
 	ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error)
-
-	// DeleteTemplate 删除模版
+	// DeleteTemplate 删除指定的模版对象，以 ID 标识返回被影响记录数目
 	DeleteTemplate(ctx context.Context, id int64) (int64, error)
-
-	// UpdateTemplate 修改模版
+	// UpdateTemplate 更新替换既有的模版属性
 	UpdateTemplate(ctx context.Context, t domain.Template) (int64, error)
-
-	// Pipeline 返回每个组下的模版列表
+	// Pipeline 负责以组别结构的形式聚合返回不同组合的模版列表以供工作流或者前端选项调起展示
 	Pipeline(ctx context.Context) ([]domain.TemplateCombination, error)
-
-	// GetByWorkflowId 根据流程ID，获取绑定的模版列表
+	// GetByWorkflowId 获取同一业务线上某个具体工作流程上归属管理下的不同模版清单
 	GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error)
-
-	// FindByKeyword 根据关键字搜索模版
+	// FindByKeyword 以特定输入词执行模版的查询过滤并且以分页机制反馈清单与它的计数汇总条数
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Template, int64, error)
-	// 创建流程，生成传递数据的规则
+	// ToggleFavorite 为指定用户触发针对单模板配置实体验证的添加与解除关联状态动作并即时返回新近确立后的最新属性值
+	ToggleFavorite(ctx context.Context, userId int64, templateId int64) (bool, error)
+	// ListFavoriteTemplates 呈现指定关联用户曾经标定过并置于专属藏品当中的系列模版整体汇总状态目录
+	ListFavoriteTemplates(ctx context.Context, userId int64) ([]domain.Template, error)
 }
 
 type service struct {
 	repo    repository.TemplateRepository
 	workApp *workwx.WorkwxApp
+}
+
+func (s *service) ToggleFavorite(ctx context.Context, userId int64, templateId int64) (bool, error) {
+	return s.repo.ToggleFavorite(ctx, userId, templateId)
+}
+
+func (s *service) ListFavoriteTemplates(ctx context.Context, userId int64) ([]domain.Template, error) {
+	return s.repo.ListFavoriteTemplates(ctx, userId)
 }
 
 func (s *service) GetByWorkflowId(ctx context.Context, workflowId int64) ([]domain.Template, error) {

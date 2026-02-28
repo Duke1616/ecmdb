@@ -3,9 +3,19 @@ package dao
 import "github.com/xen0n/go-workwx"
 
 const (
-	TemplateCollection      = "c_template"
-	TemplateGroupCollection = "c_template_group"
+	TemplateCollection         = "c_template"
+	TemplateGroupCollection    = "c_template_group"
+	TemplateFavoriteCollection = "c_template_favorite"
 )
+
+// TemplateFavorite 模版收藏表
+type TemplateFavorite struct {
+	Id         int64 `bson:"id"`
+	UserId     int64 `bson:"user_id"`
+	TemplateId int64 `bson:"template_id"`
+	Ctime      int64 `bson:"ctime"`
+	Utime      int64 `bson:"utime"`
+}
 
 type Template struct {
 	Id                 int64                     `bson:"id"`

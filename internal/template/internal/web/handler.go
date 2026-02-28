@@ -9,6 +9,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/template/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ginx/gctx"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
 	"github.com/gotomicro/ego/core/elog"
@@ -45,6 +47,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 根据关键字搜索模版
 	g.POST("/list/by_keyword", ginx.WrapBody[ByKeywordReq](h.ByKeyword))
+
+	// 模版收藏
+	g.POST("/favorite/toggle", ginx.WrapBody[ToggleFavoriteReq](h.ToggleFavorite))
+	g.POST("/favorite/list", ginx.Wrap(h.ListFavoriteTemplates))
 }
 
 func (h *Handler) CreateTemplate(ctx *gin.Context, req CreateTemplateReq) (ginx.Result, error) {
@@ -340,4 +346,56 @@ func (h *Handler) toUpdateDomain(req UpdateTemplateReq) (domain.Template, error)
 		Options:    optionsData,
 	}, nil
 
+}
+
+func (h *Handler) getUid(ctx *gin.Context) (int64, error) {
+	sess, err := session.Get(&gctx.Context{Context: ctx})
+	if err != nil {
+		return 0, fmt.Errorf("获取 Session 失败: %w", err)
+	}
+	return sess.Claims().Uid, nil
+}
+
+func (h *Handler) ToggleFavorite(ctx *gin.Context, req ToggleFavoriteReq) (ginx.Result, error) {
+	uid, err := h.getUid(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	status, err := h.svc.ToggleFavorite(ctx, uid, req.TemplateId)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	msg := "已收藏"
+	if !status {
+		msg = "已取消收藏"
+	}
+
+	return ginx.Result{
+		Data: status,
+		Msg:  msg,
+	}, nil
+}
+
+func (h *Handler) ListFavoriteTemplates(ctx *gin.Context) (ginx.Result, error) {
+	uid, err := h.getUid(ctx)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	templates, err := h.svc.ListFavoriteTemplates(ctx, uid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "获取收藏的工单模版成功",
+		Data: RetrieveTemplates{
+			Total: int64(len(templates)),
+			Templates: slice.Map(templates, func(idx int, src domain.Template) TemplateJson {
+				return h.toTemplateJsonVo(src)
+			}),
+		},
+	}, nil
 }

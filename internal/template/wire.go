@@ -4,6 +4,7 @@ package template
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Duke1616/ecmdb/internal/template/internal/event"
 	"github.com/Duke1616/ecmdb/internal/template/internal/repository"
@@ -21,12 +22,28 @@ var ProviderSet = wire.NewSet(
 	service.NewService,
 	repository.NewTemplateRepository,
 	dao.NewTemplateDAO,
-	dao.NewFavoriteDAO,
+	InitFavoriteDAO,
 	web.NewGroupHandler,
 	service.NewGroupService,
 	repository.NewTemplateGroupRepository,
 	dao.NewTemplateGroupDAO,
 )
+
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongox.Mongo) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitFavoriteDAO(db *mongox.Mongo) dao.FavoriteDAO {
+	InitCollectionOnce(db)
+	return dao.NewFavoriteDAO(db)
+}
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
 	wire.Build(

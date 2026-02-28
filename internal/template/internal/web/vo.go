@@ -121,9 +121,9 @@ type RetrieveTemplateGroup struct {
 
 // TemplateCombination 一组数据
 type TemplateCombination struct {
-	Id        int64      `json:"id"`
-	Name      string     `json:"name"`
-	Icon      string     `json:"icon"`
+	Id        int64      `json:"id,omitempty"`
+	Name      string     `json:"name,omitempty"`
+	Icon      string     `json:"icon,omitempty"`
 	Total     int64      `json:"total"`
 	Templates []Template `json:"templates"`
 }

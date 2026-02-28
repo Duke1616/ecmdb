@@ -391,10 +391,10 @@ func (h *Handler) ListFavoriteTemplates(ctx *gin.Context) (ginx.Result, error) {
 
 	return ginx.Result{
 		Msg: "获取收藏的工单模版成功",
-		Data: RetrieveTemplates{
+		Data: TemplateCombination{
 			Total: int64(len(templates)),
-			Templates: slice.Map(templates, func(idx int, src domain.Template) TemplateJson {
-				return h.toTemplateJsonVo(src)
+			Templates: slice.Map(templates, func(idx int, src domain.Template) Template {
+				return h.toTemplateVo(src)
 			}),
 		},
 	}, nil

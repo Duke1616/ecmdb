@@ -17,13 +17,14 @@ import (
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 	"github.com/xen0n/go-workwx"
+	"sync"
 )
 
 // Injectors from wire.go:
 
 func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, error) {
 	templateDAO := dao.NewTemplateDAO(db)
-	favoriteDAO := dao.NewFavoriteDAO(db)
+	favoriteDAO := InitFavoriteDAO(db)
 	templateRepository := repository.NewTemplateRepository(templateDAO, favoriteDAO)
 	serviceService := service.NewService(templateRepository, workAPP)
 	wechatOrderEventProducer, err := event.NewWechatOrderEventProducer(q)
@@ -47,7 +48,23 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workAPP *workwx.WorkwxApp) (*Module, 
 
 // wire.go:
 
-var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTemplateRepository, dao.NewTemplateDAO, dao.NewFavoriteDAO, web.NewGroupHandler, service.NewGroupService, repository.NewTemplateGroupRepository, dao.NewTemplateGroupDAO)
+var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.NewTemplateRepository, dao.NewTemplateDAO, InitFavoriteDAO, web.NewGroupHandler, service.NewGroupService, repository.NewTemplateGroupRepository, dao.NewTemplateGroupDAO)
+
+var daoOnce = sync.Once{}
+
+func InitCollectionOnce(db *mongox.Mongo) {
+	daoOnce.Do(func() {
+		err := dao.InitIndexes(db)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func InitFavoriteDAO(db *mongox.Mongo) dao.FavoriteDAO {
+	InitCollectionOnce(db)
+	return dao.NewFavoriteDAO(db)
+}
 
 func initConsumer(svc service.Service, q mq.MQ, p event.WechatOrderEventProducer, workAPP *workwx.WorkwxApp) *event.WechatApprovalCallbackConsumer {
 	consumer, err := event.NewWechatApprovalCallbackConsumer(svc, q, p, workAPP)

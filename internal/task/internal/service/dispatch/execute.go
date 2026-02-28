@@ -49,8 +49,8 @@ func (e *executeService) Dispatch(ctx context.Context, task domain.Task) error {
 		Type:     taskv1.TaskType_ONE_TIME,
 		CronExpr: executeTime.Format("05 04 15 02 01 ?"),
 		GrpcConfig: &taskv1.GrpcConfig{
-			ServiceName: task.Execute.ServiceName,
-			HandlerName: task.Execute.Handler,
+			ServiceName: task.Target,
+			HandlerName: task.Handler,
 			Params: map[string]string{
 				"task_id":   strconv.FormatInt(task.Id, 10),
 				"code":      task.Code,

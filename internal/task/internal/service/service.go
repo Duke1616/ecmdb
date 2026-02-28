@@ -60,8 +60,8 @@ type Service interface {
 	// ListTaskByStatus 用于平台展示过滤指定生命周期下的节点任务
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, int64, error)
 
-	// ListTaskByStatusAndMode 用于过滤指定生命周期和运行模式的任务
-	ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, int64, error)
+	// ListTaskByStatusAndKind 用于过滤指定生命周期和运行模式的任务
+	ListTaskByStatusAndKind(ctx context.Context, offset, limit int64, status uint8, kind string) ([]domain.Task, int64, error)
 
 	// ListTask 全景展示系统大盘所积累的所有执行节点情况
 	ListTask(ctx context.Context, offset, limit int64) ([]domain.Task, int64, error)
@@ -125,7 +125,7 @@ func (s *service) ListTaskByInstanceId(ctx context.Context, offset, limit int64,
 	return ts, total, nil
 }
 
-func (s *service) ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, int64, error) {
+func (s *service) ListTaskByStatusAndKind(ctx context.Context, offset, limit int64, status uint8, kind string) ([]domain.Task, int64, error) {
 	var (
 		eg    errgroup.Group
 		ts    []domain.Task
@@ -133,13 +133,13 @@ func (s *service) ListTaskByStatusAndMode(ctx context.Context, offset, limit int
 	)
 	eg.Go(func() error {
 		var err error
-		ts, err = s.repo.ListTaskByStatusAndMode(ctx, offset, limit, status, mode)
+		ts, err = s.repo.ListTaskByStatusAndKind(ctx, offset, limit, status, kind)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		total, err = s.repo.TotalByStatusAndMode(ctx, status, mode)
+		total, err = s.repo.TotalByStatusAndKind(ctx, status, kind)
 		return err
 	})
 	if err := eg.Wait(); err != nil {
@@ -498,8 +498,8 @@ func (s *service) dispatchTask(ctx context.Context, task domain.Task) error {
 
 	// === 统一在此处变更状态 === //
 	// 只要 Dispatch 没报错，意味着无论是入库队列还是发远端，任务都已正式“上路”。
-	// 只有当任务是 Worker 模式且为本地定时任务时，才保留在 SCHEDULED 状态让本地内存 Cron 调度及宕机恢复。
-	if !task.IsTiming || task.RunMode == domain.RunModeExecute {
+	// 只有当任务是 KAFKA 模式且为本地定时任务时，才保留在 SCHEDULED 状态让本地内存 Cron 调度及宕机恢复。
+	if !task.IsTiming || task.Kind == domain.GRPC {
 		// 此处若更新失败，任务实际已路由到执行端，状态库仍停在 SCHEDULED，
 		if _, statusErr := s.UpdateTaskStatus(ctx, domain.TaskResult{
 			Id:              task.Id,
@@ -638,7 +638,7 @@ func (s *service) autoDiscoverRunner(ctx context.Context, automation easyflow.Au
 func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flow workflow.Workflow,
 	codebookResp codebook.Codebook, runnerResp runner.Runner, args map[string]interface{},
 	status domain.Status, scheduledTime int64, automation easyflow.AutomationProperty) domain.Task {
-	t := domain.Task{
+	return domain.Task{
 		Id:              task.Id,
 		ProcessInstId:   task.ProcessInstId,
 		OrderId:         orderResp.Id,
@@ -649,28 +649,14 @@ func (s *service) prepareTaskUpdate(orderResp order.Order, task domain.Task, flo
 		Language:        codebookResp.Language,
 		Status:          status,
 		Args:            args,
-		RunMode:         domain.RunMode(runnerResp.RunMode),
+		Kind:            domain.Kind(runnerResp.Kind),
 		TriggerPosition: domain.TriggerPositionReadyToStartNode.ToString(),
 		IsTiming:        automation.IsTiming,
 		ScheduledTime:   scheduledTime,
 		Variables:       s.toDomainVariables(runnerResp.Variables),
+		Target:          runnerResp.Target,
+		Handler:         runnerResp.Handler,
 	}
-
-	if runnerResp.Execute != nil {
-		t.Execute = &domain.Execute{
-			ServiceName: runnerResp.Execute.ServiceName,
-			Handler:     runnerResp.Execute.Handler,
-		}
-	}
-
-	if runnerResp.Worker != nil {
-		t.Worker = &domain.Worker{
-			WorkerName: runnerResp.Worker.WorkerName,
-			Topic:      runnerResp.Worker.Topic,
-		}
-	}
-
-	return t
 }
 
 func (s *service) toDomainVariables(vars []runner.Variables) []domain.Variables {

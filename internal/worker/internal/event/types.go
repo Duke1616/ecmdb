@@ -22,8 +22,9 @@ type WorkerEvent struct {
 	Status Status `json:"status"`
 }
 
-type EworkRunnerExecuteEvent struct {
+type AgentExecuteEvent struct {
 	TaskId    int64                  `json:"task_id"`
+	Handler   string                 `json:"handler"`
 	Language  string                 `json:"language"`
 	Code      string                 `json:"code"`
 	Args      map[string]interface{} `json:"args"`

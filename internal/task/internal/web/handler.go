@@ -102,8 +102,8 @@ func (h *Handler) Logs(ctx *gin.Context) (ginx.Result, error) {
 		return systemErrorResult, err
 	}
 
-	// 如果是 worker 模式直接返回 result 数据
-	if tInfo.RunMode == domain.RunModeWorker {
+	// 如果是 KAFKA 模式直接返回 result 数据
+	if tInfo.Kind == domain.KAFKA {
 		return ginx.Result{
 			Code: 0,
 			Msg:  "获取日志成功",
@@ -227,9 +227,11 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		OrderId:         req.OrderId,
 		Language:        req.Language,
 		Code:            req.Code,
-		RunMode:         string(req.RunMode),
+		Kind:            string(req.Kind),
 		CodebookUid:     req.CodebookUid,
 		CodebookName:    req.CodebookName,
+		Target:          req.Target,
+		Handler:         req.Handler,
 		Status:          Status(req.Status),
 		Result:          req.Result,
 		Args:            string(args),
@@ -240,19 +242,6 @@ func (h *Handler) toTaskVo(req domain.Task) Task {
 		RetryCount:      req.RetryCount,
 		TriggerPosition: req.TriggerPosition,
 		Variables:       desensitization(req.Variables),
-	}
-
-	if req.Worker != nil {
-		taskVO.Worker = &Worker{
-			WorkerName: req.Worker.WorkerName,
-			Topic:      req.Worker.Topic,
-		}
-	}
-	if req.Execute != nil {
-		taskVO.Execute = &Execute{
-			ServiceName: req.Execute.ServiceName,
-			Handler:     req.Execute.Handler,
-		}
 	}
 
 	return taskVO

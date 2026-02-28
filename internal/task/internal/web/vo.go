@@ -36,36 +36,26 @@ type ListTaskByInstanceIdReq struct {
 	Page
 }
 
-type Worker struct {
-	WorkerName string `json:"worker_name"`
-	Topic      string `json:"topic"`
-}
-
-type Execute struct {
-	ServiceName string `json:"service_name"`
-	Handler     string `json:"handler"`
-}
-
 type Task struct {
-	Id              int64    `json:"id"`
-	OrderId         int64    `json:"order_id"`
-	RunMode         string   `json:"run_mode"`
-	CodebookUid     string   `json:"codebook_uid"`
-	CodebookName    string   `json:"codebook_name"`
-	Worker          *Worker  `json:"worker,omitempty"`
-	Execute         *Execute `json:"execute,omitempty"`
-	Status          Status   `json:"status"`
-	IsTiming        bool     `json:"is_timing"`
-	ScheduledTime   string   `json:"scheduled_time"`
-	StartTime       string   `json:"start_time"`
-	EndTime         string   `json:"end_time"`
-	RetryCount      int      `json:"retry_count"`
-	Code            string   `json:"code"`
-	Language        string   `json:"language"`
-	Args            string   `json:"args"`
-	Variables       string   `json:"variables"`
-	Result          string   `json:"result"`
-	TriggerPosition string   `json:"trigger_position"`
+	Id              int64  `json:"id"`
+	OrderId         int64  `json:"order_id"`
+	Kind            string `json:"kind"`
+	CodebookUid     string `json:"codebook_uid"`
+	CodebookName    string `json:"codebook_name"`
+	Target          string `json:"target"`
+	Handler         string `json:"handler"`
+	Status          Status `json:"status"`
+	IsTiming        bool   `json:"is_timing"`
+	ScheduledTime   string `json:"scheduled_time"`
+	StartTime       string `json:"start_time"`
+	EndTime         string `json:"end_time"`
+	RetryCount      int    `json:"retry_count"`
+	Code            string `json:"code"`
+	Language        string `json:"language"`
+	Args            string `json:"args"`
+	Variables       string `json:"variables"`
+	Result          string `json:"result"`
+	TriggerPosition string `json:"trigger_position"`
 }
 
 type RetryReq struct {

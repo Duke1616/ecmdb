@@ -38,8 +38,9 @@ func (s *service) FindByName(ctx context.Context, name string) (domain.Worker, e
 }
 
 func (s *service) Execute(ctx context.Context, req domain.Execute) error {
-	evt := event.EworkRunnerExecuteEvent{
+	evt := event.AgentExecuteEvent{
 		Language:  req.Language,
+		Handler:   req.Handler,
 		Code:      req.Code,
 		TaskId:    req.TaskId,
 		Args:      req.Args,

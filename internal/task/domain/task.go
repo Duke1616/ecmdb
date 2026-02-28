@@ -2,16 +2,16 @@ package domain
 
 import "time"
 
-type RunMode string
+type Kind string
 
 const (
-	// RunModeWorker 工作节点 kafka 推送
-	RunModeWorker RunMode = "WORKER"
-	// RunModeExecute 绑定分布式任务平台执行节点
-	RunModeExecute RunMode = "EXECUTE"
+	// KAFKA 工作节点 kafka 推送
+	KAFKA Kind = "KAFKA"
+	// GRPC 绑定分布式任务平台执行节点
+	GRPC Kind = "GRPC"
 )
 
-func (s RunMode) ToString() string {
+func (s Kind) ToString() string {
 	return string(s)
 }
 
@@ -56,23 +56,13 @@ type Task struct {
 	ScheduledTime   int64
 	Variables       []Variables
 	Args            map[string]interface{}
-	RunMode         RunMode
-	Worker          *Worker
-	Execute         *Execute
+	Kind            Kind
+	Target          string // 执行目标 (Topic 或 ServiceName)
+	Handler         string // 执行方法
 	ExternalId      string // 外部任务 ID (如分布式任务平台生成的实例 ID)
 	StartTime       int64  // 任务实际开始执行时间
 	EndTime         int64  // 任务完成或失败时间
 	RetryCount      int    // 自动重试次数，超过阈值后转为 BLOCKED 等待人工干预
-}
-
-type Worker struct {
-	WorkerName string
-	Topic      string
-}
-
-type Execute struct {
-	ServiceName string
-	Handler     string
 }
 
 type TaskResult struct {

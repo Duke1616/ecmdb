@@ -39,10 +39,10 @@ func (c *TaskExecutionSyncJob) Name() string {
 func (c *TaskExecutionSyncJob) Run(ctx context.Context) error {
 	offset := int64(0)
 	for {
-		// 分页只拉取 RUNNING 状态且属于 Execute 分布式模式的任务
-		tasks, total, err := c.svc.ListTaskByStatusAndMode(ctx, offset, c.limit,
+		// 分页只拉取 RUNNING 状态且属于 GRPC 分布式模式的任务
+		tasks, total, err := c.svc.ListTaskByStatusAndKind(ctx, offset, c.limit,
 			domain.RUNNING.ToUint8(),
-			domain.RunModeExecute.ToString())
+			domain.GRPC.ToString())
 		if err != nil {
 			return fmt.Errorf("sync 获取运行中任务列表失败: %w", err)
 		}

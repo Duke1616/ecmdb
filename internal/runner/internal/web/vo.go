@@ -17,9 +17,9 @@ type RegisterRunnerReq struct {
 	Name           string      `json:"name"`
 	CodebookUid    string      `json:"codebook_uid"`
 	CodebookSecret string      `json:"codebook_secret"`
-	RunMode        string      `json:"run_mode"`
-	Worker         *Worker     `json:"worker,omitempty"`
-	Execute        *Execute    `json:"execute,omitempty"`
+	Kind           string      `json:"kind"`
+	Target         string      `json:"target"`
+	Handler        string      `json:"handler"`
 	Tags           []string    `json:"tags"`
 	Desc           string      `json:"desc"`
 	Variables      []Variables `json:"variables"`
@@ -30,9 +30,9 @@ type UpdateRunnerReq struct {
 	Name           string      `json:"name"`
 	CodebookUid    string      `json:"codebook_uid"`
 	CodebookSecret string      `json:"codebook_secret"`
-	RunMode        string      `json:"run_mode"`
-	Worker         *Worker     `json:"worker,omitempty"`
-	Execute        *Execute    `json:"execute,omitempty"`
+	Kind           string      `json:"kind"`
+	Target         string      `json:"target"`
+	Handler        string      `json:"handler"`
 	Tags           []string    `json:"tags"`
 	Desc           string      `json:"desc"`
 	Variables      []Variables `json:"variables"`
@@ -46,7 +46,7 @@ type ListByCodebookIdReq struct {
 	Page
 	CodebookUid string `json:"codebook_uid"`
 	Keyword     string `json:"keyword"`
-	RunMode     string `json:"run_mode"`
+	Kind        string `json:"kind"`
 }
 
 type DeleteRunnerReq struct {
@@ -70,26 +70,16 @@ type Page struct {
 type ListRunnerReq struct {
 	Page
 	Keyword string `json:"keyword"`
-	RunMode string `json:"run_mode"`
-}
-
-type Worker struct {
-	WorkerName string `json:"worker_name"`
-	Topic      string `json:"topic"`
-}
-
-type Execute struct {
-	ServiceName string `json:"service_name"`
-	Handler     string `json:"handler"`
+	Kind    string `json:"kind"`
 }
 
 type Runner struct {
 	Id          int64       `json:"id"`
 	Name        string      `json:"name"`
-	RunMode     string      `json:"run_mode"`
+	Kind        string      `json:"kind"`
 	CodebookUid string      `json:"codebook_uid"`
-	Worker      *Worker     `json:"worker,omitempty"`
-	Execute     *Execute    `json:"execute,omitempty"`
+	Target      string      `json:"target"`
+	Handler     string      `json:"handler"`
 	Tags        []string    `json:"tags"`
 	Variables   []Variables `json:"variables"`
 	Desc        string      `json:"desc"`
@@ -101,9 +91,9 @@ type RetrieveWorkers struct {
 }
 
 type RunnerTags struct {
-	CodebookName     string            `json:"codebook_name"`
-	CodebookUid      string            `json:"codebook_uid"`
-	TagsMappingTopic map[string]string `json:"tags_topic"`
+	CodebookName      string            `json:"codebook_name"`
+	CodebookUid       string            `json:"codebook_uid"`
+	TagsMappingTarget map[string]string `json:"tags_target"`
 }
 
 type RetrieveRunnerTags struct {

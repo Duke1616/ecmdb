@@ -53,7 +53,8 @@ func (h *Handler) PushMessage(ctx *gin.Context, req PushMessageReq) (ginx.Result
 
 func (h *Handler) toDomain(req PushMessageReq) domain.Execute {
 	return domain.Execute{
-		Topic:    req.Topic,
+		Topic: req.Topic,
+
 		Language: req.Language,
 		Code:     req.Code,
 	}

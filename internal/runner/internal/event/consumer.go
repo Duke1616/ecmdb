@@ -84,14 +84,12 @@ func (c *TaskRunnerConsumer) toDomain(req TaskRunnerEvent) domain.Runner {
 	return domain.Runner{
 		CodebookUid:    req.CodebookUid,
 		CodebookSecret: req.CodebookSecret,
-		Worker: &domain.Worker{
-			WorkerName: req.WorkerName,
-			Topic:      req.Topic,
-		},
-		Name:    req.Name,
-		Tags:    req.Tags,
-		Desc:    req.Desc,
-		RunMode: domain.RunModeWorker,
-		Action:  domain.Action(req.Action),
+		Target:         req.Topic,
+		Handler:        "", // 默认暂无
+		Name:           req.Name,
+		Tags:           req.Tags,
+		Desc:           req.Desc,
+		Kind:           domain.KAFKA,
+		Action:         domain.Action(req.Action),
 	}
 }

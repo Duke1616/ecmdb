@@ -1,15 +1,15 @@
 package domain
 
-type RunMode string
+type Kind string
 
 const (
-	// RunModeWorker 工作节点 kafka 推送
-	RunModeWorker RunMode = "WORKER"
-	// RunModeExecute 绑定分布式任务平台执行节点
-	RunModeExecute RunMode = "EXECUTE"
+	// KAFKA 工作节点 kafka 推送
+	KAFKA Kind = "KAFKA"
+	// GRPC 绑定分布式任务平台执行节点
+	GRPC Kind = "GRPC"
 )
 
-func (s RunMode) ToString() string {
+func (s Kind) ToString() string {
 	return string(s)
 }
 
@@ -33,25 +33,15 @@ type Runner struct {
 	CodebookSecret string
 	Tags           []string // 绑定标签，自动化任务通过标签进行匹配
 	Desc           string
-	RunMode        RunMode // 运行模式
-	Worker         *Worker
-	Execute        *Execute
+	Kind           Kind   // 运行模式
+	Target         string // 执行目标 (Topic 或 ServiceName)
+	Handler        string // 执行方法
 	Action         Action
 	Variables      []Variables
 }
 
-func (r Runner) IsModeWorker() bool {
-	return r.RunMode == RunModeWorker
-}
-
-type Worker struct {
-	WorkerName string // 工作节点名出
-	Topic      string // kafka topic 队列
-}
-
-type Execute struct {
-	ServiceName string // 执行器名称
-	Handler     string // 执行器方法
+func (r Runner) IsKindKafka() bool {
+	return r.Kind == KAFKA
 }
 
 type Variables struct {
@@ -61,6 +51,6 @@ type Variables struct {
 }
 
 type RunnerTags struct {
-	CodebookUid      string
-	TagsMappingTopic map[string]string
+	CodebookUid       string
+	TagsMappingTarget map[string]string
 }

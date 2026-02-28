@@ -8,11 +8,11 @@ import (
 )
 
 type TaskWorkerEventProducer interface {
-	Produce(ctx context.Context, topic string, evt EworkRunnerExecuteEvent) error
+	Produce(ctx context.Context, topic string, evt AgentExecuteEvent) error
 	AddProducer(topic string) error
 	DelProducer(topic string) error
 }
 
 func NewTaskRunnerEventProducer(q mq.MQ) (TaskWorkerEventProducer, error) {
-	return mqx.NewMultipleProducer[EworkRunnerExecuteEvent](q)
+	return mqx.NewMultipleProducer[AgentExecuteEvent](q)
 }

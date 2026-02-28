@@ -28,7 +28,7 @@ func NewTaskDispatcher(workerSvc worker.Service, grpcClient taskv1.TaskServiceCl
 }
 
 func (d *taskDispatcher) Dispatch(ctx context.Context, task domain.Task) error {
-	if task.RunMode == domain.RunModeExecute {
+	if task.Kind == domain.GRPC {
 		return d.executeSvc.Dispatch(ctx, task)
 	}
 

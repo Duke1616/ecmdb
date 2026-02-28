@@ -66,7 +66,7 @@ func (h *Handler) Register(ctx *gin.Context, req RegisterRunnerReq) (ginx.Result
 }
 
 func (h *Handler) ListByCodebookId(ctx *gin.Context, req ListByCodebookIdReq) (ginx.Result, error) {
-	rs, total, err := h.svc.ListByCodebookUid(ctx, req.Offset, req.Limit, req.CodebookUid, req.Keyword, req.RunMode)
+	rs, total, err := h.svc.ListByCodebookUid(ctx, req.Offset, req.Limit, req.CodebookUid, req.Keyword, req.Kind)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -83,7 +83,7 @@ func (h *Handler) ListByCodebookId(ctx *gin.Context, req ListByCodebookIdReq) (g
 }
 
 func (h *Handler) ListExcludeCodebookUid(ctx *gin.Context, req ListByCodebookIdReq) (ginx.Result, error) {
-	rs, total, err := h.svc.ListExcludeCodebookUid(ctx, req.Offset, req.Limit, req.CodebookUid, req.Keyword, req.RunMode)
+	rs, total, err := h.svc.ListExcludeCodebookUid(ctx, req.Offset, req.Limit, req.CodebookUid, req.Keyword, req.Kind)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -172,7 +172,7 @@ func (h *Handler) DeleteRunner(ctx *gin.Context, req DeleteRunnerReq) (ginx.Resu
 }
 
 func (h *Handler) ListRunner(ctx *gin.Context, req ListRunnerReq) (ginx.Result, error) {
-	ws, total, err := h.svc.List(ctx, req.Offset, req.Limit, req.Keyword, req.RunMode)
+	ws, total, err := h.svc.List(ctx, req.Offset, req.Limit, req.Keyword, req.Kind)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -190,9 +190,9 @@ func (h *Handler) ListRunner(ctx *gin.Context, req ListRunnerReq) (ginx.Result, 
 func (h *Handler) UpdateRunner(ctx *gin.Context, req UpdateRunnerReq) (ginx.Result, error) {
 	// 数据校验
 	err := h.validation(ctx, RegisterRunnerReq{
-		RunMode:        req.RunMode,
-		Worker:         req.Worker,
-		Execute:        req.Execute,
+		Kind:           req.Kind,
+		Target:         req.Target,
+		Handler:        req.Handler,
 		CodebookUid:    req.CodebookUid,
 		CodebookSecret: req.CodebookSecret,
 	})
@@ -222,14 +222,6 @@ func (h *Handler) validation(ctx context.Context, req RegisterRunnerReq) error {
 		return err
 	}
 
-	// 验证节点是否存在
-	if req.RunMode == "worker" && req.Worker != nil {
-		exist, err = h.workerSvc.ValidationByName(ctx, req.Worker.WorkerName)
-		if exist != true {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -256,9 +248,9 @@ func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
 			RunnerTags: slice.Map(tags, func(idx int, src domain.RunnerTags) RunnerTags {
 				codeName, _ := codeMaps[src.CodebookUid]
 				return RunnerTags{
-					TagsMappingTopic: src.TagsMappingTopic,
-					CodebookUid:      src.CodebookUid,
-					CodebookName:     codeName,
+					TagsMappingTarget: src.TagsMappingTarget,
+					CodebookUid:       src.CodebookUid,
+					CodebookName:      codeName,
 				}
 			}),
 		},
@@ -271,22 +263,11 @@ func (h *Handler) toDomain(req RegisterRunnerReq) domain.Runner {
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
 		Tags:           req.Tags,
-		RunMode:        domain.RunMode(req.RunMode),
+		Kind:           domain.Kind(req.Kind),
 		Variables:      h.toVariablesDomain(req.Variables),
 		Action:         domain.Action(REGISTER),
-	}
-
-	if req.Worker != nil {
-		r.Worker = &domain.Worker{
-			WorkerName: req.Worker.WorkerName,
-			Topic:      req.Worker.Topic,
-		}
-	}
-	if req.Execute != nil {
-		r.Execute = &domain.Execute{
-			ServiceName: req.Execute.ServiceName,
-			Handler:     req.Execute.Handler,
-		}
+		Target:         req.Target,
+		Handler:        req.Handler,
 	}
 
 	return r
@@ -308,22 +289,11 @@ func (h *Handler) toUpdateDomain(ctx context.Context, req UpdateRunnerReq) (doma
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
 		Tags:           req.Tags,
-		RunMode:        domain.RunMode(req.RunMode),
+		Kind:           domain.Kind(req.Kind),
 		Variables:      h.toUpdateVariablesDomain(oldVars, req.Variables),
 		Action:         domain.Action(REGISTER),
-	}
-
-	if req.Worker != nil {
-		r.Worker = &domain.Worker{
-			WorkerName: req.Worker.WorkerName,
-			Topic:      req.Worker.Topic,
-		}
-	}
-	if req.Execute != nil {
-		r.Execute = &domain.Execute{
-			ServiceName: req.Execute.ServiceName,
-			Handler:     req.Execute.Handler,
-		}
+		Target:         req.Target,
+		Handler:        req.Handler,
 	}
 
 	return r, nil
@@ -378,10 +348,12 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 	r := Runner{
 		Id:          req.Id,
 		Name:        req.Name,
-		RunMode:     req.RunMode.ToString(),
+		Kind:        req.Kind.ToString(),
 		CodebookUid: req.CodebookUid,
 		Tags:        req.Tags,
 		Desc:        req.Desc,
+		Target:      req.Target,
+		Handler:     req.Handler,
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) Variables {
 			if src.Secret {
 				return Variables{
@@ -395,19 +367,6 @@ func (h *Handler) toRunnerVo(req domain.Runner) Runner {
 				Value:  src.Value,
 			}
 		}),
-	}
-
-	if req.Worker != nil {
-		r.Worker = &Worker{
-			WorkerName: req.Worker.WorkerName,
-			Topic:      req.Worker.Topic,
-		}
-	}
-	if req.Execute != nil {
-		r.Execute = &Execute{
-			ServiceName: req.Execute.ServiceName,
-			Handler:     req.Execute.Handler,
-		}
 	}
 	return r
 }

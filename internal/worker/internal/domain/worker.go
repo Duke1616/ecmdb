@@ -27,6 +27,7 @@ type Worker struct {
 type Execute struct {
 	Topic     string
 	TaskId    int64
+	Handler   string
 	Language  string
 	Code      string
 	Args      map[string]interface{}

@@ -38,14 +38,14 @@ type TaskRepository interface {
 	// ListTaskByStatus 拉取某具体状态项的分页集合
 	ListTaskByStatus(ctx context.Context, offset, limit int64, status uint8) ([]domain.Task, error)
 
-	// ListTaskByStatusAndMode 拉取特定状态和运行模式的分页集合
-	ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, error)
+	// ListTaskByStatusAndKind 拉取特定状态和运行模式的分页集合
+	ListTaskByStatusAndKind(ctx context.Context, offset, limit int64, status uint8, kind string) ([]domain.Task, error)
 
 	// Total 计算任务集合总量
 	Total(ctx context.Context, status uint8) (int64, error)
 
-	// TotalByStatusAndMode 统计特定状态和运行模式的任务总数
-	TotalByStatusAndMode(ctx context.Context, status uint8, mode string) (int64, error)
+	// TotalByStatusAndKind 统计特定状态和运行模式的任务总数
+	TotalByStatusAndKind(ctx context.Context, status uint8, kind string) (int64, error)
 
 	// UpdateArgs 动态更新调度派发的额外业务配置参数
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
@@ -189,8 +189,8 @@ func (repo *taskRepository) ListTaskByStatus(ctx context.Context, offset, limit 
 	}), err
 }
 
-func (repo *taskRepository) ListTaskByStatusAndMode(ctx context.Context, offset, limit int64, status uint8, mode string) ([]domain.Task, error) {
-	ts, err := repo.dao.ListTaskByStatusAndMode(ctx, offset, limit, status, mode)
+func (repo *taskRepository) ListTaskByStatusAndKind(ctx context.Context, offset, limit int64, status uint8, kind string) ([]domain.Task, error) {
+	ts, err := repo.dao.ListTaskByStatusAndKind(ctx, offset, limit, status, kind)
 	return slice.Map(ts, func(idx int, src dao.Task) domain.Task {
 		return repo.toDomain(src)
 	}), err
@@ -200,8 +200,8 @@ func (repo *taskRepository) Total(ctx context.Context, status uint8) (int64, err
 	return repo.dao.Count(ctx, status)
 }
 
-func (repo *taskRepository) TotalByStatusAndMode(ctx context.Context, status uint8, mode string) (int64, error) {
-	return repo.dao.CountByStatusAndMode(ctx, status, mode)
+func (repo *taskRepository) TotalByStatusAndKind(ctx context.Context, status uint8, kind string) (int64, error) {
+	return repo.dao.CountByStatusAndKind(ctx, status, kind)
 }
 
 func (repo *taskRepository) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error) {
@@ -249,7 +249,7 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		Code:            req.Code,
 		Language:        req.Language,
 		Args:            req.Args,
-		RunMode:         string(req.RunMode),
+		Kind:            string(req.Kind),
 		ExternalId:      req.ExternalId,
 		IsTiming:        req.IsTiming,
 		ScheduledTime:   req.ScheduledTime,
@@ -263,16 +263,8 @@ func (repo *taskRepository) toEntity(req domain.Task) dao.Task {
 		Status:    req.Status.ToUint8(),
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-	}
-
-	if req.Worker != nil {
-		t.Worker.WorkerName = req.Worker.WorkerName
-		t.Worker.Topic = req.Worker.Topic
-	}
-
-	if req.Execute != nil {
-		t.Execute.ServiceName = req.Execute.ServiceName
-		t.Execute.Handler = req.Execute.Handler
+		Target:    req.Target,
+		Handler:   req.Handler,
 	}
 
 	return t
@@ -289,7 +281,7 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		WorkflowId:    req.WorkflowId,
 		Code:          req.Code,
 		Args:          req.Args,
-		RunMode:       domain.RunMode(req.RunMode),
+		Kind:          domain.Kind(req.Kind),
 		ExternalId:    req.ExternalId,
 		IsTiming:      req.IsTiming,
 		ScheduledTime: req.ScheduledTime,
@@ -309,24 +301,12 @@ func (repo *taskRepository) toDomain(req dao.Task) domain.Task {
 		StartTime:       req.StartTime,
 		EndTime:         req.EndTime,
 		RetryCount:      req.RetryCount,
+		Target:          req.Target,
+		Handler:         req.Handler,
 	}
 
-	if req.RunMode == "" {
-		t.RunMode = domain.RunModeWorker
-	}
-
-	if req.Worker.WorkerName != "" {
-		t.Worker = &domain.Worker{
-			WorkerName: req.Worker.WorkerName,
-			Topic:      req.Worker.Topic,
-		}
-	}
-
-	if req.Execute.ServiceName != "" {
-		t.Execute = &domain.Execute{
-			ServiceName: req.Execute.ServiceName,
-			Handler:     req.Execute.Handler,
-		}
+	if req.Kind == "" {
+		t.Kind = domain.KAFKA
 	}
 
 	return t

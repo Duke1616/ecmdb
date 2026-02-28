@@ -20,17 +20,17 @@ type RunnerRepository interface {
 	// FindById 根据 ID 从底层层拉取持久化数据并转换为面向业务逻辑的领域模型
 	FindById(ctx context.Context, id int64) (domain.Runner, error)
 	// List 提供支持分页的基础执行器节点领域模型列表查询能力
-	List(ctx context.Context, offset, limit int64, keyword, runMode string) ([]domain.Runner, error)
+	List(ctx context.Context, offset, limit int64, keyword, kind string) ([]domain.Runner, error)
 	// Count 返回数据存储下所映射的可用执行器节点库容大小
-	Count(ctx context.Context, keyword, runMode string) (int64, error)
+	Count(ctx context.Context, keyword, kind string) (int64, error)
 	// ListByCodebookUid 通过单一特定脚本的特征 UID 拉取有关联的全部执行器领域实体（分页）
-	ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]domain.Runner, error)
+	ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]domain.Runner, error)
 	// CountByCodebookUid 统计匹配特定特征 UID 环境下的总数据量
-	CountByCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error)
+	CountByCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error)
 	// ListExcludeCodebookUid 反向检索不带有特点脚本特性 UID 的可备选执行器实体（分页）
-	ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]domain.Runner, error)
+	ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]domain.Runner, error)
 	// CountExcludeCodebookUid 统计未关联特定特征 UID 的执行器数量
-	CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error)
+	CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error)
 	// ListByCodebookUids 依循脚本级 UID 的条件批量拉取关联的执行器领域模型列表
 	ListByCodebookUids(ctx context.Context, codebookUids []string) ([]domain.Runner, error)
 	// ListByIds 依循一组既定的独立节点 ID 批量载入业务层用执行器模型集
@@ -65,26 +65,26 @@ func (repo *runnerRepository) ListByCodebookUids(ctx context.Context, codebookUi
 	}), err
 }
 
-func (repo *runnerRepository) ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]domain.Runner, error) {
-	rs, err := repo.dao.ListByCodebookUid(ctx, offset, limit, codebookUid, keyword, runMode)
+func (repo *runnerRepository) ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]domain.Runner, error) {
+	rs, err := repo.dao.ListByCodebookUid(ctx, offset, limit, codebookUid, keyword, kind)
 	return slice.Map(rs, func(idx int, src dao.Runner) domain.Runner {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *runnerRepository) CountByCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error) {
-	return repo.dao.CountByCodebookUid(ctx, codebookUid, keyword, runMode)
+func (repo *runnerRepository) CountByCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error) {
+	return repo.dao.CountByCodebookUid(ctx, codebookUid, keyword, kind)
 }
 
-func (repo *runnerRepository) ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]domain.Runner, error) {
-	rs, err := repo.dao.ListExcludeCodebookUid(ctx, offset, limit, codebookUid, keyword, runMode)
+func (repo *runnerRepository) ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]domain.Runner, error) {
+	rs, err := repo.dao.ListExcludeCodebookUid(ctx, offset, limit, codebookUid, keyword, kind)
 	return slice.Map(rs, func(idx int, src dao.Runner) domain.Runner {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *runnerRepository) CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error) {
-	return repo.dao.CountExcludeCodebookUid(ctx, codebookUid, keyword, runMode)
+func (repo *runnerRepository) CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error) {
+	return repo.dao.CountExcludeCodebookUid(ctx, codebookUid, keyword, kind)
 }
 
 func (repo *runnerRepository) FindById(ctx context.Context, id int64) (domain.Runner, error) {
@@ -111,13 +111,13 @@ func (repo *runnerRepository) AggregateTags(ctx context.Context) ([]domain.Runne
 		tagSet := make(map[string]string)
 		for _, runner := range src.RunnerTags {
 			for _, tag := range runner.Tags {
-				tagSet[tag] = runner.Topic
+				tagSet[tag] = runner.Target
 			}
 		}
 
 		result[i] = domain.RunnerTags{
-			CodebookUid:      src.CodebookUid,
-			TagsMappingTopic: tagSet,
+			CodebookUid:       src.CodebookUid,
+			TagsMappingTarget: tagSet,
 		}
 	}
 
@@ -133,15 +133,15 @@ func (repo *runnerRepository) Create(ctx context.Context, req domain.Runner) (in
 	return repo.dao.Create(ctx, repo.toEntity(req))
 }
 
-func (repo *runnerRepository) List(ctx context.Context, offset, limit int64, keyword, runMode string) ([]domain.Runner, error) {
-	ws, err := repo.dao.List(ctx, offset, limit, keyword, runMode)
+func (repo *runnerRepository) List(ctx context.Context, offset, limit int64, keyword, kind string) ([]domain.Runner, error) {
+	ws, err := repo.dao.List(ctx, offset, limit, keyword, kind)
 	return slice.Map(ws, func(idx int, src dao.Runner) domain.Runner {
 		return repo.toDomain(src)
 	}), err
 }
 
-func (repo *runnerRepository) Count(ctx context.Context, keyword, runMode string) (int64, error) {
-	return repo.dao.Count(ctx, keyword, runMode)
+func (repo *runnerRepository) Count(ctx context.Context, keyword, kind string) (int64, error) {
+	return repo.dao.Count(ctx, keyword, kind)
 }
 
 func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
@@ -149,7 +149,7 @@ func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 		Id:             req.Id,
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
-		RunMode:        req.RunMode.ToString(),
+		Kind:           req.Kind.ToString(),
 		Name:           req.Name,
 		Tags:           req.Tags,
 		Variables: slice.Map(req.Variables, func(idx int, src domain.Variables) dao.Variables {
@@ -159,18 +159,10 @@ func (repo *runnerRepository) toEntity(req domain.Runner) dao.Runner {
 				Secret: src.Secret,
 			}
 		}),
-		Desc:   req.Desc,
-		Action: req.Action.ToUint8(),
-	}
-
-	// NOTE: Worker 和 Execute 字段通过 inline 平铺存储，根据 domain 指针是否存在来决定是否赋值
-	if req.Worker != nil {
-		r.Worker.WorkerName = req.Worker.WorkerName
-		r.Worker.Topic = req.Worker.Topic
-	}
-	if req.Execute != nil {
-		r.Execute.ServiceName = req.Execute.ServiceName
-		r.Execute.Handler = req.Execute.Handler
+		Desc:    req.Desc,
+		Action:  req.Action.ToUint8(),
+		Target:  req.Target,
+		Handler: req.Handler,
 	}
 
 	return r
@@ -182,7 +174,7 @@ func (repo *runnerRepository) toDomain(req dao.Runner) domain.Runner {
 		Name:           req.Name,
 		CodebookSecret: req.CodebookSecret,
 		CodebookUid:    req.CodebookUid,
-		RunMode:        domain.RunMode(req.RunMode),
+		Kind:           domain.Kind(req.Kind),
 		Tags:           req.Tags,
 		Variables: slice.Map(req.Variables, func(idx int, src dao.Variables) domain.Variables {
 			return domain.Variables{
@@ -191,26 +183,15 @@ func (repo *runnerRepository) toDomain(req dao.Runner) domain.Runner {
 				Secret: src.Secret,
 			}
 		}),
-		Desc:   req.Desc,
-		Action: domain.Action(req.Action),
+		Desc:    req.Desc,
+		Action:  domain.Action(req.Action),
+		Target:  req.Target,
+		Handler: req.Handler,
 	}
 
 	// 兼容历史不存在字段的情况，默认使用 Worker 模式
-	if req.RunMode == "" {
-		r.RunMode = domain.RunModeWorker
-	}
-
-	if req.Worker.WorkerName != "" {
-		r.Worker = &domain.Worker{
-			WorkerName: req.Worker.WorkerName,
-			Topic:      req.Worker.Topic,
-		}
-	}
-	if req.Execute.ServiceName != "" {
-		r.Execute = &domain.Execute{
-			ServiceName: req.Execute.ServiceName,
-			Handler:     req.Execute.Handler,
-		}
+	if req.Kind == "" {
+		r.Kind = domain.KAFKA
 	}
 
 	return r

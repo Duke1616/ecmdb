@@ -30,19 +30,19 @@ type RunnerDAO interface {
 	// FindById 根据逻辑 ID 从数据库加载执行器文档实体
 	FindById(ctx context.Context, id int64) (Runner, error)
 	// List 返回根据时间戳等规则排序的执行器分页文档列表
-	List(ctx context.Context, offset, limit int64, keyword, runMode string) ([]Runner, error)
+	List(ctx context.Context, offset, limit int64, keyword, kind string) ([]Runner, error)
 	// Count 统计数据库中当前有效的执行器总文档数
-	Count(ctx context.Context, keyword, runMode string) (int64, error)
+	Count(ctx context.Context, keyword, kind string) (int64, error)
 	// FindByCodebookUidAndTag 通过参数 UID 和内部 tags 匹配查找对应的执行器文档
 	FindByCodebookUidAndTag(ctx context.Context, codebookUid string, tag string) (Runner, error)
 	// ListByCodebookUid 查出关联到对应独立脚本 UID 的所有挂载执行器文档节点
-	ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error)
+	ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]Runner, error)
 	// CountByCodebookUid 统计通过脚本 UID 获取的具有承载特性的数据量
-	CountByCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error)
+	CountByCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error)
 	// ListExcludeCodebookUid 用以返回过滤掉指定脚本 UID 后剩余可用的那些备选执行器列表
-	ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error)
+	ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]Runner, error)
 	// CountExcludeCodebookUid 统计未关联某特征 UID 剩余执行器的池大小
-	CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error)
+	CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error)
 	// ListByCodebookUids 通过脚本 UID 列表，用 $in 批量获取其对应的执行器文档
 	ListByCodebookUids(ctx context.Context, codebookUids []string) ([]Runner, error)
 	// ListByIds 使用给定的指定 ID 列表过滤拉取所有的关联文档
@@ -91,14 +91,14 @@ func (dao *runnerDAO) ListByCodebookUids(ctx context.Context, codebookUids []str
 	return result, nil
 }
 
-func (dao *runnerDAO) ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error) {
+func (dao *runnerDAO) ListByCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]Runner, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{"codebook_uid": codebookUid}
 	if keyword != "" {
 		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
 	}
-	if runMode != "" {
-		filter["run_mode"] = runMode
+	if kind != "" {
+		filter["kind"] = kind
 	}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
@@ -122,14 +122,14 @@ func (dao *runnerDAO) ListByCodebookUid(ctx context.Context, offset, limit int64
 	return result, nil
 }
 
-func (dao *runnerDAO) CountByCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error) {
+func (dao *runnerDAO) CountByCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{"codebook_uid": codebookUid}
 	if keyword != "" {
 		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
 	}
-	if runMode != "" {
-		filter["run_mode"] = runMode
+	if kind != "" {
+		filter["kind"] = kind
 	}
 
 	count, err := col.CountDocuments(ctx, filter)
@@ -140,14 +140,14 @@ func (dao *runnerDAO) CountByCodebookUid(ctx context.Context, codebookUid, keywo
 	return count, nil
 }
 
-func (dao *runnerDAO) ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, runMode string) ([]Runner, error) {
+func (dao *runnerDAO) ListExcludeCodebookUid(ctx context.Context, offset, limit int64, codebookUid, keyword, kind string) ([]Runner, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{"codebook_uid": bson.M{"$ne": codebookUid}}
 	if keyword != "" {
 		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
 	}
-	if runMode != "" {
-		filter["run_mode"] = runMode
+	if kind != "" {
+		filter["kind"] = kind
 	}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
@@ -171,14 +171,14 @@ func (dao *runnerDAO) ListExcludeCodebookUid(ctx context.Context, offset, limit 
 	return result, nil
 }
 
-func (dao *runnerDAO) CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, runMode string) (int64, error) {
+func (dao *runnerDAO) CountExcludeCodebookUid(ctx context.Context, codebookUid, keyword, kind string) (int64, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{"codebook_uid": bson.M{"$ne": codebookUid}}
 	if keyword != "" {
 		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
 	}
-	if runMode != "" {
-		filter["run_mode"] = runMode
+	if kind != "" {
+		filter["kind"] = kind
 	}
 
 	count, err := col.CountDocuments(ctx, filter)
@@ -219,11 +219,9 @@ func (dao *runnerDAO) Update(ctx context.Context, req Runner) (int64, error) {
 		"$set": bson.M{
 			"name":            req.Name,
 			"codebook_secret": req.CodebookSecret,
-			"run_mode":        req.RunMode,
-			"worker_name":     req.Worker.WorkerName,
-			"topic":           req.Worker.Topic,
-			"service_name":    req.Execute.ServiceName,
-			"handler":         req.Execute.Handler,
+			"kind":            req.Kind,
+			"target":          req.Target,
+			"handler":         req.Handler,
 			"tags":            req.Tags,
 			"desc":            req.Desc,
 			"variables":       req.Variables,
@@ -269,14 +267,14 @@ func (dao *runnerDAO) Create(ctx context.Context, r Runner) (int64, error) {
 	return r.Id, nil
 }
 
-func (dao *runnerDAO) List(ctx context.Context, offset, limit int64, keyword, runMode string) ([]Runner, error) {
+func (dao *runnerDAO) List(ctx context.Context, offset, limit int64, keyword, kind string) ([]Runner, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{}
 	if keyword != "" {
 		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
 	}
-	if runMode != "" {
-		filter["run_mode"] = runMode
+	if kind != "" {
+		filter["kind"] = kind
 	}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
@@ -300,14 +298,14 @@ func (dao *runnerDAO) List(ctx context.Context, offset, limit int64, keyword, ru
 	return result, nil
 }
 
-func (dao *runnerDAO) Count(ctx context.Context, keyword, runMode string) (int64, error) {
+func (dao *runnerDAO) Count(ctx context.Context, keyword, kind string) (int64, error) {
 	col := dao.db.Collection(RunnerCollection)
 	filter := bson.M{}
 	if keyword != "" {
 		filter["name"] = bson.M{"$regex": keyword, "$options": "i"}
 	}
-	if runMode != "" {
-		filter["run_mode"] = runMode
+	if kind != "" {
+		filter["kind"] = kind
 	}
 
 	count, err := col.CountDocuments(ctx, filter)
@@ -326,7 +324,7 @@ func (dao *runnerDAO) AggregateTags(ctx context.Context) ([]RunnerPipeline, erro
 			// 使用 $push 累加器将选择的字段添加到 runners 数组中
 			{Key: "runner_tags", Value: bson.D{{Key: "$push", Value: bson.D{
 				{Key: "tags", Value: "$tags"},
-				{Key: "topic", Value: "$topic"},
+				{Key: "target", Value: "$target"},
 			}}}},
 		}}},
 	}
@@ -348,32 +346,20 @@ func (dao *runnerDAO) AggregateTags(ctx context.Context) ([]RunnerPipeline, erro
 	return result, nil
 }
 
-type Worker struct {
-	WorkerName string `bson:"worker_name"`
-	Topic      string `bson:"topic"`
-}
-
-type Execute struct {
-	ServiceName string `bson:"service_name"`
-	Handler     string `bson:"handler"`
-}
-
 type Runner struct {
-	Id             int64  `bson:"id"`
-	Name           string `bson:"name"`
-	CodebookUid    string `bson:"codebook_uid"`
-	CodebookSecret string `bson:"codebook_secret"`
-	RunMode        string `bson:"run_mode"`
-	// Worker 和 Execute 采用 bson:",inline" 模式平铺写入 MongoDB，
-	// 存储时字段在文档根层（如 worker_name、topic），Go 代码中依然以 r.Worker.WorkerName 访问
-	Worker    Worker      `bson:",inline"`
-	Execute   Execute     `bson:",inline"`
-	Tags      []string    `bson:"tags"`
-	Action    uint8       `bson:"action"`
-	Desc      string      `bson:"desc"`
-	Variables []Variables `bson:"variables"`
-	Ctime     int64       `bson:"ctime"`
-	Utime     int64       `bson:"utime"`
+	Id             int64       `bson:"id"`
+	Name           string      `bson:"name"`
+	CodebookUid    string      `bson:"codebook_uid"`
+	CodebookSecret string      `bson:"codebook_secret"`
+	Kind           string      `bson:"kind"`
+	Target         string      `bson:"target"`
+	Handler        string      `bson:"handler"`
+	Tags           []string    `bson:"tags"`
+	Action         uint8       `bson:"action"`
+	Desc           string      `bson:"desc"`
+	Variables      []Variables `bson:"variables"`
+	Ctime          int64       `bson:"ctime"`
+	Utime          int64       `bson:"utime"`
 }
 
 type Variables struct {
@@ -388,6 +374,6 @@ type RunnerPipeline struct {
 }
 
 type RunnerTags struct {
-	Topic string   `bson:"topic"`
-	Tags  []string `json:"tags"`
+	Target string   `bson:"target"`
+	Tags   []string `json:"tags"`
 }

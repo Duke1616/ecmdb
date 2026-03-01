@@ -354,6 +354,45 @@ func (c *MockServiceGetByWorkflowIdCall) DoAndReturn(f func(context.Context, int
 	return c
 }
 
+// ListFavoriteTemplates mocks base method.
+func (m *MockService) ListFavoriteTemplates(ctx context.Context, userId int64) ([]domain.Template, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListFavoriteTemplates", ctx, userId)
+	ret0, _ := ret[0].([]domain.Template)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListFavoriteTemplates indicates an expected call of ListFavoriteTemplates.
+func (mr *MockServiceMockRecorder) ListFavoriteTemplates(ctx, userId any) *MockServiceListFavoriteTemplatesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFavoriteTemplates", reflect.TypeOf((*MockService)(nil).ListFavoriteTemplates), ctx, userId)
+	return &MockServiceListFavoriteTemplatesCall{Call: call}
+}
+
+// MockServiceListFavoriteTemplatesCall wrap *gomock.Call
+type MockServiceListFavoriteTemplatesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceListFavoriteTemplatesCall) Return(arg0 []domain.Template, arg1 error) *MockServiceListFavoriteTemplatesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceListFavoriteTemplatesCall) Do(f func(context.Context, int64) ([]domain.Template, error)) *MockServiceListFavoriteTemplatesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceListFavoriteTemplatesCall) DoAndReturn(f func(context.Context, int64) ([]domain.Template, error)) *MockServiceListFavoriteTemplatesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListTemplate mocks base method.
 func (m *MockService) ListTemplate(ctx context.Context, offset, limit int64) ([]domain.Template, int64, error) {
 	m.ctrl.T.Helper()
@@ -429,6 +468,45 @@ func (c *MockServicePipelineCall) Do(f func(context.Context) ([]domain.TemplateC
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServicePipelineCall) DoAndReturn(f func(context.Context) ([]domain.TemplateCombination, error)) *MockServicePipelineCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ToggleFavorite mocks base method.
+func (m *MockService) ToggleFavorite(ctx context.Context, userId, templateId int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ToggleFavorite", ctx, userId, templateId)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ToggleFavorite indicates an expected call of ToggleFavorite.
+func (mr *MockServiceMockRecorder) ToggleFavorite(ctx, userId, templateId any) *MockServiceToggleFavoriteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToggleFavorite", reflect.TypeOf((*MockService)(nil).ToggleFavorite), ctx, userId, templateId)
+	return &MockServiceToggleFavoriteCall{Call: call}
+}
+
+// MockServiceToggleFavoriteCall wrap *gomock.Call
+type MockServiceToggleFavoriteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceToggleFavoriteCall) Return(arg0 bool, arg1 error) *MockServiceToggleFavoriteCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceToggleFavoriteCall) Do(f func(context.Context, int64, int64) (bool, error)) *MockServiceToggleFavoriteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceToggleFavoriteCall) DoAndReturn(f func(context.Context, int64, int64) (bool, error)) *MockServiceToggleFavoriteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

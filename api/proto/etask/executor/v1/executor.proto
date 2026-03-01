@@ -34,6 +34,9 @@ message ExecutionState {
   map<string, string> rescheduled_params = 7;
   // 执行节点的 nodeID，用于记录是哪个节点处理了任务
   string executor_node_id = 8;
+  // 任务执行的结构化结果（JSON 格式字符串）
+  // 通过 FD3 或 want_result 函数返回的结构化数据
+  string task_result = 9;
 }
 
 // ExecutorService 执行节点需要实现的接口，以便调度节点可以通知执行节点执行任务、中断任务及查询任务执行状态。
@@ -144,6 +147,7 @@ message TaskExecution {
   ExecutionStatus status = 6;
   int32 running_progress = 7;
   string executor_node_id = 8;
+  string task_result = 9;
 }
 
 message ListTaskExecutionsResponse {

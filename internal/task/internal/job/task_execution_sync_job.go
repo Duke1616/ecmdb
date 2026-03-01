@@ -120,15 +120,16 @@ func (c *TaskExecutionSyncJob) batchSyncTaskExecutions(ctx context.Context, task
 		}
 
 		wg.Add(1)
-		go func(t domain.Task, latestStatus executorv1.ExecutionStatus) {
+		go func(t domain.Task, latestExec *executorv1.TaskExecution) {
 			defer wg.Done()
 			var updateErr error
-			switch latestStatus {
+			switch latestExec.Status {
 			case executorv1.ExecutionStatus_SUCCESS:
 				_, updateErr = c.svc.UpdateTaskResult(ctx, domain.TaskResult{
 					Id:              t.Id,
 					Status:          domain.SUCCESS,
 					Result:          "任务执行成功",
+					WantResult:      latestExec.TaskResult,
 					TriggerPosition: domain.TriggerPositionTaskExecutionSuccess.ToString(),
 				})
 			case executorv1.ExecutionStatus_FAILED, executorv1.ExecutionStatus_FAILED_RETRYABLE, executorv1.ExecutionStatus_FAILED_RESCHEDULABLE:
@@ -136,6 +137,7 @@ func (c *TaskExecutionSyncJob) batchSyncTaskExecutions(ctx context.Context, task
 					Id:              t.Id,
 					Status:          domain.FAILED,
 					Result:          "任务执行失败",
+					WantResult:      latestExec.TaskResult,
 					TriggerPosition: domain.TriggerPositionTaskExecutionFailed.ToString(),
 				})
 			default:
@@ -146,9 +148,9 @@ func (c *TaskExecutionSyncJob) batchSyncTaskExecutions(ctx context.Context, task
 			if updateErr != nil {
 				c.logger.Error("sync: 更新本地任务状态失败", elog.FieldErr(updateErr), elog.Int64("task_id", t.Id))
 			} else {
-				c.logger.Info("sync: 同步任务状态成功", elog.Int64("task_id", t.Id), elog.Any("status", latestStatus))
+				c.logger.Info("sync: 同步任务状态成功", elog.Int64("task_id", t.Id), elog.Any("status", latestExec.Status))
 			}
-		}(task, latest.Status)
+		}(task, latest)
 	}
 	wg.Wait()
 }

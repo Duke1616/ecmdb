@@ -7,7 +7,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/codebook"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
-	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
@@ -18,17 +17,15 @@ import (
 
 type Handler struct {
 	svc         service.Service
-	workerSvc   worker.Service
 	workflowSvc workflow.Service
 	codebookSvc codebook.Service
 	crypto      cryptox.Crypto
 }
 
-func NewHandler(svc service.Service, workerSvc worker.Service, workflowSvc workflow.Service,
+func NewHandler(svc service.Service, workflowSvc workflow.Service,
 	codebookSvc codebook.Service, crypto cryptox.Crypto) *Handler {
 	return &Handler{
 		svc:         svc,
-		workerSvc:   workerSvc,
 		workflowSvc: workflowSvc,
 		codebookSvc: codebookSvc,
 		crypto:      crypto,
@@ -247,11 +244,19 @@ func (h *Handler) ListTags(ctx *gin.Context) (ginx.Result, error) {
 		Data: RetrieveRunnerTags{
 			RunnerTags: slice.Map(tags, func(idx int, src domain.RunnerTags) RunnerTags {
 				codeName, _ := codeMaps[src.CodebookUid]
+				tagDetails := make([]TagDetail, 0, len(src.TagsMapping))
+				for tag, detail := range src.TagsMapping {
+					tagDetails = append(tagDetails, TagDetail{
+						Tag:     tag,
+						Kind:    detail.Kind.ToString(),
+						Target:  detail.Target,
+						Handler: detail.Handler,
+					})
+				}
 				return RunnerTags{
-					CodebookUid:        src.CodebookUid,
-					CodebookName:       codeName,
-					TagsMappingTarget:  src.TagsMappingTarget,
-					TagsMappingHandler: src.TagsMappingHandler,
+					CodebookName: codeName,
+					CodebookUid:  src.CodebookUid,
+					Tags:         tagDetails,
 				}
 			}),
 		},

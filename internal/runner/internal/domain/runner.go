@@ -50,10 +50,14 @@ type Variables struct {
 	Secret bool
 }
 
+type TagDetail struct {
+	Kind    Kind
+	Target  string
+	Handler string
+}
+
 type RunnerTags struct {
 	CodebookUid string
-	// Tag -> Target
-	TagsMappingTarget map[string]string
-	// Tag -> Handler
-	TagsMappingHandler map[string]string
+	// Tag -> Detail info
+	TagsMapping map[string]TagDetail
 }

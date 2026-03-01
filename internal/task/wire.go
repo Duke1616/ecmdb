@@ -84,9 +84,8 @@ func InitTaskDAO(db *mongox.Mongo) dao.TaskDAO {
 	return dao.NewTaskDAO(db)
 }
 
-func initConsumer(svc service.Service, q mq.MQ, codebookSvc codebook.Service,
-	userSvc user.Service, sender sender.NotificationSender) *event.ExecuteResultConsumer {
-	consumer, err := event.NewExecuteResultConsumer(q, svc, codebookSvc, userSvc, sender)
+func initConsumer(svc service.Service, q mq.MQ) *event.ExecuteResultConsumer {
+	consumer, err := event.NewExecuteResultConsumer(q, svc)
 	if err != nil {
 		panic(err)
 	}

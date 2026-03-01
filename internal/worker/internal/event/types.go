@@ -24,6 +24,7 @@ type WorkerEvent struct {
 
 type AgentExecuteEvent struct {
 	TaskId    int64                  `json:"task_id"`
+	Topic     string                 `json:"topic"`
 	Handler   string                 `json:"handler"`
 	Language  string                 `json:"language"`
 	Code      string                 `json:"code"`

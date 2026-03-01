@@ -11,6 +11,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/discovery"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification"
+	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/runner"
 	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
@@ -50,6 +52,9 @@ type Service interface {
 
 	// UpdateTaskStatus 被底层异步执行通道回调更新回调结果
 	UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (int64, error)
+
+	// UpdateTaskResult 统一处理任务执行结果（更新状态 + 失败通知）
+	UpdateTaskResult(ctx context.Context, req domain.TaskResult) (int64, error)
 
 	// UpdateArgs 动态修改参数上下文环境信息
 	UpdateArgs(ctx context.Context, id int64, args map[string]interface{}) (int64, error)
@@ -100,6 +105,7 @@ type service struct {
 	codebookSvc  codebook.Service
 	runnerSvc    runner.Service
 	dispatcher   dispatch.TaskDispatcher
+	sender       sender.NotificationSender
 }
 
 func (s *service) ListTaskByInstanceId(ctx context.Context, offset, limit int64, instanceId int) ([]domain.Task, int64, error) {
@@ -245,7 +251,7 @@ func (s *service) ListReadyTasks(ctx context.Context, limit int64) ([]domain.Tas
 func NewService(repo repository.TaskRepository, orderSvc order.Service, workflowSvc workflow.Service,
 	codebookSvc codebook.Service, runnerSvc runner.Service, engineSvc engine.Service,
 	userSvc user.Service, dispatcher dispatch.TaskDispatcher, discoverySvc discovery.Service,
-	sch scheduler.Scheduler) Service {
+	sch scheduler.Scheduler, sender sender.NotificationSender) Service {
 	return &service{
 		repo:         repo,
 		logger:       elog.DefaultLogger,
@@ -258,6 +264,7 @@ func NewService(repo repository.TaskRepository, orderSvc order.Service, workflow
 		dispatcher:   dispatcher,
 		discoverySvc: discoverySvc,
 		scheduler:    sch,
+		sender:       sender,
 	}
 }
 
@@ -395,6 +402,52 @@ func (s *service) UpdateTaskStatus(ctx context.Context, req domain.TaskResult) (
 	}
 
 	return s.repo.UpdateTaskStatus(ctx, req)
+}
+
+func (s *service) UpdateTaskResult(ctx context.Context, req domain.TaskResult) (int64, error) {
+	val, err := s.UpdateTaskStatus(ctx, req)
+	if err != nil {
+		return val, err
+	}
+
+	if req.Status == domain.FAILED {
+		if notifyErr := s.failedNotify(ctx, req.Id); notifyErr != nil {
+			s.logger.Error("任务执行失败通知发送失败", elog.FieldErr(notifyErr), elog.Int64("taskId", req.Id))
+		}
+	}
+
+	return val, nil
+}
+
+// failedNotify 发送消息通知给自动化任务模版的管理者
+func (s *service) failedNotify(ctx context.Context, id int64) error {
+	t, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	code, err := s.codebookSvc.FindByUid(ctx, t.CodebookUid)
+	if err != nil {
+		return err
+	}
+
+	u, err := s.userSvc.FindByUsername(ctx, code.Owner)
+	if err != nil {
+		return err
+	}
+
+	content := fmt.Sprintf("自动化任务执行失败, 请通过平台进行查看，工单ID：%d, 任务ID: %d", t.OrderId, id)
+	if _, err = s.sender.Send(ctx, notification.Notification{
+		Receiver: u.FeishuInfo.UserId,
+		Channel:  notification.ChannelLarkText,
+		Template: notification.Template{
+			Text: content,
+		},
+	}); err != nil {
+		return fmt.Errorf("任务执行失败，触发发送信息失败: %w, 工单ID: %d", err, id)
+	}
+
+	return nil
 }
 
 func (s *service) retry(ctx context.Context, task domain.Task, auto bool) error {

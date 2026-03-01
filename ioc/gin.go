@@ -27,7 +27,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/terminal"
 	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
@@ -37,7 +36,7 @@ import (
 
 func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,
 	mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, workerHdl *worker.Handler,
+	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
 	rtHdl *relation.RTHandler, userHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
@@ -85,7 +84,6 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	taskHdl.PrivateRoutes(server.Engine)
 	templateHdl.PrivateRoutes(server.Engine)
 	codebookHdl.PrivateRoutes(server.Engine)
-	workerHdl.PrivateRoutes(server.Engine)
 	runnerHdl.PrivateRoutes(server.Engine)
 
 	// 排班系统相关接口

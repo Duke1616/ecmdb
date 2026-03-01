@@ -69,7 +69,6 @@ func InitApp() (*App, error) {
 		codebook.InitModule,
 		wire.FieldsOf(new(*codebook.Module), "Hdl"),
 		worker.InitModule,
-		wire.FieldsOf(new(*worker.Module), "Hdl"),
 		runner.InitModule,
 		wire.FieldsOf(new(*runner.Module), "Hdl"),
 		order.InitModule,

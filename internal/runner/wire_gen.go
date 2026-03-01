@@ -7,37 +7,30 @@
 package runner
 
 import (
-	"context"
 	"github.com/Duke1616/ecmdb/internal/codebook"
-	"github.com/Duke1616/ecmdb/internal/runner/internal/event"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/web"
-	"github.com/Duke1616/ecmdb/internal/worker"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *mongox.Mongo, q mq.MQ, workerModule *worker.Module, workflowSvc *workflow.Module, codebookModule *codebook.Module, crypto *cryptox.CryptoRegistry) (*Module, error) {
+func InitModule(db *mongox.Mongo, workflowSvc *workflow.Module, codebookModule *codebook.Module, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	runnerDAO := dao.NewRunnerDAO(db)
 	runnerRepository := repository.NewRunnerRepository(runnerDAO)
 	serviceService := service.NewService(runnerRepository)
-	service2 := workerModule.Svc
-	service3 := workflowSvc.Svc
-	service4 := codebookModule.Svc
+	service2 := workflowSvc.Svc
+	service3 := codebookModule.Svc
 	cryptoxCrypto := InitCrypto(crypto)
-	handler := web.NewHandler(serviceService, service2, service3, service4, cryptoxCrypto)
-	taskRunnerConsumer := initTaskRunnerConsumer(serviceService, q, service2, service4)
+	handler := web.NewHandler(serviceService, service2, service3, cryptoxCrypto)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,
-		c:   taskRunnerConsumer,
 	}
 	return module, nil
 }
@@ -48,14 +41,4 @@ var ProviderSet = wire.NewSet(web.NewHandler, service.NewService, repository.New
 
 func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 	return reg.Runner
-}
-
-func initTaskRunnerConsumer(svc service.Service, mq2 mq.MQ, workerSvc worker.Service, codebookSvc codebook.Service) *event.TaskRunnerConsumer {
-	consumer, err := event.NewTaskRunnerConsumer(svc, mq2, workerSvc, codebookSvc)
-	if err != nil {
-		panic(err)
-	}
-
-	consumer.Start(context.Background())
-	return consumer
 }

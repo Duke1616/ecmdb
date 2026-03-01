@@ -108,19 +108,20 @@ func (repo *runnerRepository) AggregateTags(ctx context.Context) ([]domain.Runne
 
 	result := make([]domain.RunnerTags, len(pipeline))
 	for i, src := range pipeline {
-		tagTargetSet := make(map[string]string)
-		tagHandlerSet := make(map[string]string)
+		tagSet := make(map[string]domain.TagDetail)
 		for _, runner := range src.RunnerTags {
 			for _, tag := range runner.Tags {
-				tagTargetSet[tag] = runner.Target
-				tagHandlerSet[tag] = runner.Handler
+				tagSet[tag] = domain.TagDetail{
+					Kind:    domain.Kind(runner.Kind),
+					Target:  runner.Target,
+					Handler: runner.Handler,
+				}
 			}
 		}
 
 		result[i] = domain.RunnerTags{
-			CodebookUid:        src.CodebookUid,
-			TagsMappingTarget:  tagTargetSet,
-			TagsMappingHandler: tagHandlerSet,
+			CodebookUid: src.CodebookUid,
+			TagsMapping: tagSet,
 		}
 	}
 

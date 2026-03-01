@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"github.com/Duke1616/ecmdb/internal/runner/internal/event"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/service"
 	"github.com/Duke1616/ecmdb/internal/runner/internal/web"
 )
@@ -9,5 +8,4 @@ import (
 type Module struct {
 	Svc service.Service
 	Hdl *web.Handler
-	c   *event.TaskRunnerConsumer
 }

@@ -3,32 +3,26 @@
 package worker
 
 import (
-	"context"
-	"sync"
-
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
-	"github.com/Duke1616/ecmdb/internal/worker/internal/event/watch"
-	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
-	"github.com/Duke1616/ecmdb/internal/worker/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/worker/internal/job"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/service"
-	"github.com/Duke1616/ecmdb/internal/worker/internal/web"
+	"github.com/Duke1616/ework-runner/pkg/grpc/registry"
+	"github.com/Duke1616/ework-runner/pkg/grpc/registry/etcd"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/ecodeclub/mq-api"
 	"github.com/google/wire"
 )
 
 var ProviderSet = wire.NewSet(
-	web.NewHandler,
 	service.NewService,
-	repository.NewWorkerRepository,
+	InitRegistry,
+	wire.Bind(new(registry.Registry), new(*etcd.Registry)),
 )
 
-func InitModule(q mq.MQ, db *mongox.Mongo, etcdClient *clientv3.Client) (*Module, error) {
+func InitModule(q mq.MQ, etcdClient *clientv3.Client) (*Module, error) {
 	wire.Build(
 		ProviderSet,
-		InitWorkerDAO,
 		event.NewTaskRunnerEventProducer,
 		initWatch,
 		wire.Struct(new(Module), "*"),
@@ -36,8 +30,8 @@ func InitModule(q mq.MQ, db *mongox.Mongo, etcdClient *clientv3.Client) (*Module
 	return new(Module), nil
 }
 
-func initWatch(etcdClient *clientv3.Client, svc service.Service) *watch.TaskWorkerWatch {
-	task, err := watch.NewTaskWorkerWatch(etcdClient, svc)
+func initWatch(r registry.Registry, svc service.Service) *job.ServiceDiscoveryJob {
+	task, err := job.NewServiceDiscoveryJob(r, svc)
 	if err != nil {
 		panic(err)
 	}
@@ -46,31 +40,6 @@ func initWatch(etcdClient *clientv3.Client, svc service.Service) *watch.TaskWork
 	return task
 }
 
-var (
-	daoOnce = sync.Once{}
-	d       dao.WorkerDAO
-)
-
-func InitProducer(producer event.TaskWorkerEventProducer) {
-	wt, err := d.ListWorkerTopic(context.Background())
-	if err != nil {
-		panic(err)
-	}
-
-	// 开启 producer
-	for _, item := range wt {
-		err = producer.AddProducer(item.Topic)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func InitWorkerDAO(db *mongox.Mongo, producer event.TaskWorkerEventProducer) dao.WorkerDAO {
-	daoOnce.Do(func() {
-		d = dao.NewWorkerDAO(db)
-		InitProducer(producer)
-	})
-
-	return d
+func InitRegistry(etcdClient *clientv3.Client) (*etcd.Registry, error) {
+	return etcd.NewRegistryWithPrefix(etcdClient, "/etask/kafka")
 }

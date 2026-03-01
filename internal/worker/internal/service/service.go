@@ -7,39 +7,34 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/worker/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/worker/internal/event"
-	"github.com/Duke1616/ecmdb/internal/worker/internal/repository"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
-	"golang.org/x/sync/errgroup"
+	kafkago "github.com/segmentio/kafka-go"
 )
 
 type Service interface {
-	Register(ctx context.Context, req domain.Worker) (int64, error)
-	FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error)
-	FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error)
-	ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error)
-	UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error)
-	ValidationByName(ctx context.Context, name string) (bool, error)
-	FindByName(ctx context.Context, name string) (domain.Worker, error)
+	// EnsureInfrastructures 确保工作节点所需的基础设施就绪
+	// 包括创建 Kafka Topic 以及初始化对应的消息生产者
+	EnsureInfrastructures(ctx context.Context, topic string) error
 
-	// Execute 推送消息到Kafka
+	// Execute 将执行指令发送至指定的 Kafka Topic
 	Execute(ctx context.Context, req domain.Execute) error
+
+	// Release 释放指定 Topic 占用的基础设施资源
+	// 当该 Topic 下不再有活跃的工作节点时调用，用于回收生产者资源
+	Release(ctx context.Context, topic string) error
 }
 
 type service struct {
-	repo     repository.WorkerRepository
 	logger   *elog.Component
 	producer event.TaskWorkerEventProducer
 	mq       mq.MQ
 }
 
-func (s *service) FindByName(ctx context.Context, name string) (domain.Worker, error) {
-	return s.repo.FindByName(ctx, name)
-}
-
 func (s *service) Execute(ctx context.Context, req domain.Execute) error {
 	evt := event.AgentExecuteEvent{
 		Language:  req.Language,
+		Topic:     req.Topic,
 		Handler:   req.Handler,
 		Code:      req.Code,
 		TaskId:    req.TaskId,
@@ -58,117 +53,31 @@ func (s *service) Execute(ctx context.Context, req domain.Execute) error {
 	return err
 }
 
-func NewService(mq mq.MQ, repo repository.WorkerRepository, producer event.TaskWorkerEventProducer) Service {
+func NewService(mq mq.MQ, producer event.TaskWorkerEventProducer) Service {
 	return &service{
 		mq:       mq,
-		repo:     repo,
 		logger:   elog.DefaultLogger,
 		producer: producer,
 	}
 }
 
-func (s *service) Register(ctx context.Context, req domain.Worker) (int64, error) {
-	return s.repo.CreateWorker(ctx, req)
-}
-
-func (s *service) FindOrRegisterByName(ctx context.Context, req domain.Worker) (domain.Worker, error) {
-	worker, err := s.repo.FindByName(ctx, req.Name)
-	if !errors.Is(err, repository.ErrUserNotFound) {
-		if req.Status != worker.Status {
-			_, err = s.repo.UpdateStatus(ctx, worker.Id, domain.Status.ToUint8(req.Status))
-			if err != nil {
-				return worker, fmt.Errorf("修改状态失败: %x", err)
-			}
-			worker.Status = req.Status
+func (s *service) EnsureInfrastructures(ctx context.Context, topic string) error {
+	// 新增 Topic，如果 Topic 已存在，mq.CreateTopic 可能会返回错误，这里选择判断如果是已存在则继续
+	if err := s.mq.CreateTopic(ctx, topic, 1); err != nil {
+		var val kafkago.Error
+		if !errors.As(err, &val) || !errors.Is(val, kafkago.TopicAlreadyExists) {
+			return fmt.Errorf("创建Topic失败: %x", err)
 		}
-
-		return worker, err
-	}
-
-	// 新增工作节点
-	id, err := s.repo.CreateWorker(ctx, req)
-	if err != nil {
-		return domain.Worker{}, fmt.Errorf("创建节点失败: %x", err)
-	}
-	worker.Id = id
-
-	// 新增 Topic
-	if err = s.mq.CreateTopic(ctx, req.Topic, 1); err != nil {
-		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
 	}
 
 	// 新增 producer 监听
-	if err = s.producer.AddProducer(req.Topic); err != nil {
-		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
+	if err := s.producer.AddProducer(topic); err != nil {
+		return fmt.Errorf("推送 Producer 初始化失败: %x", err)
 	}
-	return worker, nil
+
+	return nil
 }
 
-func (s *service) FindOrRegisterByKey(ctx context.Context, req domain.Worker) (domain.Worker, error) {
-	worker, err := s.repo.FindByKey(ctx, req.Key)
-	if !errors.Is(err, repository.ErrUserNotFound) {
-		if req.Status != worker.Status {
-			_, err = s.repo.UpdateStatus(ctx, worker.Id, domain.Status.ToUint8(req.Status))
-			if err != nil {
-				return worker, fmt.Errorf("修改状态失败: %x", err)
-			}
-			worker.Status = req.Status
-		}
-
-		return worker, err
-	}
-
-	// 新增工作节点
-	id, err := s.repo.CreateWorker(ctx, req)
-	if err != nil {
-		return domain.Worker{}, fmt.Errorf("创建节点失败: %x", err)
-	}
-	worker.Id = id
-
-	// 新增 Topic
-	if err = s.mq.CreateTopic(ctx, req.Topic, 1); err != nil {
-		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
-	}
-
-	// 新增 producer 监听
-	if err = s.producer.AddProducer(req.Topic); err != nil {
-		return domain.Worker{}, fmt.Errorf("创建Topic失败: %x", err)
-	}
-	return worker, nil
-}
-
-func (s *service) UpdateStatus(ctx context.Context, id int64, status uint8) (int64, error) {
-	return s.repo.UpdateStatus(ctx, id, status)
-}
-
-func (s *service) ValidationByName(ctx context.Context, name string) (bool, error) {
-	_, err := s.repo.FindByName(ctx, name)
-	if !errors.Is(err, repository.ErrUserNotFound) {
-		return true, err
-	}
-
-	return false, err
-}
-
-func (s *service) ListWorker(ctx context.Context, offset, limit int64) ([]domain.Worker, int64, error) {
-	var (
-		eg    errgroup.Group
-		ts    []domain.Worker
-		total int64
-	)
-	eg.Go(func() error {
-		var err error
-		ts, err = s.repo.ListWorker(ctx, offset, limit)
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		total, err = s.repo.Total(ctx)
-		return err
-	})
-	if err := eg.Wait(); err != nil {
-		return ts, total, err
-	}
-	return ts, total, nil
+func (s *service) Release(ctx context.Context, topic string) error {
+	return s.producer.DelProducer(topic)
 }

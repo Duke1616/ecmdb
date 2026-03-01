@@ -90,11 +90,17 @@ type RetrieveWorkers struct {
 	Runners []Runner `json:"runners"`
 }
 
+type TagDetail struct {
+	Tag     string `json:"tag"`
+	Kind    string `json:"kind"`
+	Target  string `json:"target"`
+	Handler string `json:"handler"`
+}
+
 type RunnerTags struct {
-	CodebookName       string            `json:"codebook_name"`
-	CodebookUid        string            `json:"codebook_uid"`
-	TagsMappingTarget  map[string]string `json:"tags_target"`
-	TagsMappingHandler map[string]string `json:"tags_handler"`
+	CodebookName string      `json:"codebook_name"`
+	CodebookUid  string      `json:"codebook_uid"`
+	Tags         []TagDetail `json:"tags"`
 }
 
 type RetrieveRunnerTags struct {

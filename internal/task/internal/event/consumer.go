@@ -6,28 +6,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/codebook"
-	"github.com/Duke1616/ecmdb/internal/pkg/notification"
-	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/service"
-	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type ExecuteResultConsumer struct {
-	consumer    mq.Consumer
-	sender      sender.NotificationSender
-	codebookSvc codebook.Service
-	userSvc     user.Service
-	svc         service.Service
-	logger      *elog.Component
+	consumer mq.Consumer
+	svc      service.Service
+	logger   *elog.Component
 }
 
-func NewExecuteResultConsumer(q mq.MQ, svc service.Service, codebookSvc codebook.Service,
-	userSvc user.Service, sender sender.NotificationSender) (
-	*ExecuteResultConsumer, error) {
+func NewExecuteResultConsumer(q mq.MQ, svc service.Service) (*ExecuteResultConsumer, error) {
 	groupID := "task_receive_execute"
 	consumer, err := q.Consumer(ExecuteResultEventName, groupID)
 	if err != nil {
@@ -35,12 +26,9 @@ func NewExecuteResultConsumer(q mq.MQ, svc service.Service, codebookSvc codebook
 	}
 
 	return &ExecuteResultConsumer{
-		consumer:    consumer,
-		svc:         svc,
-		codebookSvc: codebookSvc,
-		userSvc:     userSvc,
-		sender:      sender,
-		logger:      elog.DefaultLogger,
+		consumer: consumer,
+		svc:      svc,
+		logger:   elog.DefaultLogger,
 	}, nil
 }
 
@@ -66,49 +54,20 @@ func (c *ExecuteResultConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	_, err = c.svc.UpdateTaskStatus(ctx, domain.TaskResult{
-		Id:         evt.TaskId,
-		Result:     evt.Result,
-		WantResult: evt.WantResult,
-		Status:     domain.Status(evt.Status),
+	triggerPosition := domain.TriggerPositionTaskExecutionSuccess
+	if domain.Status(evt.Status) == domain.FAILED {
+		triggerPosition = domain.TriggerPositionTaskExecutionFailed
+	}
+
+	_, err = c.svc.UpdateTaskResult(ctx, domain.TaskResult{
+		Id:              evt.TaskId,
+		Result:          evt.Result,
+		WantResult:      evt.WantResult,
+		TriggerPosition: triggerPosition.ToString(),
+		Status:          domain.Status(evt.Status),
 	})
 
-	if domain.Status(evt.Status) == domain.FAILED {
-		return c.failedNotify(ctx, evt.TaskId)
-	}
-
 	return err
-}
-
-// failedNotify 发送消息通知给自动化任务模版的管理者
-func (c *ExecuteResultConsumer) failedNotify(ctx context.Context, id int64) error {
-	t, err := c.svc.Detail(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	code, err := c.codebookSvc.FindByUid(ctx, t.CodebookUid)
-	if err != nil {
-		return err
-	}
-
-	u, err := c.userSvc.FindByUsername(ctx, code.Owner)
-	if err != nil {
-		return err
-	}
-
-	content := fmt.Sprintf("自动化任务执行失败, 请通过平台进行查看，工单ID：%d, 任务ID: %d", t.OrderId, id)
-	if _, err = c.sender.Send(ctx, notification.Notification{
-		Receiver: u.FeishuInfo.UserId,
-		Channel:  notification.ChannelLarkText,
-		Template: notification.Template{
-			Text: content,
-		},
-	}); err != nil {
-		return fmt.Errorf("任务执行失败，触发发送信息失败: %w, 工单ID: %d", err, id)
-	}
-
-	return nil
 }
 
 func (c *ExecuteResultConsumer) Stop(_ context.Context) error {

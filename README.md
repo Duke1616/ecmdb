@@ -128,7 +128,7 @@ go run main.go init ticket-notify-template
 | 项目 | 描述 | 仓库地址 |
 |------|------|----------|
 | **前端界面** | Vue3 + TypeScript 现代化前端 | [ecmdb-web](https://github.com/Duke1616/ecmdb-web) |
-| **任务执行器** | 分布式任务执行引擎 | [ework-runner](https://github.com/Duke1616/ework-runner) |
+| **任务执行器** | 分布式任务执行引擎 | [etask](https://github.com/Duke1616/etask) |
 | **消息通知** | 统一消息通知服务 | [enotify](https://github.com/Duke1616/enotify) |
 
 > 💡 **提示**：如果没有工单自动化任务需求，可以不部署任务执行器

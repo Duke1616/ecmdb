@@ -7,8 +7,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/rota"
 	"github.com/Duke1616/ecmdb/internal/user"
 
-	grpcpkg "github.com/Duke1616/ework-runner/pkg/grpc"
-	registrysdk "github.com/Duke1616/ework-runner/pkg/grpc/registry"
+	grpcpkg "github.com/Duke1616/etask/pkg/grpc"
+	registrysdk "github.com/Duke1616/etask/pkg/grpc/registry"
 
 	"github.com/spf13/viper"
 )

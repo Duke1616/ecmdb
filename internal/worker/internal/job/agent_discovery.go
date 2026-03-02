@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/Duke1616/ecmdb/internal/worker/internal/service"
-	"github.com/Duke1616/ework-runner/pkg/grpc/registry"
+	"github.com/Duke1616/etask/pkg/grpc/registry"
 	"github.com/gotomicro/ego/core/elog"
 )
 

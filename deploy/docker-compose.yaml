@@ -155,6 +155,22 @@ services:
       - mysql
       - etcd
       - redis
+  etask:
+    restart: always
+    container_name: etask
+    image: registry.cn-qingdao.aliyuncs.com/duke1616/etask:main
+    command: ./ealert start
+    ports:
+      - "8677:8006"
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config/prod-ealert.yaml:/app/config/prod.yaml
+      - /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai
+    depends_on:
+      - mysql
+      - etcd
+      - redis
   ecmdb-web:
     restart: always
     container_name: ecmdb-web

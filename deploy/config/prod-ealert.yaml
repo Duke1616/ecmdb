@@ -1,47 +1,72 @@
+# ealert 全量配置文件
+
+# 日志配置
+log:
+  debug: true # 是否开启调试模式，开启后会打印更多详细日志
+
+# MySQL 持久化存储配置
 mysql:
   dsn: "ealert:123456@tcp(ecmdb-mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
+
+# Redis 缓存配置
 redis:
   addr: "ecmdb-redis:6379"
   password: "1234567890"
   db: 0
 
+# 会话管理与 Cookie 配置
 session:
-  session_encrypted_key: "1234567890Key"
+  session_encrypted_key: "1234567890Key" # 通用加密密钥
   cookie:
     domain: ".example.com"
     name: "ecmdb-token-key"
 
+# 飞书消息通知配置 (针对不同业务场景可以配置不同应用)
 lark:
-  app_id: ""
-  app_secret: ""
+  # 工单消息通知应用：用于工单审批状态通知
+  ticket:
+    app_id: ""
+    app_secret: ""
+  # 告警消息通知应用：监控异常消息推送
+  monitor:
+    app_id: ""
+    app_secret: ""
+  # 默认消息通知应用
+  default:
+    app_id: ""
+    app_secret: ""
 
+# SMTP 邮件发送服务配置
 email:
   smtp_host: "smtp.qq.com"
   smtp_port: 587
-  smtp_username: "******@qq.com"
-  smtp_password: "********"
-  form_email: "********"@qq.com"
-  form_name: "[告警通知] 测试告警"
+  smtp_username: "******@qq.com" # 发件邮箱
+  smtp_password: "********"      # 邮箱授权码
+  form_email: "********@qq.com"  # 显示的发件地址
+  form_name: "[告警通知] 测试告警" # 显示的发件人名称
 
+# 工作平台协程池与任务队列配置：用于高性能告警推送
 pool:
-  initGo: 1000
-  coreGo: 1500
-  maxGo: 2000
-  maxIdleTime: 5000000000
-  queueSize: 1000
-  queueBacklogRate: 0.8
+  initGo: 1000            # 初始化运行的协程数量
+  coreGo: 1500            # 核心长期持有的协程
+  maxGo: 2000             # 支持的最大协程并发上限
+  maxIdleTime: 5000000000 # 协程空闲回收阈值（纳秒）
+  queueSize: 1000         # 等待处理的任务队列长度
+  queueBacklogRate: 0.8  # 队列积压比率（负载均衡控制）
 
+# Etcd 注册中心连接地址
 etcd:
   endpoints:
     - "ecmdb-etcd:2379"
 
+# gRPC 通信配置：定义告警服务的对外 RPC 服务及上游客户端
 grpc:
   server:
     ealert:
       name: "ealert"
       listen_addr: "0.0.0.0:7867"
-      auth_token: "1234567890"
+      auth_token: "1234567890" # 内部接口安全校验凭证
   client:
     ecmdb:
-      name: "ecmdb"
+      name: "ecmdb" # 需要通过 RPC 获取 ecmdb 的相关元数据
       auth_token: "1234567890"

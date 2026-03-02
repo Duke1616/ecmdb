@@ -1,9 +1,14 @@
+# ecmdb 全量配置文件
 
-# 数据加密，根据模块划分
+# 日志配置
+log:
+  debug: true # 是否开启调试模式，开启后会打印更多详细日志
+
+# 数据加密配置：针对不同模块的敏感字段进行 AES 加密存储
 encryption:
   user:
-    version: "V1"
-    key: "1234567890"
+    version: "V1" # 加密算法版本
+    key: "1234567890" # 16/24/32位密钥
   resource:
     version: "V1"
     key: "1234567890"
@@ -11,6 +16,7 @@ encryption:
     version: "V1"
     key: "1234567890"
 
+# LDAP 认证配置：支持 Windows AD 登陆
 ldap:
   url: "ldap://127.0.0.1:389"
   base_dn: "DC=example,DC=com"
@@ -24,72 +30,83 @@ ldap:
   user_filter: "(&(sAMAccountName={input})(!(UserAccountControl=514)))"
   group_filter: "(|(member={dn}))"
 
+# 会话与 Cookie 配置
 session:
-  session_encrypted_key: "1234567890Key"
+  session_encrypted_key: "1234567890Key" # 用于加密存储在客户端的 Session 数据
   cookie:
     domain: ".example.com"
     name: "ecmdb-token-key"
 
+# Redis 缓存配置
 redis:
   addr: "ecmdb-redis:6379"
   password: "1234567890"
   db: 0
 
+# Casbin 权限后端：使用 Redis 存储策略和 Watcher 机制
 casbin:
   redis:
     addr: "ecmdb-redis:6379"
     db: 1
     password: "1234567890"
 
+# MongoDB：持久化存储配置
 mongodb:
-  dsn: mongodb://mongo:27017/ecmdb?authSource=admin
-  db: ecmdb
-  username: ecmdb
-  password: 123456
+  dsn: "mongodb://mongo:27017/ecmdb?authSource=admin"
+  db: "ecmdb"
+  username: "ecmdb"
+  password: "123456"
 
+# MySQL 持久化存储配置
 mysql:
   dsn: "ecmdb:123456@tcp(ecmdb-mysql:3306)/ecmdb?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
 
+# Kafka：用于自动化任务与异步事件通知的消息总线
 kafka:
-  network: tcp
+  network: "tcp"
   addresses:
-    - ecmdb-kafka:9092
+    - "ecmdb-kafka:9092"
 
+# Etcd：服务注册中心与配置分发
 etcd:
   endpoints:
-    - ecmdb-etcd:2379
+    - "ecmdb-etcd:2379"
 
+# Minio：对象存储，用于附件、导出文件等非结构化数据
 minio:
-  endpoint: minio:9000
-  access_key_id: minio
-  secret_access_key: minio123
+  endpoint: "minio:9000"
+  access_key_id: "minio"
+  secret_access_key: "minio123"
   use_ssl: false
 
-# 用于查询企业微信API
+# 企业微信 API 配置：用于同步人员信息或接收回调
 wechat:
   corp_id: ""
   corp_secret: ""
   agent_id: 1000002
 
-# 用于飞书发送消息通知
+# 飞书消息通知：用于工单审批、异常告警的消息推送
 lark:
   app_id: ""
   app_secret: ""
   callback:
-    frontend_url: http://ecmdb-web:80/logicflow-preview
+    frontend_url: "http://ecmdb-web:80/logicflow-preview"
     debug: false
 
-# 如果工单需要自动化任务必须开启
-cronjob:
-  enabled: false
-
+# gRPC 通信配置
 grpc:
   server:
     ecmdb:
-      name: "ecmdb"
+      name: "ecmdb" # 注册在 Etcd 的名称
       listen_addr: "0.0.0.0:8097"
-      auth_token: "1234567890"
+      auth_token: "1234567890" # 内部通信认证令牌
   client:
     ealert:
       name: "ealert"
       auth_token: "1234567890"
+    etask:
+      name: "scheduler" # 指向任务调度服务
+
+# 定时任务配置：自动化执行单元需要开启此项
+cronjob:
+  enabled: false

@@ -1475,9 +1475,9 @@
     "_id": "66bdc225ce7b5a67a43e8cb2",
     "component": "",
     "ctime": "1723712037418",
-    "endpoints": "[ { \"path\" : \"/api/worker/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/executor/list\", \"method\" : \"GET\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/executor/list\", \"method\" : \"GET\", \"resource\" : \"TASK\", \"desc\" : \"\" }, { \"path\" : \"/api/agent/list\", \"method\" : \"GET\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
     "id": "125",
-    "meta": "{ \"title\" : \"工作节点列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "meta": "{ \"title\" : \"节点列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_worker",
     "path": "",
     "pid": "10",
@@ -1485,7 +1485,7 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1771999918026"
+    "utime": "1772423572279"
   },
   {
     "_id": "66bdc24bce7b5a67a43e8cb3",

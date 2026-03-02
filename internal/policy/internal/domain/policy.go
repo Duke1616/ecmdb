@@ -38,3 +38,10 @@ type GroupingPolicyReq struct {
 	UserId   string
 	RoleCode string
 }
+
+type AuthorizeResult struct {
+	Allowed         bool
+	Roles           []string
+	MatchedPolicies []string
+	Reason          string
+}

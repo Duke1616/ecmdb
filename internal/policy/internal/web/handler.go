@@ -95,23 +95,23 @@ func (h *Handler) UpdatePolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, 
 }
 
 func (h *Handler) Authorize(ctx *gin.Context, req AuthorizeReq) (ginx.Result, error) {
-	authorize, err := h.svc.Authorize(ctx, req.UserId, req.Path, req.Method, req.Resource)
+	result, err := h.svc.Authorize(ctx, req.UserId, req.Path, req.Method, req.Resource)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	if !authorize {
+	if !result.Allowed {
 		return ginx.Result{
 			Code: 0,
-			Msg:  "权限拒绝",
-			Data: authorize,
+			Msg:  result.Reason,
+			Data: result,
 		}, nil
 	}
 
 	return ginx.Result{
 		Code: 0,
-		Msg:  "权限通过",
-		Data: authorize,
+		Msg:  result.Reason,
+		Data: result,
 	}, nil
 }
 

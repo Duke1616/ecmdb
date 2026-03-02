@@ -27,24 +27,36 @@ func NewCheckPolicyMiddlewareBuilder(svc policy.Service, sp session.Provider) *C
 
 func (c *CheckPolicyMiddlewareBuilder) Build() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		gCtx := &ginx.Context{Context: ctx}
-		sess, err := c.sp.Get(gCtx)
+		sess, err := c.sp.Get(&ginx.Context{Context: ctx})
 		if err != nil {
-			gCtx.AbortWithStatus(http.StatusForbidden)
-			c.logger.Debug("用户未登录", elog.FieldErr(err))
+			c.logger.Warn("用户未登录", elog.FieldErr(err))
+			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		// 获取请求的路径
+
+		// 获取请求元数据
 		path := ctx.Request.URL.Path
-		// 获取请求的HTTP方法
 		method := ctx.Request.Method
-		// 获取用户ID
 		uid := sess.Claims().Uid
-		ok, err := c.svc.Authorize(ctx.Request.Context(), strconv.FormatInt(uid, 10), path, method, "CMDB")
-		if err != nil || !ok {
-			gCtx.AbortWithStatus(http.StatusForbidden)
-			c.logger.Debug("用户无权限", elog.FieldErr(err))
+
+		// 调用鉴权服务，目前系统资源统一标识为 "CMDB"
+		result, err := c.svc.Authorize(ctx.Request.Context(), strconv.FormatInt(uid, 10), path, method, "CMDB")
+		if err != nil {
+			c.logger.Error("权限鉴权服务异常", elog.FieldErr(err), elog.Int64("uid", uid), elog.String("path", path))
+			ctx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
+
+		if !result.Allowed {
+			c.logger.Warn("用户访问被拒绝",
+				elog.Int64("uid", uid),
+				elog.String("path", path),
+				elog.String("method", method),
+				elog.String("reason", result.Reason))
+			ctx.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		ctx.Next()
 	}
 }

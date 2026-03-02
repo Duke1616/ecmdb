@@ -16,6 +16,12 @@ message AuthorizeReq {
 
 message Response {
   bool allowed = 1;
+  // 匹配到的角色列表
+  repeated string roles = 2;
+  // 匹配到的策略列表
+  repeated string matched_policies = 3;
+  // 拒绝或通过的原因详情
+  string reason = 4;
 }
 
 service PolicyService {

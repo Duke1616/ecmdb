@@ -22,7 +22,7 @@ type Service interface {
 	// CreateOrUpdateFilteredPolicies 通过过滤完成新增修改删除
 	CreateOrUpdateFilteredPolicies(ctx context.Context, req domain.Policies) (bool, error)
 	// Authorize 权限校验
-	Authorize(ctx context.Context, userId, path, method, resource string) (bool, error)
+	Authorize(ctx context.Context, userId, path, method, resource string) (domain.AuthorizeResult, error)
 	// GetImplicitPermissionsForUser 获取用户拥有的所有接口权限
 	GetImplicitPermissionsForUser(ctx context.Context, userId int64) ([]domain.Policy, error)
 	// GetPermissionsForRole 获取角色拥有的所有权限
@@ -74,8 +74,30 @@ func (s *service) GetImplicitPermissionsForUser(ctx context.Context, userId int6
 	}), err
 }
 
-func (s *service) Authorize(ctx context.Context, userId, path, method, resource string) (bool, error) {
-	return s.enforcer.Enforce(userId, path, method, resource)
+func (s *service) Authorize(ctx context.Context, userId, path, method, resource string) (domain.AuthorizeResult, error) {
+	allowed, matchedPolicies, err := s.enforcer.EnforceEx(userId, path, method, resource)
+	if err != nil {
+		return domain.AuthorizeResult{Allowed: false, Reason: err.Error()}, err
+	}
+
+	roles, err := s.enforcer.GetRolesForUser(userId)
+	if err != nil {
+		return domain.AuthorizeResult{Allowed: false, Reason: err.Error()}, err
+	}
+
+	var reason string
+	if allowed {
+		reason = "访问已允许"
+	} else {
+		reason = "访问被拒绝：没有匹配的策略或已被显式拒绝"
+	}
+
+	return domain.AuthorizeResult{
+		Allowed:         allowed,
+		Roles:           roles,
+		MatchedPolicies: matchedPolicies,
+		Reason:          reason,
+	}, nil
 }
 
 func (s *service) AddPolicies(ctx context.Context, req domain.Policies) (bool, error) {

@@ -94,8 +94,14 @@ func (x *AuthorizeReq) GetResource() string {
 }
 
 type Response struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Allowed       bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Allowed bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
+	// 匹配到的角色列表
+	Roles []string `protobuf:"bytes,2,rep,name=roles,proto3" json:"roles,omitempty"`
+	// 匹配到的策略列表
+	MatchedPolicies []string `protobuf:"bytes,3,rep,name=matched_policies,json=matchedPolicies,proto3" json:"matched_policies,omitempty"`
+	// 拒绝或通过的原因详情
+	Reason        string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -137,6 +143,27 @@ func (x *Response) GetAllowed() bool {
 	return false
 }
 
+func (x *Response) GetRoles() []string {
+	if x != nil {
+		return x.Roles
+	}
+	return nil
+}
+
+func (x *Response) GetMatchedPolicies() []string {
+	if x != nil {
+		return x.MatchedPolicies
+	}
+	return nil
+}
+
+func (x *Response) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 var File_ecmdb_policy_v1_policy_proto protoreflect.FileDescriptor
 
 const file_ecmdb_policy_v1_policy_proto_rawDesc = "" +
@@ -146,9 +173,12 @@ const file_ecmdb_policy_v1_policy_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
 	"\x06method\x18\x03 \x01(\tR\x06method\x12\x1a\n" +
-	"\bresource\x18\x04 \x01(\tR\bresource\"$\n" +
+	"\bresource\x18\x04 \x01(\tR\bresource\"}\n" +
 	"\bResponse\x12\x18\n" +
-	"\aallowed\x18\x01 \x01(\bR\aallowed2V\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed\x12\x14\n" +
+	"\x05roles\x18\x02 \x03(\tR\x05roles\x12)\n" +
+	"\x10matched_policies\x18\x03 \x03(\tR\x0fmatchedPolicies\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason2V\n" +
 	"\rPolicyService\x12E\n" +
 	"\tAuthorize\x12\x1d.ecmdb.policy.v1.AuthorizeReq\x1a\x19.ecmdb.policy.v1.ResponseB\xc2\x01\n" +
 	"\x13com.ecmdb.policy.v1B\vPolicyProtoP\x01Z@github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/policy/v1;policyv1\xa2\x02\x03EPX\xaa\x02\x0fEcmdb.Policy.V1\xca\x02\x0fEcmdb\\Policy\\V1\xe2\x02\x1bEcmdb\\Policy\\V1\\GPBMetadata\xea\x02\x11Ecmdb::Policy::V1b\x06proto3"

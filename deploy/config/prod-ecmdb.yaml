@@ -106,6 +106,7 @@ grpc:
       auth_token: "1234567890"
     etask:
       name: "scheduler" # 指向任务调度服务
+      auth_token: "1234567890"
 
 # 定时任务配置：自动化执行单元需要开启此项
 cronjob:

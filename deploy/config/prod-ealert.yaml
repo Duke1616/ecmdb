@@ -1,6 +1,5 @@
 mysql:
-  dsn: ealert:123456@tcp(ecmdb-mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
-
+  dsn: "ealert:123456@tcp(ecmdb-mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
 redis:
   addr: "ecmdb-redis:6379"
   password: "1234567890"
@@ -34,7 +33,7 @@ pool:
 
 etcd:
   endpoints:
-    - ecmdb-etcd:2379
+    - "ecmdb-etcd:2379"
 
 grpc:
   server:

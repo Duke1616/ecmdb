@@ -159,16 +159,17 @@ services:
     restart: always
     container_name: etask
     image: registry.cn-qingdao.aliyuncs.com/duke1616/etask:main
-    command: ./ealert start
+    command: ./etask server --mode all
     ports:
       - "8677:8006"
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - ./config/prod-ealert.yaml:/app/config/prod.yaml
+      - ./config/prod-etask.yaml:/app/config/config.yaml
       - /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai
     depends_on:
       - mysql
+      - kafka
       - etcd
       - redis
   ecmdb-web:

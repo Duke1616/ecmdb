@@ -74,6 +74,8 @@ func (s *SDK) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
+		// 将 Uid 写入 Context
+		ctx.Set("uid", res.Data.Uid)
 		ctx.Next()
 	}
 }

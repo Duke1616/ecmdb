@@ -43,3 +43,13 @@ type AuthorizeReq struct {
 type RetrievePolicies struct {
 	Policies []Policy `json:"policies"`
 }
+
+type CheckLoginResp struct {
+	Uid int64 `json:"uid"`
+}
+
+type CheckPolicyReq struct {
+	Path     string `json:"path"`
+	Method   string `json:"method"`
+	Resource string `json:"resource"`
+}

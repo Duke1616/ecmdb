@@ -110,6 +110,7 @@ func InitApp() (*App, error) {
 		middleware.NewCheckLoginMiddlewareBuilder,
 		initCronJobs,
 		InitWebServer,
+		InitListener,
 		InitGrpcServer,
 		InitGinMiddlewares,
 

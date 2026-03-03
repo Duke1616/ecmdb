@@ -19,13 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PolicyService_Authorize_FullMethodName = "/ecmdb.policy.v1.PolicyService/Authorize"
+	PolicyService_CheckLogin_FullMethodName = "/ecmdb.policy.v1.PolicyService/CheckLogin"
+	PolicyService_Authorize_FullMethodName  = "/ecmdb.policy.v1.PolicyService/Authorize"
 )
 
 // PolicyServiceClient is the client API for PolicyService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PolicyServiceClient interface {
+	// 登录鉴权
+	CheckLogin(ctx context.Context, in *CheckLoginReq, opts ...grpc.CallOption) (*CheckLoginRes, error)
 	// API 鉴权
 	Authorize(ctx context.Context, in *AuthorizeReq, opts ...grpc.CallOption) (*Response, error)
 }
@@ -36,6 +39,16 @@ type policyServiceClient struct {
 
 func NewPolicyServiceClient(cc grpc.ClientConnInterface) PolicyServiceClient {
 	return &policyServiceClient{cc}
+}
+
+func (c *policyServiceClient) CheckLogin(ctx context.Context, in *CheckLoginReq, opts ...grpc.CallOption) (*CheckLoginRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckLoginRes)
+	err := c.cc.Invoke(ctx, PolicyService_CheckLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *policyServiceClient) Authorize(ctx context.Context, in *AuthorizeReq, opts ...grpc.CallOption) (*Response, error) {
@@ -52,6 +65,8 @@ func (c *policyServiceClient) Authorize(ctx context.Context, in *AuthorizeReq, o
 // All implementations must embed UnimplementedPolicyServiceServer
 // for forward compatibility.
 type PolicyServiceServer interface {
+	// 登录鉴权
+	CheckLogin(context.Context, *CheckLoginReq) (*CheckLoginRes, error)
 	// API 鉴权
 	Authorize(context.Context, *AuthorizeReq) (*Response, error)
 	mustEmbedUnimplementedPolicyServiceServer()
@@ -64,6 +79,9 @@ type PolicyServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedPolicyServiceServer struct{}
 
+func (UnimplementedPolicyServiceServer) CheckLogin(context.Context, *CheckLoginReq) (*CheckLoginRes, error) {
+	return nil, status.Error(codes.Unimplemented, "method CheckLogin not implemented")
+}
 func (UnimplementedPolicyServiceServer) Authorize(context.Context, *AuthorizeReq) (*Response, error) {
 	return nil, status.Error(codes.Unimplemented, "method Authorize not implemented")
 }
@@ -86,6 +104,24 @@ func RegisterPolicyServiceServer(s grpc.ServiceRegistrar, srv PolicyServiceServe
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&PolicyService_ServiceDesc, srv)
+}
+
+func _PolicyService_CheckLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckLoginReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServiceServer).CheckLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PolicyService_CheckLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServiceServer).CheckLogin(ctx, req.(*CheckLoginReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _PolicyService_Authorize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -113,6 +149,10 @@ var PolicyService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "ecmdb.policy.v1.PolicyService",
 	HandlerType: (*PolicyServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CheckLogin",
+			Handler:    _PolicyService_CheckLogin_Handler,
+		},
 		{
 			MethodName: "Authorize",
 			Handler:    _PolicyService_Authorize_Handler,

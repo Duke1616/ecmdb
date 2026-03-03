@@ -1,5 +1,9 @@
 crypto_aes_key: "1234567890"
 
+web:
+  host: "0.0.0.0"
+  port: 8000
+
 # 数据加密，根据模块划分
 encryption:
   user:

@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"net"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/attribute"
@@ -28,9 +29,12 @@ import (
 	"github.com/Duke1616/ecmdb/internal/tools"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/gotomicro/ego/core/econf"
+
 	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 )
 
@@ -43,11 +47,11 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 	departmentHdl *department.Handler, toolsHdl *tools.Handler, termHdl *terminal.Handler, rotaHdl *rota.Handler,
 	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
+	listener net.Listener,
 ) *egin.Component {
 	session.SetDefaultProvider(sp)
-	gin.SetMode(gin.ReleaseMode)
 
-	server := egin.DefaultContainer().Build(egin.WithPort(8000))
+	server := egin.Load("server.egin").Build(egin.WithListener(listener))
 	server.Use(mdls...)
 
 	// 不需要登录认证鉴权的路由
@@ -55,6 +59,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	strategyHdl.PublicRoutes(server.Engine)
 	toolsHdl.PublicRoutes(server.Engine)
 	orderHdl.PublicRoute(server.Engine)
+	policyHdl.PublicRoutes(server.Engine)
 
 	// 验证是否登录
 	server.Use(session.CheckLoginMiddleware())
@@ -104,6 +109,7 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 func InitGinMiddlewares() []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		corsHdl(),
+		accessLogger(),
 		func(ctx *gin.Context) {
 		},
 	}
@@ -117,13 +123,40 @@ func corsHdl() gin.HandlerFunc {
 		ExposeHeaders: []string{"X-Access-Token"},
 		// 是否允许你带 cookie 之类的东西
 		AllowCredentials: true,
-		//AllowOriginFunc: func(origin string) bool {
-		//	if strings.HasPrefix(origin, "http://localhost") {
-		//		// 你的开发环境
-		//		return true
-		//	}
-		//	return strings.Contains(origin, "example.com")
-		//},
-		MaxAge: 12 * time.Hour,
+		MaxAge:           12 * time.Hour,
 	})
+}
+
+// accessLogger 自定义 access 日志中间件
+// NOTE: SDK 鉴权专用路由使用 Debug 级别避免日志污染，其他路由使用 Info
+func accessLogger() gin.HandlerFunc {
+	// 关闭默认的日志输出
+	econf.Set("server.egin.enableAccessInterceptor", false)
+
+	// SDK 鉴权路由精确匹配，降级为 Debug 避免日志污染
+	sdkPaths := map[string]struct{}{
+		"/api/policy/check_login":  {},
+		"/api/policy/check_policy": {},
+	}
+
+	// NOTE: ego DefaultLogger 针对框架内部做了 caller skip 校准，直接从用户代码调用需减一层
+	logger := elog.DefaultLogger.With(elog.FieldComponentName("access")).WithCallerSkip(-1)
+	return func(ctx *gin.Context) {
+		beg := time.Now()
+		ctx.Next()
+		cost := time.Since(beg)
+
+		fields := []elog.Field{
+			elog.FieldMethod(ctx.Request.Method + "." + ctx.FullPath()),
+			elog.FieldAddr(ctx.Request.URL.RequestURI()),
+			elog.FieldCost(cost),
+			elog.FieldCode(int32(ctx.Writer.Status())),
+		}
+
+		if _, ok := sdkPaths[ctx.Request.URL.Path]; ok {
+			logger.Debug("access", fields...)
+		} else {
+			logger.Info("access", fields...)
+		}
+	}
 }

@@ -145,7 +145,7 @@ services:
     image: registry.cn-qingdao.aliyuncs.com/duke1616/ealert:main
     command: ./ealert start
     ports:
-      - "8677:8006"
+      - "8677:8000"
     environment:
       - TZ=Asia/Shanghai
     volumes:
@@ -161,7 +161,7 @@ services:
     image: registry.cn-qingdao.aliyuncs.com/duke1616/etask:main
     command: ./etask server --mode all
     ports:
-      - "8765:8765"
+      - "8765:8000"
     environment:
       - TZ=Asia/Shanghai
     volumes:

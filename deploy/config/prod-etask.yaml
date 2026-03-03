@@ -45,6 +45,15 @@ etcd:
   endpoints:
     - ecmdb-etcd:2379
 
+# web 配置: 对外暴露 http 接口
+web:
+  host: "0.0.0.0"
+  port: 8000
+
+# 策略鉴权：ECMDB 服务地址，用于登录验证与权限鉴权
+policy:
+  auth_url: http://ecmdb:8000
+
 # gRPC 服务及客户端配置
 grpc:
   server:

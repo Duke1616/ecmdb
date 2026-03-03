@@ -52,7 +52,9 @@ func (c *CheckPolicyMiddlewareBuilder) Build() gin.HandlerFunc {
 				elog.Int64("uid", uid),
 				elog.String("path", path),
 				elog.String("method", method),
-				elog.String("reason", result.Reason))
+				elog.String("reason", result.Reason),
+				elog.Any("roles", result.Roles),
+				elog.Any("matched_policies", result.MatchedPolicies))
 			ctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}

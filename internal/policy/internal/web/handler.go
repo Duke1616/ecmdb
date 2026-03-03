@@ -1,21 +1,39 @@
 package web
 
 import (
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/Duke1616/ecmdb/internal/policy/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/policy/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ginx/gctx"
+	"github.com/ecodeclub/ginx/session"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	svc service.Service
+	svc       service.Service
+	sp        session.Provider
+	threshold time.Duration
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, sp session.Provider) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:       svc,
+		sp:        sp,
+		threshold: time.Minute,
 	}
+}
+
+// PublicRoutes 公开路由，供第三方 SDK 通过 HTTP 调用，不经过登录和鉴权中间件
+func (h *Handler) PublicRoutes(server *gin.Engine) {
+	g := server.Group("/api/policy")
+	g.POST("/check_login", ginx.Wrap(h.CheckLoginForSDK))
+	g.POST("/check_policy", ginx.WrapBody[CheckPolicyReq](h.CheckPolicyForSDK))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -26,6 +44,57 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/authorize", ginx.WrapBody[AuthorizeReq](h.Authorize))
 	g.POST("/user/permissions", ginx.WrapBody[GetPermissionsForUserReq](h.GetImplicitPermissionsForUser))
 	g.POST("/role/permissions", ginx.WrapBody[GetPermissionsForRoleReq](h.GetPermissionsForRole))
+}
+
+// CheckLoginForSDK 供第三方 SDK 调用的登录验证接口
+// NOTE: Token 通过 HTTP Authorization Header 透传，session.Provider 原生处理
+func (h *Handler) CheckLoginForSDK(ctx *gin.Context) (ginx.Result, error) {
+	gCtx := &gctx.Context{Context: ctx}
+	sess, err := h.sp.Get(gCtx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return ginx.Result{}, fmt.Errorf("登录验证失败: %w", err)
+	}
+
+	// 检测 Token 是否过期
+	expiration := sess.Claims().Expiration
+	now := time.Now().UnixMilli()
+	if expiration <= now {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return ginx.Result{}, fmt.Errorf("token 已过期")
+	}
+
+	// Token 即将过期时自动续期，新 Token 会通过 Response Header 返回
+	if expiration-now < h.threshold.Milliseconds() {
+		_ = h.sp.RenewAccessToken(gCtx)
+	}
+
+	return ginx.Result{
+		Data: CheckLoginResp{
+			Uid: sess.Claims().Uid,
+		},
+	}, nil
+}
+
+// CheckPolicyForSDK 供第三方 SDK 调用的权限鉴权接口
+// NOTE: Token 通过 HTTP Authorization Header 透传
+func (h *Handler) CheckPolicyForSDK(ctx *gin.Context, req CheckPolicyReq) (ginx.Result, error) {
+	gCtx := &gctx.Context{Context: ctx}
+	sess, err := h.sp.Get(gCtx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return ginx.Result{}, fmt.Errorf("登录验证失败: %w", err)
+	}
+
+	userId := strconv.FormatInt(sess.Claims().Uid, 10)
+	result, err := h.svc.Authorize(ctx, userId, req.Path, req.Method, req.Resource)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: result,
+	}, nil
 }
 
 func (h *Handler) AddPolicies(ctx *gin.Context, req PolicyReq) (ginx.Result, error) {

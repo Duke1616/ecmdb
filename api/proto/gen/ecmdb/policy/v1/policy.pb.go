@@ -21,10 +21,99 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type CheckLoginReq struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 身份凭证
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckLoginReq) Reset() {
+	*x = CheckLoginReq{}
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckLoginReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckLoginReq) ProtoMessage() {}
+
+func (x *CheckLoginReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckLoginReq.ProtoReflect.Descriptor instead.
+func (*CheckLoginReq) Descriptor() ([]byte, []int) {
+	return file_ecmdb_policy_v1_policy_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *CheckLoginReq) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type CheckLoginRes struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Uid           int64                  `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckLoginRes) Reset() {
+	*x = CheckLoginRes{}
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckLoginRes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckLoginRes) ProtoMessage() {}
+
+func (x *CheckLoginRes) ProtoReflect() protoreflect.Message {
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckLoginRes.ProtoReflect.Descriptor instead.
+func (*CheckLoginRes) Descriptor() ([]byte, []int) {
+	return file_ecmdb_policy_v1_policy_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CheckLoginRes) GetUid() int64 {
+	if x != nil {
+		return x.Uid
+	}
+	return 0
+}
+
 type AuthorizeReq struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 用户ID
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// 身份凭证
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// 路径
 	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	// 方法
@@ -37,7 +126,7 @@ type AuthorizeReq struct {
 
 func (x *AuthorizeReq) Reset() {
 	*x = AuthorizeReq{}
-	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[0]
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -49,7 +138,7 @@ func (x *AuthorizeReq) String() string {
 func (*AuthorizeReq) ProtoMessage() {}
 
 func (x *AuthorizeReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[0]
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -62,12 +151,12 @@ func (x *AuthorizeReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizeReq.ProtoReflect.Descriptor instead.
 func (*AuthorizeReq) Descriptor() ([]byte, []int) {
-	return file_ecmdb_policy_v1_policy_proto_rawDescGZIP(), []int{0}
+	return file_ecmdb_policy_v1_policy_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AuthorizeReq) GetUserId() string {
+func (x *AuthorizeReq) GetToken() string {
 	if x != nil {
-		return x.UserId
+		return x.Token
 	}
 	return ""
 }
@@ -108,7 +197,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[1]
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -120,7 +209,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[1]
+	mi := &file_ecmdb_policy_v1_policy_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -133,7 +222,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_ecmdb_policy_v1_policy_proto_rawDescGZIP(), []int{1}
+	return file_ecmdb_policy_v1_policy_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Response) GetAllowed() bool {
@@ -168,9 +257,13 @@ var File_ecmdb_policy_v1_policy_proto protoreflect.FileDescriptor
 
 const file_ecmdb_policy_v1_policy_proto_rawDesc = "" +
 	"\n" +
-	"\x1cecmdb/policy/v1/policy.proto\x12\x0fecmdb.policy.v1\"o\n" +
-	"\fAuthorizeReq\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
+	"\x1cecmdb/policy/v1/policy.proto\x12\x0fecmdb.policy.v1\"%\n" +
+	"\rCheckLoginReq\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"!\n" +
+	"\rCheckLoginRes\x12\x10\n" +
+	"\x03uid\x18\x01 \x01(\x03R\x03uid\"l\n" +
+	"\fAuthorizeReq\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
 	"\x06method\x18\x03 \x01(\tR\x06method\x12\x1a\n" +
 	"\bresource\x18\x04 \x01(\tR\bresource\"}\n" +
@@ -178,8 +271,10 @@ const file_ecmdb_policy_v1_policy_proto_rawDesc = "" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\x12\x14\n" +
 	"\x05roles\x18\x02 \x03(\tR\x05roles\x12)\n" +
 	"\x10matched_policies\x18\x03 \x03(\tR\x0fmatchedPolicies\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason2V\n" +
-	"\rPolicyService\x12E\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason2\xa4\x01\n" +
+	"\rPolicyService\x12L\n" +
+	"\n" +
+	"CheckLogin\x12\x1e.ecmdb.policy.v1.CheckLoginReq\x1a\x1e.ecmdb.policy.v1.CheckLoginRes\x12E\n" +
 	"\tAuthorize\x12\x1d.ecmdb.policy.v1.AuthorizeReq\x1a\x19.ecmdb.policy.v1.ResponseB\xc2\x01\n" +
 	"\x13com.ecmdb.policy.v1B\vPolicyProtoP\x01Z@github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/policy/v1;policyv1\xa2\x02\x03EPX\xaa\x02\x0fEcmdb.Policy.V1\xca\x02\x0fEcmdb\\Policy\\V1\xe2\x02\x1bEcmdb\\Policy\\V1\\GPBMetadata\xea\x02\x11Ecmdb::Policy::V1b\x06proto3"
 
@@ -195,16 +290,20 @@ func file_ecmdb_policy_v1_policy_proto_rawDescGZIP() []byte {
 	return file_ecmdb_policy_v1_policy_proto_rawDescData
 }
 
-var file_ecmdb_policy_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_ecmdb_policy_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_ecmdb_policy_v1_policy_proto_goTypes = []any{
-	(*AuthorizeReq)(nil), // 0: ecmdb.policy.v1.AuthorizeReq
-	(*Response)(nil),     // 1: ecmdb.policy.v1.Response
+	(*CheckLoginReq)(nil), // 0: ecmdb.policy.v1.CheckLoginReq
+	(*CheckLoginRes)(nil), // 1: ecmdb.policy.v1.CheckLoginRes
+	(*AuthorizeReq)(nil),  // 2: ecmdb.policy.v1.AuthorizeReq
+	(*Response)(nil),      // 3: ecmdb.policy.v1.Response
 }
 var file_ecmdb_policy_v1_policy_proto_depIdxs = []int32{
-	0, // 0: ecmdb.policy.v1.PolicyService.Authorize:input_type -> ecmdb.policy.v1.AuthorizeReq
-	1, // 1: ecmdb.policy.v1.PolicyService.Authorize:output_type -> ecmdb.policy.v1.Response
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	0, // 0: ecmdb.policy.v1.PolicyService.CheckLogin:input_type -> ecmdb.policy.v1.CheckLoginReq
+	2, // 1: ecmdb.policy.v1.PolicyService.Authorize:input_type -> ecmdb.policy.v1.AuthorizeReq
+	1, // 2: ecmdb.policy.v1.PolicyService.CheckLogin:output_type -> ecmdb.policy.v1.CheckLoginRes
+	3, // 3: ecmdb.policy.v1.PolicyService.Authorize:output_type -> ecmdb.policy.v1.Response
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -221,7 +320,7 @@ func file_ecmdb_policy_v1_policy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ecmdb_policy_v1_policy_proto_rawDesc), len(file_ecmdb_policy_v1_policy_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

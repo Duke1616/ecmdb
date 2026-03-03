@@ -93,6 +93,11 @@ lark:
     frontend_url: "http://ecmdb-web:80/logicflow-preview"
     debug: false
 
+# web 配置: 对外暴露 http 接口
+web:
+  host: "0.0.0.0"
+  port: 8000
+
 # gRPC 通信配置
 grpc:
   server:

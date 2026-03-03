@@ -4,6 +4,27 @@
 log:
   debug: true # 是否开启调试模式，开启后会打印更多详细日志
 
+# web 配置: 对外暴露 http 接口
+web:
+  host: "0.0.0.0"
+  port: 8000
+
+# 策略鉴权：ECMDB 服务地址，用于登录验证与权限鉴权
+policy:
+  auth_url: http://ecmdb:8000
+
+# gRPC 通信配置：定义告警服务的对外 RPC 服务及上游客户端
+grpc:
+  server:
+    ealert:
+      name: "ealert"
+      listen_addr: "0.0.0.0:7867"
+      auth_token: "1234567890" # 内部接口安全校验凭证
+  client:
+    ecmdb:
+      name: "ecmdb" # 需要通过 RPC 获取 ecmdb 的相关元数据
+      auth_token: "1234567890"
+
 # MySQL 持久化存储配置
 mysql:
   dsn: "ealert:123456@tcp(ecmdb-mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
@@ -20,6 +41,11 @@ session:
   cookie:
     domain: ".example.com"
     name: "ecmdb-token-key"
+
+# Etcd 注册中心连接地址
+etcd:
+  endpoints:
+    - "ecmdb-etcd:2379"
 
 # 飞书消息通知配置 (针对不同业务场景可以配置不同应用)
 lark:
@@ -53,29 +79,3 @@ pool:
   maxIdleTime: 5000000000 # 协程空闲回收阈值（纳秒）
   queueSize: 1000         # 等待处理的任务队列长度
   queueBacklogRate: 0.8  # 队列积压比率（负载均衡控制）
-
-# Etcd 注册中心连接地址
-etcd:
-  endpoints:
-    - "ecmdb-etcd:2379"
-
-# web 配置: 对外暴露 http 接口
-web:
-  host: "0.0.0.0"
-  port: 8000
-
-# 策略鉴权：ECMDB 服务地址，用于登录验证与权限鉴权
-policy:
-  auth_url: http://ecmdb:8000
-
-# gRPC 通信配置：定义告警服务的对外 RPC 服务及上游客户端
-grpc:
-  server:
-    ealert:
-      name: "ealert"
-      listen_addr: "0.0.0.0:7867"
-      auth_token: "1234567890" # 内部接口安全校验凭证
-  client:
-    ecmdb:
-      name: "ecmdb" # 需要通过 RPC 获取 ecmdb 的相关元数据
-      auth_token: "1234567890"

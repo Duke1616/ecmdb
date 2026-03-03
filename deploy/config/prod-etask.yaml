@@ -4,47 +4,6 @@
 log:
   debug: true # 是否开启调试模式，开启后会打印更多详细日志
 
-# Agent 模块配置 (基于 Kafka 队列的异步执行器)
-agent:
-  name: Kafka-Agent # 实例显示名称
-  topic: agent_execute # 监听的任务消息队列 Topic
-  desc: 异步任务执行代理：负责从消息队列拉取并执行来自调度中心的任务指令 # 描述信息，展示在管理后台
-
-# 原生 Executor 模块配置 (基于 gRPC 的直接执行器)
-executor:
-  # 执行模式: PUSH(默认, 调度中心主动推送请求) 或 PULL(执行器主动向调度中心长轮询拉取)
-  mode: "PUSH"
-  # 执行器集群功能描述
-  desc: "通用计算节点：提供 Shell 与 Python 脚本等系统级基础执行能力的默认执行器集群"
-
-# 数据库配置 (MySQL)
-mysql:
-  dsn: "etask:123456@tcp(ecmdb-mysql:3306)/etask?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
-
-# 会话与 Cookie 配置 (Web 端使用)
-session:
-  session_encrypted_key: "1234567890Key" # Session 加密 Key
-  cookie:
-    domain: ".example.com"  # Cookie 作用域
-    name: "ecmdb-token-key" # Cookie 名称
-
-# 缓存配置 (Redis)
-redis:
-  addr: "ecmdb-redis:6379"
-  password: "1234567890"
-  db: 0
-
-# 消息队列配置 (Kafka)
-kafka:
-  network: tcp
-  addresses:
-    - ecmdb-kafka:9092
-
-# 注册中心配置 (Etcd)
-etcd:
-  endpoints:
-    - ecmdb-etcd:2379
-
 # web 配置: 对外暴露 http 接口
 web:
   host: "0.0.0.0"
@@ -79,6 +38,40 @@ grpc:
     scheduler:
       name: "scheduler"
       auth_token: "1234567890"
+
+# Agent 模块配置 (基于 Kafka 队列的异步执行器)
+agent:
+  name: Kafka-Agent # 实例显示名称
+  topic: agent_execute # 监听的任务消息队列 Topic
+  desc: 异步任务执行代理：负责从消息队列拉取并执行来自调度中心的任务指令 # 描述信息，展示在管理后台
+
+# 原生 Executor 模块配置 (基于 gRPC 的直接执行器)
+executor:
+  # 执行模式: PUSH(默认, 调度中心主动推送请求) 或 PULL(执行器主动向调度中心长轮询拉取)
+  mode: "PUSH"
+  # 执行器集群功能描述
+  desc: "通用计算节点：提供 Shell 与 Python 脚本等系统级基础执行能力的默认执行器集群"
+
+# 数据库配置 (MySQL)
+mysql:
+  dsn: "etask:123456@tcp(ecmdb-mysql:3306)/etask?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
+
+# 缓存配置 (Redis)
+redis:
+  addr: "ecmdb-redis:6379"
+  password: "1234567890"
+  db: 0
+
+# 消息队列配置 (Kafka)
+kafka:
+  network: tcp
+  addresses:
+    - ecmdb-kafka:9092
+
+# 注册中心配置 (Etcd)
+etcd:
+  endpoints:
+    - ecmdb-etcd:2379
 
 # 调度引擎核心参数
 scheduler:

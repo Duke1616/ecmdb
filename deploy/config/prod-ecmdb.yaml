@@ -55,7 +55,6 @@ redis:
 mysql:
   dsn: "ecmdb:123456@tcp(ecmdb-mysql:3306)/ecmdb?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
 
-
 # Casbin 权限后端：使用 Redis 存储策略和 Watcher 机制
 casbin:
   redis:

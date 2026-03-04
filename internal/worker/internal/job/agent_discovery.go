@@ -70,6 +70,11 @@ func (t *ServiceDiscoveryJob) handle(ctx context.Context, ev registry.Event) {
 	addr := ev.Instance.Address
 	topic, _ := ev.Instance.Metadata["topic"].(string)
 
+	t.logger.Debug("收到服务发现事件",
+		elog.Any("type", ev.Type),
+		elog.String("addr", addr),
+		elog.String("topic", topic))
+
 	switch ev.Type {
 	case registry.EventTypeAdd:
 		if topic == "" || addr == "" {
@@ -96,17 +101,21 @@ func (t *ServiceDiscoveryJob) handle(ctx context.Context, ev registry.Event) {
 }
 
 func (t *ServiceDiscoveryJob) incr(ctx context.Context, topic string) {
-	if t.topics[topic]++; t.topics[topic] == 1 {
+	t.topics[topic]++
+	if t.topics[topic] == 1 {
+		t.logger.Info("初始化基础设施资源", elog.String("topic", topic))
 		if err := t.svc.EnsureInfrastructures(ctx, topic); err != nil {
-			elog.Error("初始化基础设施失败", elog.String("topic", topic), elog.FieldErr(err))
+			t.logger.Error("初始化基础设施失败", elog.String("topic", topic), elog.FieldErr(err))
 		}
 	}
 }
 
 func (t *ServiceDiscoveryJob) decr(ctx context.Context, topic string) {
-	if t.topics[topic]--; t.topics[topic] == 0 {
+	t.topics[topic]--
+	if t.topics[topic] == 0 {
+		t.logger.Info("释放基础设施资源", elog.String("topic", topic))
 		if err := t.svc.Release(ctx, topic); err != nil {
-			elog.Error("释放基础设施失败", elog.String("topic", topic), elog.FieldErr(err))
+			t.logger.Error("释放基础设施失败", elog.String("topic", topic), elog.FieldErr(err))
 		}
 	}
 }

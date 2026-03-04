@@ -66,14 +66,18 @@ func (s *service) EnsureInfrastructures(ctx context.Context, topic string) error
 	if err := s.mq.CreateTopic(ctx, topic, 1); err != nil {
 		var val kafkago.Error
 		if !errors.As(err, &val) || !errors.Is(val, kafkago.TopicAlreadyExists) {
-			return fmt.Errorf("创建Topic失败: %x", err)
+			return fmt.Errorf("创建Topic失败: %v", err)
 		}
+		s.logger.Debug("Topic 已存在，跳过创建", elog.String("topic", topic))
+	} else {
+		s.logger.Info("成功创建 Kafka Topic", elog.String("topic", topic))
 	}
 
 	// 新增 producer 监听
 	if err := s.producer.AddProducer(topic); err != nil {
-		return fmt.Errorf("推送 Producer 初始化失败: %x", err)
+		return fmt.Errorf("推送 Producer 初始化失败: %v", err)
 	}
+	s.logger.Info("成功初始化 Topic 生产者", elog.String("topic", topic))
 
 	return nil
 }

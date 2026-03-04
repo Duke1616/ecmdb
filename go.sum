@@ -67,8 +67,8 @@ github.com/Duke1616/easy-workflow v1.0.5 h1:p2JXLUUSRhhOMvuJREMciJTjCqUzSCATjfdR
 github.com/Duke1616/easy-workflow v1.0.5/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
 github.com/Duke1616/enotify v0.1.24 h1:f6KZjmkDDztIOrZ0YrqJntpb0oNT7b7UWoeWLyP9v1o=
 github.com/Duke1616/enotify v0.1.24/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
-github.com/Duke1616/etask v0.0.3 h1:SZb//4hdhNAms7KqkIZXsSt8bGsg9jcI6koKx9jjsbY=
-github.com/Duke1616/etask v0.0.3/go.mod h1:jl6M6IlAKaUXpIz30nCt674MuGTSlRd4Xm418bBGkZw=
+github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90 h1:sF2eif6JjXOcArY90mipf2onC9RNbcB3cLjUKZps0jM=
+github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90/go.mod h1:m2ybNBkCQuSQzWyPVlZTvG+q+uXsOBGpEXyNpokSX3k=
 github.com/Duke1616/vuefinder-go v1.1.0 h1:4QAxNo8filt8lU0orUk/88MN7hWsPWPBAip7dmKmAuA=
 github.com/Duke1616/vuefinder-go v1.1.0/go.mod h1:SKdWxjsLHG5VFmDJL6pBtah5MdfJSit3IB8bW6dgr28=
 github.com/IBM/sarama v1.43.3 h1:Yj6L2IaNvb2mRBop39N7mmJAHBVY3dTPncr3qGVkxPA=
@@ -360,7 +360,6 @@ github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99/go.mod h1:ZgVRPoUq/hf
 github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e h1:ijClszYn+mADRFY17kjQEVQ1XRhq2/JR1M3sGqeJoxs=
 github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e/go.mod h1:boTsfXsheKC2y+lKOCMpSfarhxDeIzfZG1jqGcPl3cA=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
-github.com/google/subcommands v1.2.0 h1:vWQspBTo2nEqTUFita5/KeEWlUL8kQObDFbub/EN9oE=
 github.com/google/subcommands v1.2.0/go.mod h1:ZjhPrFU+Olkh9WazFPsl27BQ4UPiG37m3yTrtFlrHVk=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
@@ -741,8 +740,8 @@ github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXl
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
+github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/teambition/rrule-go v1.8.2 h1:lIjpjvWTj9fFUZCmuoVDrKVOtdiyzbzc93qTmRVe/J8=
 github.com/teambition/rrule-go v1.8.2/go.mod h1:Ieq5AbrKGciP1V//Wq8ktsTXwSwJHDD5mD/wLBGl3p4=
 github.com/tiendc/go-deepcopy v1.7.1 h1:LnubftI6nYaaMOcaz0LphzwraqN8jiWTwm416sitff4=

@@ -56,7 +56,7 @@ func (i *InitialNotifyTemplate) InitTemplate() error {
 		{
 			Name:        "工单审批通知",
 			Desc:        "工单审批流程通知",
-			Channel:     notificationv1.Channel_FEISHU_CARD,
+			Channel:     notificationv1.Channel_LARK_CARD,
 			VersionName: "v1.0.0",
 			Content:     LarkApprovalTemplate,
 			NotifyType:  workflow.NotifyTypeApproval,
@@ -64,7 +64,7 @@ func (i *InitialNotifyTemplate) InitTemplate() error {
 		{
 			Name:        "工单抄送通知",
 			Desc:        "工单抄送通知",
-			Channel:     notificationv1.Channel_FEISHU_CARD,
+			Channel:     notificationv1.Channel_LARK_CARD,
 			VersionName: "v1.0.0",
 			Content:     LarkApprovalCCTemplate,
 			NotifyType:  workflow.NotifyTypeCC,
@@ -72,7 +72,7 @@ func (i *InitialNotifyTemplate) InitTemplate() error {
 		{
 			Name:        "工单进度通知",
 			Desc:        "工单进度通知",
-			Channel:     notificationv1.Channel_FEISHU_CARD,
+			Channel:     notificationv1.Channel_LARK_CARD,
 			VersionName: "v1.0.0",
 			Content:     LarkApprovalProgressTemplate,
 			NotifyType:  workflow.NotifyTypeProgress,
@@ -80,7 +80,7 @@ func (i *InitialNotifyTemplate) InitTemplate() error {
 		{
 			Name:        "工单进度图片通知",
 			Desc:        "工单进度图片结果通知",
-			Channel:     notificationv1.Channel_FEISHU_CARD,
+			Channel:     notificationv1.Channel_LARK_CARD,
 			VersionName: "v1.0.0",
 			Content:     LarkApprovalProgressImageResultTemplate,
 			NotifyType:  workflow.NotifyTypeProgressImageResult,
@@ -88,7 +88,7 @@ func (i *InitialNotifyTemplate) InitTemplate() error {
 		{
 			Name:        "工单撤回通知",
 			Desc:        "工单撤回通知",
-			Channel:     notificationv1.Channel_FEISHU_CARD,
+			Channel:     notificationv1.Channel_LARK_CARD,
 			VersionName: "v1.0.0",
 			Content:     LarkApprovalRevokeTemplate,
 			NotifyType:  workflow.NotifyTypeRevoke,

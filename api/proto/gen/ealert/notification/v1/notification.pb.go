@@ -83,8 +83,8 @@ type Channel int32
 const (
 	// 未指定渠道
 	Channel_CHANNEL_UNSPECIFIED Channel = 0
-	// 短信
-	Channel_FEISHU_CARD Channel = 1
+	// 飞书卡片
+	Channel_LARK_CARD Channel = 1
 	// 邮件
 	Channel_EMAIL Channel = 2
 	// 站内信
@@ -95,13 +95,13 @@ const (
 var (
 	Channel_name = map[int32]string{
 		0: "CHANNEL_UNSPECIFIED",
-		1: "FEISHU_CARD",
+		1: "LARK_CARD",
 		2: "EMAIL",
 		3: "IN_APP",
 	}
 	Channel_value = map[string]int32{
 		"CHANNEL_UNSPECIFIED": 0,
-		"FEISHU_CARD":         1,
+		"LARK_CARD":           1,
 		"EMAIL":               2,
 		"IN_APP":              3,
 	}
@@ -667,10 +667,10 @@ const file_ealert_notification_v1_notification_proto_rawDesc = "" +
 	"\x14Business_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05ALERT\x10\x01\x12\n" +
 	"\n" +
-	"\x06TICKET\x10\x02*J\n" +
+	"\x06TICKET\x10\x02*H\n" +
 	"\aChannel\x12\x17\n" +
-	"\x13CHANNEL_UNSPECIFIED\x10\x00\x12\x0f\n" +
-	"\vFEISHU_CARD\x10\x01\x12\t\n" +
+	"\x13CHANNEL_UNSPECIFIED\x10\x00\x12\r\n" +
+	"\tLARK_CARD\x10\x01\x12\t\n" +
 	"\x05EMAIL\x10\x02\x12\n" +
 	"\n" +
 	"\x06IN_APP\x10\x03*l\n" +

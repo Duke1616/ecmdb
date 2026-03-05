@@ -19,12 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TemplateService_GetTemplateByID_FullMethodName       = "/template.v1.TemplateService/GetTemplateByID"
-	TemplateService_CreateTemplate_FullMethodName        = "/template.v1.TemplateService/CreateTemplate"
-	TemplateService_UpdateTemplate_FullMethodName        = "/template.v1.TemplateService/UpdateTemplate"
-	TemplateService_PublishTemplate_FullMethodName       = "/template.v1.TemplateService/PublishTemplate"
-	TemplateService_ListTemplates_FullMethodName         = "/template.v1.TemplateService/ListTemplates"
-	TemplateService_CreateTemplateVersion_FullMethodName = "/template.v1.TemplateService/CreateTemplateVersion"
+	TemplateService_GetTemplateByID_FullMethodName       = "/ealert.template.v1.TemplateService/GetTemplateByID"
+	TemplateService_CreateTemplate_FullMethodName        = "/ealert.template.v1.TemplateService/CreateTemplate"
+	TemplateService_UpdateTemplate_FullMethodName        = "/ealert.template.v1.TemplateService/UpdateTemplate"
+	TemplateService_PublishTemplate_FullMethodName       = "/ealert.template.v1.TemplateService/PublishTemplate"
+	TemplateService_ListTemplates_FullMethodName         = "/ealert.template.v1.TemplateService/ListTemplates"
+	TemplateService_CreateTemplateVersion_FullMethodName = "/ealert.template.v1.TemplateService/CreateTemplateVersion"
 )
 
 // TemplateServiceClient is the client API for TemplateService service.
@@ -294,7 +294,7 @@ func _TemplateService_CreateTemplateVersion_Handler(srv interface{}, ctx context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TemplateService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "template.v1.TemplateService",
+	ServiceName: "ealert.template.v1.TemplateService",
 	HandlerType: (*TemplateServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

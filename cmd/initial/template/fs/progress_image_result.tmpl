@@ -7,7 +7,7 @@
     "title": {
       "tag": "plain_text",
       "text_size": "heading",
-      "content": "{{.Title}}"
+      "content": {{.Title | json}}
     },
     "template": "green"
   },
@@ -24,27 +24,29 @@
             "width": "weighted",
             "weight": 1,
             "vertical_align": "top",
-            "elements": [{
-              "tag": "{{.Tag}}",
-              "content": "{{.Content | safeHTML}}"
-            }]
+            "elements": [
+              {
+                "tag": {{ .Tag | json }},
+                "content": {{ .Content | json }}
+              }
+            ]
           }{{if not (last $index $.Fields)}},{{end}}
           {{- end}}
         ]
       },
       {
-        "tag":"hr"
+        "tag": "hr"
       },
       {
-      "tag": "img",
-      "img_key": "{{.ImageKey}}",
-      "alt": {
-        "tag": "plain_text",
-        "content": ""
-      },
-      "mode": "fit_horizontal",
-      "preview": true,
-      "compact_width": false
+        "tag": "img",
+        "img_key": {{ .ImageKey | json }},
+        "alt": {
+          "tag": "plain_text",
+          "content": ""
+        },
+        "mode": "fit_horizontal",
+        "preview": true,
+        "compact_width": false
       }
     ]
   }

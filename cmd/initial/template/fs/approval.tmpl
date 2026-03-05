@@ -7,7 +7,7 @@
     "title": {
       "tag": "plain_text",
       "text_size": "heading",
-      "content": "{{.Title}}"
+      "content": {{.Title | json}}
     },
     "template": "blue"
   },
@@ -20,8 +20,8 @@
           {
             "is_short": {{.IsShort}},
             "text": {
-              "tag": "{{.Tag}}",
-              "content": "{{.Content}}"
+              "tag": {{ .Tag | json }},
+              "content": {{ .Content | json }}
             }
           }{{if not (last $index $.Fields)}},{{end}}
           {{- end}}
@@ -38,7 +38,7 @@
           {{- range $rowIndex, $row := .InputRows}}
           {
             "tag": "column_set",
-            "flex_mode": "{{if eq (len $row) 1}}none{{else}}bisect{{end}}",
+            "flex_mode": {{ if eq (len $row) 1 }}"none"{{else}}"bisect"{{end}},
             "background_style": "default",
             "horizontal_spacing": "8px",
             "columns": [
@@ -53,8 +53,7 @@
                     "tag": "div",
                     "text": {
                       "tag": "lark_md",
-                      "content": "{{$input.Name}}{{if $input.Required}}<font color='red'>*</font>{{end}}",
-                      "text_size": "normal"
+                      "content": {{ if $input.Required }}{{ printf "%s*" $input.Name | json }}{{ else }}{{ $input.Name | json }}{{ end }}
                     }
                   }
                   {{- if $input.Readonly }}
@@ -62,17 +61,16 @@
                     "tag": "div",
                     "text": {
                       "tag": "lark_md",
-                      "content": "<font color='grey'>{{$input.Value}}</font>",
-                      "text_size": "normal"
+                      "content": {{ printf "<font color='grey'>%s</font>" $input.Value | json }}
                     }
                   }
                   {{- else if or (eq $input.Type "input") (eq $input.Type "textarea") (eq $input.Type "number") }}
                   ,{
                     "tag": "input",
-                    "name": "{{$input.Key}}",
+                    "name": {{ $input.Key | json }},
                     "placeholder": {
                       "tag": "plain_text",
-                      "content": "{{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" }}{{ else }}请输入{{end}}"
+                      "content": {{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" | json }}{{ else }}{{ printf "请输入%s" $input.Name | json }}{{ end }}
                     },
                     "width": "fill",
                     "required": false
@@ -80,10 +78,10 @@
                   {{- else if eq $input.Type "date" }}
                   ,{
                     "tag": "picker_datetime",
-                    "name": "{{$input.Key}}",
+                    "name": {{ $input.Key | json }},
                     "placeholder": {
                       "tag": "plain_text",
-                      "content": "{{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" }}{{ else }}请选择{{end}}"
+                      "content": {{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" | json }}{{ else }}{{ printf "请选择%s" $input.Name | json }}{{ end }}
                     },
                     "width": "default",
                     "required": false
@@ -91,19 +89,19 @@
                   {{- else if eq $input.Type "select" }}
                   ,{
                     "tag": "select_static",
-                    "name": "{{$input.Key}}",
+                    "name": {{ $input.Key | json }},
                     "placeholder": {
                       "tag": "plain_text",
-                      "content": "{{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" }}{{ else }}请选择{{end}}"
+                      "content": {{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" | json }}{{ else }}{{ printf "请选择%s" $input.Name | json }}{{ end }}
                     },
                     "options": [
                       {{- range $optIndex, $opt := $input.Options}}
                       {
                         "text": {
-                            "tag": "plain_text",
-                            "content": "{{$opt.Label}}"
+                          "tag": "plain_text",
+                          "content": {{ $opt.Label | json }}
                         },
-                        "value": "{{$opt.Value}}"
+                        "value": {{ $opt.Value | json }}
                       }{{if not (last $optIndex $input.Options)}},{{end}}
                       {{- end}}
                     ],
@@ -113,19 +111,19 @@
                   {{- else if eq $input.Type "multi_select" }}
                   ,{
                     "tag": "multi_select_static",
-                    "name": "{{$input.Key}}",
+                    "name": {{ $input.Key | json }},
                     "placeholder": {
                       "tag": "plain_text",
-                      "content": "{{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" }}{{ else }}请选择{{end}}"
+                      "content": {{ if and $input.Props (index $input.Props "placeholder") }}{{ index $input.Props "placeholder" | json }}{{ else }}{{ printf "请选择%s" $input.Name | json }}{{ end }}
                     },
                     "options": [
                       {{- range $optIndex, $opt := $input.Options}}
                       {
                         "text": {
-                            "tag": "plain_text",
-                            "content": "{{$opt.Label}}"
+                          "tag": "plain_text",
+                          "content": {{ $opt.Label | json }}
                         },
-                        "value": "{{$opt.Value}}"
+                        "value": {{ $opt.Value | json }}
                       }{{if not (last $optIndex $input.Options)}},{{end}}
                       {{- end}}
                     ],
@@ -137,9 +135,9 @@
               }{{if not (last $colIndex $row)}},{{end}}
               {{- end}}
             ]
-          }{{if not (last $rowIndex $.InputRows)}},{{end}}
+          },
           {{- end}}
-          {{- if .InputRows }},
+          {{- if .InputRows }}
           {
             "tag": "hr"
           },
@@ -154,15 +152,15 @@
             "max_length": 200,
             "width": "fill",
             "required": false
-          },
-          {{- if .Tips }}
+          }
+          {{- if .Tips }},
           {
             "tag": "markdown",
-            "content": "{{- range $index, $tip := .Tips}}{{if $index}}\n{{end}}**💡 提示：** {{$tip}}{{- end}}",
+            "content": {{ $tips := "" }}{{ range $i, $tip := .Tips }}{{ if $i }}{{ $tips = printf "%s\n" $tips }}{{ end }}{{ $tips = printf "%s**💡 提示：** %s" $tips $tip }}{{ end }}{{ $tips | json }},
             "text_align": "left",
             "text_size": "notation"
-          },
-          {{- end}}
+          }
+          {{- end}},
           {
             "tag": "column_set",
             "flex_mode": "bisect",
@@ -174,8 +172,6 @@
                 "tag": "column",
                 "width": "auto",
                 "vertical_align": "top",
-                "vertical_spacing": "8px",
-                "background_style": "default",
                 "elements": [
                   {
                     "tag": "button",
@@ -187,7 +183,7 @@
                     },
                     "value": {
                       {{- range $index, $callback := .CallbackValue}}
-                      "{{$callback.Key}}": "{{$callback.Value}}"{{if not (last $index $.CallbackValue)}},{{end}}
+                      {{ $callback.Key | json }}: {{ printf "%v" $callback.Value | json }}{{if not (last $index $.CallbackValue)}},{{end}}
                       {{- end}}
                     },
                     "type": "primary"
@@ -198,8 +194,6 @@
                 "tag": "column",
                 "width": "auto",
                 "vertical_align": "top",
-                "vertical_spacing": "8px",
-                "background_style": "default",
                 "elements": [
                   {
                     "tag": "button",
@@ -211,7 +205,7 @@
                     },
                     "value": {
                       {{- range $index, $callback := .CallbackValue}}
-                      "{{$callback.Key}}": "{{$callback.Value}}"{{if not (last $index $.CallbackValue)}},{{end}}
+                      {{ $callback.Key | json }}: {{ printf "%v" $callback.Value | json }}{{if not (last $index $.CallbackValue)}},{{end}}
                       {{- end}}
                     },
                     "type": "danger"

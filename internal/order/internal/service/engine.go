@@ -47,6 +47,14 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 		return fmt.Errorf("获取任务详情失败: %w", err)
 	}
 
+	// 1.1 拦截逻辑：防止数据覆盖和无效流转
+	if taskInfo.IsFinished == 1 {
+		e.logger.Info("任务已提前处理，本次通过请求被平滑拦截",
+			elog.Int("taskId", taskId),
+			elog.Int("procInstId", taskInfo.ProcInstID))
+		return fmt.Errorf("节点ID%d%w", taskId, errs.ErrTaskAlreadyFinished)
+	}
+
 	// 2. 获取流程版本
 	instance, err := e.engineSvc.GetInstanceByID(ctx, taskInfo.ProcInstID)
 	if err != nil {
@@ -75,7 +83,7 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 		return err
 	}
 
-	// 5. 如果没有定义字段，直接 Pass
+	// 5. 如果没有定义字段 直接 Pass 返回
 	if len(property.Fields) == 0 {
 		return engine.TaskPass(taskId, comment, "", false)
 	}
@@ -153,6 +161,20 @@ func (e *processEngine) validate(field easyflow.Field, exists bool, val any) err
 }
 
 func (e *processEngine) Reject(ctx context.Context, taskId int, comment string) error {
+	// 1. 获取任务详情，拿到流程实例ID
+	taskInfo, err := e.engineSvc.TaskInfo(ctx, taskId)
+	if err != nil {
+		return fmt.Errorf("获取任务详情失败: %w", err)
+	}
+
+	// 1.1 拦截逻辑：防止数据覆盖和无效流转
+	if taskInfo.IsFinished == 1 {
+		e.logger.Info("任务已提前处理，本次驳回请求被平滑拦截",
+			elog.Int("taskId", taskId),
+			elog.Int("procInstId", taskInfo.ProcInstID))
+		return fmt.Errorf("节点ID%d%w", taskId, errs.ErrTaskAlreadyFinished)
+	}
+
 	return engine.TaskReject(taskId, comment, "")
 }
 

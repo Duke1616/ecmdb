@@ -13,9 +13,9 @@ func (c Channel) String() string {
 }
 
 const (
-	ChannelFeishuCard Channel = "FEISHU_CARD" // 短信
-	ChannelEmail      Channel = "EMAIL"       // 邮件
-	ChannelInApp      Channel = "IN_APP"      // 站内信
+	ChannelLarkCard Channel = "LARK_CARD" // 飞书卡片
+	ChannelEmail    Channel = "EMAIL"     // 邮件
+	ChannelInApp    Channel = "IN_APP"    // 站内信
 )
 
 type Status uint8

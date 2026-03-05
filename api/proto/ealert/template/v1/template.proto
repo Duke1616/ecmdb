@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package template.v1;
+package ealert.template.v1;
 
 import "ealert/notification/v1/notification.proto";
 
-option go_package = "ealert/template/v1;template";
+option go_package = "ealert.template/v1;template";
 
 // Template definitions
 message ChannelTemplate {
@@ -12,7 +12,7 @@ message ChannelTemplate {
   int64 owner_id = 2;
   string name = 3;
   string description = 4;
-  ealert.notification.v1.Channel channel = 5;
+  notification.v1.Channel channel = 5;
   int64 active_version_id = 6;
   int64 ctime = 7;
   int64 utime = 8;

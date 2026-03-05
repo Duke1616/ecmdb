@@ -25,15 +25,15 @@ const (
 type Order = domain.Order
 
 var protoToDomain = map[notificationv1.Channel]domain.Channel{
-	notificationv1.Channel_FEISHU_CARD: domain.ChannelFeishuCard,
-	notificationv1.Channel_EMAIL:       domain.ChannelEmail,
-	notificationv1.Channel_IN_APP:      domain.ChannelInApp,
+	notificationv1.Channel_LARK_CARD: domain.ChannelLarkCard,
+	notificationv1.Channel_EMAIL:     domain.ChannelEmail,
+	notificationv1.Channel_IN_APP:    domain.ChannelInApp,
 }
 
 var domainToProto = map[domain.Channel]notificationv1.Channel{
-	domain.ChannelFeishuCard: notificationv1.Channel_FEISHU_CARD,
-	domain.ChannelEmail:      notificationv1.Channel_EMAIL,
-	domain.ChannelInApp:      notificationv1.Channel_IN_APP,
+	domain.ChannelLarkCard: notificationv1.Channel_LARK_CARD,
+	domain.ChannelEmail:    notificationv1.Channel_EMAIL,
+	domain.ChannelInApp:    notificationv1.Channel_IN_APP,
 }
 
 func ChannelToDomainProto(ch domain.Channel) notificationv1.Channel {

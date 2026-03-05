@@ -143,7 +143,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 	case event.Pass:
 		remark = fmt.Sprintf("你已同意该申请, 批注：%s", comment)
 		if err = c.engineProcessSvc.Pass(ctx, taskId, comment, evt.GetFormValue()); err != nil {
-			if strings.Contains(err.Error(), "已处理，无需操作") {
+			if errors.Is(err, errs.ErrTaskAlreadyFinished) {
 				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 			}
@@ -172,7 +172,7 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 		remark = fmt.Sprintf("你已驳回该申请, 批注：%s", comment)
 		err = c.engineProcessSvc.Reject(ctx, taskId, comment)
 		if err != nil {
-			if strings.Contains(err.Error(), "已处理，无需操作") {
+			if errors.Is(err, errs.ErrTaskAlreadyFinished) {
 				remark = "你的节点任务已经结束，无法进行审批，详情登录 ECMDB 平台查看"
 				c.logger.Error("飞书回调消息，同意工单失败", elog.FieldErr(err))
 			}

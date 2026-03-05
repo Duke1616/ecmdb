@@ -17,5 +17,6 @@ func (e ErrorCode) Error() string {
 }
 
 var (
-	ErrInvalidParameter = errors.New("参数错误")
+	ErrInvalidParameter    = errors.New("参数错误")
+	ErrTaskAlreadyFinished = errors.New("已处理，无需操作")
 )

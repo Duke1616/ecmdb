@@ -7,7 +7,7 @@
     "title": {
       "tag": "plain_text",
       "text_size": "heading",
-      "content": "{{.Title}}"
+      "content": {{.Title | json}}
     },
     "template": "green"
   },
@@ -20,8 +20,8 @@
           {
             "is_short": {{.IsShort}},
             "text": {
-              "tag": "{{.Tag}}",
-              "content": "{{.Content}}"
+              "tag": {{ .Tag | json }},
+              "content": {{ .Content | json }}
             }
           }{{if not (last $index $.Fields)}},{{end}}
           {{- end}}

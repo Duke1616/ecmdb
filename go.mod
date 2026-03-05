@@ -223,3 +223,5 @@ require (
 	modernc.org/sqlite v1.46.1 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )
+
+replace github.com/Duke1616/enotify v0.1.24 => ../enotify

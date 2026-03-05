@@ -79,7 +79,7 @@ func (f *grpcProvider) Send(ctx context.Context, src notification.Notification) 
 		BizId:          notificationv1.Business_TICKET,
 		Key:            uuid.New().String(),
 		Receivers:      []string{src.Receiver},
-		Channel:        notificationv1.Channel_FEISHU_CARD,
+		Channel:        notificationv1.Channel_LARK_CARD,
 		TemplateId:     templateID,
 		TemplateParams: params,
 	}})
@@ -94,7 +94,7 @@ func (f *grpcProvider) Send(ctx context.Context, src notification.Notification) 
 			msg.Status.String(),
 			string(errs.ErrorCodeUnknown),
 			"消息发送未成功",
-		), fmt.Errorf("%w: 状态=%v", errs.ErrNotificationFailed, msg.Status)
+		), fmt.Errorf("%w: status=%v, code=%s, msg=%s", errs.ErrNotificationFailed, msg.Status, msg.ErrorCode, msg.ErrorMessage)
 	}
 
 	return notification.NewSuccessResponse(int64(msg.NotificationId), msg.Status.String()), nil

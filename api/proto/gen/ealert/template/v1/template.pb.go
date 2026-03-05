@@ -815,7 +815,7 @@ var File_ealert_template_v1_template_proto protoreflect.FileDescriptor
 
 const file_ealert_template_v1_template_proto_rawDesc = "" +
 	"\n" +
-	"!ealert/template/v1/template.proto\x12\vtemplate.v1\x1a)ealert/notification/v1/notification.proto\"\xc6\x02\n" +
+	"!ealert/template/v1/template.proto\x12\x12ealert.template.v1\x1a)ealert/notification/v1/notification.proto\"\xcd\x02\n" +
 	"\x0fChannelTemplate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\x03R\aownerId\x12\x12\n" +
@@ -824,8 +824,8 @@ const file_ealert_template_v1_template_proto_rawDesc = "" +
 	"\achannel\x18\x05 \x01(\x0e2\x1f.ealert.notification.v1.ChannelR\achannel\x12*\n" +
 	"\x11active_version_id\x18\x06 \x01(\x03R\x0factiveVersionId\x12\x14\n" +
 	"\x05ctime\x18\a \x01(\x03R\x05ctime\x12\x14\n" +
-	"\x05utime\x18\b \x01(\x03R\x05utime\x12?\n" +
-	"\bversions\x18\t \x03(\v2#.template.v1.ChannelTemplateVersionR\bversions\"\xe4\x01\n" +
+	"\x05utime\x18\b \x01(\x03R\x05utime\x12F\n" +
+	"\bversions\x18\t \x03(\v2*.ealert.template.v1.ChannelTemplateVersionR\bversions\"\xe4\x01\n" +
 	"\x16ChannelTemplateVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12.\n" +
 	"\x13channel_template_id\x18\x02 \x01(\x03R\x11channelTemplateId\x12\x12\n" +
@@ -836,15 +836,15 @@ const file_ealert_template_v1_template_proto_rawDesc = "" +
 	"\x05ctime\x18\a \x01(\x03R\x05ctime\x12\x14\n" +
 	"\x05utime\x18\b \x01(\x03R\x05utime\"(\n" +
 	"\x16GetTemplateByIDRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"S\n" +
-	"\x17GetTemplateByIDResponse\x128\n" +
-	"\btemplate\x18\x01 \x01(\v2\x1c.template.v1.ChannelTemplateR\btemplate\"Q\n" +
-	"\x15CreateTemplateRequest\x128\n" +
-	"\btemplate\x18\x01 \x01(\v2\x1c.template.v1.ChannelTemplateR\btemplate\"R\n" +
-	"\x16CreateTemplateResponse\x128\n" +
-	"\btemplate\x18\x01 \x01(\v2\x1c.template.v1.ChannelTemplateR\btemplate\"Q\n" +
-	"\x15UpdateTemplateRequest\x128\n" +
-	"\btemplate\x18\x01 \x01(\v2\x1c.template.v1.ChannelTemplateR\btemplate\"\x18\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"Z\n" +
+	"\x17GetTemplateByIDResponse\x12?\n" +
+	"\btemplate\x18\x01 \x01(\v2#.ealert.template.v1.ChannelTemplateR\btemplate\"X\n" +
+	"\x15CreateTemplateRequest\x12?\n" +
+	"\btemplate\x18\x01 \x01(\v2#.ealert.template.v1.ChannelTemplateR\btemplate\"Y\n" +
+	"\x16CreateTemplateResponse\x12?\n" +
+	"\btemplate\x18\x01 \x01(\v2#.ealert.template.v1.ChannelTemplateR\btemplate\"X\n" +
+	"\x15UpdateTemplateRequest\x12?\n" +
+	"\btemplate\x18\x01 \x01(\v2#.ealert.template.v1.ChannelTemplateR\btemplate\"\x18\n" +
 	"\x16UpdateTemplateResponse\"X\n" +
 	"\x16PublishTemplateRequest\x12\x1f\n" +
 	"\vtemplate_id\x18\x01 \x01(\x03R\n" +
@@ -854,9 +854,9 @@ const file_ealert_template_v1_template_proto_rawDesc = "" +
 	"\x17PublishTemplateResponse\"D\n" +
 	"\x14ListTemplatesRequest\x12\x16\n" +
 	"\x06offset\x18\x01 \x01(\x05R\x06offset\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"i\n" +
-	"\x15ListTemplatesResponse\x12:\n" +
-	"\ttemplates\x18\x01 \x03(\v2\x1c.template.v1.ChannelTemplateR\ttemplates\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"p\n" +
+	"\x15ListTemplatesResponse\x12A\n" +
+	"\ttemplates\x18\x01 \x03(\v2#.ealert.template.v1.ChannelTemplateR\ttemplates\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\"\x9f\x01\n" +
 	"\x1cCreateTemplateVersionRequest\x12\x1f\n" +
 	"\vtemplate_id\x18\x01 \x01(\x03R\n" +
@@ -864,17 +864,17 @@ const file_ealert_template_v1_template_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
 	"\tsignature\x18\x03 \x01(\tR\tsignature\x12\x18\n" +
 	"\acontent\x18\x04 \x01(\tR\acontent\x12\x12\n" +
-	"\x04desc\x18\x05 \x01(\tR\x04desc\"^\n" +
-	"\x1dCreateTemplateVersionResponse\x12=\n" +
-	"\aversion\x18\x01 \x01(\v2#.template.v1.ChannelTemplateVersionR\aversion2\xcb\x04\n" +
-	"\x0fTemplateService\x12\\\n" +
-	"\x0fGetTemplateByID\x12#.template.v1.GetTemplateByIDRequest\x1a$.template.v1.GetTemplateByIDResponse\x12Y\n" +
-	"\x0eCreateTemplate\x12\".template.v1.CreateTemplateRequest\x1a#.template.v1.CreateTemplateResponse\x12Y\n" +
-	"\x0eUpdateTemplate\x12\".template.v1.UpdateTemplateRequest\x1a#.template.v1.UpdateTemplateResponse\x12\\\n" +
-	"\x0fPublishTemplate\x12#.template.v1.PublishTemplateRequest\x1a$.template.v1.PublishTemplateResponse\x12V\n" +
-	"\rListTemplates\x12!.template.v1.ListTemplatesRequest\x1a\".template.v1.ListTemplatesResponse\x12n\n" +
-	"\x15CreateTemplateVersion\x12).template.v1.CreateTemplateVersionRequest\x1a*.template.v1.CreateTemplateVersionResponseB\xb4\x01\n" +
-	"\x0fcom.template.v1B\rTemplateProtoP\x01ZEgithub.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1;templatev1\xa2\x02\x03TXX\xaa\x02\vTemplate.V1\xca\x02\vTemplate\\V1\xe2\x02\x17Template\\V1\\GPBMetadata\xea\x02\fTemplate::V1b\x06proto3"
+	"\x04desc\x18\x05 \x01(\tR\x04desc\"e\n" +
+	"\x1dCreateTemplateVersionResponse\x12D\n" +
+	"\aversion\x18\x01 \x01(\v2*.ealert.template.v1.ChannelTemplateVersionR\aversion2\x9f\x05\n" +
+	"\x0fTemplateService\x12j\n" +
+	"\x0fGetTemplateByID\x12*.ealert.template.v1.GetTemplateByIDRequest\x1a+.ealert.template.v1.GetTemplateByIDResponse\x12g\n" +
+	"\x0eCreateTemplate\x12).ealert.template.v1.CreateTemplateRequest\x1a*.ealert.template.v1.CreateTemplateResponse\x12g\n" +
+	"\x0eUpdateTemplate\x12).ealert.template.v1.UpdateTemplateRequest\x1a*.ealert.template.v1.UpdateTemplateResponse\x12j\n" +
+	"\x0fPublishTemplate\x12*.ealert.template.v1.PublishTemplateRequest\x1a+.ealert.template.v1.PublishTemplateResponse\x12d\n" +
+	"\rListTemplates\x12(.ealert.template.v1.ListTemplatesRequest\x1a).ealert.template.v1.ListTemplatesResponse\x12|\n" +
+	"\x15CreateTemplateVersion\x120.ealert.template.v1.CreateTemplateVersionRequest\x1a1.ealert.template.v1.CreateTemplateVersionResponseB\xd8\x01\n" +
+	"\x16com.ealert.template.v1B\rTemplateProtoP\x01ZEgithub.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1;templatev1\xa2\x02\x03ETX\xaa\x02\x12Ealert.Template.V1\xca\x02\x12Ealert\\Template\\V1\xe2\x02\x1eEalert\\Template\\V1\\GPBMetadata\xea\x02\x14Ealert::Template::V1b\x06proto3"
 
 var (
 	file_ealert_template_v1_template_proto_rawDescOnce sync.Once
@@ -890,43 +890,43 @@ func file_ealert_template_v1_template_proto_rawDescGZIP() []byte {
 
 var file_ealert_template_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_ealert_template_v1_template_proto_goTypes = []any{
-	(*ChannelTemplate)(nil),               // 0: template.v1.ChannelTemplate
-	(*ChannelTemplateVersion)(nil),        // 1: template.v1.ChannelTemplateVersion
-	(*GetTemplateByIDRequest)(nil),        // 2: template.v1.GetTemplateByIDRequest
-	(*GetTemplateByIDResponse)(nil),       // 3: template.v1.GetTemplateByIDResponse
-	(*CreateTemplateRequest)(nil),         // 4: template.v1.CreateTemplateRequest
-	(*CreateTemplateResponse)(nil),        // 5: template.v1.CreateTemplateResponse
-	(*UpdateTemplateRequest)(nil),         // 6: template.v1.UpdateTemplateRequest
-	(*UpdateTemplateResponse)(nil),        // 7: template.v1.UpdateTemplateResponse
-	(*PublishTemplateRequest)(nil),        // 8: template.v1.PublishTemplateRequest
-	(*PublishTemplateResponse)(nil),       // 9: template.v1.PublishTemplateResponse
-	(*ListTemplatesRequest)(nil),          // 10: template.v1.ListTemplatesRequest
-	(*ListTemplatesResponse)(nil),         // 11: template.v1.ListTemplatesResponse
-	(*CreateTemplateVersionRequest)(nil),  // 12: template.v1.CreateTemplateVersionRequest
-	(*CreateTemplateVersionResponse)(nil), // 13: template.v1.CreateTemplateVersionResponse
+	(*ChannelTemplate)(nil),               // 0: ealert.template.v1.ChannelTemplate
+	(*ChannelTemplateVersion)(nil),        // 1: ealert.template.v1.ChannelTemplateVersion
+	(*GetTemplateByIDRequest)(nil),        // 2: ealert.template.v1.GetTemplateByIDRequest
+	(*GetTemplateByIDResponse)(nil),       // 3: ealert.template.v1.GetTemplateByIDResponse
+	(*CreateTemplateRequest)(nil),         // 4: ealert.template.v1.CreateTemplateRequest
+	(*CreateTemplateResponse)(nil),        // 5: ealert.template.v1.CreateTemplateResponse
+	(*UpdateTemplateRequest)(nil),         // 6: ealert.template.v1.UpdateTemplateRequest
+	(*UpdateTemplateResponse)(nil),        // 7: ealert.template.v1.UpdateTemplateResponse
+	(*PublishTemplateRequest)(nil),        // 8: ealert.template.v1.PublishTemplateRequest
+	(*PublishTemplateResponse)(nil),       // 9: ealert.template.v1.PublishTemplateResponse
+	(*ListTemplatesRequest)(nil),          // 10: ealert.template.v1.ListTemplatesRequest
+	(*ListTemplatesResponse)(nil),         // 11: ealert.template.v1.ListTemplatesResponse
+	(*CreateTemplateVersionRequest)(nil),  // 12: ealert.template.v1.CreateTemplateVersionRequest
+	(*CreateTemplateVersionResponse)(nil), // 13: ealert.template.v1.CreateTemplateVersionResponse
 	(v1.Channel)(0),                       // 14: ealert.notification.v1.Channel
 }
 var file_ealert_template_v1_template_proto_depIdxs = []int32{
-	14, // 0: template.v1.ChannelTemplate.channel:type_name -> ealert.notification.v1.Channel
-	1,  // 1: template.v1.ChannelTemplate.versions:type_name -> template.v1.ChannelTemplateVersion
-	0,  // 2: template.v1.GetTemplateByIDResponse.template:type_name -> template.v1.ChannelTemplate
-	0,  // 3: template.v1.CreateTemplateRequest.template:type_name -> template.v1.ChannelTemplate
-	0,  // 4: template.v1.CreateTemplateResponse.template:type_name -> template.v1.ChannelTemplate
-	0,  // 5: template.v1.UpdateTemplateRequest.template:type_name -> template.v1.ChannelTemplate
-	0,  // 6: template.v1.ListTemplatesResponse.templates:type_name -> template.v1.ChannelTemplate
-	1,  // 7: template.v1.CreateTemplateVersionResponse.version:type_name -> template.v1.ChannelTemplateVersion
-	2,  // 8: template.v1.TemplateService.GetTemplateByID:input_type -> template.v1.GetTemplateByIDRequest
-	4,  // 9: template.v1.TemplateService.CreateTemplate:input_type -> template.v1.CreateTemplateRequest
-	6,  // 10: template.v1.TemplateService.UpdateTemplate:input_type -> template.v1.UpdateTemplateRequest
-	8,  // 11: template.v1.TemplateService.PublishTemplate:input_type -> template.v1.PublishTemplateRequest
-	10, // 12: template.v1.TemplateService.ListTemplates:input_type -> template.v1.ListTemplatesRequest
-	12, // 13: template.v1.TemplateService.CreateTemplateVersion:input_type -> template.v1.CreateTemplateVersionRequest
-	3,  // 14: template.v1.TemplateService.GetTemplateByID:output_type -> template.v1.GetTemplateByIDResponse
-	5,  // 15: template.v1.TemplateService.CreateTemplate:output_type -> template.v1.CreateTemplateResponse
-	7,  // 16: template.v1.TemplateService.UpdateTemplate:output_type -> template.v1.UpdateTemplateResponse
-	9,  // 17: template.v1.TemplateService.PublishTemplate:output_type -> template.v1.PublishTemplateResponse
-	11, // 18: template.v1.TemplateService.ListTemplates:output_type -> template.v1.ListTemplatesResponse
-	13, // 19: template.v1.TemplateService.CreateTemplateVersion:output_type -> template.v1.CreateTemplateVersionResponse
+	14, // 0: ealert.template.v1.ChannelTemplate.channel:type_name -> ealert.notification.v1.Channel
+	1,  // 1: ealert.template.v1.ChannelTemplate.versions:type_name -> ealert.template.v1.ChannelTemplateVersion
+	0,  // 2: ealert.template.v1.GetTemplateByIDResponse.template:type_name -> ealert.template.v1.ChannelTemplate
+	0,  // 3: ealert.template.v1.CreateTemplateRequest.template:type_name -> ealert.template.v1.ChannelTemplate
+	0,  // 4: ealert.template.v1.CreateTemplateResponse.template:type_name -> ealert.template.v1.ChannelTemplate
+	0,  // 5: ealert.template.v1.UpdateTemplateRequest.template:type_name -> ealert.template.v1.ChannelTemplate
+	0,  // 6: ealert.template.v1.ListTemplatesResponse.templates:type_name -> ealert.template.v1.ChannelTemplate
+	1,  // 7: ealert.template.v1.CreateTemplateVersionResponse.version:type_name -> ealert.template.v1.ChannelTemplateVersion
+	2,  // 8: ealert.template.v1.TemplateService.GetTemplateByID:input_type -> ealert.template.v1.GetTemplateByIDRequest
+	4,  // 9: ealert.template.v1.TemplateService.CreateTemplate:input_type -> ealert.template.v1.CreateTemplateRequest
+	6,  // 10: ealert.template.v1.TemplateService.UpdateTemplate:input_type -> ealert.template.v1.UpdateTemplateRequest
+	8,  // 11: ealert.template.v1.TemplateService.PublishTemplate:input_type -> ealert.template.v1.PublishTemplateRequest
+	10, // 12: ealert.template.v1.TemplateService.ListTemplates:input_type -> ealert.template.v1.ListTemplatesRequest
+	12, // 13: ealert.template.v1.TemplateService.CreateTemplateVersion:input_type -> ealert.template.v1.CreateTemplateVersionRequest
+	3,  // 14: ealert.template.v1.TemplateService.GetTemplateByID:output_type -> ealert.template.v1.GetTemplateByIDResponse
+	5,  // 15: ealert.template.v1.TemplateService.CreateTemplate:output_type -> ealert.template.v1.CreateTemplateResponse
+	7,  // 16: ealert.template.v1.TemplateService.UpdateTemplate:output_type -> ealert.template.v1.UpdateTemplateResponse
+	9,  // 17: ealert.template.v1.TemplateService.PublishTemplate:output_type -> ealert.template.v1.PublishTemplateResponse
+	11, // 18: ealert.template.v1.TemplateService.ListTemplates:output_type -> ealert.template.v1.ListTemplatesResponse
+	13, // 19: ealert.template.v1.TemplateService.CreateTemplateVersion:output_type -> ealert.template.v1.CreateTemplateVersionResponse
 	14, // [14:20] is the sub-list for method output_type
 	8,  // [8:14] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name

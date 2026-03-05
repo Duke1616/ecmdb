@@ -22,8 +22,8 @@ enum Business {
 enum Channel {
   // 未指定渠道
   CHANNEL_UNSPECIFIED = 0;
-  // 短信
-  FEISHU_CARD = 1;
+  // 飞书卡片
+  LARK_CARD = 1;
   // 邮件
   EMAIL = 2;
   // 站内信

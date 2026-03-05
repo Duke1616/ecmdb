@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.24
+	github.com/Duke1616/enotify v0.1.25-0.20260305030833-aaa8eed34400
 	github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/IBM/sarama v1.43.3
@@ -223,5 +223,3 @@ require (
 	modernc.org/sqlite v1.46.1 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )
-
-replace github.com/Duke1616/enotify v0.1.24 => ../enotify

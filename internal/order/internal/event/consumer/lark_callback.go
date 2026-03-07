@@ -25,6 +25,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/chromedp/chromedp"
 	"github.com/ecodeclub/ekit/slice"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
@@ -150,8 +151,9 @@ func (c *LarkCallbackEventConsumer) Consume(ctx context.Context) error {
 
 			if errors.Is(err, errs.ValidationError) {
 				if _, err = c.sender.Send(ctx, notification.Notification{
-					Receiver: evt.UserId,
-					Channel:  notification.ChannelLarkText,
+					Receiver:     evt.UserId,
+					ReceiverType: feishu.ReceiveIDTypeUserID,
+					Channel:      notification.ChannelLarkText,
 					Template: notification.Template{
 						Text: err.Error(),
 					},
@@ -390,8 +392,9 @@ func (c *LarkCallbackEventConsumer) sendImage(ctx context.Context, imageKey *str
 	})
 
 	if _, err = c.sender.Send(ctx, notification.Notification{
-		Receiver: userId,
-		Channel:  notification.ChannelLarkCard,
+		Receiver:     userId,
+		ReceiverType: feishu.ReceiveIDTypeUserID,
+		Channel:      notification.ChannelLarkCard,
 		Template: notification.Template{
 			Name:     LarkCardProgressImageResult,
 			Title:    "工单流程进度查看",
@@ -467,9 +470,10 @@ func (c *LarkCallbackEventConsumer) withdraw(ctx context.Context, callback event
 
 	// 发送消息通知
 	if _, err = c.sender.Send(ctx, notification.Notification{
-		Receiver:  callback.GetUserId(),
-		MessageID: callback.GetMessageId(),
-		Channel:   notification.ChannelLarkCard,
+		Receiver:     callback.GetUserId(),
+		ReceiverType: feishu.ReceiveIDTypeUserID,
+		MessageID:    callback.GetMessageId(),
+		Channel:      notification.ChannelLarkCard,
 		Template: notification.Template{
 			Name:   LarkCardProgress,
 			Title:  rule.GenerateTitle(userInfo.DisplayName, t.Name),

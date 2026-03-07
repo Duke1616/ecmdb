@@ -51,13 +51,11 @@ func (fp *FieldProcessor) initialize() {
 	})
 
 	fp.optionsMap = make(map[string]map[interface{}]string)
-	for _, rule := range fp.rules {
-		if len(rule.Options) > 0 {
-			fieldOptions := make(map[interface{}]string)
-			for _, opt := range rule.Options {
-				fieldOptions[opt.Value] = opt.Label
-			}
-			fp.optionsMap[rule.Field] = fieldOptions
+	for _, r := range fp.rules {
+		if len(r.Options) > 0 {
+			fp.optionsMap[r.Field] = slice.ToMapV(r.Options, func(opt Options) (interface{}, string) {
+				return opt.Value, opt.Label
+			})
 		}
 	}
 }
@@ -178,11 +176,10 @@ func (fp *FieldProcessor) getDisplayValue(field string, value interface{}) strin
 
 func (fp *FieldProcessor) processSliceValue(field string, value interface{}) string {
 	sli := reflect.ValueOf(value)
-	var results []string
+	results := make([]string, 0, sli.Len())
 
 	for i := 0; i < sli.Len(); i++ {
-		elem := sli.Index(i).Interface()
-		results = append(results, fp.getOptionLabel(field, elem))
+		results = append(results, fp.getOptionLabel(field, sli.Index(i).Interface()))
 	}
 
 	return strings.Join(results, ", ")
@@ -201,15 +198,22 @@ func (fp *FieldProcessor) getOptionLabel(field string, value interface{}) string
 		return ""
 	}
 
-	valueStr := fmt.Sprintf("%v", value)
-	if label, exists := options[valueStr]; exists {
+	// 1. 直接通过原始值匹配（针对 interface{} 的 key）
+	if label, exists := options[value]; exists {
 		return label
 	}
 
+	// 2. 尝试数字转换匹配
 	if num, err := convertToNumber(value); err == nil {
 		if label, exists := options[num]; exists {
 			return label
 		}
+	}
+
+	// 3. 最后退避到字符串匹配
+	valueStr := fmt.Sprintf("%v", value)
+	if label, exists := options[valueStr]; exists {
+		return label
 	}
 
 	return ""

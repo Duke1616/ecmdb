@@ -5,120 +5,83 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/event/errs"
-	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
-	"github.com/Duke1616/ecmdb/internal/template"
-	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/gotomicro/ego/core/elog"
+	"github.com/Duke1616/enotify/notify/feishu"
 )
 
 type AutomationNotification struct {
-	sender      sender.NotificationSender
-	templateSvc template.Service
-	resultSvc   FetcherResult
-	userSvc     user.Service
-	logger      *elog.Component
+	BaseStrategy
+	sender sender.NotificationSender
 }
 
-func NewAutomationNotification(resultSvc FetcherResult, userSvc user.Service, templateSvc template.Service,
-	sender sender.NotificationSender) (*AutomationNotification, error) {
+func NewAutomationNotification(base BaseStrategy, sender sender.NotificationSender) *AutomationNotification {
 	return &AutomationNotification{
-		sender:      sender,
-		resultSvc:   resultSvc,
-		templateSvc: templateSvc,
-		userSvc:     userSvc,
-		logger:      elog.DefaultLogger,
-	}, nil
+		BaseStrategy: base,
+		sender:       sender,
+	}
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, info StrategyInfo) (notification.NotificationResponse, error) {
-	// 获取当前节点信息
-	property, err := getNodeProperty[easyflow.AutomationProperty](info.WfInfo, info.CurrentNode.NodeID)
+func (n *AutomationNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
+	// 1. 获取当前节点信息
+	_, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
 		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
-	// 判断是否开启消息发送，以及是否为立即发送
+	property, err := easyflow.ToNodeProperty[easyflow.AutomationProperty](easyflow.Node{Properties: rawProps})
+	if err != nil {
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), err
+	}
+
+	// 2. 权限与触发校验
+	if !n.IsGlobalNotify(info.Workflow) {
+		return notification.NewSuccessResponse(0, "全局通知已关闭"), nil
+	}
+
 	if !property.IsNotify {
-		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】未开启消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
-	// 判断模式如果不是理解发送则退出
 	if !containsAutoNotifyMethod(property.NotifyMethod, ProcessNowSend) {
-		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】节点未开启消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【自动化节点】节点未开启消息通知模式"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
 	}
 
-	// 查看返回的消息
-	wantResult, err := n.resultSvc.FetchResult(ctx, info.InstanceId, info.CurrentNode.NodeID)
-	if err != nil {
-		n.logger.Warn("执行错误或未开启消息通知",
-			elog.FieldErr(err),
-			elog.Any("instId", info.InstanceId),
-		)
-		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
-	}
-
-	startUser, err := n.userSvc.FindByUsername(ctx, info.OrderInfo.CreateBy)
+	// 3. 获取元数据与自动化任务结果
+	nodes, _, _ := n.GetNodeProperty(info, info.CurrentNode.NodeID)
+	data, err := n.FetchRequiredData(ctx, info, nodes)
 	if err != nil {
 		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
 	}
 
-	// 获取模版名称
-	tName, err := n.getTemplateName(ctx, info.OrderInfo)
-	if err != nil {
-		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
-	}
+	// 4. 发送消息
+	fields := n.BuildWantResultFields(data.WantResult)
 
-	return n.sender.Send(ctx, notification.Notification{
-		Channel:    notification.ChannelLarkCard,
-		WorkFlowID: info.WfInfo.Id,
-		Receiver:   startUser.FeishuInfo.UserId,
-		Template: notification.Template{
-			Name:     LarkTemplateApprovalName,
-			Title:    rule.GenerateAutoTitle("你提交", tName),
-			Fields:   n.getFields(wantResult),
-			Values:   []notification.Value{},
-			HideForm: true,
-		},
-	})
-}
-
-func (n *AutomationNotification) getTemplateName(ctx context.Context, order order.Order) (string, error) {
-	// 获取模版详情信息
-	t, err := n.templateSvc.DetailTemplate(ctx, order.TemplateId)
-	if err != nil {
-		return t.Name, err
-	}
-
-	return "", nil
-}
-
-func (n *AutomationNotification) getFields(wantResult map[string]interface{}) []notification.Field {
-	num := 1
-	var fields []notification.Field
-
-	for field, value := range wantResult {
-		title := field
-
-		fields = append(fields, notification.Field{
-			IsShort: true,
-			Tag:     "lark_md",
-			Content: fmt.Sprintf(`**%s:**\n%v`, title, value),
-		})
-
-		if num%2 == 0 {
-			fields = append(fields, notification.Field{
+	// 每两个字段插入一个空行（保持原有格式）
+	formattedFields := make([]notification.Field, 0, len(fields)*2)
+	for i, field := range fields {
+		formattedFields = append(formattedFields, field)
+		if (i+1)%2 == 0 && i < len(fields)-1 {
+			formattedFields = append(formattedFields, notification.Field{
 				IsShort: false,
 				Tag:     "lark_md",
 				Content: "",
 			})
 		}
-
-		num++
 	}
 
-	return fields
+	return n.sender.Send(ctx, notification.Notification{
+		Channel:      info.Channel,
+		ReceiverType: feishu.ReceiveIDTypeUserID,
+		WorkFlowID:   info.Workflow.Id,
+		Receiver:     data.StartUser.FeishuInfo.UserId,
+		Template: notification.Template{
+			Name:     LarkTemplateApprovalName,
+			Title:    rule.GenerateAutoTitle("你提交", data.TName),
+			Fields:   formattedFields,
+			HideForm: true,
+		},
+	})
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
+	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"golang.org/x/sync/errgroup"
@@ -438,8 +439,9 @@ func (s *service) failedNotify(ctx context.Context, id int64) error {
 
 	content := fmt.Sprintf("自动化任务执行失败, 请通过平台进行查看，工单ID：%d, 任务ID: %d", t.OrderId, id)
 	if _, err = s.sender.Send(ctx, notification.Notification{
-		Receiver: u.FeishuInfo.UserId,
-		Channel:  notification.ChannelLarkText,
+		Receiver:     u.FeishuInfo.UserId,
+		ReceiverType: feishu.ReceiveIDTypeUserID,
+		Channel:      notification.ChannelLarkText,
 		Template: notification.Template{
 			Text: content,
 		},

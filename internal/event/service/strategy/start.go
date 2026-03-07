@@ -5,112 +5,69 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/event/errs"
-	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
-	"github.com/Duke1616/ecmdb/internal/template"
-	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type StartNotification struct {
-	sender      sender.NotificationSender
-	userSvc     user.Service
-	templateSvc template.Service
-
-	logger *elog.Component
+	BaseStrategy
+	sender sender.NotificationSender
 }
 
-func NewStartNotification(userSvc user.Service, templateSvc template.Service, sender sender.NotificationSender) (*StartNotification, error) {
+func NewStartNotification(base BaseStrategy, sender sender.NotificationSender) *StartNotification {
 	return &StartNotification{
-		sender:      sender,
-		userSvc:     userSvc,
-		templateSvc: templateSvc,
-		logger:      elog.DefaultLogger,
-	}, nil
+		BaseStrategy: base,
+		sender:       sender,
+	}
 }
 
-func (s *StartNotification) Send(ctx context.Context, info StrategyInfo) (notification.NotificationResponse, error) {
-	// 获取当前节点信息
-	property, err := getNodeProperty[easyflow.StartProperty](info.WfInfo, info.CurrentNode.NodeID)
+func (s *StartNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
+	// 1. 全局通知校验
+	if !s.IsGlobalNotify(info.Workflow) {
+		return notification.NewSuccessResponse(0, "全局通知已关闭"), nil
+	}
+
+	// 2. 开始节点通常通知发起人
+	s.Logger.Debug("开始节点发送通知",
+		elog.Int("instance_id", info.InstID),
+		elog.String("node_id", info.CurrentNode.NodeID))
+
+	// 3. 加载基础通知元数据
+	nodes, _, err := s.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
-		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
-	// 判断开始节点是否需要发送消息通知
-	if ok := s.isNotify(property, info.InstanceId); !ok {
-		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), "【开始节点】未配置消息通知"), fmt.Errorf("%w", errs.ErrNodeNotConfigured)
-	}
-
-	// 解析配置
-	rules, tName, err := s.getRules(ctx, info.OrderInfo)
+	data, err := s.FetchRequiredData(ctx, info, nodes)
 	if err != nil {
-		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), err
 	}
 
-	// 获取工单创建用户
-	startUser, err := s.userSvc.FindByUsername(ctx, info.OrderInfo.CreateBy)
-	if err != nil {
-		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
-	}
+	title := rule.GenerateTitle(data.StartUser.DisplayName, data.TName)
+	fields := rule.GetFields(data.Rules, info.Order.Provide.ToUint8(), info.Order.Data)
 
-	ruleFields := rule.GetFields(rules, info.OrderInfo.Provide.ToUint8(), info.OrderInfo.Data)
-	return s.sender.Send(ctx, notification.Notification{
-		Channel:    notification.ChannelLarkCard,
-		WorkFlowID: info.WfInfo.Id,
-		Receiver:   startUser.FeishuInfo.UserId,
+	msg := notification.Notification{
+		Channel:    info.Channel,
+		WorkFlowID: info.Workflow.Id,
+		Receiver:   data.StartUser.FeishuInfo.UserId,
 		Template: notification.Template{
-			Name:  LarkTemplateApprovalRevokeName,
-			Title: rule.GenerateTitle("你提交的", tName),
-			Fields: slice.Map(ruleFields, func(idx int, src rule.Field) notification.Field {
-				return notification.Field{
-					IsShort: src.IsShort,
-					Tag:     src.Tag,
-					Content: src.Content,
-				}
-			}),
+			Name:   LarkTemplateCC,
+			Title:  title,
+			Fields: s.ConvertRuleFields(fields),
 			Values: []notification.Value{
-				{
-					Key:   "order_id",
-					Value: info.OrderInfo.Id,
-				},
-				{
-					Key:   "task_id",
-					Value: "100001",
-				},
+				{Key: "order_id", Value: info.Order.Id},
 			},
-			HideForm: false,
+			HideForm: true,
 		},
-	})
-}
-
-func (s *StartNotification) isNotify(sp easyflow.StartProperty, instanceId int) bool {
-	if !sp.IsNotify {
-		s.logger.Warn("流程控制【开始节点】未开启消息通知能力",
-			elog.Any("instId", instanceId),
-		)
-		return false
 	}
 
-	return true
-}
-
-// isNotify 获取模版的字段信息
-func (s *StartNotification) getRules(ctx context.Context, order order.Order) ([]rule.Rule, string, error) {
-	// 获取模版详情信息
-	t, err := s.templateSvc.DetailTemplate(ctx, order.TemplateId)
-	if err != nil {
-		return nil, "", err
+	if msg.Receiver != "" {
+		if _, sendErr := s.sender.Send(ctx, msg); sendErr != nil {
+			return notification.NotificationResponse{}, sendErr
+		}
 	}
 
-	rules, err := rule.ParseRules(t.Rules)
-
-	if err != nil {
-		return nil, "", err
-	}
-
-	return rules, t.Name, nil
+	return notification.NewSuccessResponse(0, "success"), nil
 }

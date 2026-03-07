@@ -16,7 +16,9 @@ import (
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/task"
 	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"golang.org/x/sync/errgroup"
 
 	"log"
 )
@@ -58,98 +60,81 @@ func NewProcessEvent(producer producer.OrderStatusModifyEventProducer, engineSvc
 	}, nil
 }
 
-// EventStart 节点结束事件
-func (e *ProcessEvent) EventStart(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	//可以做一些处理，比如通知流程开始人，节点到了哪个步骤
+// EventStart 节点启动事件
+func (e *ProcessEvent) EventStart(instID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	// 查看工单关联
-	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
-
-	_, err = e.strategy.Send(ctx, strategy.StrategyInfo{
-		NodeName:    strategy.Start,
-		OrderInfo:   orderInfo,
-		WfInfo:      wfInfo,
-		InstanceId:  ProcessInstanceID,
-		CurrentNode: CurrentNode,
-	})
-
+	fCtx, err := e.LoadContext(ctx, instID, node)
 	if err != nil {
-		e.logger.Error("【EventStart】 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+		return err
 	}
 
-	// 这个必须成功，不然会导致后续任务无法进行
-	return e.orderSvc.RegisterProcessInstanceId(ctx, orderInfo.Id, ProcessInstanceID)
+	// 1. 发送开始通知
+	if err = e.dispatchNotify(ctx, fCtx, strategy.Start); err != nil {
+		e.logger.Error("【EventStart】消息通知分发失败", elog.FieldErr(err), elog.Int("instID", instID))
+	}
+
+	// 2. 绑定工单与流程实例
+	return e.orderSvc.RegisterProcessInstanceId(ctx, fCtx.Order.Id, instID)
 }
 
-// EventAutomation 自动化任务处理（创建任务）
-func (e *ProcessEvent) EventAutomation(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+// EventAutomation 自动化任务处理：同步创建任务并受 Context 超时控制
+func (e *ProcessEvent) EventAutomation(instID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	e.logger.Debug("自动化任务触发, 开始创建任务", elog.Int("ProcessInstanceID", ProcessInstanceID),
-		elog.String("current_node_id", CurrentNode.NodeID))
-
-	// 获取流程变量中记录的工单ID
-	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, ProcessInstanceID)
+	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, instID)
 	if err != nil {
 		return err
 	}
 
-	// 转换为 int64
-	orderID, err := strconv.ParseInt(orderId, 10, 64)
+	orderID, _ := strconv.ParseInt(orderId, 10, 64)
+	_, err = e.taskSvc.CreateTask(ctx, orderID, instID, node.NodeID)
 	if err != nil {
-		return err
-	}
-
-	// 使用goroutine执行任务创建，并等待其完成
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		_, err = e.taskSvc.CreateTask(ctx, orderID, ProcessInstanceID, CurrentNode.NodeID)
-		if err != nil {
-			e.logger.Error("创建自动化任务失败",
-				elog.Any("流程ID", ProcessInstanceID),
-				elog.Any("节点ID", CurrentNode.NodeID),
-				elog.Any("错误信息", err),
-			)
-		}
-	}()
-
-	// 等待goroutine完成或超时
-	select {
-	case <-done:
-		// goroutine正常完成
-		if err != nil {
-			return err
-		}
-	case <-ctx.Done():
-		// 超时或取消
-		e.logger.Error("创建自动化任务超时或被取消")
-		return ctx.Err()
+		e.logger.Error("创建自动化任务失败", elog.Int("instID", instID), elog.FieldErr(err))
 	}
 
 	return err
 }
 
+// EventChatGroup 群通知节点事件：发送消息后自动推进
+func (e *ProcessEvent) EventChatGroup(instID int, node *model.Node, prevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	fCtx, err := e.LoadContext(ctx, instID, node)
+	if err != nil {
+		return err
+	}
+
+	// 1. 发送群通知
+	if err = e.dispatchNotify(ctx, fCtx, strategy.ChatGroup); err != nil {
+		e.logger.Error("【EventChatGroup】群消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
+	}
+
+	// 2. 自动 Pass 节点推进流程
+	go e.autoPassNode(instID, node.NodeID, "ChatGroup Auto Pass")
+	return nil
+}
+
 // EventEnd 节点结束事件
-func (e *ProcessEvent) EventEnd(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
+func (e *ProcessEvent) EventEnd(instID int, node *model.Node, prevNode model.Node) error {
+	processName, err := engine.GetProcessNameByInstanceID(instID)
 	if err != nil {
 		return err
 	}
 
 	e.logger.Info("节点结束了", elog.Any("processName", processName))
-	log.Printf("--------流程[%s]节点[%s]结束-------", processName, CurrentNode.NodeName)
+	log.Printf("--------流程[%s]节点[%s]结束-------", processName, node.NodeName)
 	return nil
 }
 
 // EventClose 流程结束，修改 Order 状态为已完成
 // Deprecated 废弃 不再通过 Kafka 修改状态，使用 EventNotify 直接调用接口进行修改
-func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventClose(instID int, node *model.Node, prevNode model.Node) error {
 	evt := producer.OrderStatusModifyEvent{
-		ProcessInstanceId: ProcessInstanceID,
+		ProcessInstanceId: instID,
 		Status:            producer.END,
 	}
 
@@ -163,62 +148,125 @@ func (e *ProcessEvent) EventClose(ProcessInstanceID int, CurrentNode *model.Node
 	return nil
 }
 
-// EventNotify 通知 中间有 Error 通过日志记录，保证不影响主体程序运行
-func (e *ProcessEvent) EventNotify(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+// EventNotify 流程节点（用户/自动化）通知事件
+func (e *ProcessEvent) EventNotify(instID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	// 如果是结束节点，暂时不做任何处理
-	if CurrentNode.NodeType == model.EndNode {
-		// 关闭工单
-		err := e.orderSvc.UpdateStatusByInstanceId(ctx, ProcessInstanceID, order.EndProcess.ToUint8())
-		if err != nil {
-			e.logger.Error("EventNotify 关闭工单失败：",
-				elog.FieldErr(err),
-				elog.Int("流程ID", ProcessInstanceID))
-		}
+
+	fCtx, err := e.LoadContext(ctx, instID, node)
+	if err != nil {
+		return err
 	}
 
-	// 判断是否为系统自动节点
-	if len(CurrentNode.UserIDs) > 0 && CurrentNode.UserIDs[0] == SysAutoUser {
-		go e.autoPassProxyNode(ProcessInstanceID, CurrentNode.NodeID)
+	// 1. 处理结束节点：关闭工单
+	if node.NodeType == model.EndNode {
+		if err = e.orderSvc.UpdateStatusByInstanceId(ctx, instID, order.EndProcess.ToUint8()); err != nil {
+			e.logger.Error("EventNotify 关闭工单失败：", elog.FieldErr(err), elog.Int("instID", instID))
+		}
 		return nil
 	}
 
-	orderInfo, wfInfo, err := e.fetchOrderAndWorkflow(ctx, ProcessInstanceID)
-
-	// 判断消息的来源，处理不同的消息通知模式
-	nodeMethod := strategy.User
-	if len(CurrentNode.UserIDs) == 1 && CurrentNode.UserIDs[0] == "automation" {
-		nodeMethod = strategy.Automation
+	// 2. 处理系统代理节点
+	if len(node.UserIDs) > 0 && node.UserIDs[0] == SysAutoUser {
+		go e.autoPassNode(instID, node.NodeID, "Sys Auto Pass")
+		return nil
 	}
 
-	_, err = e.strategy.Send(ctx, strategy.StrategyInfo{
-		NodeName:    nodeMethod,
-		OrderInfo:   orderInfo,
-		WfInfo:      wfInfo,
-		InstanceId:  ProcessInstanceID,
-		CurrentNode: CurrentNode,
-	})
+	// 3. 处理通知派发
+	nodeName := strategy.User
+	if len(node.UserIDs) == 1 && node.UserIDs[0] == "automation" {
+		nodeName = strategy.Automation
+	}
 
-	if err != nil {
-		e.logger.Error("【EventNotify】 消息发送失败：", elog.FieldErr(err), elog.Any("流程ID", ProcessInstanceID))
+	if err = e.dispatchNotify(ctx, fCtx, nodeName); err != nil {
+		e.logger.Error("【EventNotify】消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
 	}
 
 	return nil
 }
 
-// EventTaskInclusionNodePass 用户任务并行包容处理事件
-// 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
-func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+// EventCarbonCopy 抄送节点事件
+func (e *ProcessEvent) EventCarbonCopy(instID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
-	e.logger.Info("包含网关-获取当前节点", elog.Any("Node名称", CurrentNode.NodeName),
-		elog.Any("Node节点", CurrentNode.NodeID))
 
-	taskNum, passNum, rejectNum, err := engine.TaskNodeStatus(TaskID)
-	e.logger.Info("包含网关-处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
-		elog.Any("Node名称", PrevNode.NodeName),
-		elog.Any("Node节点", PrevNode.NodeID),
+	fCtx, err := e.LoadContext(ctx, instID, node)
+	if err != nil {
+		return err
+	}
+
+	if err = e.dispatchNotify(ctx, fCtx, strategy.CarbonCopy); err != nil {
+		e.logger.Error("【EventCarbonCopy】消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
+	}
+
+	return nil
+}
+
+// dispatchNotify 统一的消息派发模版
+func (e *ProcessEvent) dispatchNotify(ctx context.Context, fCtx *strategy.FlowContext, name strategy.NodeName) error {
+	_, err := e.strategy.Send(ctx, strategy.Info{
+		NodeName:    name,
+		FlowContext: *fCtx,
+	})
+	return err
+}
+
+// LoadContext 并发加载流程运行所需的元数据上下文
+func (e *ProcessEvent) LoadContext(ctx context.Context, instID int, node *model.Node) (*strategy.FlowContext, error) {
+	var (
+		eg        errgroup.Group
+		orderInfo order.Order
+		inst      engineSvc.Instance
+	)
+
+	// 并发获取基础信息
+	eg.Go(func() error {
+		orderIdStr, err := e.engineSvc.GetOrderIdByVariable(ctx, instID)
+		if err != nil {
+			return err
+		}
+		id, _ := strconv.ParseInt(orderIdStr, 10, 64)
+		orderInfo, err = e.orderSvc.Detail(ctx, id)
+		return err
+	})
+
+	eg.Go(func() error {
+		var err error
+		inst, err = e.engineSvc.GetInstanceByID(ctx, instID)
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	// 二次加载获取流程定义快照
+	wf, err := e.workflowSvc.FindInstanceFlow(ctx, orderInfo.WorkflowId, inst.ProcID, inst.ProcVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	return &strategy.FlowContext{
+		InstID:      instID,
+		Order:       orderInfo,
+		Workflow:    wf,
+		Instance:    inst,
+		CurrentNode: node,
+	}, nil
+}
+
+// EventTaskInclusionNodePass 用户任务并行包容处理事件
+// 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
+func (e *ProcessEvent) EventTaskInclusionNodePass(taskID int, node *model.Node, prevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	e.logger.Info("包含网关-获取当前节点", elog.Any("Node名称", node.NodeName),
+		elog.Any("Node节点", node.NodeID))
+
+	taskNum, passNum, rejectNum, err := engine.TaskNodeStatus(taskID)
+	e.logger.Info("包含网关-处理节点状态系统自动变更", elog.Any("任务ID", taskID),
+		elog.Any("Node名称", prevNode.NodeName),
+		elog.Any("Node节点", prevNode.NodeID),
 		elog.Any("任务数量", taskNum),
 		elog.Any("通过数量", passNum),
 		elog.Any("驳回数量", rejectNum))
@@ -228,13 +276,13 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 	}
 
 	// 查看任务详情信息
-	t, err := engine.GetTaskInfo(TaskID)
+	t, err := engine.GetTaskInfo(taskID)
 	if err != nil {
 		return err
 	}
 
 	// 如果是代理节点，需要查询代理节点的上级
-	nodeId, err := e.getTargetNodeID(ctx, t.ProcInstID, PrevNode.NodeID, CurrentNode)
+	nodeId, err := e.getTargetNodeID(ctx, t.ProcInstID, prevNode.NodeID, node)
 	if err != nil {
 		return err
 	}
@@ -259,117 +307,84 @@ func (e *ProcessEvent) EventTaskInclusionNodePass(TaskID int, CurrentNode *model
 	return nil
 }
 
-func (e *ProcessEvent) EventSelectiveGatewaySplit(ProcessInstanceID int, CurrentNode *model.Node, PrevNode model.Node) error {
+// EventSelectiveGatewaySplit 条件并行网关分叉处理
+func (e *ProcessEvent) EventSelectiveGatewaySplit(instID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	e.logger.Info("条件并行网关分叉处理", elog.Int("processInstanceID", ProcessInstanceID), elog.String("nodeID", CurrentNode.NodeID))
-
-	// 1. 加载流程定义
-	inst, err := e.engineSvc.GetInstanceByID(ctx, ProcessInstanceID)
+	// 1. 获取流程快照与定义
+	inst, err := e.engineSvc.GetInstanceByID(ctx, instID)
 	if err != nil {
-		e.logger.Error("获取流程实例失败", elog.FieldErr(err))
 		return err
 	}
-
 	processDefine, err := e.engineSvc.GetProcessDefineByVersion(ctx, inst.ProcID, inst.ProcVersion)
 	if err != nil {
-		e.logger.Error("获取流程定义失败", elog.FieldErr(err))
 		return err
 	}
 
-	// 2. 构建节点映射
-	nodeMap := make(map[string]model.Node)
-	for _, node := range processDefine.Nodes {
-		nodeMap[node.NodeID] = node
-	}
-
-	// 3. 获取 Selective 网关的下级节点（应该是 Condition 节点）
-	// InevitableNodes 包含了所有分支的入口节点
-	conditionNodeIDs := CurrentNode.GWConfig.InevitableNodes
+	// 2. 检索 Selective 网关的直接下级（Condition 节点）
+	nodeMap := slice.ToMap(processDefine.Nodes, func(n model.Node) string { return n.NodeID })
+	conditionNodeIDs := node.GWConfig.InevitableNodes
 	if len(conditionNodeIDs) == 0 {
-		e.logger.Warn("Selective 网关没有配置下级节点", elog.String("nodeID", CurrentNode.NodeID))
 		return nil
 	}
 
-	// 4. 遍历每个 Condition 节点
+	// 3. 逐个评估分支条件
 	for _, condNodeID := range conditionNodeIDs {
 		condNode, exists := nodeMap[condNodeID]
-		if !exists {
-			e.logger.Error("找不到 Condition 节点", elog.String("condNodeID", condNodeID))
+		if !exists || len(condNode.GWConfig.Conditions) == 0 {
 			continue
 		}
 
-		// 5. Condition 节点应该有自己的条件配置
-		if len(condNode.GWConfig.Conditions) == 0 {
-			e.logger.Info("Condition 节点没有条件配置，默认通过", elog.String("nodeID", condNodeID))
-			continue
-		}
-
-		// 6. 计算 Condition 节点的每个条件
-		allConditionsFailed := true
+		// 只要分支内有一个 Expression 成立，该分支即为“激活”
+		branchActive := false
 		for _, cond := range condNode.GWConfig.Conditions {
-			expression := cond.Expression
-
-			// 正则表达式，匹配以$开头的字母、数字、下划线
-			reg := regexp.MustCompile(`[$]\w+`)
-			variables := reg.FindAllString(expression, -1)
-
-			// 替换表达式中的变量为值
-			kv, err := engine.ResolveVariables(ProcessInstanceID, variables)
-			if err != nil {
-				e.logger.Error("计算条件时解析变量失败", elog.FieldErr(err), elog.String("expr", expression))
-				return err
-			}
-
-			for k, v := range kv {
-				// SQL 转义逻辑
-				v = strings.Replace(v, "'", "\\'", -1)
-				expression = strings.Replace(expression, k, fmt.Sprintf("'%s'", v), -1)
-			}
-
-			// 适配 JSON 数组的 IN 查询
-			jsonArrayInPattern := regexp.MustCompile(`'(\[.*?])'\s+(?i)in\s+\(\s*'([^']+)'\s*\)`)
-			if jsonArrayInPattern.MatchString(expression) {
-				expression = jsonArrayInPattern.ReplaceAllString(expression, `JSON_CONTAINS('$1', '"$2"')`)
-			}
-
-			// 计算表达式
-			passed, err := engine.ExpressionEvaluator(expression)
-			if err != nil {
-				e.logger.Error("计算表达式失败", elog.FieldErr(err), elog.String("expr", expression))
-				return err
-			}
-
-			if passed {
-				allConditionsFailed = false
-				e.logger.Info("条件满足，分支正常执行",
-					elog.String("condNodeID", condNodeID),
-					elog.String("targetNodeID", cond.NodeID))
-				break // 只要有一个条件满足就继续执行
+			if passed, _ := e.evaluateExpression(instID, cond.Expression); passed {
+				branchActive = true
+				break
 			}
 		}
 
-		// 7. 如果所有条件都不满足，跳过 Condition 指向的目标节点
-		if allConditionsFailed {
-			// 遍历该 Condition 的所有目标节点并跳过
+		// 4. 若全部分支条件均不满足，则静默跳过该分支的所有目标节点
+		if !branchActive {
 			for _, cond := range condNode.GWConfig.Conditions {
-				e.logger.Info("条件不满足，自动跳过目标节点",
-					elog.String("condNodeID", condNodeID),
-					elog.String("targetNodeID", cond.NodeID),
-					elog.String("prevNodeID", PrevNode.NodeID))
-
-				// 插入假任务，标记目标节点为已完成
-				// PrevNodeID 使用 Selective Gateway 的前置节点，与 Engine 行为保持一致
-				if err = e.engineSvc.CreateSkippedTask(ctx, ProcessInstanceID, cond.NodeID, PrevNode.NodeID, SystemSkippedComment, SystemSkipped); err != nil {
-					e.logger.Error("创建跳过任务失败", elog.FieldErr(err))
-					return err
-				}
+				e.skipBranch(ctx, instID, cond.NodeID, prevNode.NodeID)
 			}
 		}
 	}
 
 	return nil
+}
+
+// evaluateExpression 内部评估器：处理表达式中的变量注入、SQL 转义及 JSON 适配
+func (e *ProcessEvent) evaluateExpression(instID int, expr string) (bool, error) {
+	// 注入变量：匹配以 $ 开头的变量标识符
+	reg := regexp.MustCompile(`[$]\w+`)
+	variables := reg.FindAllString(expr, -1)
+	if len(variables) > 0 {
+		kv, err := engine.ResolveVariables(instID, variables)
+		if err != nil {
+			return false, err
+		}
+		for k, v := range kv {
+			v = strings.Replace(v, "'", "\\'", -1) // 基础 SQL 防注入转义
+			expr = strings.Replace(expr, k, fmt.Sprintf("'%s'", v), -1)
+		}
+	}
+
+	// 特殊适配：JSON 数组的 IN 查询转换
+	jsonArrayInPattern := regexp.MustCompile(`'(\[.*?])'\s+(?i)in\s+\(\s*'([^']+)'\s*\)`)
+	if jsonArrayInPattern.MatchString(expr) {
+		expr = jsonArrayInPattern.ReplaceAllString(expr, `JSON_CONTAINS('$1', '"$2"')`)
+	}
+
+	return engine.ExpressionEvaluator(expr)
+}
+
+// skipBranch 辅助方法：静默跳过节点并生成历史记录
+func (e *ProcessEvent) skipBranch(ctx context.Context, instID int, nodeID, prevNodeID string) {
+	e.logger.Info("条件不满足，自动跳过目标节点", elog.String("nodeID", nodeID), elog.Int("instID", instID))
+	_ = e.engineSvc.CreateSkippedTask(ctx, instID, nodeID, prevNodeID, SystemSkippedComment, SystemSkipped)
 }
 
 func (e *ProcessEvent) getTargetNodeID(ctx context.Context, processInstId int, prevNodeID string, currentNode *model.Node) (string, error) {
@@ -380,29 +395,15 @@ func (e *ProcessEvent) getTargetNodeID(ctx context.Context, processInstId int, p
 }
 
 // EventTaskParallelNodePass 用户任务并行处理事件
-// 当处于并行 或 包容网关的时候，其中一个节点驳回，其余并行节点并不会修改状态
-func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventTaskParallelNodePass(taskID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	// 查看任务详情信息
-	taskInfo, err := engine.GetTaskInfo(TaskID)
-	if err != nil {
-		return err
-	}
-
-	// 查看错误数量
-	IsReject, err := e.engineSvc.IsReject(ctx, TaskID)
-	if err != nil {
-		return err
-	}
-
-	e.logger.Info("处理节点状态系统自动变更", elog.Any("任务ID", TaskID),
-		elog.Any("Node节点", PrevNode.NodeID),
-		elog.Any("是否驳回", IsReject))
-
-	if IsReject {
-		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, PrevNode.NodeID, SystemReject, SystemRejectComment)
+	// 只要存在驳回，则强制同步驳回同一分支下的所有其他并行节点
+	isReject, _ := e.engineSvc.IsReject(ctx, taskID)
+	if isReject {
+		taskInfo, _ := engine.GetTaskInfo(taskID)
+		return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, prevNode.NodeID, SystemReject, SystemRejectComment)
 	}
 
 	return nil
@@ -410,12 +411,12 @@ func (e *ProcessEvent) EventTaskParallelNodePass(TaskID int, CurrentNode *model.
 
 // EventConcurrentRejectCleanup 并行节点驳回清理事件
 // 当并行分支中的某一个节点驳回时，自动清理（取消）同一分支下的其他兄弟任务
-func (e *ProcessEvent) EventConcurrentRejectCleanup(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventConcurrentRejectCleanup(taskID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	// 1. 获取任务详情，检查状态
-	taskInfo, err := engine.GetTaskInfo(TaskID)
+	taskInfo, err := engine.GetTaskInfo(taskID)
 	if err != nil {
 		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
 		return err
@@ -427,23 +428,23 @@ func (e *ProcessEvent) EventConcurrentRejectCleanup(TaskID int, CurrentNode *mod
 	}
 
 	e.logger.Info("并行节点驳回，触发兄弟节点清理",
-		elog.Any("TaskID", TaskID),
-		elog.Any("NodeName", CurrentNode.NodeName),
-		elog.Any("PrevNodeID", PrevNode.NodeID))
+		elog.Any("taskID", taskID),
+		elog.Any("NodeName", node.NodeName),
+		elog.Any("prevNodeID", prevNode.NodeID))
 
 	// 2. 调用服务层清理逻辑
 	// 使用 UpdateIsFinishedByPreNodeId 将同级任务置为 SystemReject (系统驳回/取消)
-	// 注意：这里使用的是 PrevNode.NodeID，即分支汇聚点（或分叉点）的ID
-	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, PrevNode.NodeID, SystemReject, SystemRejectComment)
+	// 注意：这里使用的是 prevNode.NodeID，即分支汇聚点（或分叉点）的ID
+	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, prevNode.NodeID, SystemReject, SystemRejectComment)
 }
 
 // EventGatewayConditionReject 如果回退前是代理节点，那么需要修改为正确的节点ID
-func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventGatewayConditionReject(taskID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	// 1. 获取任务详情，检查状态
-	taskInfo, err := engine.GetTaskInfo(TaskID)
+	taskInfo, err := engine.GetTaskInfo(taskID)
 	if err != nil {
 		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
 		return nil // 获取失败不阻断流程，只是Hack失败
@@ -455,8 +456,8 @@ func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *mode
 	}
 
 	e.logger.Info("检测到网关后置节点驳回，尝试查找 proxy 节点",
-		elog.Int("TaskID", TaskID),
-		elog.String("CurrentNode", CurrentNode.NodeName))
+		elog.Int("taskID", taskID),
+		elog.String("node", node.NodeName))
 
 	// 2. 查找 proxy 节点
 	// NOTE: 通过流程实例ID查找 proxy 节点，获取其 prev_node_id 作为真正的回退目标
@@ -482,11 +483,11 @@ func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *mode
 	targetNodeID := proxyTask.PrevNodeID
 
 	e.logger.Info("执行来源篡改",
-		elog.String("CurrentNode", CurrentNode.NodeName),
+		elog.String("node", node.NodeName),
 		elog.String("OriginalPrev", taskInfo.PrevNodeID),
 		elog.String("NewPrev", targetNodeID))
 
-	err = e.engineSvc.UpdateTaskPrevNodeID(ctx, TaskID, targetNodeID)
+	err = e.engineSvc.UpdateTaskPrevNodeID(ctx, taskID, targetNodeID)
 	if err != nil {
 		e.logger.Error("修改任务上一级节点失败", elog.FieldErr(err))
 		return err
@@ -511,12 +512,12 @@ func (e *ProcessEvent) EventGatewayConditionReject(TaskID int, CurrentNode *mode
 // EventUserNodeRejectProxyCleanup 用户节点驳回时清理 proxy 节点事件
 // NOTE: 当检测到网关内存在 proxy 节点时，网关内的所有用户节点都应该注册此事件
 // 作用：当用户节点被驳回时，自动将同级的 proxy 节点状态修改为驳回
-func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(taskID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	// 1. 获取任务详情，检查状态
-	taskInfo, err := engine.GetTaskInfo(TaskID)
+	taskInfo, err := engine.GetTaskInfo(taskID)
 	if err != nil {
 		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
 		return err
@@ -528,9 +529,9 @@ func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *
 	}
 
 	e.logger.Info("用户节点驳回，触发 proxy 节点清理",
-		elog.Any("TaskID", TaskID),
-		elog.Any("NodeName", CurrentNode.NodeName),
-		elog.Any("PrevNodeID", PrevNode.NodeID))
+		elog.Any("taskID", taskID),
+		elog.Any("NodeName", node.NodeName),
+		elog.Any("PrevNodeID", prevNode.NodeID))
 
 	// 2. 查找同级的 proxy 节点
 	// NOTE: 使用流程实例ID查找 proxy 节点，因为一个流程实例只可能有一个 proxy 节点
@@ -545,7 +546,7 @@ func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *
 
 	e.logger.Info("检测到 proxy 节点，准备删除任务记录",
 		elog.String("ProxyNodeID", proxyNodeID),
-		elog.String("UserNodeID", CurrentNode.NodeID),
+		elog.String("UserNodeID", node.NodeID),
 		elog.Int("ProcInstID", taskInfo.ProcInstID))
 
 	// 3. 删除 proxy 节点任务记录
@@ -565,8 +566,8 @@ func (e *ProcessEvent) EventUserNodeRejectProxyCleanup(TaskID int, CurrentNode *
 }
 
 // EventRevoke 流程撤销
-func (e *ProcessEvent) EventRevoke(ProcessInstanceID int, RevokeUserID string) error {
-	processName, err := engine.GetProcessNameByInstanceID(ProcessInstanceID)
+func (e *ProcessEvent) EventRevoke(instID int, RevokeUserID string) error {
+	processName, err := engine.GetProcessNameByInstanceID(instID)
 	if err != nil {
 		return err
 	}
@@ -576,51 +577,7 @@ func (e *ProcessEvent) EventRevoke(ProcessInstanceID int, RevokeUserID string) e
 	return nil
 }
 
-func (e *ProcessEvent) fetchOrderAndWorkflow(ctx context.Context, processInstanceID int) (
-	order.Order, workflow.Workflow, error) {
-	// 获取流程变量中记录的工单ID
-	orderId, err := e.engineSvc.GetOrderIdByVariable(ctx, processInstanceID)
-	if err != nil {
-		return order.Order{}, workflow.Workflow{}, err
-	}
-
-	// 转换为 int64
-	id, err := strconv.ParseInt(orderId, 10, 64)
-	if err != nil {
-		return order.Order{}, workflow.Workflow{}, err
-	}
-
-	// 获取工单详情
-	nOrder, err := e.orderSvc.Detail(ctx, id)
-	if err != nil {
-		e.logger.Error("查询工单详情错误",
-			elog.FieldErr(err),
-			elog.Any("instId", processInstanceID),
-		)
-		return order.Order{}, workflow.Workflow{}, err
-	}
-
-	// 获取流程实例详情，拿到对应的版本号
-	inst, err := e.engineSvc.GetInstanceByID(ctx, processInstanceID)
-	if err != nil {
-		return order.Order{}, workflow.Workflow{}, err
-	}
-
-	// 3. 尝试获取历史快照 (Version-Aware)
-	// 获取流程信息 (自动处理快照与降级)
-	wf, err := e.workflowSvc.FindInstanceFlow(ctx, nOrder.WorkflowId, inst.ProcID, inst.ProcVersion)
-	if err != nil {
-		e.logger.Error("查询流程信息错误",
-			elog.FieldErr(err),
-			elog.Any("instId", processInstanceID),
-		)
-		return order.Order{}, workflow.Workflow{}, err
-	}
-
-	return nOrder, wf, nil
-}
-
-func (e *ProcessEvent) autoPassProxyNode(instanceID int, nodeID string) {
+func (e *ProcessEvent) autoPassNode(instID int, nodeID string, comment string) {
 	// 创建 10 秒超时上下文，用于重试等待任务生成
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -631,18 +588,17 @@ func (e *ProcessEvent) autoPassProxyNode(instanceID int, nodeID string) {
 	for {
 		select {
 		case <-ctx.Done():
-			e.logger.Error("User代理节点自动流转失败：等待任务创建超时",
-				elog.Any("InstanceID", instanceID),
-				elog.Any("NodeID", nodeID))
+			e.logger.Error("节点自动流转失败：等待任务创建超时",
+				elog.Int("InstanceID", instID),
+				elog.String("NodeID", nodeID))
 			return
 		case <-ticker.C:
-			tasks, err := e.engineSvc.GetTasksByCurrentNodeId(ctx, instanceID, nodeID)
+			tasks, err := e.engineSvc.GetTasksByCurrentNodeId(ctx, instID, nodeID)
 			if err == nil && len(tasks) > 0 {
 				// 找到任务，执行通过
-				// 注意：这里使用的是 TaskID 字段，修正了之前的 ID 报错问题
-				if passErr := e.engineSvc.Pass(ctx, tasks[0].TaskID, "Sys Auto Pass"); passErr != nil {
-					e.logger.Error("User代理节点自动流转通过失败",
-						elog.Any("TaskID", tasks[0].TaskID),
+				if passErr := e.engineSvc.Pass(ctx, tasks[0].TaskID, comment); passErr != nil {
+					e.logger.Error("节点自动流转通过失败",
+						elog.Int("taskID", tasks[0].TaskID),
 						elog.FieldErr(passErr))
 				}
 				return
@@ -653,12 +609,12 @@ func (e *ProcessEvent) autoPassProxyNode(instanceID int, nodeID string) {
 
 // EventInclusionPassCleanup 包容网关通过事件
 // 当包容网关的某一个分支通过时，将其他并行分支置为系统自动通过（SystemPass），实现“一票通过”或“竞争”模式
-func (e *ProcessEvent) EventInclusionPassCleanup(TaskID int, CurrentNode *model.Node, PrevNode model.Node) error {
+func (e *ProcessEvent) EventInclusionPassCleanup(taskID int, node *model.Node, prevNode model.Node) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	// 1. 获取任务详情，检查状态
-	taskInfo, err := engine.GetTaskInfo(TaskID)
+	taskInfo, err := engine.GetTaskInfo(taskID)
 	if err != nil {
 		e.logger.Error("查询任务详情失败", elog.FieldErr(err))
 		return err
@@ -670,7 +626,7 @@ func (e *ProcessEvent) EventInclusionPassCleanup(TaskID int, CurrentNode *model.
 	}
 
 	// 检查会签状态
-	taskNum, passNum, _, err := engine.TaskNodeStatus(TaskID)
+	taskNum, passNum, _, err := engine.TaskNodeStatus(taskID)
 	if err != nil {
 		return err
 	}
@@ -678,19 +634,19 @@ func (e *ProcessEvent) EventInclusionPassCleanup(TaskID int, CurrentNode *model.
 	// 如果是会签节点，且未全部通过，则不触发清理
 	if taskInfo.IsCosigned == 1 && passNum < taskNum {
 		e.logger.Info("包含节点会签未完成，暂不清理兄弟节点",
-			elog.Any("TaskID", TaskID),
+			elog.Any("taskID", taskID),
 			elog.Int("PassNum", passNum),
 			elog.Int("TotalNum", taskNum))
 		return nil
 	}
 
 	e.logger.Info("包含节点通过，触发兄弟节点清理",
-		elog.Any("TaskID", TaskID),
-		elog.Any("NodeName", CurrentNode.NodeName),
-		elog.Any("PrevNodeID", PrevNode.NodeID))
+		elog.Any("taskID", taskID),
+		elog.Any("NodeName", node.NodeName),
+		elog.Any("prevNodeID", prevNode.NodeID))
 
 	// 2. 调用服务层清理逻辑
 	// 使用 UpdateIsFinishedByPreNodeId 将同级任务置为 SystemPass (系统通过)
-	// 注意：这里使用的是 PrevNode.NodeID，即分支汇聚点（或分叉点）的ID
-	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, PrevNode.NodeID, SystemPass, SystemPassComment)
+	// 注意：这里使用的是 prevNode.NodeID，即分支汇聚点（或分叉点）的ID
+	return e.engineSvc.UpdateIsFinishedByPreNodeId(ctx, taskInfo.ProcInstID, prevNode.NodeID, SystemPass, SystemPassComment)
 }

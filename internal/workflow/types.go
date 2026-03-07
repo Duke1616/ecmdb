@@ -27,3 +27,8 @@ const (
 	NotifyTypeProgressImageResult NotifyType = domain.NotifyTypeProgressImageResult
 	NotifyTypeRevoke              NotifyType = domain.NotifyTypeRevoke
 )
+
+const (
+	Feishu NotifyMethod = domain.Feishu
+	Wechat NotifyMethod = domain.Wechat
+)

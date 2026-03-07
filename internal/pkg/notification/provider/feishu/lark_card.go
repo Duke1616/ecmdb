@@ -73,13 +73,13 @@ func (f *larkCardProvider) buildBuilder(src notification.Notification) card.Buil
 func (f *larkCardProvider) buildMessage(src notification.Notification, content message.Content) *notify.Message {
 	if src.IsPatch() {
 		return feishu.NewPatchBuilder(src.MessageID).
-			SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+			SetReceiveIDType(src.ReceiverType).
 			SetContent(content).
 			Build()
 	}
 
 	return feishu.NewCreateBuilder(src.Receiver).
-		SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+		SetReceiveIDType(src.ReceiverType).
 		SetContent(content).
 		Build()
 }

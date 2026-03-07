@@ -28,6 +28,10 @@ const (
 	LEADER Rule = "leaders"
 	// MAIN_LEADER 分管领导
 	MAIN_LEADER Rule = "main_leader"
+	// ON_CALL 值班排班人员
+	ON_CALL Rule = "on_call"
+	// TEAM 团队人员
+	TEAM Rule = "team"
 )
 
 type ExecMethod string
@@ -140,19 +144,85 @@ type Field struct {
 	ReadOnly bool              `json:"readonly"` // 只读字段，比如提示用户时候使用
 }
 
+// Assignee 审批人员分配规则配置
+type Assignee struct {
+	Rule   Rule     `json:"rule"`   // 匹配策略
+	Values []string `json:"values"` // 规则的目标值列表（使用 string 兼容更多实体标识）
+}
+
 type UserProperty struct {
-	Name          string   `json:"name"`           // 节点名称
-	Approved      []string `json:"approved"`       // 审批人、抄送人
-	Rule          Rule     `json:"rule"`           // 匹配策略
-	TemplateField string   `json:"template_field"` // 模版字段
-	IsCosigned    bool     `json:"is_cosigned"`    // 是否会签
-	IsCC          bool     `json:"is_cc"`          // 是否抄送
-	Fields        []Field  `json:"fields"`         // 表单字段配置
+	Name          string     `json:"name"`           // 节点名称
+	Approved      []string   `json:"approved"`       // 审批人、抄送人
+	Rule          Rule       `json:"rule"`           // 匹配策略
+	TemplateField string     `json:"template_field"` // 模版字段
+	Assignees     []Assignee `json:"assignees"`      // 新模式字段，支持配置多条分配规则
+	IsCosigned    bool       `json:"is_cosigned"`    // 是否会签
+	IsCC          bool       `json:"is_cc"`          // 是否抄送
+	Fields        []Field    `json:"fields"`         // 表单字段配置
+}
+
+// NormalizeAssignees 统一格式化获取人员分配规则，屏蔽新老版本数据差异
+func (u *UserProperty) NormalizeAssignees() []Assignee {
+	// 默认将使用新版本模式
+	if len(u.Assignees) > 0 {
+		return u.Assignees
+	}
+
+	// 兼容老版本情况
+	switch u.Rule {
+	case TEMPLATE:
+		return []Assignee{
+			{
+				Rule:   u.Rule,
+				Values: []string{u.TemplateField},
+			},
+		}
+	default:
+		return []Assignee{
+			{
+				Rule:   u.Rule,
+				Values: u.Approved,
+			},
+		}
+	}
 }
 
 type StartProperty struct {
 	Name     string `json:"name"`
 	IsNotify bool   `json:"is_notify"` // 是否开启开始节点消息通知
+}
+
+type ChatGroupMode string
+
+const (
+	ChatGroupUseExisting ChatGroupMode = "existing"
+	ChatGroupCreate      ChatGroupMode = "create"
+)
+
+type OutputMode string
+
+const (
+	OutputTicketData OutputMode = "ticket_data" // 工单提交信息
+	OutputAutoTask   OutputMode = "auto_task"   // 自动化任务返回结果
+	OutputUserInput  OutputMode = "user_input"  // 用户节点提交信息
+)
+
+// ChatGroup 单个群组配置
+type ChatGroup struct {
+	TeamID  int64  `json:"team_id"` // 所属团队
+	Channel string `json:"channel"` // 通知渠道
+	ChatID  string `json:"chat_id"` // 群 ID（各渠道的唯一标识）
+}
+
+// ChatGroupProperty 群通知节点属性
+// 该节点为纯广播型，发送完成后自动推进流程，无需等待任何操作
+type ChatGroupProperty struct {
+	Name       string        `json:"name"`        // 节点名称
+	Mode       ChatGroupMode `json:"mode"`        // existing / create
+	ChatGroups []ChatGroup   `json:"chat_groups"` // 已有群组列表（Mode=existing 使用）
+	TeamID     int64         `json:"team_id"`     // 归属团队 ID， 群组归属（Mode=create 时必填）
+	Assignees  []Assignee    `json:"assignees"`   // 成员规则， 需要拉取哪些人
+	OutputMode []OutputMode  `json:"is_auto"`     // 支持的返回数据
 }
 
 type EndProperty struct {

@@ -34,7 +34,7 @@ func (f *larkTextProvider) Send(ctx context.Context, src notification.Notificati
 		return notification.NotificationResponse{}, fmt.Errorf("序列化文本消息失败: %w", err)
 	}
 
-	msg := feishu.NewCreateBuilder(src.Receiver).SetReceiveIDType(feishu.ReceiveIDTypeUserID).
+	msg := feishu.NewCreateBuilder(src.Receiver).SetReceiveIDType(src.ReceiverType).
 		SetContent(feishu.NewFeishuCustom("text", string(content))).Build()
 
 	if err = f.handler.Send(ctx, msg); err != nil {

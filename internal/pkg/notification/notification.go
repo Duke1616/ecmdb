@@ -42,12 +42,12 @@ func NewErrorResponseWithID(notificationId int64, status, errorCode, errorMsg st
 }
 
 type Notification struct {
-	Receiver   string   `json:"receiver"`    // 接收者(手机/邮箱/用户ID)
-	Template   Template `json:"template"`    // 发送模版
-	Channel    Channel  `json:"channel"`     // 发送渠道
-	WorkFlowID int64    `json:"workflow_id"` // 工作流定义ID
-	MessageID  string   `json:"message_id"`  // 消息ID（用于更新消息）
-
+	Receiver     string   `json:"receiver"`      // 接收者(手机/邮箱/用户ID)
+	ReceiverType string   `json:"receiver_type"` // 接收者类型 (user_id, open_id, chat_id等)
+	Template     Template `json:"template"`      // 发送模版
+	Channel      Channel  `json:"channel"`       // 发送渠道
+	WorkFlowID   int64    `json:"workflow_id"`   // 工作流定义ID
+	MessageID    string   `json:"message_id"`    // 消息ID（用于更新消息）
 }
 
 func (n Notification) IsPatch() bool {

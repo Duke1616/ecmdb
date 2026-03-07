@@ -6,6 +6,7 @@ import (
 	"time"
 
 	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
+	teamv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/team"
 	templatev1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1"
 	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/codebook"
@@ -54,6 +55,7 @@ func InitApp() (*App, error) {
 		storage.NewS3Storage,
 		InitEALERTGrpcClient,
 		InitNotificationServiceClient,
+		InitTeamServiceClient,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
 		attribute.InitModule,
@@ -149,6 +151,11 @@ func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
 // InitNotificationServiceClient 初始化 notification 服务客户端
 func InitNotificationServiceClient(cc grpc.ClientConnInterface) notificationv1.NotificationServiceClient {
 	return notificationv1.NewNotificationServiceClient(cc)
+}
+
+// InitTeamServiceClient 初始化 team 服务客户端
+func InitTeamServiceClient(cc grpc.ClientConnInterface) teamv1.TeamServiceClient {
+	return teamv1.NewTeamServiceClient(cc)
 }
 
 // InitTemplateServiceClient 初始化 template 服务客户端

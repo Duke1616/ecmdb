@@ -1,8 +1,9 @@
 package easyflow
 
 import (
-	"encoding/json"
 	"sync"
+
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
@@ -11,6 +12,7 @@ import (
 
 const (
 	AutomationApproval = "automation"
+	ChatGroupApproval  = "chat_group"
 	SysAutoUser        = "sys_auto"
 	SysProxyNodeName   = "系统代理流转"
 )
@@ -32,25 +34,18 @@ func NewLogicFlowToEngineConvert() ProcessEngineConvert {
 }
 
 func (l *logicFlow) GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error) {
-	nodesJSON, err := json.Marshal(workflow.FlowData.Nodes)
+	nodes, err := ParseNodes(workflow.FlowData.Nodes)
 	if err != nil {
 		return AutomationProperty{}, err
 	}
 
-	var nodes []Node
-	err = json.Unmarshal(nodesJSON, &nodes)
-	if err != nil {
-		return AutomationProperty{}, err
-	}
-
-	property := AutomationProperty{}
 	for _, node := range nodes {
 		if node.ID == nodeId {
-			property, _ = ToNodeProperty[AutomationProperty](node)
+			return ToNodeProperty[AutomationProperty](node)
 		}
 	}
 
-	return property, err
+	return AutomationProperty{}, nil
 }
 
 func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error) {
@@ -93,6 +88,8 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 			l.Selective(node)
 		case "automation":
 			l.Automation(node)
+		case "chat_group":
+			l.ChatGroup(node)
 		}
 	}
 
@@ -151,6 +148,29 @@ func (l *logicFlow) Automation(node Node) {
 		NodeEndEvents:    []string{"EventNotify"},
 		TaskFinishEvents: l.getPassEvents(node.ID),
 	}
+	l.NodeList = append(l.NodeList, n)
+}
+
+func (l *logicFlow) ChatGroup(node Node) {
+	NodeName := "群通知节点"
+	property, _ := ToNodeProperty[ChatGroupProperty](node)
+	if property.Name != "" {
+		NodeName = property.Name
+	}
+
+	// 群通知节点为纯广播型，无需人工操作，NodeType=1
+	// 启动时触发 EventChatGroup，handler 负责发送群消息后直接调用 TaskPass 推进流程
+	// 不设置 NodeEndEvents：发送群消息不等同于审批通知，无需推送 EventNotify
+	n := model.Node{
+		NodeID:           node.ID,
+		NodeName:         NodeName,
+		NodeType:         1,
+		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
+		UserIDs:          []string{ChatGroupApproval},
+		NodeStartEvents:  []string{"EventChatGroup"},
+		TaskFinishEvents: l.getPassEvents(node.ID),
+	}
+
 	l.NodeList = append(l.NodeList, n)
 }
 
@@ -254,12 +274,19 @@ func (l *logicFlow) User(node Node) {
 		IsCosigned = 1
 	}
 
+	// 动态判定启动事件
+	// 如果是抄送节点 (Carbon Copy)，绑定 EventCarbonCopy；否则绑定 EventNotify
+	startEvents := []string{"EventNotify"}
+	if property.IsCC {
+		startEvents = []string{"EventCarbonCopy"}
+	}
+
 	// 录入数据
 	n := model.Node{NodeID: node.ID, NodeName: property.Name,
 		NodeType: 1, UserIDs: property.Approved,
 		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
 		TaskFinishEvents: append(l.getPassEvents(node.ID), l.getRejectEvents(node.ID)...),
-		NodeStartEvents:  []string{"EventNotify"},
+		NodeStartEvents:  startEvents,
 		IsCosigned:       IsCosigned,
 	}
 
@@ -432,8 +459,8 @@ func (l *logicFlow) checkBranchHasProxy(nodeId string, visited map[string]bool) 
 		return true
 	}
 
-	// 如果是用户节点或自动化节点，继续检查下级
-	if nodeInfo.Type == "user" || nodeInfo.Type == "automation" {
+	// 如果是用户节点、自动化节点或群通知节点，继续检查下级
+	if nodeInfo.Type == "user" || nodeInfo.Type == "automation" || nodeInfo.Type == "chat_group" {
 		targetEdges := l.FindTargetNodeId(nodeId)
 		for _, edge := range targetEdges {
 			if l.checkBranchHasProxy(edge.TargetNodeId, visited) {
@@ -561,45 +588,51 @@ func (l *logicFlow) GetNodeInfo(nodeId string) Node {
 
 // ToEdgeProperty edge连线字段解析
 func ToEdgeProperty(edges Edge) (EdgeProperty, error) {
-	edgesJson, err := json.Marshal(edges.Properties)
+	var property EdgeProperty
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &property,
+		TagName: "json",
+	})
 	if err != nil {
 		return EdgeProperty{}, err
 	}
 
-	var edgesProperty EdgeProperty
-	err = json.Unmarshal(edgesJson, &edgesProperty)
-	if err != nil {
+	if err = decoder.Decode(edges.Properties); err != nil {
 		return EdgeProperty{}, err
 	}
 
-	return edgesProperty, nil
+	return property, nil
 }
 
 // ToNodeProperty node节点字段解析
 func ToNodeProperty[T any](node Node) (T, error) {
-	nodesJson, err := json.Marshal(node.Properties)
+	var property T
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &property,
+		TagName: "json",
+	})
 	if err != nil {
 		return zeroValue[T](), err
 	}
 
-	var nodesProperty T
-	err = json.Unmarshal(nodesJson, &nodesProperty)
-	if err != nil {
+	if err = decoder.Decode(node.Properties); err != nil {
 		return zeroValue[T](), err
 	}
 
-	return nodesProperty, nil
+	return property, nil
 }
 
 func (l *logicFlow) toEdges() error {
-	edgesJSON, err := json.Marshal(l.Workflow.FlowData.Edges)
+	var edges []Edge
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &edges,
+		TagName: "json",
+	})
 	if err != nil {
 		return err
 	}
 
-	var edges []Edge
-	err = json.Unmarshal(edgesJSON, &edges)
-	if err != nil {
+	if err = decoder.Decode(l.Workflow.FlowData.Edges); err != nil {
 		return err
 	}
 
@@ -608,13 +641,7 @@ func (l *logicFlow) toEdges() error {
 }
 
 func (l *logicFlow) toNodes() error {
-	nodesJSON, err := json.Marshal(l.Workflow.FlowData.Nodes)
-	if err != nil {
-		return err
-	}
-
-	var nodes []Node
-	err = json.Unmarshal(nodesJSON, &nodes)
+	nodes, err := ParseNodes(l.Workflow.FlowData.Nodes)
 	if err != nil {
 		return err
 	}

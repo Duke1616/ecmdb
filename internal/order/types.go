@@ -24,6 +24,8 @@ const (
 
 type Order = domain.Order
 
+type FormValue = domain.FormValue
+
 var protoToDomain = map[notificationv1.Channel]domain.Channel{
 	notificationv1.Channel_LARK_CARD: domain.ChannelLarkCard,
 	notificationv1.Channel_EMAIL:     domain.ChannelEmail,

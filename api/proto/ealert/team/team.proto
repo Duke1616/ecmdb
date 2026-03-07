@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package ealert.team.v1;
+
+import "ealert/notification/v1/notification.proto";
+
+option go_package = "ealert.team/v1;team";
+
+// ChatGroup 群组定义
+message ChatGroup {
+  int64 id = 1;              // 群组 ID
+  int64 team_id = 2;         // 关联的团队 ID
+  string name = 3;           // 群组名称
+  notification.v1.Channel channel = 4; // 渠道类型
+  string chat_id = 5;        // 群聊的对应 ID (如飞书、企业微信的群ID)
+  bool is_temporary = 6;     // 是否是临时群
+  int64 expire_time = 7;     // 计划解散/归档的时间戳
+  int64 ctime = 8;           // 创建时间
+  int64 utime = 9;           // 更新时间
+}
+
+// Team 团队定义
+message Team {
+  int64 id = 1;                   // ID 信息
+  string name = 2;                // 名称
+  string owner = 3;               // 管理人员
+  repeated string members = 4;    // 绑定人员
+  repeated ChatGroup chat_groups = 5; // 绑定的群聊列表
+  int64 ctime = 6;                // 创建时间
+  int64 utime = 7;                // 更新时间
+}
+
+// TeamService 团队服务
+service TeamService {
+  // SaveTeam 保存团队信息
+  rpc SaveTeam(SaveTeamRequest) returns (SaveTeamResponse);
+  // GetTeamById 根据团队ID查询团队及其详情
+  rpc GetTeamById(GetTeamByIdRequest) returns (GetTeamByIdResponse);
+  // GetTeamByIds 根据多个团队ID批量查询团队信息
+  rpc GetTeamByIds(GetTeamByIdsRequest) returns (GetTeamByIdsResponse);
+  // List 分页查询团队列表
+  rpc List(ListRequest) returns (ListResponse);
+  // DeleteTeam 根据团队ID删除对应团队
+  rpc DeleteTeam(DeleteTeamRequest) returns (DeleteTeamResponse);
+  // GetTeamsByMember 根据成员账号查询其所在的团队列表
+  rpc GetTeamsByMember(GetTeamsByMemberRequest) returns (GetTeamsByMemberResponse);
+
+  // BindChatGroup 绑定一条群聊记录到团队
+  rpc BindChatGroup(BindChatGroupRequest) returns (BindChatGroupResponse);
+  // UpdateChatGroup 更新单条群聊记录
+  rpc UpdateChatGroup(UpdateChatGroupRequest) returns (UpdateChatGroupResponse);
+  // UnbindChatGroup 解绑群聊记录
+  rpc UnbindChatGroup(UnbindChatGroupRequest) returns (UnbindChatGroupResponse);
+}
+
+message SaveTeamRequest {
+  Team team = 1;
+}
+
+message SaveTeamResponse {
+  Team team = 1;
+}
+
+message GetTeamByIdRequest {
+  int64 id = 1;
+}
+
+message GetTeamByIdResponse {
+  Team team = 1;
+}
+
+message GetTeamByIdsRequest {
+  repeated int64 ids = 1;
+}
+
+message GetTeamByIdsResponse {
+  repeated Team teams = 1;
+}
+
+message ListRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message ListResponse {
+  repeated Team teams = 1;
+  int64 total = 2;
+}
+
+message DeleteTeamRequest {
+  int64 id = 1;
+}
+
+message DeleteTeamResponse {}
+
+message GetTeamsByMemberRequest {
+  string member = 1;
+}
+
+message GetTeamsByMemberResponse {
+  repeated Team teams = 1;
+}
+
+message BindChatGroupRequest {
+  ChatGroup group = 1;
+}
+
+message BindChatGroupResponse {
+  ChatGroup group = 1;
+}
+
+message UpdateChatGroupRequest {
+  ChatGroup group = 1;
+}
+
+message UpdateChatGroupResponse {}
+
+message UnbindChatGroupRequest {
+  int64 id = 1;
+}
+
+message UnbindChatGroupResponse {}

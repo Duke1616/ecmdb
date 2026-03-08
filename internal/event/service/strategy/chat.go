@@ -167,37 +167,34 @@ func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, dat
 	}
 }
 
-// handleExistingGroups 处理现有群组逻辑：匹配 ID 或按发起人反查团队
+// handleExistingGroups 处理现有群组逻辑：必须显式指定 ChatGroupIDs
 func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, data *chatData) ([]recipient, error) {
-	var chatGroups []*teamv1.ChatGroup
-
-	// 1. 获取群组列表
-	if len(data.property.ChatGroupIDs) > 0 {
-		resp, err := n.teamSvc.GetChatGroupByIds(ctx, &teamv1.GetChatGroupByIdsRequest{Ids: data.property.ChatGroupIDs})
-		if err != nil {
-			return nil, fmt.Errorf("获取群组详情失败: %w", err)
-		}
-		chatGroups = resp.Groups
-	} else {
-		resp, err := n.teamSvc.GetTeamsByMember(ctx, &teamv1.GetTeamsByMemberRequest{Member: data.startUser.Username})
-		if err == nil && len(resp.Teams) > 0 {
-			for _, t := range resp.Teams {
-				chatGroups = append(chatGroups, t.ChatGroups...)
-			}
-		}
+	// 1. 检查是否配置了群组 ID
+	if len(data.property.ChatGroupIDs) == 0 {
+		n.Logger.Warn("ChatNotification (ExistingMode) 未显式配置群组 ID，跳过处理",
+			elog.Int("instId", info.InstID))
+		return nil, nil
 	}
 
-	// 2. 如果配置了动态成员，同步添加到现有群组
+	// 2. 获取群组详情
+	resp, err := n.teamSvc.GetChatGroupByIds(ctx, &teamv1.GetChatGroupByIdsRequest{Ids: data.property.ChatGroupIDs})
+	if err != nil {
+		return nil, fmt.Errorf("获取群组详情失败: %w", err)
+	}
+
+	// 3. 如果配置了动态成员，同步添加到现有群组
 	if members := n.extractMemberIDs(data.members); len(members) > 0 {
-		for _, cg := range chatGroups {
-			if err := n.addMembersToChat(ctx, cg.ChatId, members); err != nil {
-				n.Logger.Warn("ChatNotification 添加成员到现有群组失败", elog.FieldErr(err), elog.String("chatId", cg.ChatId))
+		for _, cg := range resp.Groups {
+			if err = n.addMembersToChat(ctx, cg.ChatId, members); err != nil {
+				n.Logger.Warn("ChatNotification 添加成员到现有群组失败",
+					elog.FieldErr(err),
+					elog.String("chatId", cg.ChatId))
 			}
 		}
 	}
 
-	// 3. 转换为接收者对象
-	return slice.Map(chatGroups, func(idx int, src *teamv1.ChatGroup) recipient {
+	// 4. 转换为接收者对象
+	return slice.Map(resp.Groups, func(idx int, src *teamv1.ChatGroup) recipient {
 		ch := n.GetChatChannel(src.Channel.String())
 		if src.Channel == notificationv1.Channel_CHANNEL_UNSPECIFIED {
 			ch = info.Channel
@@ -208,38 +205,36 @@ func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, 
 
 // handleCreateGroup 处理新建群组及其团队绑定
 func (n *ChatNotification) handleCreateGroup(ctx context.Context, info Info, data *chatData) ([]recipient, error) {
-	chatID, err := n.createChatGroup(ctx, data)
+	// 群组名称
+	chatName := fmt.Sprintf("【ECMDB】- %s", data.template)
+
+	// 创建群组
+	chatID, err := n.createChatGroup(ctx, chatName, data)
 	if err != nil {
 		n.Logger.Error("创建通知群组失败", elog.FieldErr(err))
 		return nil, err
 	}
 
 	// 异步绑定团队
-	go n.asyncBindGroupToTeam(data.startUser.Username, data.startUser.DisplayName, data.template, chatID)
+	go n.asyncBindGroupToTeam(chatName, chatID)
 
 	return []recipient{{chatID: chatID, channel: info.Channel}}, nil
 }
 
 // asyncBindGroupToTeam 异步将新群组绑定到发起人的团队
-func (n *ChatNotification) asyncBindGroupToTeam(username, displayName, template, chatID string) {
-	ctx := context.Background()
-	resp, err := n.teamSvc.GetTeamsByMember(ctx, &teamv1.GetTeamsByMemberRequest{Member: username})
-	if err != nil || len(resp.Teams) == 0 {
-		return
-	}
-
-	team := resp.Teams[0]
-	title := fmt.Sprintf("【ECmdb】%s-%s", displayName, template)
-	_, err = n.teamSvc.BindChatGroup(ctx, &teamv1.BindChatGroupRequest{
+func (n *ChatNotification) asyncBindGroupToTeam(chatName, chatID string) {
+	// 如果 Team 指定为 0 ，则代表全局默认团队
+	_, err := n.teamSvc.BindChatGroup(context.Background(), &teamv1.BindChatGroupRequest{
 		Group: &teamv1.ChatGroup{
-			TeamId:  team.Id,
-			Name:    title,
+			TeamId:  0,
+			Name:    chatName,
 			ChatId:  chatID,
 			Channel: notificationv1.Channel_LARK_CARD,
 		},
 	})
+
 	if err != nil {
-		n.Logger.Error("异步绑定群组到团队失败", elog.FieldErr(err), elog.Int64("teamId", team.Id))
+		n.Logger.Error("异步绑定群组到默认团队", elog.FieldErr(err))
 	}
 }
 
@@ -272,17 +267,16 @@ func (n *ChatNotification) buildNotifications(info Info, data *chatData, recipie
 }
 
 // createChatGroup 创建飞书群组
-func (n *ChatNotification) createChatGroup(ctx context.Context, data *chatData) (string, error) {
+func (n *ChatNotification) createChatGroup(ctx context.Context, chatName string, data *chatData) (string, error) {
 	memberIDs := n.extractMemberIDs(data.members)
 	if len(memberIDs) == 0 {
 		return "", fmt.Errorf("未找到有效的群成员")
 	}
 
-	groupName := fmt.Sprintf("【ECMDB】- %s", data.template)
 	req := larkim.NewCreateChatReqBuilder().
 		UserIdType(`user_id`).
 		Body(larkim.NewCreateChatReqBodyBuilder().
-			Name(groupName).
+			Name(chatName).
 			UserIdList(memberIDs).
 			Build()).
 		Build()
@@ -362,35 +356,16 @@ func (n *ChatNotification) addMembersToChat(ctx context.Context, chatID string, 
 	return nil
 }
 
-// resolveMembers 解析规则获取最终用户列表，支持兜底团队成员
+// resolveMembers 解析规则获取最终用户列表
 func (n *ChatNotification) resolveMembers(ctx context.Context, info Info, property easyflow.ChatGroupProperty) []user.User {
-	// 1. 优先解析显式配置的参与者规则
-	if len(property.Assignees) > 0 {
-		targets := n.EnrichTargets(info, property.Assignees)
-		users, _ := n.assigneeService.Resolve(ctx, targets)
-		if len(users) > 0 {
-			return users
-		}
-	}
-
-	// 2. 兜底逻辑：反查发起人团队成员
-	resp, err := n.teamSvc.GetTeamsByMember(ctx, &teamv1.GetTeamsByMemberRequest{Member: info.Order.CreateBy})
-	if err != nil || len(resp.Teams) == 0 {
+	// 1. 如果未配置分配规则，则不解析成员
+	if len(property.Assignees) == 0 {
 		return nil
 	}
 
-	var usernames []string
-	for _, team := range resp.Teams {
-		usernames = append(usernames, team.Members...)
-	}
-
-	// 3. 用户名去重并转换实体
-	usernames = n.deduplicateUsernames(usernames)
-	if len(usernames) == 0 {
-		return nil
-	}
-
-	users, _ := n.UserSvc.FindByUsernames(ctx, usernames)
+	// 2. 解析配置的参与者规则
+	targets := n.EnrichTargets(info, property.Assignees)
+	users, _ := n.assigneeService.Resolve(ctx, targets)
 	return users
 }
 
@@ -423,20 +398,5 @@ func (n *ChatNotification) extractMemberIDs(users []user.User) []string {
 			return src.FeishuInfo.UserId, true
 		}
 		return src.FeishuInfo.UserId, src.FeishuInfo.UserId != ""
-	})
-}
-
-// deduplicateUsernames 用户名去重
-func (n *ChatNotification) deduplicateUsernames(uns []string) []string {
-	seen := make(map[string]struct{})
-	return slice.FilterMap(uns, func(idx int, un string) (string, bool) {
-		if un == "" {
-			return "", false
-		}
-		if _, ok := seen[un]; ok {
-			return "", false
-		}
-		seen[un] = struct{}{}
-		return un, true
 	})
 }

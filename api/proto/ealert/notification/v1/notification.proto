@@ -28,6 +28,8 @@ enum Channel {
   EMAIL = 2;
   // 站内信
   IN_APP = 3;
+  // 微信
+  WECHAT = 4;
 }
 
 // 通知发送状态枚举
@@ -44,6 +46,16 @@ enum SendStatus {
   SUCCEEDED = 4;
   // 发送失败
   FAILED = 5;
+}
+
+// 接收者类型
+enum ReceiverType {
+  // 未指定，默认为用户
+  RECEIVER_TYPE_UNSPECIFIED = 0;
+  // 用户 (user_id/email/phone)
+  USER = 1;
+  // 群组 (chat_id)
+  CHAT_GROUP = 2;
 }
 
 // 错误代码枚举
@@ -105,6 +117,8 @@ message Notification {
   int64 template_set_id = 6;
   // 模板参数
   google.protobuf.Struct template_params = 7;
+  // 接收者类型
+  ReceiverType receiver_type = 8;
 }
 
 // 同步单条发送通知请求

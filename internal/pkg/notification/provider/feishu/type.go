@@ -1,10 +1,24 @@
 package feishu
 
 import (
+	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/enotify/notify/feishu/card"
 	"github.com/ecodeclub/ekit/slice"
 )
+
+func toReceiverType(rt string) notificationv1.ReceiverType {
+	switch rt {
+	case notification.ReceiverTypeChatGroup:
+		// 对应飞书 chat_id
+		return notificationv1.ReceiverType_CHAT_GROUP
+	case notification.ReceiverTypeUser:
+		// 对应飞书 user_id
+		return notificationv1.ReceiverType_USER
+	default:
+		return notificationv1.ReceiverType_USER
+	}
+}
 
 func toCardInputFields(fields []notification.InputField) []card.InputField {
 	return slice.Map(fields, func(idx int, src notification.InputField) card.InputField {

@@ -207,22 +207,20 @@ const (
 	OutputUserInput  OutputMode = "user_input"  // 用户节点提交信息
 )
 
-// ChatGroup 单个群组配置
-type ChatGroup struct {
-	TeamID  int64  `json:"team_id"` // 所属团队
-	Channel string `json:"channel"` // 通知渠道
-	ChatID  string `json:"chat_id"` // 群 ID（各渠道的唯一标识）
-}
-
 // ChatGroupProperty 群通知节点属性
 // 该节点为纯广播型，发送完成后自动推进流程，无需等待任何操作
 type ChatGroupProperty struct {
-	Name       string        `json:"name"`        // 节点名称
-	Mode       ChatGroupMode `json:"mode"`        // existing / create
-	ChatGroups []ChatGroup   `json:"chat_groups"` // 已有群组列表（Mode=existing 使用）
-	TeamID     int64         `json:"team_id"`     // 归属团队 ID， 群组归属（Mode=create 时必填）
-	Assignees  []Assignee    `json:"assignees"`   // 成员规则， 需要拉取哪些人
-	OutputMode []OutputMode  `json:"is_auto"`     // 支持的返回数据
+	Name         string           `json:"name"`                     // 节点名称
+	Mode         ChatGroupMode    `json:"mode"`                     // existing / create
+	ChatGroupIDs []int64          `json:"chat_group_ids,omitempty"` // existing 模式, 自动匹配所属 team 内部的所有人
+	Create       *CreateChatGroup `json:"create,omitempty"`         // create 模式，新建一个群组，全局不绑定任何 Team，或者默认 Team
+	Assignees    []Assignee       `json:"assignees"`                // 成员规则
+	OutputMode   []OutputMode     `json:"is_auto"`                  // 支持的返回数据
+}
+
+type CreateChatGroup struct {
+	Name    string `json:"name"`    // 创建群名称
+	Channel string `json:"channel"` // 通知渠道
 }
 
 type EndProperty struct {

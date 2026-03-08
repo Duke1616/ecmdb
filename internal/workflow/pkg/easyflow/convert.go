@@ -88,7 +88,7 @@ func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
 			l.Selective(node)
 		case "automation":
 			l.Automation(node)
-		case "chat_group":
+		case "chat":
 			l.ChatGroup(node)
 		}
 	}
@@ -496,11 +496,12 @@ func (l *logicFlow) createProxyWaitNode(prevNodeId, eventNodeId string) string {
 	// 所以我们手动指定事件。
 	// 我们知道 eventNodeId 是 parallel 或 inclusion。
 	info := l.GetNodeInfo(eventNodeId)
-	if info.Type == "parallel" {
+	switch info.Type {
+	case "parallel":
 		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
-	} else if info.Type == "inclusion" {
+	case "inclusion":
 		n.TaskFinishEvents = []string{"EventTaskInclusionNodePass"}
-	} else if info.Type == "selective" {
+	case "selective":
 		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
 	}
 

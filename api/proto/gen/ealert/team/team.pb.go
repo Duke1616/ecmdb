@@ -1008,6 +1008,262 @@ func (*UnbindChatGroupResponse) Descriptor() ([]byte, []int) {
 	return file_ealert_team_team_proto_rawDescGZIP(), []int{19}
 }
 
+type GetDefaultChatGroupsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDefaultChatGroupsRequest) Reset() {
+	*x = GetDefaultChatGroupsRequest{}
+	mi := &file_ealert_team_team_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDefaultChatGroupsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDefaultChatGroupsRequest) ProtoMessage() {}
+
+func (x *GetDefaultChatGroupsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ealert_team_team_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDefaultChatGroupsRequest.ProtoReflect.Descriptor instead.
+func (*GetDefaultChatGroupsRequest) Descriptor() ([]byte, []int) {
+	return file_ealert_team_team_proto_rawDescGZIP(), []int{20}
+}
+
+type GetDefaultChatGroupsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Groups        []*ChatGroup           `protobuf:"bytes,1,rep,name=groups,proto3" json:"groups,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDefaultChatGroupsResponse) Reset() {
+	*x = GetDefaultChatGroupsResponse{}
+	mi := &file_ealert_team_team_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDefaultChatGroupsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDefaultChatGroupsResponse) ProtoMessage() {}
+
+func (x *GetDefaultChatGroupsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ealert_team_team_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDefaultChatGroupsResponse.ProtoReflect.Descriptor instead.
+func (*GetDefaultChatGroupsResponse) Descriptor() ([]byte, []int) {
+	return file_ealert_team_team_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetDefaultChatGroupsResponse) GetGroups() []*ChatGroup {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+type GetChatGroupByIdRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatGroupByIdRequest) Reset() {
+	*x = GetChatGroupByIdRequest{}
+	mi := &file_ealert_team_team_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatGroupByIdRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatGroupByIdRequest) ProtoMessage() {}
+
+func (x *GetChatGroupByIdRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ealert_team_team_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatGroupByIdRequest.ProtoReflect.Descriptor instead.
+func (*GetChatGroupByIdRequest) Descriptor() ([]byte, []int) {
+	return file_ealert_team_team_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetChatGroupByIdRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type GetChatGroupByIdResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Group         *ChatGroup             `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatGroupByIdResponse) Reset() {
+	*x = GetChatGroupByIdResponse{}
+	mi := &file_ealert_team_team_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatGroupByIdResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatGroupByIdResponse) ProtoMessage() {}
+
+func (x *GetChatGroupByIdResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ealert_team_team_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatGroupByIdResponse.ProtoReflect.Descriptor instead.
+func (*GetChatGroupByIdResponse) Descriptor() ([]byte, []int) {
+	return file_ealert_team_team_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetChatGroupByIdResponse) GetGroup() *ChatGroup {
+	if x != nil {
+		return x.Group
+	}
+	return nil
+}
+
+type GetChatGroupByIdsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []int64                `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatGroupByIdsRequest) Reset() {
+	*x = GetChatGroupByIdsRequest{}
+	mi := &file_ealert_team_team_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatGroupByIdsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatGroupByIdsRequest) ProtoMessage() {}
+
+func (x *GetChatGroupByIdsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ealert_team_team_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatGroupByIdsRequest.ProtoReflect.Descriptor instead.
+func (*GetChatGroupByIdsRequest) Descriptor() ([]byte, []int) {
+	return file_ealert_team_team_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetChatGroupByIdsRequest) GetIds() []int64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+type GetChatGroupByIdsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Groups        []*ChatGroup           `protobuf:"bytes,1,rep,name=groups,proto3" json:"groups,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatGroupByIdsResponse) Reset() {
+	*x = GetChatGroupByIdsResponse{}
+	mi := &file_ealert_team_team_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatGroupByIdsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatGroupByIdsResponse) ProtoMessage() {}
+
+func (x *GetChatGroupByIdsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ealert_team_team_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatGroupByIdsResponse.ProtoReflect.Descriptor instead.
+func (*GetChatGroupByIdsResponse) Descriptor() ([]byte, []int) {
+	return file_ealert_team_team_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetChatGroupByIdsResponse) GetGroups() []*ChatGroup {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
 var File_ealert_team_team_proto protoreflect.FileDescriptor
 
 const file_ealert_team_team_proto_rawDesc = "" +
@@ -1067,7 +1323,18 @@ const file_ealert_team_team_proto_rawDesc = "" +
 	"\x17UpdateChatGroupResponse\"(\n" +
 	"\x16UnbindChatGroupRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"\x19\n" +
-	"\x17UnbindChatGroupResponse2\xb4\x06\n" +
+	"\x17UnbindChatGroupResponse\"\x1d\n" +
+	"\x1bGetDefaultChatGroupsRequest\"Q\n" +
+	"\x1cGetDefaultChatGroupsResponse\x121\n" +
+	"\x06groups\x18\x01 \x03(\v2\x19.ealert.team.v1.ChatGroupR\x06groups\")\n" +
+	"\x17GetChatGroupByIdRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"K\n" +
+	"\x18GetChatGroupByIdResponse\x12/\n" +
+	"\x05group\x18\x01 \x01(\v2\x19.ealert.team.v1.ChatGroupR\x05group\",\n" +
+	"\x18GetChatGroupByIdsRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x03R\x03ids\"N\n" +
+	"\x19GetChatGroupByIdsResponse\x121\n" +
+	"\x06groups\x18\x01 \x03(\v2\x19.ealert.team.v1.ChatGroupR\x06groups2\xf8\b\n" +
 	"\vTeamService\x12M\n" +
 	"\bSaveTeam\x12\x1f.ealert.team.v1.SaveTeamRequest\x1a .ealert.team.v1.SaveTeamResponse\x12V\n" +
 	"\vGetTeamById\x12\".ealert.team.v1.GetTeamByIdRequest\x1a#.ealert.team.v1.GetTeamByIdResponse\x12Y\n" +
@@ -1078,7 +1345,10 @@ const file_ealert_team_team_proto_rawDesc = "" +
 	"\x10GetTeamsByMember\x12'.ealert.team.v1.GetTeamsByMemberRequest\x1a(.ealert.team.v1.GetTeamsByMemberResponse\x12\\\n" +
 	"\rBindChatGroup\x12$.ealert.team.v1.BindChatGroupRequest\x1a%.ealert.team.v1.BindChatGroupResponse\x12b\n" +
 	"\x0fUpdateChatGroup\x12&.ealert.team.v1.UpdateChatGroupRequest\x1a'.ealert.team.v1.UpdateChatGroupResponse\x12b\n" +
-	"\x0fUnbindChatGroup\x12&.ealert.team.v1.UnbindChatGroupRequest\x1a'.ealert.team.v1.UnbindChatGroupResponseB\xb5\x01\n" +
+	"\x0fUnbindChatGroup\x12&.ealert.team.v1.UnbindChatGroupRequest\x1a'.ealert.team.v1.UnbindChatGroupResponse\x12q\n" +
+	"\x14GetDefaultChatGroups\x12+.ealert.team.v1.GetDefaultChatGroupsRequest\x1a,.ealert.team.v1.GetDefaultChatGroupsResponse\x12e\n" +
+	"\x10GetChatGroupById\x12'.ealert.team.v1.GetChatGroupByIdRequest\x1a(.ealert.team.v1.GetChatGroupByIdResponse\x12h\n" +
+	"\x11GetChatGroupByIds\x12(.ealert.team.v1.GetChatGroupByIdsRequest\x1a).ealert.team.v1.GetChatGroupByIdsResponseB\xb5\x01\n" +
 	"\x12com.ealert.team.v1B\tTeamProtoP\x01Z:github.com/Duke1616/ecmdb/api/proto/gen/ealert/team;teamv1\xa2\x02\x03ETX\xaa\x02\x0eEalert.Team.V1\xca\x02\x0eEalert\\Team\\V1\xe2\x02\x1aEalert\\Team\\V1\\GPBMetadata\xea\x02\x10Ealert::Team::V1b\x06proto3"
 
 var (
@@ -1093,32 +1363,38 @@ func file_ealert_team_team_proto_rawDescGZIP() []byte {
 	return file_ealert_team_team_proto_rawDescData
 }
 
-var file_ealert_team_team_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_ealert_team_team_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_ealert_team_team_proto_goTypes = []any{
-	(*ChatGroup)(nil),                // 0: ealert.team.v1.ChatGroup
-	(*Team)(nil),                     // 1: ealert.team.v1.Team
-	(*SaveTeamRequest)(nil),          // 2: ealert.team.v1.SaveTeamRequest
-	(*SaveTeamResponse)(nil),         // 3: ealert.team.v1.SaveTeamResponse
-	(*GetTeamByIdRequest)(nil),       // 4: ealert.team.v1.GetTeamByIdRequest
-	(*GetTeamByIdResponse)(nil),      // 5: ealert.team.v1.GetTeamByIdResponse
-	(*GetTeamByIdsRequest)(nil),      // 6: ealert.team.v1.GetTeamByIdsRequest
-	(*GetTeamByIdsResponse)(nil),     // 7: ealert.team.v1.GetTeamByIdsResponse
-	(*ListRequest)(nil),              // 8: ealert.team.v1.ListRequest
-	(*ListResponse)(nil),             // 9: ealert.team.v1.ListResponse
-	(*DeleteTeamRequest)(nil),        // 10: ealert.team.v1.DeleteTeamRequest
-	(*DeleteTeamResponse)(nil),       // 11: ealert.team.v1.DeleteTeamResponse
-	(*GetTeamsByMemberRequest)(nil),  // 12: ealert.team.v1.GetTeamsByMemberRequest
-	(*GetTeamsByMemberResponse)(nil), // 13: ealert.team.v1.GetTeamsByMemberResponse
-	(*BindChatGroupRequest)(nil),     // 14: ealert.team.v1.BindChatGroupRequest
-	(*BindChatGroupResponse)(nil),    // 15: ealert.team.v1.BindChatGroupResponse
-	(*UpdateChatGroupRequest)(nil),   // 16: ealert.team.v1.UpdateChatGroupRequest
-	(*UpdateChatGroupResponse)(nil),  // 17: ealert.team.v1.UpdateChatGroupResponse
-	(*UnbindChatGroupRequest)(nil),   // 18: ealert.team.v1.UnbindChatGroupRequest
-	(*UnbindChatGroupResponse)(nil),  // 19: ealert.team.v1.UnbindChatGroupResponse
-	(v1.Channel)(0),                  // 20: ealert.notification.v1.Channel
+	(*ChatGroup)(nil),                    // 0: ealert.team.v1.ChatGroup
+	(*Team)(nil),                         // 1: ealert.team.v1.Team
+	(*SaveTeamRequest)(nil),              // 2: ealert.team.v1.SaveTeamRequest
+	(*SaveTeamResponse)(nil),             // 3: ealert.team.v1.SaveTeamResponse
+	(*GetTeamByIdRequest)(nil),           // 4: ealert.team.v1.GetTeamByIdRequest
+	(*GetTeamByIdResponse)(nil),          // 5: ealert.team.v1.GetTeamByIdResponse
+	(*GetTeamByIdsRequest)(nil),          // 6: ealert.team.v1.GetTeamByIdsRequest
+	(*GetTeamByIdsResponse)(nil),         // 7: ealert.team.v1.GetTeamByIdsResponse
+	(*ListRequest)(nil),                  // 8: ealert.team.v1.ListRequest
+	(*ListResponse)(nil),                 // 9: ealert.team.v1.ListResponse
+	(*DeleteTeamRequest)(nil),            // 10: ealert.team.v1.DeleteTeamRequest
+	(*DeleteTeamResponse)(nil),           // 11: ealert.team.v1.DeleteTeamResponse
+	(*GetTeamsByMemberRequest)(nil),      // 12: ealert.team.v1.GetTeamsByMemberRequest
+	(*GetTeamsByMemberResponse)(nil),     // 13: ealert.team.v1.GetTeamsByMemberResponse
+	(*BindChatGroupRequest)(nil),         // 14: ealert.team.v1.BindChatGroupRequest
+	(*BindChatGroupResponse)(nil),        // 15: ealert.team.v1.BindChatGroupResponse
+	(*UpdateChatGroupRequest)(nil),       // 16: ealert.team.v1.UpdateChatGroupRequest
+	(*UpdateChatGroupResponse)(nil),      // 17: ealert.team.v1.UpdateChatGroupResponse
+	(*UnbindChatGroupRequest)(nil),       // 18: ealert.team.v1.UnbindChatGroupRequest
+	(*UnbindChatGroupResponse)(nil),      // 19: ealert.team.v1.UnbindChatGroupResponse
+	(*GetDefaultChatGroupsRequest)(nil),  // 20: ealert.team.v1.GetDefaultChatGroupsRequest
+	(*GetDefaultChatGroupsResponse)(nil), // 21: ealert.team.v1.GetDefaultChatGroupsResponse
+	(*GetChatGroupByIdRequest)(nil),      // 22: ealert.team.v1.GetChatGroupByIdRequest
+	(*GetChatGroupByIdResponse)(nil),     // 23: ealert.team.v1.GetChatGroupByIdResponse
+	(*GetChatGroupByIdsRequest)(nil),     // 24: ealert.team.v1.GetChatGroupByIdsRequest
+	(*GetChatGroupByIdsResponse)(nil),    // 25: ealert.team.v1.GetChatGroupByIdsResponse
+	(v1.Channel)(0),                      // 26: ealert.notification.v1.Channel
 }
 var file_ealert_team_team_proto_depIdxs = []int32{
-	20, // 0: ealert.team.v1.ChatGroup.channel:type_name -> ealert.notification.v1.Channel
+	26, // 0: ealert.team.v1.ChatGroup.channel:type_name -> ealert.notification.v1.Channel
 	0,  // 1: ealert.team.v1.Team.chat_groups:type_name -> ealert.team.v1.ChatGroup
 	1,  // 2: ealert.team.v1.SaveTeamRequest.team:type_name -> ealert.team.v1.Team
 	1,  // 3: ealert.team.v1.SaveTeamResponse.team:type_name -> ealert.team.v1.Team
@@ -1129,29 +1405,38 @@ var file_ealert_team_team_proto_depIdxs = []int32{
 	0,  // 8: ealert.team.v1.BindChatGroupRequest.group:type_name -> ealert.team.v1.ChatGroup
 	0,  // 9: ealert.team.v1.BindChatGroupResponse.group:type_name -> ealert.team.v1.ChatGroup
 	0,  // 10: ealert.team.v1.UpdateChatGroupRequest.group:type_name -> ealert.team.v1.ChatGroup
-	2,  // 11: ealert.team.v1.TeamService.SaveTeam:input_type -> ealert.team.v1.SaveTeamRequest
-	4,  // 12: ealert.team.v1.TeamService.GetTeamById:input_type -> ealert.team.v1.GetTeamByIdRequest
-	6,  // 13: ealert.team.v1.TeamService.GetTeamByIds:input_type -> ealert.team.v1.GetTeamByIdsRequest
-	8,  // 14: ealert.team.v1.TeamService.List:input_type -> ealert.team.v1.ListRequest
-	10, // 15: ealert.team.v1.TeamService.DeleteTeam:input_type -> ealert.team.v1.DeleteTeamRequest
-	12, // 16: ealert.team.v1.TeamService.GetTeamsByMember:input_type -> ealert.team.v1.GetTeamsByMemberRequest
-	14, // 17: ealert.team.v1.TeamService.BindChatGroup:input_type -> ealert.team.v1.BindChatGroupRequest
-	16, // 18: ealert.team.v1.TeamService.UpdateChatGroup:input_type -> ealert.team.v1.UpdateChatGroupRequest
-	18, // 19: ealert.team.v1.TeamService.UnbindChatGroup:input_type -> ealert.team.v1.UnbindChatGroupRequest
-	3,  // 20: ealert.team.v1.TeamService.SaveTeam:output_type -> ealert.team.v1.SaveTeamResponse
-	5,  // 21: ealert.team.v1.TeamService.GetTeamById:output_type -> ealert.team.v1.GetTeamByIdResponse
-	7,  // 22: ealert.team.v1.TeamService.GetTeamByIds:output_type -> ealert.team.v1.GetTeamByIdsResponse
-	9,  // 23: ealert.team.v1.TeamService.List:output_type -> ealert.team.v1.ListResponse
-	11, // 24: ealert.team.v1.TeamService.DeleteTeam:output_type -> ealert.team.v1.DeleteTeamResponse
-	13, // 25: ealert.team.v1.TeamService.GetTeamsByMember:output_type -> ealert.team.v1.GetTeamsByMemberResponse
-	15, // 26: ealert.team.v1.TeamService.BindChatGroup:output_type -> ealert.team.v1.BindChatGroupResponse
-	17, // 27: ealert.team.v1.TeamService.UpdateChatGroup:output_type -> ealert.team.v1.UpdateChatGroupResponse
-	19, // 28: ealert.team.v1.TeamService.UnbindChatGroup:output_type -> ealert.team.v1.UnbindChatGroupResponse
-	20, // [20:29] is the sub-list for method output_type
-	11, // [11:20] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	0,  // 11: ealert.team.v1.GetDefaultChatGroupsResponse.groups:type_name -> ealert.team.v1.ChatGroup
+	0,  // 12: ealert.team.v1.GetChatGroupByIdResponse.group:type_name -> ealert.team.v1.ChatGroup
+	0,  // 13: ealert.team.v1.GetChatGroupByIdsResponse.groups:type_name -> ealert.team.v1.ChatGroup
+	2,  // 14: ealert.team.v1.TeamService.SaveTeam:input_type -> ealert.team.v1.SaveTeamRequest
+	4,  // 15: ealert.team.v1.TeamService.GetTeamById:input_type -> ealert.team.v1.GetTeamByIdRequest
+	6,  // 16: ealert.team.v1.TeamService.GetTeamByIds:input_type -> ealert.team.v1.GetTeamByIdsRequest
+	8,  // 17: ealert.team.v1.TeamService.List:input_type -> ealert.team.v1.ListRequest
+	10, // 18: ealert.team.v1.TeamService.DeleteTeam:input_type -> ealert.team.v1.DeleteTeamRequest
+	12, // 19: ealert.team.v1.TeamService.GetTeamsByMember:input_type -> ealert.team.v1.GetTeamsByMemberRequest
+	14, // 20: ealert.team.v1.TeamService.BindChatGroup:input_type -> ealert.team.v1.BindChatGroupRequest
+	16, // 21: ealert.team.v1.TeamService.UpdateChatGroup:input_type -> ealert.team.v1.UpdateChatGroupRequest
+	18, // 22: ealert.team.v1.TeamService.UnbindChatGroup:input_type -> ealert.team.v1.UnbindChatGroupRequest
+	20, // 23: ealert.team.v1.TeamService.GetDefaultChatGroups:input_type -> ealert.team.v1.GetDefaultChatGroupsRequest
+	22, // 24: ealert.team.v1.TeamService.GetChatGroupById:input_type -> ealert.team.v1.GetChatGroupByIdRequest
+	24, // 25: ealert.team.v1.TeamService.GetChatGroupByIds:input_type -> ealert.team.v1.GetChatGroupByIdsRequest
+	3,  // 26: ealert.team.v1.TeamService.SaveTeam:output_type -> ealert.team.v1.SaveTeamResponse
+	5,  // 27: ealert.team.v1.TeamService.GetTeamById:output_type -> ealert.team.v1.GetTeamByIdResponse
+	7,  // 28: ealert.team.v1.TeamService.GetTeamByIds:output_type -> ealert.team.v1.GetTeamByIdsResponse
+	9,  // 29: ealert.team.v1.TeamService.List:output_type -> ealert.team.v1.ListResponse
+	11, // 30: ealert.team.v1.TeamService.DeleteTeam:output_type -> ealert.team.v1.DeleteTeamResponse
+	13, // 31: ealert.team.v1.TeamService.GetTeamsByMember:output_type -> ealert.team.v1.GetTeamsByMemberResponse
+	15, // 32: ealert.team.v1.TeamService.BindChatGroup:output_type -> ealert.team.v1.BindChatGroupResponse
+	17, // 33: ealert.team.v1.TeamService.UpdateChatGroup:output_type -> ealert.team.v1.UpdateChatGroupResponse
+	19, // 34: ealert.team.v1.TeamService.UnbindChatGroup:output_type -> ealert.team.v1.UnbindChatGroupResponse
+	21, // 35: ealert.team.v1.TeamService.GetDefaultChatGroups:output_type -> ealert.team.v1.GetDefaultChatGroupsResponse
+	23, // 36: ealert.team.v1.TeamService.GetChatGroupById:output_type -> ealert.team.v1.GetChatGroupByIdResponse
+	25, // 37: ealert.team.v1.TeamService.GetChatGroupByIds:output_type -> ealert.team.v1.GetChatGroupByIdsResponse
+	26, // [26:38] is the sub-list for method output_type
+	14, // [14:26] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_ealert_team_team_proto_init() }
@@ -1165,7 +1450,7 @@ func file_ealert_team_team_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ealert_team_team_proto_rawDesc), len(file_ealert_team_team_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

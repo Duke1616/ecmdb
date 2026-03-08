@@ -79,6 +79,7 @@ func (f *grpcProvider) Send(ctx context.Context, src notification.Notification) 
 		BizId:          notificationv1.Business_TICKET,
 		Key:            uuid.New().String(),
 		Receivers:      []string{src.Receiver},
+		ReceiverType:   toReceiverType(src.ReceiverType),
 		Channel:        notificationv1.Channel_LARK_CARD,
 		TemplateId:     templateID,
 		TemplateParams: params,

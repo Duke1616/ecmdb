@@ -89,6 +89,8 @@ const (
 	Channel_EMAIL Channel = 2
 	// 站内信
 	Channel_IN_APP Channel = 3
+	// 微信
+	Channel_WECHAT Channel = 4
 )
 
 // Enum value maps for Channel.
@@ -98,12 +100,14 @@ var (
 		1: "LARK_CARD",
 		2: "EMAIL",
 		3: "IN_APP",
+		4: "WECHAT",
 	}
 	Channel_value = map[string]int32{
 		"CHANNEL_UNSPECIFIED": 0,
 		"LARK_CARD":           1,
 		"EMAIL":               2,
 		"IN_APP":              3,
+		"WECHAT":              4,
 	}
 )
 
@@ -199,6 +203,59 @@ func (SendStatus) EnumDescriptor() ([]byte, []int) {
 	return file_ealert_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
+// 接收者类型
+type ReceiverType int32
+
+const (
+	// 未指定，默认为用户
+	ReceiverType_RECEIVER_TYPE_UNSPECIFIED ReceiverType = 0
+	// 用户 (user_id/email/phone)
+	ReceiverType_USER ReceiverType = 1
+	// 群组 (chat_id)
+	ReceiverType_CHAT_GROUP ReceiverType = 2
+)
+
+// Enum value maps for ReceiverType.
+var (
+	ReceiverType_name = map[int32]string{
+		0: "RECEIVER_TYPE_UNSPECIFIED",
+		1: "USER",
+		2: "CHAT_GROUP",
+	}
+	ReceiverType_value = map[string]int32{
+		"RECEIVER_TYPE_UNSPECIFIED": 0,
+		"USER":                      1,
+		"CHAT_GROUP":                2,
+	}
+)
+
+func (x ReceiverType) Enum() *ReceiverType {
+	p := new(ReceiverType)
+	*p = x
+	return p
+}
+
+func (x ReceiverType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReceiverType) Descriptor() protoreflect.EnumDescriptor {
+	return file_ealert_notification_v1_notification_proto_enumTypes[3].Descriptor()
+}
+
+func (ReceiverType) Type() protoreflect.EnumType {
+	return &file_ealert_notification_v1_notification_proto_enumTypes[3]
+}
+
+func (x ReceiverType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReceiverType.Descriptor instead.
+func (ReceiverType) EnumDescriptor() ([]byte, []int) {
+	return file_ealert_notification_v1_notification_proto_rawDescGZIP(), []int{3}
+}
+
 // 错误代码枚举
 type ErrorCode int32
 
@@ -292,11 +349,11 @@ func (x ErrorCode) String() string {
 }
 
 func (ErrorCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_ealert_notification_v1_notification_proto_enumTypes[3].Descriptor()
+	return file_ealert_notification_v1_notification_proto_enumTypes[4].Descriptor()
 }
 
 func (ErrorCode) Type() protoreflect.EnumType {
-	return &file_ealert_notification_v1_notification_proto_enumTypes[3]
+	return &file_ealert_notification_v1_notification_proto_enumTypes[4]
 }
 
 func (x ErrorCode) Number() protoreflect.EnumNumber {
@@ -305,7 +362,7 @@ func (x ErrorCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ErrorCode.Descriptor instead.
 func (ErrorCode) EnumDescriptor() ([]byte, []int) {
-	return file_ealert_notification_v1_notification_proto_rawDescGZIP(), []int{3}
+	return file_ealert_notification_v1_notification_proto_rawDescGZIP(), []int{4}
 }
 
 // 通知
@@ -324,8 +381,10 @@ type Notification struct {
 	TemplateSetId int64 `protobuf:"varint,6,opt,name=template_set_id,json=templateSetId,proto3" json:"template_set_id,omitempty"`
 	// 模板参数
 	TemplateParams *structpb.Struct `protobuf:"bytes,7,opt,name=template_params,json=templateParams,proto3" json:"template_params,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 接收者类型
+	ReceiverType  ReceiverType `protobuf:"varint,8,opt,name=receiver_type,json=receiverType,proto3,enum=ealert.notification.v1.ReceiverType" json:"receiver_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Notification) Reset() {
@@ -405,6 +464,13 @@ func (x *Notification) GetTemplateParams() *structpb.Struct {
 		return x.TemplateParams
 	}
 	return nil
+}
+
+func (x *Notification) GetReceiverType() ReceiverType {
+	if x != nil {
+		return x.ReceiverType
+	}
+	return ReceiverType_RECEIVER_TYPE_UNSPECIFIED
 }
 
 // 同步单条发送通知请求
@@ -638,7 +704,7 @@ var File_ealert_notification_v1_notification_proto protoreflect.FileDescriptor
 
 const file_ealert_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
-	")ealert/notification/v1/notification.proto\x12\x16ealert.notification.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19google/protobuf/any.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xbd\x02\n" +
+	")ealert/notification/v1/notification.proto\x12\x16ealert.notification.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19google/protobuf/any.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x88\x03\n" +
 	"\fNotification\x127\n" +
 	"\x06biz_id\x18\x01 \x01(\x0e2 .ealert.notification.v1.BusinessR\x05bizId\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x1c\n" +
@@ -647,7 +713,8 @@ const file_ealert_notification_v1_notification_proto_rawDesc = "" +
 	"\vtemplate_id\x18\x05 \x01(\x03R\n" +
 	"templateId\x12&\n" +
 	"\x0ftemplate_set_id\x18\x06 \x01(\x03R\rtemplateSetId\x12@\n" +
-	"\x0ftemplate_params\x18\a \x01(\v2\x17.google.protobuf.StructR\x0etemplateParams\"c\n" +
+	"\x0ftemplate_params\x18\a \x01(\v2\x17.google.protobuf.StructR\x0etemplateParams\x12I\n" +
+	"\rreceiver_type\x18\b \x01(\x0e2$.ealert.notification.v1.ReceiverTypeR\freceiverType\"c\n" +
 	"\x17SendNotificationRequest\x12H\n" +
 	"\fnotification\x18\x01 \x01(\v2$.ealert.notification.v1.NotificationR\fnotification\"\xe6\x01\n" +
 	"\x18SendNotificationResponse\x12'\n" +
@@ -667,13 +734,15 @@ const file_ealert_notification_v1_notification_proto_rawDesc = "" +
 	"\x14Business_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05ALERT\x10\x01\x12\n" +
 	"\n" +
-	"\x06TICKET\x10\x02*H\n" +
+	"\x06TICKET\x10\x02*T\n" +
 	"\aChannel\x12\x17\n" +
 	"\x13CHANNEL_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tLARK_CARD\x10\x01\x12\t\n" +
 	"\x05EMAIL\x10\x02\x12\n" +
 	"\n" +
-	"\x06IN_APP\x10\x03*l\n" +
+	"\x06IN_APP\x10\x03\x12\n" +
+	"\n" +
+	"\x06WECHAT\x10\x04*l\n" +
 	"\n" +
 	"SendStatus\x12\x1b\n" +
 	"\x17SEND_STATUS_UNSPECIFIED\x10\x00\x12\v\n" +
@@ -682,7 +751,12 @@ const file_ealert_notification_v1_notification_proto_rawDesc = "" +
 	"\aPENDING\x10\x03\x12\r\n" +
 	"\tSUCCEEDED\x10\x04\x12\n" +
 	"\n" +
-	"\x06FAILED\x10\x05*\x9e\x03\n" +
+	"\x06FAILED\x10\x05*G\n" +
+	"\fReceiverType\x12\x1d\n" +
+	"\x19RECEIVER_TYPE_UNSPECIFIED\x10\x00\x12\b\n" +
+	"\x04USER\x10\x01\x12\x0e\n" +
+	"\n" +
+	"CHAT_GROUP\x10\x02*\x9e\x03\n" +
 	"\tErrorCode\x12\x1a\n" +
 	"\x16ERROR_CODE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11INVALID_PARAMETER\x10\x01\x12\x10\n" +
@@ -718,36 +792,38 @@ func file_ealert_notification_v1_notification_proto_rawDescGZIP() []byte {
 	return file_ealert_notification_v1_notification_proto_rawDescData
 }
 
-var file_ealert_notification_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_ealert_notification_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_ealert_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_ealert_notification_v1_notification_proto_goTypes = []any{
 	(Business)(0),                          // 0: ealert.notification.v1.Business
 	(Channel)(0),                           // 1: ealert.notification.v1.Channel
 	(SendStatus)(0),                        // 2: ealert.notification.v1.SendStatus
-	(ErrorCode)(0),                         // 3: ealert.notification.v1.ErrorCode
-	(*Notification)(nil),                   // 4: ealert.notification.v1.Notification
-	(*SendNotificationRequest)(nil),        // 5: ealert.notification.v1.SendNotificationRequest
-	(*SendNotificationResponse)(nil),       // 6: ealert.notification.v1.SendNotificationResponse
-	(*BatchSendNotificationsRequest)(nil),  // 7: ealert.notification.v1.BatchSendNotificationsRequest
-	(*BatchSendNotificationsResponse)(nil), // 8: ealert.notification.v1.BatchSendNotificationsResponse
-	(*structpb.Struct)(nil),                // 9: google.protobuf.Struct
+	(ReceiverType)(0),                      // 3: ealert.notification.v1.ReceiverType
+	(ErrorCode)(0),                         // 4: ealert.notification.v1.ErrorCode
+	(*Notification)(nil),                   // 5: ealert.notification.v1.Notification
+	(*SendNotificationRequest)(nil),        // 6: ealert.notification.v1.SendNotificationRequest
+	(*SendNotificationResponse)(nil),       // 7: ealert.notification.v1.SendNotificationResponse
+	(*BatchSendNotificationsRequest)(nil),  // 8: ealert.notification.v1.BatchSendNotificationsRequest
+	(*BatchSendNotificationsResponse)(nil), // 9: ealert.notification.v1.BatchSendNotificationsResponse
+	(*structpb.Struct)(nil),                // 10: google.protobuf.Struct
 }
 var file_ealert_notification_v1_notification_proto_depIdxs = []int32{
-	0, // 0: ealert.notification.v1.Notification.biz_id:type_name -> ealert.notification.v1.Business
-	1, // 1: ealert.notification.v1.Notification.channel:type_name -> ealert.notification.v1.Channel
-	9, // 2: ealert.notification.v1.Notification.template_params:type_name -> google.protobuf.Struct
-	4, // 3: ealert.notification.v1.SendNotificationRequest.notification:type_name -> ealert.notification.v1.Notification
-	2, // 4: ealert.notification.v1.SendNotificationResponse.status:type_name -> ealert.notification.v1.SendStatus
-	3, // 5: ealert.notification.v1.SendNotificationResponse.error_code:type_name -> ealert.notification.v1.ErrorCode
-	4, // 6: ealert.notification.v1.BatchSendNotificationsRequest.notifications:type_name -> ealert.notification.v1.Notification
-	6, // 7: ealert.notification.v1.BatchSendNotificationsResponse.results:type_name -> ealert.notification.v1.SendNotificationResponse
-	5, // 8: ealert.notification.v1.NotificationService.SendNotification:input_type -> ealert.notification.v1.SendNotificationRequest
-	6, // 9: ealert.notification.v1.NotificationService.SendNotification:output_type -> ealert.notification.v1.SendNotificationResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	0,  // 0: ealert.notification.v1.Notification.biz_id:type_name -> ealert.notification.v1.Business
+	1,  // 1: ealert.notification.v1.Notification.channel:type_name -> ealert.notification.v1.Channel
+	10, // 2: ealert.notification.v1.Notification.template_params:type_name -> google.protobuf.Struct
+	3,  // 3: ealert.notification.v1.Notification.receiver_type:type_name -> ealert.notification.v1.ReceiverType
+	5,  // 4: ealert.notification.v1.SendNotificationRequest.notification:type_name -> ealert.notification.v1.Notification
+	2,  // 5: ealert.notification.v1.SendNotificationResponse.status:type_name -> ealert.notification.v1.SendStatus
+	4,  // 6: ealert.notification.v1.SendNotificationResponse.error_code:type_name -> ealert.notification.v1.ErrorCode
+	5,  // 7: ealert.notification.v1.BatchSendNotificationsRequest.notifications:type_name -> ealert.notification.v1.Notification
+	7,  // 8: ealert.notification.v1.BatchSendNotificationsResponse.results:type_name -> ealert.notification.v1.SendNotificationResponse
+	6,  // 9: ealert.notification.v1.NotificationService.SendNotification:input_type -> ealert.notification.v1.SendNotificationRequest
+	7,  // 10: ealert.notification.v1.NotificationService.SendNotification:output_type -> ealert.notification.v1.SendNotificationResponse
+	10, // [10:11] is the sub-list for method output_type
+	9,  // [9:10] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_ealert_notification_v1_notification_proto_init() }
@@ -760,7 +836,7 @@ func file_ealert_notification_v1_notification_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ealert_notification_v1_notification_proto_rawDesc), len(file_ealert_notification_v1_notification_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,

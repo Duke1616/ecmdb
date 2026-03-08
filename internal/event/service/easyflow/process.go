@@ -108,13 +108,28 @@ func (e *ProcessEvent) EventChatGroup(instID int, node *model.Node, prevNode mod
 		return err
 	}
 
-	// 1. 发送群通知
+	// 发送群通知，自动提交
 	if err = e.dispatchNotify(ctx, fCtx, strategy.ChatGroup); err != nil {
 		e.logger.Error("【EventChatGroup】群消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
 	}
+	return nil
+}
 
-	// 2. 自动 Pass 节点推进流程
-	go e.autoPassNode(instID, node.NodeID, "ChatGroup Auto Pass")
+// EventCarbonCopy 抄送节点事件
+func (e *ProcessEvent) EventCarbonCopy(instID int, node *model.Node, prevNode model.Node) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	fCtx, err := e.LoadContext(ctx, instID, node)
+	if err != nil {
+		return err
+	}
+
+	// 发送抄送信息，自动提交
+	if err = e.dispatchNotify(ctx, fCtx, strategy.CarbonCopy); err != nil {
+		e.logger.Error("【EventCarbonCopy】消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
+	}
+
 	return nil
 }
 
@@ -180,23 +195,6 @@ func (e *ProcessEvent) EventNotify(instID int, node *model.Node, prevNode model.
 
 	if err = e.dispatchNotify(ctx, fCtx, nodeName); err != nil {
 		e.logger.Error("【EventNotify】消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
-	}
-
-	return nil
-}
-
-// EventCarbonCopy 抄送节点事件
-func (e *ProcessEvent) EventCarbonCopy(instID int, node *model.Node, prevNode model.Node) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	fCtx, err := e.LoadContext(ctx, instID, node)
-	if err != nil {
-		return err
-	}
-
-	if err = e.dispatchNotify(ctx, fCtx, strategy.CarbonCopy); err != nil {
-		e.logger.Error("【EventCarbonCopy】消息发送失败", elog.FieldErr(err), elog.Int("instID", instID))
 	}
 
 	return nil

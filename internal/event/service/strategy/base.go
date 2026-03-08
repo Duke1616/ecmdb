@@ -104,10 +104,18 @@ func (b *BaseStrategy) FetchTasksWithRetry(ctx context.Context, info Info) ([]mo
 			return nil, fmt.Errorf("获取执行任务超过最大重试次数")
 		}
 
-		tasks, err := b.EngineSvc.GetTasksByCurrentNodeId(ctx, info.InstID, info.CurrentNode.NodeID)
-		if err == nil && len(tasks) > 0 {
+		tasks, taskErr := b.EngineSvc.GetTasksByCurrentNodeId(ctx, info.InstID, info.CurrentNode.NodeID)
+		if taskErr == nil && len(tasks) > 0 {
+			b.Logger.Debug("成功获取到节点任务信息",
+				elog.String("nodeId", info.CurrentNode.NodeID),
+				elog.Int("taskCount", len(tasks)))
 			return tasks, nil
 		}
+
+		b.Logger.Debug("尚未查询到节点任务，准备重试",
+			elog.Int("instId", info.InstID),
+			elog.String("nodeId", info.CurrentNode.NodeID),
+			elog.Duration("nextRetry", d))
 
 		select {
 		case <-ctx.Done():

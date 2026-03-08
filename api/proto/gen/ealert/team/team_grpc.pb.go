@@ -19,15 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TeamService_SaveTeam_FullMethodName         = "/ealert.team.v1.TeamService/SaveTeam"
-	TeamService_GetTeamById_FullMethodName      = "/ealert.team.v1.TeamService/GetTeamById"
-	TeamService_GetTeamByIds_FullMethodName     = "/ealert.team.v1.TeamService/GetTeamByIds"
-	TeamService_List_FullMethodName             = "/ealert.team.v1.TeamService/List"
-	TeamService_DeleteTeam_FullMethodName       = "/ealert.team.v1.TeamService/DeleteTeam"
-	TeamService_GetTeamsByMember_FullMethodName = "/ealert.team.v1.TeamService/GetTeamsByMember"
-	TeamService_BindChatGroup_FullMethodName    = "/ealert.team.v1.TeamService/BindChatGroup"
-	TeamService_UpdateChatGroup_FullMethodName  = "/ealert.team.v1.TeamService/UpdateChatGroup"
-	TeamService_UnbindChatGroup_FullMethodName  = "/ealert.team.v1.TeamService/UnbindChatGroup"
+	TeamService_SaveTeam_FullMethodName             = "/ealert.team.v1.TeamService/SaveTeam"
+	TeamService_GetTeamById_FullMethodName          = "/ealert.team.v1.TeamService/GetTeamById"
+	TeamService_GetTeamByIds_FullMethodName         = "/ealert.team.v1.TeamService/GetTeamByIds"
+	TeamService_List_FullMethodName                 = "/ealert.team.v1.TeamService/List"
+	TeamService_DeleteTeam_FullMethodName           = "/ealert.team.v1.TeamService/DeleteTeam"
+	TeamService_GetTeamsByMember_FullMethodName     = "/ealert.team.v1.TeamService/GetTeamsByMember"
+	TeamService_BindChatGroup_FullMethodName        = "/ealert.team.v1.TeamService/BindChatGroup"
+	TeamService_UpdateChatGroup_FullMethodName      = "/ealert.team.v1.TeamService/UpdateChatGroup"
+	TeamService_UnbindChatGroup_FullMethodName      = "/ealert.team.v1.TeamService/UnbindChatGroup"
+	TeamService_GetDefaultChatGroups_FullMethodName = "/ealert.team.v1.TeamService/GetDefaultChatGroups"
+	TeamService_GetChatGroupById_FullMethodName     = "/ealert.team.v1.TeamService/GetChatGroupById"
+	TeamService_GetChatGroupByIds_FullMethodName    = "/ealert.team.v1.TeamService/GetChatGroupByIds"
 )
 
 // TeamServiceClient is the client API for TeamService service.
@@ -54,6 +57,12 @@ type TeamServiceClient interface {
 	UpdateChatGroup(ctx context.Context, in *UpdateChatGroupRequest, opts ...grpc.CallOption) (*UpdateChatGroupResponse, error)
 	// UnbindChatGroup 解绑群聊记录
 	UnbindChatGroup(ctx context.Context, in *UnbindChatGroupRequest, opts ...grpc.CallOption) (*UnbindChatGroupResponse, error)
+	// GetDefaultChatGroups 获取所有默认群组 (TeamID 为 0)
+	GetDefaultChatGroups(ctx context.Context, in *GetDefaultChatGroupsRequest, opts ...grpc.CallOption) (*GetDefaultChatGroupsResponse, error)
+	// GetChatGroupById 根据 ID 获取单条群聊
+	GetChatGroupById(ctx context.Context, in *GetChatGroupByIdRequest, opts ...grpc.CallOption) (*GetChatGroupByIdResponse, error)
+	// GetChatGroupByIds 根据 IDs 批量获取群聊
+	GetChatGroupByIds(ctx context.Context, in *GetChatGroupByIdsRequest, opts ...grpc.CallOption) (*GetChatGroupByIdsResponse, error)
 }
 
 type teamServiceClient struct {
@@ -154,6 +163,36 @@ func (c *teamServiceClient) UnbindChatGroup(ctx context.Context, in *UnbindChatG
 	return out, nil
 }
 
+func (c *teamServiceClient) GetDefaultChatGroups(ctx context.Context, in *GetDefaultChatGroupsRequest, opts ...grpc.CallOption) (*GetDefaultChatGroupsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDefaultChatGroupsResponse)
+	err := c.cc.Invoke(ctx, TeamService_GetDefaultChatGroups_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teamServiceClient) GetChatGroupById(ctx context.Context, in *GetChatGroupByIdRequest, opts ...grpc.CallOption) (*GetChatGroupByIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetChatGroupByIdResponse)
+	err := c.cc.Invoke(ctx, TeamService_GetChatGroupById_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teamServiceClient) GetChatGroupByIds(ctx context.Context, in *GetChatGroupByIdsRequest, opts ...grpc.CallOption) (*GetChatGroupByIdsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetChatGroupByIdsResponse)
+	err := c.cc.Invoke(ctx, TeamService_GetChatGroupByIds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeamServiceServer is the server API for TeamService service.
 // All implementations must embed UnimplementedTeamServiceServer
 // for forward compatibility.
@@ -178,6 +217,12 @@ type TeamServiceServer interface {
 	UpdateChatGroup(context.Context, *UpdateChatGroupRequest) (*UpdateChatGroupResponse, error)
 	// UnbindChatGroup 解绑群聊记录
 	UnbindChatGroup(context.Context, *UnbindChatGroupRequest) (*UnbindChatGroupResponse, error)
+	// GetDefaultChatGroups 获取所有默认群组 (TeamID 为 0)
+	GetDefaultChatGroups(context.Context, *GetDefaultChatGroupsRequest) (*GetDefaultChatGroupsResponse, error)
+	// GetChatGroupById 根据 ID 获取单条群聊
+	GetChatGroupById(context.Context, *GetChatGroupByIdRequest) (*GetChatGroupByIdResponse, error)
+	// GetChatGroupByIds 根据 IDs 批量获取群聊
+	GetChatGroupByIds(context.Context, *GetChatGroupByIdsRequest) (*GetChatGroupByIdsResponse, error)
 	mustEmbedUnimplementedTeamServiceServer()
 }
 
@@ -214,6 +259,15 @@ func (UnimplementedTeamServiceServer) UpdateChatGroup(context.Context, *UpdateCh
 }
 func (UnimplementedTeamServiceServer) UnbindChatGroup(context.Context, *UnbindChatGroupRequest) (*UnbindChatGroupResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnbindChatGroup not implemented")
+}
+func (UnimplementedTeamServiceServer) GetDefaultChatGroups(context.Context, *GetDefaultChatGroupsRequest) (*GetDefaultChatGroupsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDefaultChatGroups not implemented")
+}
+func (UnimplementedTeamServiceServer) GetChatGroupById(context.Context, *GetChatGroupByIdRequest) (*GetChatGroupByIdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChatGroupById not implemented")
+}
+func (UnimplementedTeamServiceServer) GetChatGroupByIds(context.Context, *GetChatGroupByIdsRequest) (*GetChatGroupByIdsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChatGroupByIds not implemented")
 }
 func (UnimplementedTeamServiceServer) mustEmbedUnimplementedTeamServiceServer() {}
 func (UnimplementedTeamServiceServer) testEmbeddedByValue()                     {}
@@ -398,6 +452,60 @@ func _TeamService_UnbindChatGroup_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamService_GetDefaultChatGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDefaultChatGroupsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamServiceServer).GetDefaultChatGroups(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamService_GetDefaultChatGroups_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamServiceServer).GetDefaultChatGroups(ctx, req.(*GetDefaultChatGroupsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeamService_GetChatGroupById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChatGroupByIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamServiceServer).GetChatGroupById(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamService_GetChatGroupById_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamServiceServer).GetChatGroupById(ctx, req.(*GetChatGroupByIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeamService_GetChatGroupByIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChatGroupByIdsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamServiceServer).GetChatGroupByIds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamService_GetChatGroupByIds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamServiceServer).GetChatGroupByIds(ctx, req.(*GetChatGroupByIdsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeamService_ServiceDesc is the grpc.ServiceDesc for TeamService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -440,6 +548,18 @@ var TeamService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnbindChatGroup",
 			Handler:    _TeamService_UnbindChatGroup_Handler,
+		},
+		{
+			MethodName: "GetDefaultChatGroups",
+			Handler:    _TeamService_GetDefaultChatGroups_Handler,
+		},
+		{
+			MethodName: "GetChatGroupById",
+			Handler:    _TeamService_GetChatGroupById_Handler,
+		},
+		{
+			MethodName: "GetChatGroupByIds",
+			Handler:    _TeamService_GetChatGroupByIds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

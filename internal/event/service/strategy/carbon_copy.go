@@ -116,6 +116,7 @@ func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info
 		if err = n.EngineSvc.Pass(ctx, t.TaskID, "抄送节点自动通过"); err != nil {
 			n.Logger.Error("抄送节点自动通过失败", elog.FieldErr(err), elog.Any("taskId", t.TaskID))
 		}
+
 		if t.IsCosigned != 1 {
 			return
 		}

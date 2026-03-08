@@ -50,6 +50,11 @@ type Notification struct {
 	MessageID    string   `json:"message_id"`    // 消息ID（用于更新消息）
 }
 
+const (
+	ReceiverTypeUser      = "user_id"
+	ReceiverTypeChatGroup = "chat_id"
+)
+
 func (n Notification) IsPatch() bool {
 	return n.MessageID != ""
 }

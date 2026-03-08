@@ -51,6 +51,12 @@ service TeamService {
   rpc UpdateChatGroup(UpdateChatGroupRequest) returns (UpdateChatGroupResponse);
   // UnbindChatGroup 解绑群聊记录
   rpc UnbindChatGroup(UnbindChatGroupRequest) returns (UnbindChatGroupResponse);
+  // GetDefaultChatGroups 获取所有默认群组 (TeamID 为 0)
+  rpc GetDefaultChatGroups(GetDefaultChatGroupsRequest) returns (GetDefaultChatGroupsResponse);
+  // GetChatGroupById 根据 ID 获取单条群聊
+  rpc GetChatGroupById(GetChatGroupByIdRequest) returns (GetChatGroupByIdResponse);
+  // GetChatGroupByIds 根据 IDs 批量获取群聊
+  rpc GetChatGroupByIds(GetChatGroupByIdsRequest) returns (GetChatGroupByIdsResponse);
 }
 
 message SaveTeamRequest {
@@ -120,3 +126,25 @@ message UnbindChatGroupRequest {
 }
 
 message UnbindChatGroupResponse {}
+
+message GetDefaultChatGroupsRequest {}
+
+message GetDefaultChatGroupsResponse {
+  repeated ChatGroup groups = 1;
+}
+
+message GetChatGroupByIdRequest {
+  int64 id = 1;
+}
+
+message GetChatGroupByIdResponse {
+  ChatGroup group = 1;
+}
+
+message GetChatGroupByIdsRequest {
+  repeated int64 ids = 1;
+}
+
+message GetChatGroupByIdsResponse {
+  repeated ChatGroup groups = 1;
+}

@@ -261,12 +261,13 @@ func (b *BaseStrategy) EnrichTargets(info Info, assignees []easyflow.Assignee) [
 				values = []string{info.Order.CreateBy}
 			}
 		case easyflow.TEMPLATE:
-			if len(values) > 0 {
-				field := values[0]
+			var usernames []string
+			for _, field := range values {
 				if val, ok := info.Order.Data[field]; ok {
-					values = b.extractUsernamesFromField(field, val)
+					usernames = append(usernames, b.extractUsernamesFromField(field, val)...)
 				}
 			}
+			values = usernames
 		}
 
 		return resolve.Target{

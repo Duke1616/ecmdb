@@ -3,6 +3,7 @@ package strategy
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/Bunny3th/easy-workflow/workflow/model"
@@ -16,6 +17,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/resolve"
+	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -41,17 +43,12 @@ func NewChatNotification(base BaseStrategy, sender sender.NotificationSender,
 	}
 }
 
-// chatData 封装发送所需的所有元数据
-type chatData struct {
-	property   easyflow.ChatGroupProperty
-	startUser  user.User
-	rules      []rule.Rule
-	template   string
-	wantResult map[string]interface{}
-	userInputs []order.FormValue
-	members    []user.User
-	orderData  map[string]interface{}
-	provide    uint8
+// chatContext 封装发送所需的所有元数据
+type chatContext struct {
+	*NotificationData                            // 基础元数据 (Rules, StartUser, TName, WantResult)
+	property          easyflow.ChatGroupProperty // 节点配置属性
+	members           []user.User                // 运行解析出的成员
+	userInputs        []order.FormValue          // 动态加载的用户输入
 }
 
 // recipient 内部接收者描述
@@ -88,7 +85,7 @@ func (n *ChatNotification) Send(ctx context.Context, info Info) (notification.No
 }
 
 // asyncHandleChat 异步处理核心逻辑
-func (n *ChatNotification) asyncHandleChat(ctx context.Context, info Info, data *chatData) {
+func (n *ChatNotification) asyncHandleChat(ctx context.Context, info Info, data *chatContext) {
 	n.Logger.Info("ChatNotification 开始异步处理群组通知",
 		elog.Int("instId", info.InstID),
 		elog.String("node", info.CurrentNode.NodeID))
@@ -131,7 +128,7 @@ func (n *ChatNotification) autoPassTasks(ctx context.Context, tasks []model.Task
 	}
 }
 
-func (n *ChatNotification) sendChatNotifications(ctx context.Context, info Info, data *chatData) {
+func (n *ChatNotification) sendChatNotifications(ctx context.Context, info Info, data *chatContext) {
 	recipients, err := n.resolveRecipients(ctx, info, data)
 	if err != nil {
 		n.Logger.Error("ChatNotification 解析接收群组失败", elog.FieldErr(err))
@@ -155,7 +152,7 @@ func (n *ChatNotification) sendChatNotifications(ctx context.Context, info Info,
 }
 
 // resolveRecipients 根据模式分发解析接收者逻辑
-func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, data *chatData) ([]recipient, error) {
+func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
 	switch data.property.Mode {
 	case easyflow.ChatGroupUseExisting:
 		return n.handleExistingGroups(ctx, info, data)
@@ -168,7 +165,7 @@ func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, dat
 }
 
 // handleExistingGroups 处理现有群组逻辑：必须显式指定 ChatGroupIDs
-func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, data *chatData) ([]recipient, error) {
+func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
 	// 1. 检查是否配置了群组 ID
 	if len(data.property.ChatGroupIDs) == 0 {
 		n.Logger.Warn("ChatNotification (ExistingMode) 未显式配置群组 ID，跳过处理",
@@ -204,9 +201,29 @@ func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, 
 }
 
 // handleCreateGroup 处理新建群组及其团队绑定
-func (n *ChatNotification) handleCreateGroup(ctx context.Context, info Info, data *chatData) ([]recipient, error) {
-	// 群组名称
-	chatName := fmt.Sprintf("【ECMDB】- %s", data.template)
+func (n *ChatNotification) handleCreateGroup(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
+	// 解析动态群组名称，解析失败则使用默认名称
+	chatName := n.resolveChatName(data.property.Create.Name, info, data)
+
+	// 获取团队默认群组
+	chats, err := n.teamSvc.GetDefaultChatGroups(ctx, &teamv1.GetDefaultChatGroupsRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	// 如果群聊存在则不需要多余创建
+	chat, ok := slice.Find(chats.Groups, func(src *teamv1.ChatGroup) bool {
+		return src.Name == chatName && src.Channel == notificationv1.Channel_LARK_CARD
+	})
+
+	if ok {
+		// 如果配置了动态成员，同步添加到现有群组
+		n.syncMembersToExistingChat(ctx, chat.ChatId, data)
+		return []recipient{{
+			chatID:  chat.ChatId,
+			channel: n.GetChatChannel(chat.Channel.String()),
+		}}, nil
+	}
 
 	// 创建群组
 	chatID, err := n.createChatGroup(ctx, chatName, data)
@@ -238,10 +255,24 @@ func (n *ChatNotification) asyncBindGroupToTeam(chatName, chatID string) {
 	}
 }
 
+func (n *ChatNotification) syncMembersToExistingChat(ctx context.Context, chatID string, data *chatContext) {
+	members := n.extractMemberIDs(data.members)
+	if len(members) == 0 {
+		return
+	}
+
+	if err := n.addMembersToChat(ctx, chatID, members); err != nil {
+		n.Logger.Warn("ChatNotification 添加成员到现有群组失败",
+			elog.FieldErr(err),
+			elog.String("chatId", chatID),
+		)
+	}
+}
+
 // buildNotifications 组装最终的批量通知对象
-func (n *ChatNotification) buildNotifications(info Info, data *chatData, recipients []recipient) []notification.Notification {
-	title := rule.GenerateTitle(data.startUser.DisplayName, data.template)
-	fields := n.resolveFields(data)
+func (n *ChatNotification) buildNotifications(info Info, data *chatContext, recipients []recipient) []notification.Notification {
+	title := rule.GenerateTitle(data.StartUser.DisplayName, data.TName)
+	fields := n.resolveFields(info, data)
 
 	return slice.FilterMap(recipients, func(idx int, r recipient) (notification.Notification, bool) {
 		if r.chatID == "" {
@@ -267,14 +298,14 @@ func (n *ChatNotification) buildNotifications(info Info, data *chatData, recipie
 }
 
 // createChatGroup 创建飞书群组
-func (n *ChatNotification) createChatGroup(ctx context.Context, chatName string, data *chatData) (string, error) {
+func (n *ChatNotification) createChatGroup(ctx context.Context, chatName string, data *chatContext) (string, error) {
 	memberIDs := n.extractMemberIDs(data.members)
 	if len(memberIDs) == 0 {
 		return "", fmt.Errorf("未找到有效的群成员")
 	}
 
 	req := larkim.NewCreateChatReqBuilder().
-		UserIdType(`user_id`).
+		UserIdType(feishu.ReceiveIDTypeUserID).
 		Body(larkim.NewCreateChatReqBodyBuilder().
 			Name(chatName).
 			UserIdList(memberIDs).
@@ -294,7 +325,7 @@ func (n *ChatNotification) createChatGroup(ctx context.Context, chatName string,
 }
 
 // fetchChatData 获取发送消息所需的全量元数据
-func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatData, error) {
+func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatContext, error) {
 	// 1. 获取节点属性与基础数据
 	nodes, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
@@ -317,24 +348,59 @@ func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatD
 		inputs, _ = n.OrderSvc.FindTaskFormsByOrderID(ctx, info.Order.Id)
 	}
 
-	return &chatData{
-		property:   property,
-		startUser:  base.StartUser,
-		rules:      base.Rules,
-		template:   base.TName,
-		wantResult: base.WantResult,
-		userInputs: inputs,
-		members:    n.resolveMembers(ctx, info, property),
-		orderData:  info.Order.Data,
-		provide:    info.Order.Provide.ToUint8(),
+	return &chatContext{
+		NotificationData: base,
+		property:         property,
+		userInputs:       inputs,
+		members:          n.resolveMembers(ctx, info, property),
 	}, nil
+}
+
+var variableRegex = regexp.MustCompile(`{{(.*?)}}`)
+
+// resolveChatName 解析动态群组名称
+func (n *ChatNotification) resolveChatName(rule string, info Info, data *chatContext) string {
+	defaultName := fmt.Sprintf("【ECMDB】- %s", data.TName)
+	if rule == "" {
+		return defaultName
+	}
+
+	// 1. 准备变量池
+	vars := map[string]string{
+		"ticket_id": fmt.Sprintf("%d", info.Order.Id),
+		"template":  data.TName,
+		"creator":   data.StartUser.DisplayName,
+	}
+
+	// 2. 注入表单字段
+	for k, v := range info.Order.Data {
+		vars["field."+k] = fmt.Sprintf("%v", v)
+	}
+
+	// 3. 执行替换
+	result := variableRegex.ReplaceAllStringFunc(rule, func(match string) string {
+		// 提取花括号中的变量名
+		key := variableRegex.FindStringSubmatch(match)[1]
+		if val, ok := vars[key]; ok {
+			return val
+		}
+		// 如果变量不存在，保持原样或返回空提示
+		return match
+	})
+
+	// 4. 解析结果兜底检查
+	if result == "" {
+		return defaultName
+	}
+
+	return result
 }
 
 // addMembersToChat 为现有群组添加成员
 func (n *ChatNotification) addMembersToChat(ctx context.Context, chatID string, memberIDs []string) error {
 	req := larkim.NewCreateChatMembersReqBuilder().
 		ChatId(chatID).
-		MemberIdType("user_id").
+		MemberIdType(feishu.ReceiveIDTypeUserID).
 		Body(larkim.NewCreateChatMembersReqBodyBuilder().
 			IdList(memberIDs).
 			Build()).
@@ -370,14 +436,15 @@ func (n *ChatNotification) resolveMembers(ctx context.Context, info Info, proper
 }
 
 // resolveFields 依据 OutputMode 解析通知内容字段
-func (n *ChatNotification) resolveFields(data *chatData) []notification.Field {
+func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notification.Field {
 	var fields []notification.Field
 	for _, mode := range data.property.OutputMode {
 		switch mode {
 		case easyflow.OutputTicketData:
-			fields = append(fields, n.ConvertRuleFields(rule.GetFields(data.rules, data.provide, data.orderData))...)
+			ruleFields := rule.GetFields(data.Rules, info.Order.Provide.ToUint8(), info.Order.Data)
+			fields = append(fields, n.ConvertRuleFields(ruleFields)...)
 		case easyflow.OutputAutoTask:
-			fields = append(fields, n.BuildWantResultFields(data.wantResult)...)
+			fields = append(fields, n.BuildWantResultFields(data.WantResult)...)
 		case easyflow.OutputUserInput:
 			for _, input := range data.userInputs {
 				fields = append(fields, notification.Field{

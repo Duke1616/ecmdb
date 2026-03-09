@@ -63,9 +63,10 @@ func (dao *workflowDAO) List(ctx context.Context, offset, limit int64) ([]Workfl
 	col := dao.db.Collection(WorkFlowCollection)
 	filter := bson.M{}
 	opts := &options.FindOptions{
-		Sort:  bson.D{{Key: "ctime", Value: -1}},
-		Limit: &limit,
-		Skip:  &offset,
+		Sort:       bson.D{{Key: "ctime", Value: -1}},
+		Limit:      &limit,
+		Skip:       &offset,
+		Projection: bson.M{"flow_data": 0}, // 列表页排除大字段
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)
@@ -194,9 +195,10 @@ func (dao *workflowDAO) FindByKeyword(ctx context.Context, keyword string, offse
 	}
 
 	opts := &options.FindOptions{
-		Sort:  bson.D{{Key: "ctime", Value: -1}},
-		Limit: &limit,
-		Skip:  &offset,
+		Sort:       bson.D{{Key: "ctime", Value: -1}},
+		Limit:      &limit,
+		Skip:       &offset,
+		Projection: bson.M{"flow_data": 0},
 	}
 
 	cursor, err := col.Find(ctx, filter, opts)

@@ -79,30 +79,50 @@ func (s *service) MenuChangeTriggerRoleAndPolicy(ctx context.Context, action uin
 			return err
 		}
 		s.logger.Info("菜单权限同步完成: 新增默认Admin权限", elog.Int64("menuId", req.Id))
-	case domain.WRITE.ToUint8():
-		var changed bool
-		changed, err = s.write(ctx, roles, req.Endpoints)
-		if err != nil {
-			return err
+	case domain.WRITE.ToUint8(), domain.DELETE.ToUint8():
+		// 无论更新接口还是删除菜单，都重新计算受影响角色的全量权限
+		for _, r := range roles {
+			if err = s.refreshRolePermissions(ctx, r.Code); err != nil {
+				s.logger.Error("角色权限全量同步失败",
+					elog.FieldErr(err),
+					elog.String("roleCode", r.Code),
+					elog.Int64("menuId", req.Id))
+				continue
+			}
 		}
-		s.logger.Info("菜单权限同步完成: 更新权限", elog.Int64("menuId", req.Id), elog.Any("changed", changed))
-	case domain.DELETE.ToUint8():
-		var changed bool
-		changed, err = s.remove(ctx, roles, req.Endpoints)
-		if err != nil {
-			return err
-		}
-		s.logger.Info("菜单权限同步完成: 删除权限", elog.Int64("menuId", req.Id), elog.Any("changed", changed))
+		s.logger.Info("菜单权限同步完成: 已依据数据库最新状态刷新受影响角色的全量策略",
+			elog.Int64("menuId", req.Id),
+			elog.Int("roleCount", len(roles)))
 	}
 	return nil
+}
+
+// refreshRolePermissions 重新计算并同步角色的全量权限集
+func (s *service) refreshRolePermissions(ctx context.Context, roleCode string) error {
+	// 1. 获取角色当前的全部信息
+	r, err := s.roleSvc.FindByRoleCode(ctx, roleCode)
+	if err != nil {
+		return fmt.Errorf("获取角色详情失败: %w", err)
+	}
+
+	// 2. 如果角色没有绑定任何菜单，直接清空该角色的 API 策略
+	if len(r.MenuIds) == 0 {
+		_, err = s.policySvc.CreateOrUpdateFilteredPolicies(ctx, policy.Policies{
+			RoleCode: roleCode,
+			Policies: []policy.Policy{},
+		})
+		return err
+	}
+
+	// 3. 查出这些菜单对应的所有接口
+	return s.AddPermissionForRole(ctx, roleCode, r.MenuIds)
 }
 
 func (s *service) initialAdminPermission(ctx context.Context, req domain.Menu) error {
 	var eg errgroup.Group
 	if len(req.Endpoints) != 0 {
 		eg.Go(func() error {
-			_, err := s.write(ctx, []role.Role{{Code: role.AdminRole}}, req.Endpoints)
-			return err
+			return s.refreshRolePermissions(ctx, role.AdminRole)
 		})
 	}
 
@@ -120,14 +140,6 @@ func (s *service) initialAdminPermission(ctx context.Context, req domain.Menu) e
 	})
 
 	return eg.Wait()
-}
-
-func (s *service) write(ctx context.Context, roles []role.Role, es []domain.Endpoint) (bool, error) {
-	return s.policySvc.AddBatchPolicies(ctx, s.toBatchPolicies(roles, es))
-}
-
-func (s *service) remove(ctx context.Context, roles []role.Role, es []domain.Endpoint) (bool, error) {
-	return s.policySvc.RemoveBatchPolicies(ctx, s.toBatchPolicies(roles, es))
 }
 
 func (s *service) toBatchPolicies(roles []role.Role, es []domain.Endpoint) policy.BatchPolicies {

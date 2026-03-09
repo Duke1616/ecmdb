@@ -11,6 +11,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/service"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 
+	"strconv"
+
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
@@ -37,6 +39,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/update", ginx.WrapBody[UpdateReq](h.Update))
 	g.POST("/delete", ginx.WrapBody[DeleteReq](h.Delete))
 	g.POST("/deploy", ginx.WrapBody[DeployReq](h.Deploy))
+	g.GET("/detail/:id", ginx.Wrap(h.Detail))
 
 	// 根据关键字搜索流程
 	g.POST("/list/by_keyword", ginx.WrapBody[ByKeywordReq](h.ByKeyword))
@@ -103,6 +106,23 @@ func (h *Handler) Deploy(ctx *gin.Context, req DeployReq) (ginx.Result, error) {
 
 	return ginx.Result{
 		Data: flow,
+	}, nil
+}
+
+func (h *Handler) Detail(ctx *gin.Context) (ginx.Result, error) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("ID 格式错误: %w", err)
+	}
+
+	flow, err := h.svc.Find(ctx, id)
+	if err != nil {
+		return systemErrorResult, fmt.Errorf("查询节点信息失败")
+	}
+
+	return ginx.Result{
+		Data: h.toWorkflowVo(flow),
 	}, nil
 }
 
@@ -183,11 +203,7 @@ func (h *Handler) FindOrderGraph(ctx *gin.Context, req OrderGraphReq) (ginx.Resu
 }
 
 func (h *Handler) toDomain(req CreateReq) domain.Workflow {
-	return domain.Workflow{
-		FlowData: domain.LogicFlow{
-			Edges: req.FlowData.Edges,
-			Nodes: req.FlowData.Nodes,
-		},
+	res := domain.Workflow{
 		Name:         req.Name,
 		Desc:         req.Desc,
 		Icon:         req.Icon,
@@ -196,25 +212,39 @@ func (h *Handler) toDomain(req CreateReq) domain.Workflow {
 		NotifyMethod: domain.NotifyMethod(req.NotifyMethod),
 		TemplateId:   req.TemplateId,
 	}
+
+	if req.FlowData != nil {
+		res.FlowData = domain.LogicFlow{
+			Edges: req.FlowData.Edges,
+			Nodes: req.FlowData.Nodes,
+		}
+	}
+
+	return res
 }
 
 func (h *Handler) toUpdateDomain(req UpdateReq) domain.Workflow {
-	return domain.Workflow{
+	res := domain.Workflow{
 		Id:           req.Id,
 		Name:         req.Name,
 		Desc:         req.Desc,
 		Owner:        req.Owner,
 		IsNotify:     req.IsNotify,
 		NotifyMethod: domain.NotifyMethod(req.NotifyMethod),
-		FlowData: domain.LogicFlow{
+	}
+
+	if req.FlowData != nil {
+		res.FlowData = domain.LogicFlow{
 			Edges: req.FlowData.Edges,
 			Nodes: req.FlowData.Nodes,
-		},
+		}
 	}
+
+	return res
 }
 
 func (h *Handler) toWorkflowVo(req domain.Workflow) Workflow {
-	return Workflow{
+	res := Workflow{
 		Id:           req.Id,
 		Name:         req.Name,
 		Desc:         req.Desc,
@@ -223,9 +253,14 @@ func (h *Handler) toWorkflowVo(req domain.Workflow) Workflow {
 		IsNotify:     req.IsNotify,
 		NotifyMethod: req.NotifyMethod.ToUint8(),
 		TemplateId:   req.TemplateId,
-		FlowData: LogicFlow{
+	}
+
+	if len(req.FlowData.Nodes) > 0 || len(req.FlowData.Edges) > 0 {
+		res.FlowData = &LogicFlow{
 			Nodes: req.FlowData.Nodes,
 			Edges: req.FlowData.Edges,
-		},
+		}
 	}
+
+	return res
 }

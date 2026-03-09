@@ -835,17 +835,17 @@
     "_id": "66bdb5ddce7b5a67a43e8c7c",
     "component": "",
     "ctime": "1723708893645",
-    "endpoints": "[ { \"path\" : \"/api/workflow/create\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/runner/list/tags\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/pipeline/department_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/usernames\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/get_by_workflow_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/rules/by_workflow_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/info\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/by_keyword\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/create\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/info\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "83",
     "meta": "{ \"title\" : \"新增流程\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "add_workflow",
     "path": "",
     "pid": "34",
     "redirect": "",
-    "sort": "1",
+    "sort": "2000",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773026473509"
   },
   {
     "_id": "66bdb5fbce7b5a67a43e8c7d",
@@ -858,42 +858,42 @@
     "path": "",
     "pid": "34",
     "redirect": "",
-    "sort": "2",
+    "sort": "4000",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773026473509"
   },
   {
     "_id": "66bdb617ce7b5a67a43e8c7e",
     "component": "",
     "ctime": "1723708951742",
-    "endpoints": "[ ]",
+    "endpoints": "[ { \"path\" : \"/api/workflow/detail/:id\", \"method\" : \"GET\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "85",
     "meta": "{ \"title\" : \"预览流程\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "preview_workflow",
     "path": "",
     "pid": "34",
     "redirect": "",
-    "sort": "3",
+    "sort": "8000",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773026558750"
   },
   {
     "_id": "66bdb632ce7b5a67a43e8c7f",
     "component": "",
     "ctime": "1723708978480",
-    "endpoints": "[ { \"path\" : \"/api/workflow/update\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/runner/list/tags\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/usernames\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/pipeline/department_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/get_by_workflow_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/rules/by_workflow_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/workflow/detail/:id\", \"method\" : \"GET\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/update\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "86",
     "meta": "{ \"title\" : \"修改流程\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "update_workflow",
     "path": "",
     "pid": "34",
     "redirect": "",
-    "sort": "4",
+    "sort": "2500",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773026478901"
   },
   {
     "_id": "66bdb652ce7b5a67a43e8c80",
@@ -906,10 +906,10 @@
     "path": "",
     "pid": "34",
     "redirect": "",
-    "sort": "5",
+    "sort": "7000",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773026473509"
   },
   {
     "_id": "66bdb746ce7b5a67a43e8c81",
@@ -1443,17 +1443,17 @@
     "_id": "66bdc1d3ce7b5a67a43e8cb0",
     "component": "",
     "ctime": "1723711955500",
-    "endpoints": "[ { \"path\" : \"/api/user/find/usernames\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/username\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/user/find/usernames\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "123",
     "meta": "{ \"title\" : \"流程列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_workflow",
     "path": "",
     "pid": "34",
     "redirect": "",
-    "sort": "0",
+    "sort": "1000",
     "status": "1",
     "type": "3",
-    "utime": "1760525975326"
+    "utime": "1773026473509"
   },
   {
     "_id": "66bdc20bce7b5a67a43e8cb1",
@@ -1485,7 +1485,7 @@
     "sort": "0",
     "status": "1",
     "type": "3",
-    "utime": "1772423572279"
+    "utime": "1772433056274"
   },
   {
     "_id": "66bdc24bce7b5a67a43e8cb3",
@@ -4382,5 +4382,85 @@
     "status": "1",
     "type": "3",
     "utime": "1772088495687"
+  },
+  {
+    "_id": "69ac1f54e4a3d62bced7cb8d",
+    "component": "",
+    "ctime": "1772887892047",
+    "endpoints": "[ { \"path\" : \"/api/team/chat/bind\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "307",
+    "meta": "{ \"title\" : \"绑定群聊\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "169",
+    "redirect": "",
+    "sort": "5",
+    "status": "1",
+    "type": "3",
+    "utime": "1772888455456"
+  },
+  {
+    "_id": "69ac1f69e4a3d62bced7cb8f",
+    "component": "",
+    "ctime": "1772887913360",
+    "endpoints": "[ { \"path\" : \"/api/team/chat/unbind/:id\", \"method\" : \"DELETE\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "308",
+    "meta": "{ \"title\" : \"解绑群聊\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "169",
+    "redirect": "",
+    "sort": "6",
+    "status": "1",
+    "type": "3",
+    "utime": "1772888466763"
+  },
+  {
+    "_id": "69ac21a4e4a3d62bced7cb91",
+    "component": "",
+    "ctime": "1772888484131",
+    "endpoints": "[ { \"path\" : \"/api/team/chat/update\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "310",
+    "meta": "{ \"title\" : \"修改群聊\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "169",
+    "redirect": "",
+    "sort": "7",
+    "status": "1",
+    "type": "3",
+    "utime": "1772888499030"
+  },
+  {
+    "_id": "69ad91545de3f3dd5df1cb48",
+    "component": "",
+    "ctime": "1772982612017",
+    "endpoints": "[ { \"path\" : \"/api/team/chat/list/:team_id\", \"method\" : \"GET\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "311",
+    "meta": "{ \"title\" : \"群聊列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"system\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "169",
+    "redirect": "",
+    "sort": "9",
+    "status": "1",
+    "type": "3",
+    "utime": "1772982736311"
+  },
+  {
+    "_id": "69ae3a8ad5df6ee9a621f089",
+    "component": "",
+    "ctime": "1773025930728",
+    "endpoints": "[ { \"path\" : \"/api/template/get_by_workflow_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/runner/list/tags\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/rota/list\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/rules/by_workflow_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/department/list/tree\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/team/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" }, { \"path\" : \"/api/user/find/by_keyword\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "312",
+    "meta": "{ \"title\" : \"节点库\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "34",
+    "redirect": "",
+    "sort": "3000",
+    "status": "1",
+    "type": "3",
+    "utime": "1773026473509"
   }
 ]

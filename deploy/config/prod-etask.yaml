@@ -24,7 +24,6 @@ grpc:
       auth_token: "1234567890" # JWT 认证 Token，留空则不开启
     # 执行器 gRPC Server 配置
     executor:
-      id: node-01 # 节点唯一标识
       name: execute # 执行器分组名称
       listen_addr: "0.0.0.0:9004" # 监听端口
       advertise_addr: ""  # 广播地址
@@ -45,12 +44,19 @@ agent:
   topic: agent_execute # 监听的任务消息队列 Topic
   desc: 异步任务执行代理：负责从消息队列拉取并执行来自调度中心的任务指令 # 描述信息，展示在管理后台
 
-# 原生 Executor 模块配置 (基于 gRPC 的直接执行器)
+# 执行节点集群配置
 executor:
-  # 执行模式: PUSH(默认, 调度中心主动推送请求) 或 PULL(执行器主动向调度中心长轮询拉取)
-  mode: "PUSH"
-  # 执行器集群功能描述
+  # 节点实例 ID。
+  # 优先级：环境变量 EXECUTOR_NODE_ID > 此处配置 (executor.id) > grpc.server.executor.id。
+  # 注意：系统会自动将其格式化为 {serviceName}:{id}，如 "etask:node-01"，以确保跨服务唯一。
+  id: "node-01"
+  # 任务执行模式：
+  # - PUSH: (默认) 调度中心检测到节点在线后，主动向节点推送任务请求，适用于公网可达的环境。
+  # - PULL: 边缘节点模式。节点主动向中心发起长轮询拉取任务，适用于防火墙内或无固定公网 IP 的环境。
+  mode: "PULL"
+  # 执行器集群功能描述。
   desc: "通用计算节点：提供 Shell 与 Python 脚本等系统级基础执行能力的默认执行器集群"
+
 
 # 数据库配置 (MySQL)
 mysql:

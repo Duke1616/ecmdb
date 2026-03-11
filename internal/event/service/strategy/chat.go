@@ -285,7 +285,7 @@ func (n *ChatNotification) buildNotifications(info Info, data *chatContext, reci
 			WorkFlowID:   info.Workflow.Id,
 			Receiver:     r.chatID,
 			Template: notification.Template{
-				Name:     LarkTemplateCC,
+				Name:     LarkTemplateChatGroup,
 				Title:    title,
 				Fields:   fields,
 				HideForm: true,
@@ -450,16 +450,33 @@ func (n *ChatNotification) resolveMembers(ctx context.Context, info Info, proper
 }
 
 // resolveFields 依据 OutputMode 解析通知内容字段
+// 每个区块有数据时才插入全宽小标题字段（IsShort: false），
+// 使飞书卡片形成清晰的分组视觉层次，无需改动模板。
 func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notification.Field {
 	var fields []notification.Field
+
+	// 为了快速检查是否存在，将前端传来的选项列表转化为 map
+	modeSet := make(map[easyflow.OutputMode]bool, len(data.property.OutputMode))
 	for _, mode := range data.property.OutputMode {
-		switch mode {
-		case easyflow.OutputTicketData:
-			ruleFields := rule.GetFields(data.Rules, info.Order.Provide.ToUint8(), info.Order.Data)
-			fields = append(fields, n.ConvertRuleFields(ruleFields)...)
-		case easyflow.OutputAutoTask:
-			fields = append(fields, n.BuildWantResultFields(data.WantResult)...)
-		case easyflow.OutputUserInput:
+		modeSet[mode] = true
+	}
+
+	// 强制按固定顺序渲染卡片区块：1. 工单信息 -> 2. 用户提交 -> 3. 执行结果
+
+	// 1. 工单信息（对应 OutputTicketData）
+	if modeSet[easyflow.OutputTicketData] {
+		ruleFields := rule.GetFields(data.Rules, info.Order.Provide.ToUint8(), info.Order.Data)
+		modeFields := n.ConvertRuleFields(ruleFields)
+		if len(modeFields) > 0 {
+			fields = append(fields, sectionHeader("📋 工单信息"))
+			fields = append(fields, modeFields...)
+		}
+	}
+
+	// 2. 用户提交（对应 OutputUserInput）
+	if modeSet[easyflow.OutputUserInput] {
+		if len(data.userInputs) > 0 {
+			fields = append(fields, sectionHeader("✍️ 用户提交"))
 			for _, input := range data.userInputs {
 				fields = append(fields, notification.Field{
 					IsShort: true,
@@ -469,7 +486,26 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 			}
 		}
 	}
+
+	// 3. 执行结果（对应 OutputAutoTask）
+	if modeSet[easyflow.OutputAutoTask] {
+		modeFields := n.BuildWantResultFields(data.WantResult)
+		if len(modeFields) > 0 {
+			fields = append(fields, sectionHeader("⚙️ 执行结果"))
+			fields = append(fields, modeFields...)
+		}
+	}
+
 	return fields
+}
+
+// sectionHeader 生成全宽小标题字段，用于在飞书卡片中分隔不同数据区块
+func sectionHeader(title string) notification.Field {
+	return notification.Field{
+		IsShort: false,
+		Tag:     "lark_md",
+		Content: fmt.Sprintf("**%s**", title),
+	}
 }
 
 // extractMemberIDs 提取飞书 ID 列表 (优先使用 UserId, 因为接口显式指定了 user_id 类型)

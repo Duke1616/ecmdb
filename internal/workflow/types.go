@@ -23,6 +23,7 @@ type NotifyType = domain.NotifyType
 const (
 	NotifyTypeApproval            NotifyType = domain.NotifyTypeApproval
 	NotifyTypeCC                  NotifyType = domain.NotifyTypeCC
+	NotifyTypeChat                NotifyType = domain.NotifyTypeChat
 	NotifyTypeProgress            NotifyType = domain.NotifyTypeProgress
 	NotifyTypeProgressImageResult NotifyType = domain.NotifyTypeProgressImageResult
 	NotifyTypeRevoke              NotifyType = domain.NotifyTypeRevoke

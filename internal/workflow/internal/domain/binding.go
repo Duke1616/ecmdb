@@ -7,6 +7,8 @@ const (
 	NotifyTypeApproval NotifyType = "approval"
 	// NotifyTypeCC 抄送通知
 	NotifyTypeCC NotifyType = "carbon-copy"
+	// NotifyTypeChat 群通知模板，支持小标题 + hr 分隔线
+	NotifyTypeChat NotifyType = "chat"
 	// NotifyTypeProgress 进度通知
 	NotifyTypeProgress NotifyType = "progress"
 	// NotifyTypeProgressImageResult 结果通知

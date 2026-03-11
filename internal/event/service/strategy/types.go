@@ -26,8 +26,10 @@ const (
 	LarkTemplateApprovalName = workflow.NotifyTypeApproval
 	// LarkTemplateApprovalRevokeName 带有撤销的审批通知
 	LarkTemplateApprovalRevokeName = workflow.NotifyTypeRevoke
-	// LarkTemplateCC 抄送通知
+	// LarkTemplateCC 抒送通知（用于抒送节点）
 	LarkTemplateCC = workflow.NotifyTypeCC
+	// LarkTemplateChatGroup 群通知（用于群组节点，支持小标题 + hr 分隔线）
+	LarkTemplateChatGroup = workflow.NotifyTypeChat
 )
 
 type FlowContext struct {

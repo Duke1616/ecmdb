@@ -1,0 +1,46 @@
+{
+  "schema": "2.0",
+  "config": {
+    "wide_screen_mode": true
+  },
+  "header": {
+    "title": {
+      "tag": "plain_text",
+      "text_size": "heading",
+      "content": {{.Title | json}}
+    },
+    "template": "green"
+  },
+  "body": {
+    "elements": [
+      {{- range $secIndex, $section := .Sections}}
+      {{- if $secIndex}},
+      {
+        "tag": "hr"
+      },{{end}}
+      {
+        "tag": "markdown",
+        "content": {{ $section.Title | json }},
+        "text_align": "left",
+        "text_size": "normal"
+      }
+      {{- if $section.Fields}},
+      {
+        "tag": "div",
+        "fields": [
+          {{- range $fIndex, $field := $section.Fields}}
+          {
+            "is_short": {{$field.IsShort}},
+            "text": {
+              "tag": {{ $field.Tag | json }},
+              "content": {{ $field.Content | json }}
+            }
+          }{{if not (last $fIndex $section.Fields)}},{{end}}
+          {{- end}}
+        ]
+      }
+      {{- end}}
+      {{- end}}
+    ]
+  }
+}

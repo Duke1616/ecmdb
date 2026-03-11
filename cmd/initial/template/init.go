@@ -18,6 +18,9 @@ var LarkApprovalTemplate string
 //go:embed fs/carbon_copy.tmpl
 var LarkApprovalCCTemplate string
 
+//go:embed fs/chat.tmpl
+var LarkChatTemplate string
+
 //go:embed fs/progress.tmpl
 var LarkApprovalProgressTemplate string
 
@@ -68,6 +71,14 @@ func (i *InitialNotifyTemplate) InitTemplate() error {
 			VersionName: "v1.0.0",
 			Content:     LarkApprovalCCTemplate,
 			NotifyType:  workflow.NotifyTypeCC,
+		},
+		{
+			Name:        "工单群通知",
+			Desc:        "群组节点发送通知，支持分区小标题与 hr 分隔线",
+			Channel:     notificationv1.Channel_LARK_CARD,
+			VersionName: "v1.0.0",
+			Content:     LarkChatTemplate,
+			NotifyType:  workflow.NotifyTypeChat,
 		},
 		{
 			Name:        "工单进度通知",

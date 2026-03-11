@@ -502,9 +502,9 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 // sectionHeader 生成全宽小标题字段，用于在飞书卡片中分隔不同数据区块
 func sectionHeader(title string) notification.Field {
 	return notification.Field{
-		IsShort: false,
-		Tag:     "lark_md",
-		Content: fmt.Sprintf("**%s**", title),
+		IsDivider: true,
+		Tag:       "lark_md",
+		Content:   "**" + title + "**",
 	}
 }
 

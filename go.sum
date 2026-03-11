@@ -65,10 +65,8 @@ github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbi
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/Duke1616/easy-workflow v1.0.5 h1:p2JXLUUSRhhOMvuJREMciJTjCqUzSCATjfdR9xFHzXU=
 github.com/Duke1616/easy-workflow v1.0.5/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
-github.com/Duke1616/enotify v0.1.25-0.20260305030833-aaa8eed34400 h1:MVK4HmJ87n+w4wKcJqvEcGU/OoUuqKW7oWJmnW6nV3k=
-github.com/Duke1616/enotify v0.1.25-0.20260305030833-aaa8eed34400/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
-github.com/Duke1616/enotify v0.1.25-0.20260311112503-39d048e6e146 h1:xp3pOpj8iwx7Mrc9jZCz8+8+9if3b3QCdB3rqelcuJU=
-github.com/Duke1616/enotify v0.1.25-0.20260311112503-39d048e6e146/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
+github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9 h1:qc0xHyvDM2+8hbXgB8fOLYqDVsNt2pf/8fIYbgibIq0=
+github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
 github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90 h1:sF2eif6JjXOcArY90mipf2onC9RNbcB3cLjUKZps0jM=
 github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90/go.mod h1:m2ybNBkCQuSQzWyPVlZTvG+q+uXsOBGpEXyNpokSX3k=
 github.com/Duke1616/vuefinder-go v1.1.0 h1:4QAxNo8filt8lU0orUk/88MN7hWsPWPBAip7dmKmAuA=

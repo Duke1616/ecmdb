@@ -106,9 +106,10 @@ type Template struct {
 }
 
 type Field struct {
-	IsShort bool   `json:"is_short"`
-	Tag     string `json:"tag"`
-	Content string `json:"content"`
+	IsShort   bool   `json:"is_short"`
+	IsDivider bool   `json:"is_divider"`
+	Tag       string `json:"tag"`
+	Content   string `json:"content"`
 }
 
 type Value struct {

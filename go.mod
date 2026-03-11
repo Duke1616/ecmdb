@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/enotify v0.1.25-0.20260311112503-39d048e6e146
+	github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9
 	github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/IBM/sarama v1.43.3
@@ -30,6 +30,7 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/gotomicro/ego v1.2.2
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/larksuite/oapi-sdk-go/v3 v3.3.2
 	github.com/minio/minio-go/v7 v7.0.98
 	github.com/mitchellh/mapstructure v1.5.0
@@ -114,7 +115,6 @@ require (
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

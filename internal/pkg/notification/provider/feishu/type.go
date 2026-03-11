@@ -43,9 +43,10 @@ func toCardInputFields(fields []notification.InputField) []card.InputField {
 func toCardFields(fields []notification.Field) []card.Field {
 	return slice.Map(fields, func(idx int, src notification.Field) card.Field {
 		return card.Field{
-			IsShort: src.IsShort,
-			Tag:     src.Tag,
-			Content: src.Content,
+			IsShort:   src.IsShort,
+			IsDivider: src.IsDivider,
+			Tag:       src.Tag,
+			Content:   src.Content,
 		}
 	})
 }

@@ -79,6 +79,7 @@ const (
 	TaskStatus_ACTIVE                  TaskStatus = 1 // 可调度
 	TaskStatus_PREEMPTED               TaskStatus = 2 // 已抢占
 	TaskStatus_INACTIVE                TaskStatus = 3 // 停止执行
+	TaskStatus_COMPLETED               TaskStatus = 4 // 已完成
 )
 
 // Enum value maps for TaskStatus.
@@ -88,12 +89,14 @@ var (
 		1: "ACTIVE",
 		2: "PREEMPTED",
 		3: "INACTIVE",
+		4: "COMPLETED",
 	}
 	TaskStatus_value = map[string]int32{
 		"TASK_STATUS_UNSPECIFIED": 0,
 		"ACTIVE":                  1,
 		"PREEMPTED":               2,
 		"INACTIVE":                3,
+		"COMPLETED":               4,
 	}
 )
 
@@ -122,6 +125,62 @@ func (x TaskStatus) Number() protoreflect.EnumNumber {
 // Deprecated: Use TaskStatus.Descriptor instead.
 func (TaskStatus) EnumDescriptor() ([]byte, []int) {
 	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{1}
+}
+
+// TaskErrorCode 业务错误码
+type TaskErrorCode int32
+
+const (
+	TaskErrorCode_SUCCESS        TaskErrorCode = 0    // 成功
+	TaskErrorCode_SYSTEM_ERROR   TaskErrorCode = 1    // 系统内部错误
+	TaskErrorCode_DUPLICATE_NAME TaskErrorCode = 1001 // 任务名称重复
+	TaskErrorCode_TASK_NOT_FOUND TaskErrorCode = 1002 // 任务不存在
+	TaskErrorCode_TASK_RUNNING   TaskErrorCode = 1003 // 任务正在运行中，无法重试
+)
+
+// Enum value maps for TaskErrorCode.
+var (
+	TaskErrorCode_name = map[int32]string{
+		0:    "SUCCESS",
+		1:    "SYSTEM_ERROR",
+		1001: "DUPLICATE_NAME",
+		1002: "TASK_NOT_FOUND",
+		1003: "TASK_RUNNING",
+	}
+	TaskErrorCode_value = map[string]int32{
+		"SUCCESS":        0,
+		"SYSTEM_ERROR":   1,
+		"DUPLICATE_NAME": 1001,
+		"TASK_NOT_FOUND": 1002,
+		"TASK_RUNNING":   1003,
+	}
+)
+
+func (x TaskErrorCode) Enum() *TaskErrorCode {
+	p := new(TaskErrorCode)
+	*p = x
+	return p
+}
+
+func (x TaskErrorCode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TaskErrorCode) Descriptor() protoreflect.EnumDescriptor {
+	return file_etask_task_v1_task_proto_enumTypes[2].Descriptor()
+}
+
+func (TaskErrorCode) Type() protoreflect.EnumType {
+	return &file_etask_task_v1_task_proto_enumTypes[2]
+}
+
+func (x TaskErrorCode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TaskErrorCode.Descriptor instead.
+func (TaskErrorCode) EnumDescriptor() ([]byte, []int) {
+	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{2}
 }
 
 // ExecMode 执行模式
@@ -158,11 +217,11 @@ func (x ExecMode) String() string {
 }
 
 func (ExecMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_etask_task_v1_task_proto_enumTypes[2].Descriptor()
+	return file_etask_task_v1_task_proto_enumTypes[3].Descriptor()
 }
 
 func (ExecMode) Type() protoreflect.EnumType {
-	return &file_etask_task_v1_task_proto_enumTypes[2]
+	return &file_etask_task_v1_task_proto_enumTypes[3]
 }
 
 func (x ExecMode) Number() protoreflect.EnumNumber {
@@ -171,7 +230,7 @@ func (x ExecMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExecMode.Descriptor instead.
 func (ExecMode) EnumDescriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{2}
+	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{3}
 }
 
 // GrpcConfig gRPC配置
@@ -631,10 +690,11 @@ func (x *CreateTaskRequest) GetExecMode() ExecMode {
 	return ExecMode_EXEC_MODE_UNSPECIFIED
 }
 
-// CreateTaskResponse 创建任务响应
 type CreateTaskResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"` // 创建的任务ID
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`                                      // 创建的任务ID
+	Code          TaskErrorCode          `protobuf:"varint,2,opt,name=code,proto3,enum=etask.task.v1.TaskErrorCode" json:"code,omitempty"` // 业务错误码
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`                             // 友好提示信息
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -674,6 +734,20 @@ func (x *CreateTaskResponse) GetId() int64 {
 		return x.Id
 	}
 	return 0
+}
+
+func (x *CreateTaskResponse) GetCode() TaskErrorCode {
+	if x != nil {
+		return x.Code
+	}
+	return TaskErrorCode_SUCCESS
+}
+
+func (x *CreateTaskResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
 }
 
 // GetTaskRequest 获取任务请求
@@ -766,199 +840,29 @@ func (x *GetTaskResponse) GetTask() *Task {
 	return nil
 }
 
-// UpdateTaskRequest 更新任务请求
-type UpdateTaskRequest struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Id                  int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`                                                                                                                        // 任务ID
-	Name                string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                                                                                                     // 任务名称
-	Type                TaskType               `protobuf:"varint,3,opt,name=type,proto3,enum=etask.task.v1.TaskType" json:"type,omitempty"`                                                                                        // 任务类型
-	CronExpr            string                 `protobuf:"bytes,4,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`                                                                                             // cron 表达式
-	GrpcConfig          *GrpcConfig            `protobuf:"bytes,5,opt,name=grpc_config,json=grpcConfig,proto3" json:"grpc_config,omitempty"`                                                                                       // gRPC 配置
-	HttpConfig          *HTTPConfig            `protobuf:"bytes,6,opt,name=http_config,json=httpConfig,proto3" json:"http_config,omitempty"`                                                                                       // HTTP 配置
-	RetryConfig         *RetryConfig           `protobuf:"bytes,7,opt,name=retry_config,json=retryConfig,proto3" json:"retry_config,omitempty"`                                                                                    // 重试配置
-	MaxExecutionSeconds int64                  `protobuf:"varint,8,opt,name=max_execution_seconds,json=maxExecutionSeconds,proto3" json:"max_execution_seconds,omitempty"`                                                         // 最大执行秒数
-	ScheduleParams      map[string]string      `protobuf:"bytes,9,rep,name=schedule_params,json=scheduleParams,proto3" json:"schedule_params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 调度参数
-	Status              TaskStatus             `protobuf:"varint,10,opt,name=status,proto3,enum=etask.task.v1.TaskStatus" json:"status,omitempty"`                                                                                 // 任务状态
-	ExecMode            ExecMode               `protobuf:"varint,11,opt,name=exec_mode,json=execMode,proto3,enum=etask.task.v1.ExecMode" json:"exec_mode,omitempty"`                                                               // 执行模式
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
-}
-
-func (x *UpdateTaskRequest) Reset() {
-	*x = UpdateTaskRequest{}
-	mi := &file_etask_task_v1_task_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateTaskRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateTaskRequest) ProtoMessage() {}
-
-func (x *UpdateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_etask_task_v1_task_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateTaskRequest.ProtoReflect.Descriptor instead.
-func (*UpdateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *UpdateTaskRequest) GetId() int64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-func (x *UpdateTaskRequest) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *UpdateTaskRequest) GetType() TaskType {
-	if x != nil {
-		return x.Type
-	}
-	return TaskType_TASK_TYPE_UNSPECIFIED
-}
-
-func (x *UpdateTaskRequest) GetCronExpr() string {
-	if x != nil {
-		return x.CronExpr
-	}
-	return ""
-}
-
-func (x *UpdateTaskRequest) GetGrpcConfig() *GrpcConfig {
-	if x != nil {
-		return x.GrpcConfig
-	}
-	return nil
-}
-
-func (x *UpdateTaskRequest) GetHttpConfig() *HTTPConfig {
-	if x != nil {
-		return x.HttpConfig
-	}
-	return nil
-}
-
-func (x *UpdateTaskRequest) GetRetryConfig() *RetryConfig {
-	if x != nil {
-		return x.RetryConfig
-	}
-	return nil
-}
-
-func (x *UpdateTaskRequest) GetMaxExecutionSeconds() int64 {
-	if x != nil {
-		return x.MaxExecutionSeconds
-	}
-	return 0
-}
-
-func (x *UpdateTaskRequest) GetScheduleParams() map[string]string {
-	if x != nil {
-		return x.ScheduleParams
-	}
-	return nil
-}
-
-func (x *UpdateTaskRequest) GetStatus() TaskStatus {
-	if x != nil {
-		return x.Status
-	}
-	return TaskStatus_TASK_STATUS_UNSPECIFIED
-}
-
-func (x *UpdateTaskRequest) GetExecMode() ExecMode {
-	if x != nil {
-		return x.ExecMode
-	}
-	return ExecMode_EXEC_MODE_UNSPECIFIED
-}
-
-// UpdateTaskResponse 更新任务响应
-type UpdateTaskResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // 是否成功
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateTaskResponse) Reset() {
-	*x = UpdateTaskResponse{}
-	mi := &file_etask_task_v1_task_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateTaskResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateTaskResponse) ProtoMessage() {}
-
-func (x *UpdateTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_etask_task_v1_task_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateTaskResponse.ProtoReflect.Descriptor instead.
-func (*UpdateTaskResponse) Descriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *UpdateTaskResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-// DeleteTaskRequest 删除任务请求
-type DeleteTaskRequest struct {
+// RetryTaskByIDRequest 重试任务请求 (按ID)
+type RetryTaskByIDRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"` // 任务ID
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteTaskRequest) Reset() {
-	*x = DeleteTaskRequest{}
-	mi := &file_etask_task_v1_task_proto_msgTypes[10]
+func (x *RetryTaskByIDRequest) Reset() {
+	*x = RetryTaskByIDRequest{}
+	mi := &file_etask_task_v1_task_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteTaskRequest) String() string {
+func (x *RetryTaskByIDRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteTaskRequest) ProtoMessage() {}
+func (*RetryTaskByIDRequest) ProtoMessage() {}
 
-func (x *DeleteTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_etask_task_v1_task_proto_msgTypes[10]
+func (x *RetryTaskByIDRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_etask_task_v1_task_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -969,41 +873,41 @@ func (x *DeleteTaskRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteTaskRequest.ProtoReflect.Descriptor instead.
-func (*DeleteTaskRequest) Descriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{10}
+// Deprecated: Use RetryTaskByIDRequest.ProtoReflect.Descriptor instead.
+func (*RetryTaskByIDRequest) Descriptor() ([]byte, []int) {
+	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *DeleteTaskRequest) GetId() int64 {
+func (x *RetryTaskByIDRequest) GetId() int64 {
 	if x != nil {
 		return x.Id
 	}
 	return 0
 }
 
-// DeleteTaskResponse 删除任务响应
-type DeleteTaskResponse struct {
+// RetryTaskByNameRequest 重试任务请求 (按名称)
+type RetryTaskByNameRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // 是否成功
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 任务名称
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteTaskResponse) Reset() {
-	*x = DeleteTaskResponse{}
-	mi := &file_etask_task_v1_task_proto_msgTypes[11]
+func (x *RetryTaskByNameRequest) Reset() {
+	*x = RetryTaskByNameRequest{}
+	mi := &file_etask_task_v1_task_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteTaskResponse) String() string {
+func (x *RetryTaskByNameRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteTaskResponse) ProtoMessage() {}
+func (*RetryTaskByNameRequest) ProtoMessage() {}
 
-func (x *DeleteTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_etask_task_v1_task_proto_msgTypes[11]
+func (x *RetryTaskByNameRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_etask_task_v1_task_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1014,44 +918,43 @@ func (x *DeleteTaskResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteTaskResponse.ProtoReflect.Descriptor instead.
-func (*DeleteTaskResponse) Descriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{11}
+// Deprecated: Use RetryTaskByNameRequest.ProtoReflect.Descriptor instead.
+func (*RetryTaskByNameRequest) Descriptor() ([]byte, []int) {
+	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *DeleteTaskResponse) GetSuccess() bool {
+func (x *RetryTaskByNameRequest) GetName() string {
 	if x != nil {
-		return x.Success
+		return x.Name
 	}
-	return false
+	return ""
 }
 
-// ListTasksRequest 列出任务请求
-type ListTasksRequest struct {
+// RetryTaskResponse 重试任务响应
+type RetryTaskResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          int32                  `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`                                   // 页码
-	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`           // 每页数量
-	Status        TaskStatus             `protobuf:"varint,3,opt,name=status,proto3,enum=etask.task.v1.TaskStatus" json:"status,omitempty"` // 按状态过滤(可选)
-	Type          TaskType               `protobuf:"varint,4,opt,name=type,proto3,enum=etask.task.v1.TaskType" json:"type,omitempty"`       // 按类型过滤(可选)
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`                                      // 任务ID
+	Code          TaskErrorCode          `protobuf:"varint,2,opt,name=code,proto3,enum=etask.task.v1.TaskErrorCode" json:"code,omitempty"` // 业务错误码
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`                             // 友好提示信息
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListTasksRequest) Reset() {
-	*x = ListTasksRequest{}
-	mi := &file_etask_task_v1_task_proto_msgTypes[12]
+func (x *RetryTaskResponse) Reset() {
+	*x = RetryTaskResponse{}
+	mi := &file_etask_task_v1_task_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListTasksRequest) String() string {
+func (x *RetryTaskResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListTasksRequest) ProtoMessage() {}
+func (*RetryTaskResponse) ProtoMessage() {}
 
-func (x *ListTasksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_etask_task_v1_task_proto_msgTypes[12]
+func (x *RetryTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_etask_task_v1_task_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1062,90 +965,30 @@ func (x *ListTasksRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListTasksRequest.ProtoReflect.Descriptor instead.
-func (*ListTasksRequest) Descriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{12}
+// Deprecated: Use RetryTaskResponse.ProtoReflect.Descriptor instead.
+func (*RetryTaskResponse) Descriptor() ([]byte, []int) {
+	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *ListTasksRequest) GetPage() int32 {
+func (x *RetryTaskResponse) GetId() int64 {
 	if x != nil {
-		return x.Page
+		return x.Id
 	}
 	return 0
 }
 
-func (x *ListTasksRequest) GetPageSize() int32 {
+func (x *RetryTaskResponse) GetCode() TaskErrorCode {
 	if x != nil {
-		return x.PageSize
+		return x.Code
 	}
-	return 0
+	return TaskErrorCode_SUCCESS
 }
 
-func (x *ListTasksRequest) GetStatus() TaskStatus {
+func (x *RetryTaskResponse) GetMessage() string {
 	if x != nil {
-		return x.Status
+		return x.Message
 	}
-	return TaskStatus_TASK_STATUS_UNSPECIFIED
-}
-
-func (x *ListTasksRequest) GetType() TaskType {
-	if x != nil {
-		return x.Type
-	}
-	return TaskType_TASK_TYPE_UNSPECIFIED
-}
-
-// ListTasksResponse 列出任务响应
-type ListTasksResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tasks         []*Task                `protobuf:"bytes,1,rep,name=tasks,proto3" json:"tasks,omitempty"`  // 任务列表
-	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"` // 总数
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListTasksResponse) Reset() {
-	*x = ListTasksResponse{}
-	mi := &file_etask_task_v1_task_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListTasksResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListTasksResponse) ProtoMessage() {}
-
-func (x *ListTasksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_etask_task_v1_task_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListTasksResponse.ProtoReflect.Descriptor instead.
-func (*ListTasksResponse) Descriptor() ([]byte, []int) {
-	return file_etask_task_v1_task_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *ListTasksResponse) GetTasks() []*Task {
-	if x != nil {
-		return x.Tasks
-	}
-	return nil
-}
-
-func (x *ListTasksResponse) GetTotal() int64 {
-	if x != nil {
-		return x.Total
-	}
-	return 0
+	return ""
 }
 
 var File_etask_task_v1_task_proto protoreflect.FileDescriptor
@@ -1212,69 +1055,51 @@ const file_etask_task_v1_task_proto_rawDesc = "" +
 	"\texec_mode\x18\t \x01(\x0e2\x17.etask.task.v1.ExecModeR\bexecMode\x1aA\n" +
 	"\x13ScheduleParamsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"$\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"p\n" +
 	"\x12CreateTaskResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\" \n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x120\n" +
+	"\x04code\x18\x02 \x01(\x0e2\x1c.etask.task.v1.TaskErrorCodeR\x04code\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\" \n" +
 	"\x0eGetTaskRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\":\n" +
 	"\x0fGetTaskResponse\x12'\n" +
-	"\x04task\x18\x01 \x01(\v2\x13.etask.task.v1.TaskR\x04task\"\xf7\x04\n" +
-	"\x11UpdateTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12+\n" +
-	"\x04type\x18\x03 \x01(\x0e2\x17.etask.task.v1.TaskTypeR\x04type\x12\x1b\n" +
-	"\tcron_expr\x18\x04 \x01(\tR\bcronExpr\x12:\n" +
-	"\vgrpc_config\x18\x05 \x01(\v2\x19.etask.task.v1.GrpcConfigR\n" +
-	"grpcConfig\x12:\n" +
-	"\vhttp_config\x18\x06 \x01(\v2\x19.etask.task.v1.HTTPConfigR\n" +
-	"httpConfig\x12=\n" +
-	"\fretry_config\x18\a \x01(\v2\x1a.etask.task.v1.RetryConfigR\vretryConfig\x122\n" +
-	"\x15max_execution_seconds\x18\b \x01(\x03R\x13maxExecutionSeconds\x12]\n" +
-	"\x0fschedule_params\x18\t \x03(\v24.etask.task.v1.UpdateTaskRequest.ScheduleParamsEntryR\x0escheduleParams\x121\n" +
-	"\x06status\x18\n" +
-	" \x01(\x0e2\x19.etask.task.v1.TaskStatusR\x06status\x124\n" +
-	"\texec_mode\x18\v \x01(\x0e2\x17.etask.task.v1.ExecModeR\bexecMode\x1aA\n" +
-	"\x13ScheduleParamsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\".\n" +
-	"\x12UpdateTaskResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"#\n" +
-	"\x11DeleteTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\".\n" +
-	"\x12DeleteTaskResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa3\x01\n" +
-	"\x10ListTasksRequest\x12\x12\n" +
-	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
-	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x121\n" +
-	"\x06status\x18\x03 \x01(\x0e2\x19.etask.task.v1.TaskStatusR\x06status\x12+\n" +
-	"\x04type\x18\x04 \x01(\x0e2\x17.etask.task.v1.TaskTypeR\x04type\"T\n" +
-	"\x11ListTasksResponse\x12)\n" +
-	"\x05tasks\x18\x01 \x03(\v2\x13.etask.task.v1.TaskR\x05tasks\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x03R\x05total*B\n" +
+	"\x04task\x18\x01 \x01(\v2\x13.etask.task.v1.TaskR\x04task\"&\n" +
+	"\x14RetryTaskByIDRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\",\n" +
+	"\x16RetryTaskByNameRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"o\n" +
+	"\x11RetryTaskResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x120\n" +
+	"\x04code\x18\x02 \x01(\x0e2\x1c.etask.task.v1.TaskErrorCodeR\x04code\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage*B\n" +
 	"\bTaskType\x12\x19\n" +
 	"\x15TASK_TYPE_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tRECURRING\x10\x01\x12\f\n" +
-	"\bONE_TIME\x10\x02*R\n" +
+	"\bONE_TIME\x10\x02*a\n" +
 	"\n" +
 	"TaskStatus\x12\x1b\n" +
 	"\x17TASK_STATUS_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
 	"\x06ACTIVE\x10\x01\x12\r\n" +
 	"\tPREEMPTED\x10\x02\x12\f\n" +
-	"\bINACTIVE\x10\x03*9\n" +
+	"\bINACTIVE\x10\x03\x12\r\n" +
+	"\tCOMPLETED\x10\x04*k\n" +
+	"\rTaskErrorCode\x12\v\n" +
+	"\aSUCCESS\x10\x00\x12\x10\n" +
+	"\fSYSTEM_ERROR\x10\x01\x12\x13\n" +
+	"\x0eDUPLICATE_NAME\x10\xe9\a\x12\x13\n" +
+	"\x0eTASK_NOT_FOUND\x10\xea\a\x12\x11\n" +
+	"\fTASK_RUNNING\x10\xeb\a*9\n" +
 	"\bExecMode\x12\x19\n" +
 	"\x15EXEC_MODE_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04PUSH\x10\x01\x12\b\n" +
-	"\x04PULL\x10\x022\xa0\x03\n" +
+	"\x04PULL\x10\x022\xde\x02\n" +
 	"\vTaskService\x12Q\n" +
 	"\n" +
 	"CreateTask\x12 .etask.task.v1.CreateTaskRequest\x1a!.etask.task.v1.CreateTaskResponse\x12H\n" +
-	"\aGetTask\x12\x1d.etask.task.v1.GetTaskRequest\x1a\x1e.etask.task.v1.GetTaskResponse\x12Q\n" +
-	"\n" +
-	"UpdateTask\x12 .etask.task.v1.UpdateTaskRequest\x1a!.etask.task.v1.UpdateTaskResponse\x12Q\n" +
-	"\n" +
-	"DeleteTask\x12 .etask.task.v1.DeleteTaskRequest\x1a!.etask.task.v1.DeleteTaskResponse\x12N\n" +
-	"\tListTasks\x12\x1f.etask.task.v1.ListTasksRequest\x1a .etask.task.v1.ListTasksResponseB\xb2\x01\n" +
+	"\aGetTask\x12\x1d.etask.task.v1.GetTaskRequest\x1a\x1e.etask.task.v1.GetTaskResponse\x12V\n" +
+	"\rRetryTaskByID\x12#.etask.task.v1.RetryTaskByIDRequest\x1a .etask.task.v1.RetryTaskResponse\x12Z\n" +
+	"\x0fRetryTaskByName\x12%.etask.task.v1.RetryTaskByNameRequest\x1a .etask.task.v1.RetryTaskResponseB\xb2\x01\n" +
 	"\x11com.etask.task.v1B\tTaskProtoP\x01Z<github.com/Duke1616/ecmdb/api/proto/gen/etask/task/v1;taskv1\xa2\x02\x03ETX\xaa\x02\rEtask.Task.V1\xca\x02\rEtask\\Task\\V1\xe2\x02\x19Etask\\Task\\V1\\GPBMetadata\xea\x02\x0fEtask::Task::V1b\x06proto3"
 
 var (
@@ -1289,74 +1114,61 @@ func file_etask_task_v1_task_proto_rawDescGZIP() []byte {
 	return file_etask_task_v1_task_proto_rawDescData
 }
 
-var file_etask_task_v1_task_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_etask_task_v1_task_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_etask_task_v1_task_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_etask_task_v1_task_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_etask_task_v1_task_proto_goTypes = []any{
-	(TaskType)(0),              // 0: etask.task.v1.TaskType
-	(TaskStatus)(0),            // 1: etask.task.v1.TaskStatus
-	(ExecMode)(0),              // 2: etask.task.v1.ExecMode
-	(*GrpcConfig)(nil),         // 3: etask.task.v1.GrpcConfig
-	(*HTTPConfig)(nil),         // 4: etask.task.v1.HTTPConfig
-	(*RetryConfig)(nil),        // 5: etask.task.v1.RetryConfig
-	(*Task)(nil),               // 6: etask.task.v1.Task
-	(*CreateTaskRequest)(nil),  // 7: etask.task.v1.CreateTaskRequest
-	(*CreateTaskResponse)(nil), // 8: etask.task.v1.CreateTaskResponse
-	(*GetTaskRequest)(nil),     // 9: etask.task.v1.GetTaskRequest
-	(*GetTaskResponse)(nil),    // 10: etask.task.v1.GetTaskResponse
-	(*UpdateTaskRequest)(nil),  // 11: etask.task.v1.UpdateTaskRequest
-	(*UpdateTaskResponse)(nil), // 12: etask.task.v1.UpdateTaskResponse
-	(*DeleteTaskRequest)(nil),  // 13: etask.task.v1.DeleteTaskRequest
-	(*DeleteTaskResponse)(nil), // 14: etask.task.v1.DeleteTaskResponse
-	(*ListTasksRequest)(nil),   // 15: etask.task.v1.ListTasksRequest
-	(*ListTasksResponse)(nil),  // 16: etask.task.v1.ListTasksResponse
-	nil,                        // 17: etask.task.v1.GrpcConfig.ParamsEntry
-	nil,                        // 18: etask.task.v1.HTTPConfig.ParamsEntry
-	nil,                        // 19: etask.task.v1.Task.ScheduleParamsEntry
-	nil,                        // 20: etask.task.v1.CreateTaskRequest.ScheduleParamsEntry
-	nil,                        // 21: etask.task.v1.UpdateTaskRequest.ScheduleParamsEntry
+	(TaskType)(0),                  // 0: etask.task.v1.TaskType
+	(TaskStatus)(0),                // 1: etask.task.v1.TaskStatus
+	(TaskErrorCode)(0),             // 2: etask.task.v1.TaskErrorCode
+	(ExecMode)(0),                  // 3: etask.task.v1.ExecMode
+	(*GrpcConfig)(nil),             // 4: etask.task.v1.GrpcConfig
+	(*HTTPConfig)(nil),             // 5: etask.task.v1.HTTPConfig
+	(*RetryConfig)(nil),            // 6: etask.task.v1.RetryConfig
+	(*Task)(nil),                   // 7: etask.task.v1.Task
+	(*CreateTaskRequest)(nil),      // 8: etask.task.v1.CreateTaskRequest
+	(*CreateTaskResponse)(nil),     // 9: etask.task.v1.CreateTaskResponse
+	(*GetTaskRequest)(nil),         // 10: etask.task.v1.GetTaskRequest
+	(*GetTaskResponse)(nil),        // 11: etask.task.v1.GetTaskResponse
+	(*RetryTaskByIDRequest)(nil),   // 12: etask.task.v1.RetryTaskByIDRequest
+	(*RetryTaskByNameRequest)(nil), // 13: etask.task.v1.RetryTaskByNameRequest
+	(*RetryTaskResponse)(nil),      // 14: etask.task.v1.RetryTaskResponse
+	nil,                            // 15: etask.task.v1.GrpcConfig.ParamsEntry
+	nil,                            // 16: etask.task.v1.HTTPConfig.ParamsEntry
+	nil,                            // 17: etask.task.v1.Task.ScheduleParamsEntry
+	nil,                            // 18: etask.task.v1.CreateTaskRequest.ScheduleParamsEntry
 }
 var file_etask_task_v1_task_proto_depIdxs = []int32{
-	17, // 0: etask.task.v1.GrpcConfig.params:type_name -> etask.task.v1.GrpcConfig.ParamsEntry
-	18, // 1: etask.task.v1.HTTPConfig.params:type_name -> etask.task.v1.HTTPConfig.ParamsEntry
+	15, // 0: etask.task.v1.GrpcConfig.params:type_name -> etask.task.v1.GrpcConfig.ParamsEntry
+	16, // 1: etask.task.v1.HTTPConfig.params:type_name -> etask.task.v1.HTTPConfig.ParamsEntry
 	0,  // 2: etask.task.v1.Task.type:type_name -> etask.task.v1.TaskType
-	3,  // 3: etask.task.v1.Task.grpc_config:type_name -> etask.task.v1.GrpcConfig
-	4,  // 4: etask.task.v1.Task.http_config:type_name -> etask.task.v1.HTTPConfig
-	5,  // 5: etask.task.v1.Task.retry_config:type_name -> etask.task.v1.RetryConfig
-	19, // 6: etask.task.v1.Task.schedule_params:type_name -> etask.task.v1.Task.ScheduleParamsEntry
+	4,  // 3: etask.task.v1.Task.grpc_config:type_name -> etask.task.v1.GrpcConfig
+	5,  // 4: etask.task.v1.Task.http_config:type_name -> etask.task.v1.HTTPConfig
+	6,  // 5: etask.task.v1.Task.retry_config:type_name -> etask.task.v1.RetryConfig
+	17, // 6: etask.task.v1.Task.schedule_params:type_name -> etask.task.v1.Task.ScheduleParamsEntry
 	1,  // 7: etask.task.v1.Task.status:type_name -> etask.task.v1.TaskStatus
-	2,  // 8: etask.task.v1.Task.exec_mode:type_name -> etask.task.v1.ExecMode
+	3,  // 8: etask.task.v1.Task.exec_mode:type_name -> etask.task.v1.ExecMode
 	0,  // 9: etask.task.v1.CreateTaskRequest.type:type_name -> etask.task.v1.TaskType
-	3,  // 10: etask.task.v1.CreateTaskRequest.grpc_config:type_name -> etask.task.v1.GrpcConfig
-	4,  // 11: etask.task.v1.CreateTaskRequest.http_config:type_name -> etask.task.v1.HTTPConfig
-	5,  // 12: etask.task.v1.CreateTaskRequest.retry_config:type_name -> etask.task.v1.RetryConfig
-	20, // 13: etask.task.v1.CreateTaskRequest.schedule_params:type_name -> etask.task.v1.CreateTaskRequest.ScheduleParamsEntry
-	2,  // 14: etask.task.v1.CreateTaskRequest.exec_mode:type_name -> etask.task.v1.ExecMode
-	6,  // 15: etask.task.v1.GetTaskResponse.task:type_name -> etask.task.v1.Task
-	0,  // 16: etask.task.v1.UpdateTaskRequest.type:type_name -> etask.task.v1.TaskType
-	3,  // 17: etask.task.v1.UpdateTaskRequest.grpc_config:type_name -> etask.task.v1.GrpcConfig
-	4,  // 18: etask.task.v1.UpdateTaskRequest.http_config:type_name -> etask.task.v1.HTTPConfig
-	5,  // 19: etask.task.v1.UpdateTaskRequest.retry_config:type_name -> etask.task.v1.RetryConfig
-	21, // 20: etask.task.v1.UpdateTaskRequest.schedule_params:type_name -> etask.task.v1.UpdateTaskRequest.ScheduleParamsEntry
-	1,  // 21: etask.task.v1.UpdateTaskRequest.status:type_name -> etask.task.v1.TaskStatus
-	2,  // 22: etask.task.v1.UpdateTaskRequest.exec_mode:type_name -> etask.task.v1.ExecMode
-	1,  // 23: etask.task.v1.ListTasksRequest.status:type_name -> etask.task.v1.TaskStatus
-	0,  // 24: etask.task.v1.ListTasksRequest.type:type_name -> etask.task.v1.TaskType
-	6,  // 25: etask.task.v1.ListTasksResponse.tasks:type_name -> etask.task.v1.Task
-	7,  // 26: etask.task.v1.TaskService.CreateTask:input_type -> etask.task.v1.CreateTaskRequest
-	9,  // 27: etask.task.v1.TaskService.GetTask:input_type -> etask.task.v1.GetTaskRequest
-	11, // 28: etask.task.v1.TaskService.UpdateTask:input_type -> etask.task.v1.UpdateTaskRequest
-	13, // 29: etask.task.v1.TaskService.DeleteTask:input_type -> etask.task.v1.DeleteTaskRequest
-	15, // 30: etask.task.v1.TaskService.ListTasks:input_type -> etask.task.v1.ListTasksRequest
-	8,  // 31: etask.task.v1.TaskService.CreateTask:output_type -> etask.task.v1.CreateTaskResponse
-	10, // 32: etask.task.v1.TaskService.GetTask:output_type -> etask.task.v1.GetTaskResponse
-	12, // 33: etask.task.v1.TaskService.UpdateTask:output_type -> etask.task.v1.UpdateTaskResponse
-	14, // 34: etask.task.v1.TaskService.DeleteTask:output_type -> etask.task.v1.DeleteTaskResponse
-	16, // 35: etask.task.v1.TaskService.ListTasks:output_type -> etask.task.v1.ListTasksResponse
-	31, // [31:36] is the sub-list for method output_type
-	26, // [26:31] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	4,  // 10: etask.task.v1.CreateTaskRequest.grpc_config:type_name -> etask.task.v1.GrpcConfig
+	5,  // 11: etask.task.v1.CreateTaskRequest.http_config:type_name -> etask.task.v1.HTTPConfig
+	6,  // 12: etask.task.v1.CreateTaskRequest.retry_config:type_name -> etask.task.v1.RetryConfig
+	18, // 13: etask.task.v1.CreateTaskRequest.schedule_params:type_name -> etask.task.v1.CreateTaskRequest.ScheduleParamsEntry
+	3,  // 14: etask.task.v1.CreateTaskRequest.exec_mode:type_name -> etask.task.v1.ExecMode
+	2,  // 15: etask.task.v1.CreateTaskResponse.code:type_name -> etask.task.v1.TaskErrorCode
+	7,  // 16: etask.task.v1.GetTaskResponse.task:type_name -> etask.task.v1.Task
+	2,  // 17: etask.task.v1.RetryTaskResponse.code:type_name -> etask.task.v1.TaskErrorCode
+	8,  // 18: etask.task.v1.TaskService.CreateTask:input_type -> etask.task.v1.CreateTaskRequest
+	10, // 19: etask.task.v1.TaskService.GetTask:input_type -> etask.task.v1.GetTaskRequest
+	12, // 20: etask.task.v1.TaskService.RetryTaskByID:input_type -> etask.task.v1.RetryTaskByIDRequest
+	13, // 21: etask.task.v1.TaskService.RetryTaskByName:input_type -> etask.task.v1.RetryTaskByNameRequest
+	9,  // 22: etask.task.v1.TaskService.CreateTask:output_type -> etask.task.v1.CreateTaskResponse
+	11, // 23: etask.task.v1.TaskService.GetTask:output_type -> etask.task.v1.GetTaskResponse
+	14, // 24: etask.task.v1.TaskService.RetryTaskByID:output_type -> etask.task.v1.RetryTaskResponse
+	14, // 25: etask.task.v1.TaskService.RetryTaskByName:output_type -> etask.task.v1.RetryTaskResponse
+	22, // [22:26] is the sub-list for method output_type
+	18, // [18:22] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_etask_task_v1_task_proto_init() }
@@ -1369,8 +1181,8 @@ func file_etask_task_v1_task_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_etask_task_v1_task_proto_rawDesc), len(file_etask_task_v1_task_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   19,
+			NumEnums:      4,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

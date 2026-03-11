@@ -17,6 +17,16 @@ enum TaskStatus {
   ACTIVE = 1; // 可调度
   PREEMPTED = 2; // 已抢占
   INACTIVE = 3; // 停止执行
+  COMPLETED = 4; // 已完成
+}
+
+// TaskErrorCode 业务错误码
+enum TaskErrorCode {
+  SUCCESS = 0; // 成功
+  SYSTEM_ERROR = 1; // 系统内部错误
+  DUPLICATE_NAME = 1001; // 任务名称重复
+  TASK_NOT_FOUND = 1002; // 任务不存在
+  TASK_RUNNING = 1003; // 任务正在运行中，无法重试
 }
 
 // GrpcConfig gRPC配置
@@ -80,9 +90,10 @@ message CreateTaskRequest {
   ExecMode exec_mode = 9; // 执行模式
 }
 
-// CreateTaskResponse 创建任务响应
 message CreateTaskResponse {
   int64 id = 1; // 创建的任务ID
+  TaskErrorCode code = 2; // 业务错误码
+  string message = 3; // 友好提示信息
 }
 
 // GetTaskRequest 获取任务请求
@@ -95,48 +106,21 @@ message GetTaskResponse {
   Task task = 1; // 任务信息
 }
 
-// UpdateTaskRequest 更新任务请求
-message UpdateTaskRequest {
-  int64 id = 1; // 任务ID
-  string name = 2; // 任务名称
-  TaskType type = 3; // 任务类型
-  string cron_expr = 4; // cron 表达式
-  GrpcConfig grpc_config = 5; // gRPC 配置
-  HTTPConfig http_config = 6; // HTTP 配置
-  RetryConfig retry_config = 7; // 重试配置
-  int64 max_execution_seconds = 8; // 最大执行秒数
-  map<string, string> schedule_params = 9; // 调度参数
-  TaskStatus status = 10; // 任务状态
-  ExecMode exec_mode = 11; // 执行模式
-}
-
-// UpdateTaskResponse 更新任务响应
-message UpdateTaskResponse {
-  bool success = 1; // 是否成功
-}
-
-// DeleteTaskRequest 删除任务请求
-message DeleteTaskRequest {
+// RetryTaskByIDRequest 重试任务请求 (按ID)
+message RetryTaskByIDRequest {
   int64 id = 1; // 任务ID
 }
 
-// DeleteTaskResponse 删除任务响应
-message DeleteTaskResponse {
-  bool success = 1; // 是否成功
+// RetryTaskByNameRequest 重试任务请求 (按名称)
+message RetryTaskByNameRequest {
+  string name = 1; // 任务名称
 }
 
-// ListTasksRequest 列出任务请求
-message ListTasksRequest {
-  int32 page = 1; // 页码
-  int32 page_size = 2; // 每页数量
-  TaskStatus status = 3; // 按状态过滤(可选)
-  TaskType type = 4; // 按类型过滤(可选)
-}
-
-// ListTasksResponse 列出任务响应
-message ListTasksResponse {
-  repeated Task tasks = 1; // 任务列表
-  int64 total = 2; // 总数
+// RetryTaskResponse 重试任务响应
+message RetryTaskResponse {
+  int64 id = 1; // 任务ID
+  TaskErrorCode code = 2; // 业务错误码
+  string message = 3; // 友好提示信息
 }
 
 // TaskService 任务管理服务
@@ -145,10 +129,8 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   // 获取任务
   rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
-  // 更新任务
-  rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
-  // 删除任务
-  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
-  // 列出任务
-  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  // 重试任务 (按ID)
+  rpc RetryTaskByID(RetryTaskByIDRequest) returns (RetryTaskResponse);
+  // 重试任务 (按名称)
+  rpc RetryTaskByName(RetryTaskByNameRequest) returns (RetryTaskResponse);
 }

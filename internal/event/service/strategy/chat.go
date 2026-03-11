@@ -477,13 +477,15 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 	if modeSet[easyflow.OutputUserInput] {
 		if len(data.userInputs) > 0 {
 			fields = append(fields, sectionHeader("✍️ 用户提交"))
+			var inputFields []notification.Field
 			for _, input := range data.userInputs {
-				fields = append(fields, notification.Field{
+				inputFields = append(inputFields, notification.Field{
 					IsShort: true,
 					Tag:     "lark_md",
 					Content: fmt.Sprintf("**%s:**\n%v", input.Name, input.Value),
 				})
 			}
+			fields = append(fields, notification.AddRowSpacers(inputFields)...)
 		}
 	}
 

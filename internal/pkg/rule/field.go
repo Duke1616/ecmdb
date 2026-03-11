@@ -72,7 +72,7 @@ func (fp *FieldProcessor) processSystemFields() []Field {
 	var fields []Field
 	keys := fp.getSortedKeys()
 
-	for i, field := range keys {
+	for _, field := range keys {
 		value := fp.data[field]
 		title := fp.getFieldTitle(field)
 		displayValue := fp.getDisplayValue(field, value)
@@ -82,17 +82,9 @@ func (fp *FieldProcessor) processSystemFields() []Field {
 			Tag:     "lark_md",
 			Content: fmt.Sprintf(`**%s:**\n%v`, title, displayValue),
 		})
-
-		if (i+1)%2 == 0 {
-			fields = append(fields, Field{
-				IsShort: false,
-				Tag:     "lark_md",
-				Content: "",
-			})
-		}
 	}
 
-	return fields
+	return AddRowSpacers(fields)
 }
 
 func (fp *FieldProcessor) processWechatFields() []Field {
@@ -103,7 +95,7 @@ func (fp *FieldProcessor) processWechatFields() []Field {
 
 	var fields []Field
 
-	for i, contents := range oaData.ApplyData.Contents {
+	for _, contents := range oaData.ApplyData.Contents {
 		key := contents.Title[0].Text
 		content := fp.processWechatContent(contents)
 
@@ -113,14 +105,6 @@ func (fp *FieldProcessor) processWechatFields() []Field {
 				Tag:     "lark_md",
 				Content: fmt.Sprintf(`**%s:**\n%v`, key, content),
 			})
-
-			if (i+1)%2 == 0 {
-				fields = append(fields, Field{
-					IsShort: false,
-					Tag:     "lark_md",
-					Content: "",
-				})
-			}
 		}
 	}
 
@@ -228,4 +212,21 @@ func convertToNumber(value interface{}) (float64, error) {
 	default:
 		return 0, fmt.Errorf("not a number")
 	}
+}
+
+// AddRowSpacers 专门为 rule.Field 提供的排列空行补位函数
+// 确保每个飞书短字段在达到双列满排后，插入占位使其下一项换行
+func AddRowSpacers(fields []Field) []Field {
+	var results []Field
+	for i, f := range fields {
+		results = append(results, f)
+		if (i+1)%2 == 0 {
+			results = append(results, Field{
+				IsShort: false,
+				Tag:     "lark_md",
+				Content: "",
+			})
+		}
+	}
+	return results
 }

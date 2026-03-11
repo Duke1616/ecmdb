@@ -60,7 +60,7 @@ func (s *StartNotification) Send(ctx context.Context, info Info) (notification.N
 				{Key: "order_id", Value: info.Order.Id},
 				{Key: "task_id", Value: "100001"},
 			},
-			HideForm: true,
+			HideForm: false, // 设为 false 让撤销卡片的按钮正常显示
 		},
 	}
 

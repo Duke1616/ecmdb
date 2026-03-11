@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/Bunny3th/easy-workflow/workflow/model"
@@ -334,15 +335,21 @@ func (b *BaseStrategy) ConvertRuleFields(fields []rule.Field) []notification.Fie
 
 // BuildWantResultFields 构建自动化任务结果字段
 func (b *BaseStrategy) BuildWantResultFields(wantResult map[string]interface{}) []notification.Field {
-	fields := make([]notification.Field, 0, len(wantResult))
-	for k, v := range wantResult {
+	keys := make([]string, 0, len(wantResult))
+	for k := range wantResult {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var fields []notification.Field
+	for _, k := range keys {
 		fields = append(fields, notification.Field{
 			IsShort: true,
 			Tag:     "lark_md",
-			Content: fmt.Sprintf("**%s:**\n%v", k, v),
+			Content: fmt.Sprintf("**%s:**\n%v", k, wantResult[k]),
 		})
 	}
-	return fields
+	return notification.AddRowSpacers(fields)
 }
 
 // AnalyzeUsers 将用户列表转换为 username -> feishu_user_id 的映射

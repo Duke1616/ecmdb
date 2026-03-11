@@ -105,6 +105,29 @@ type Template struct {
 	Text        string              `json:"text"`         // 文本信息
 }
 
+type Filter struct {
+	UserIds     []string `json:"user_ids"`
+	ProjectIds  []string `json:"project_ids"`
+	ResourceIds []string `json:"resource_ids"`
+}
+
+// AddRowSpacers 为传入的数据展示卡片阵列增加双列排版时的视觉行间距。
+// 每呈现两项（占满飞书一横排）后，追加一个全宽的空文本节点进行物理换行。
+func AddRowSpacers(fields []Field) []Field {
+	var results []Field
+	for i, f := range fields {
+		results = append(results, f)
+		if (i+1)%2 == 0 {
+			results = append(results, Field{
+				IsShort: false,
+				Tag:     "lark_md",
+				Content: "",
+			})
+		}
+	}
+	return results
+}
+
 type Field struct {
 	IsShort   bool   `json:"is_short"`
 	IsDivider bool   `json:"is_divider"`

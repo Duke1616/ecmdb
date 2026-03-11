@@ -211,6 +211,7 @@ const (
 // 该节点为纯广播型，发送完成后自动推进流程，无需等待任何操作
 type ChatGroupProperty struct {
 	Name         string           `json:"name"`                     // 节点名称
+	Title        string           `json:"title"`                    // 消息卡片标题
 	Mode         ChatGroupMode    `json:"mode"`                     // existing / create
 	ChatGroupIDs []int64          `json:"chat_group_ids,omitempty"` // existing 模式, 自动匹配所属 team 内部的所有人
 	Create       *CreateChatGroup `json:"create,omitempty"`         // create 模式，新建一个群组，全局不绑定任何 Team，或者默认 Team

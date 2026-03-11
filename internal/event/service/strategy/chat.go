@@ -271,7 +271,7 @@ func (n *ChatNotification) syncMembersToExistingChat(ctx context.Context, chatID
 
 // buildNotifications 组装最终的批量通知对象
 func (n *ChatNotification) buildNotifications(info Info, data *chatContext, recipients []recipient) []notification.Notification {
-	title := rule.GenerateTitle(data.StartUser.DisplayName, data.TName)
+	title := n.resolveTitle(data.property.Title, info, data)
 	fields := n.resolveFields(info, data)
 
 	return slice.FilterMap(recipients, func(idx int, r recipient) (notification.Notification, bool) {
@@ -358,11 +358,20 @@ func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatC
 
 var variableRegex = regexp.MustCompile(`{{(.*?)}}`)
 
+func (n *ChatNotification) resolveTitle(rule string, info Info, data *chatContext) string {
+	return n.resolveDynamicString(rule, "{{creator}}的{{template}}执行结果", info, data)
+}
+
 // resolveChatName 解析动态群组名称
 func (n *ChatNotification) resolveChatName(rule string, info Info, data *chatContext) string {
-	defaultName := fmt.Sprintf("【ECMDB】- %s", data.TName)
-	if rule == "" {
-		return defaultName
+	return n.resolveDynamicString(rule, fmt.Sprintf("【ECMDB】- %s", data.TName), info, data)
+}
+
+// resolveDynamicString 解析动态字符串 (支持变量替换)
+func (n *ChatNotification) resolveDynamicString(value, defaultVal string, info Info, data *chatContext) string {
+	target := value
+	if target == "" {
+		target = defaultVal
 	}
 
 	// 1. 准备变量池
@@ -378,19 +387,24 @@ func (n *ChatNotification) resolveChatName(rule string, info Info, data *chatCon
 	}
 
 	// 3. 执行替换
-	result := variableRegex.ReplaceAllStringFunc(rule, func(match string) string {
+	result := variableRegex.ReplaceAllStringFunc(target, func(match string) string {
 		// 提取花括号中的变量名
-		key := variableRegex.FindStringSubmatch(match)[1]
+		res := variableRegex.FindStringSubmatch(match)
+		if len(res) < 2 {
+			return match
+		}
+
+		key := res[1]
 		if val, ok := vars[key]; ok {
 			return val
 		}
-		// 如果变量不存在，保持原样或返回空提示
+		// 如果变量不存在，保持原样
 		return match
 	})
 
-	// 4. 解析结果兜底检查
+	// 4. 兜底检查
 	if result == "" {
-		return defaultName
+		return defaultVal
 	}
 
 	return result

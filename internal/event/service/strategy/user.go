@@ -77,7 +77,7 @@ func (n *UserNotification) Send(ctx context.Context, info Info) (notification.No
 
 	// 4. 异步处理消息发送（因需等待任务记录创建）
 	// 创建独立的 context，但保留 trace 信息
-	sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	sendCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	go func() {
 		defer cancel()
 		defer func() {

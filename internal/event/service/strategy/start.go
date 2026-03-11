@@ -53,11 +53,12 @@ func (s *StartNotification) Send(ctx context.Context, info Info) (notification.N
 		WorkFlowID: info.Workflow.Id,
 		Receiver:   data.StartUser.FeishuInfo.UserId,
 		Template: notification.Template{
-			Name:   LarkTemplateCC,
+			Name:   LarkTemplateApprovalRevokeName,
 			Title:  title,
 			Fields: s.ConvertRuleFields(fields),
 			Values: []notification.Value{
 				{Key: "order_id", Value: info.Order.Id},
+				{Key: "task_id", Value: "100001"},
 			},
 			HideForm: true,
 		},

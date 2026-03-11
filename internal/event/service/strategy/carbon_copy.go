@@ -61,7 +61,7 @@ func (n *CarbonCopyNotification) Send(ctx context.Context, info Info) (notificat
 	})
 
 	// 4. 异步处理
-	sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	sendCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	go func() {
 		defer cancel()
 		defer func() {

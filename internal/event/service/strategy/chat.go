@@ -70,7 +70,7 @@ func (n *ChatNotification) Send(ctx context.Context, info Info) (notification.No
 	})
 
 	// 3. 异步处理：等待任务创建、发送群组消息、自动推进流程
-	sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	sendCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	go func() {
 		defer cancel()
 		defer func() {
@@ -359,7 +359,7 @@ func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatC
 var variableRegex = regexp.MustCompile(`{{(.*?)}}`)
 
 func (n *ChatNotification) resolveTitle(rule string, info Info, data *chatContext) string {
-	return n.resolveDynamicString(rule, "{{creator}}的{{template}}执行结果", info, data)
+	return n.resolveDynamicString(rule, "{{creator}}发起的{{template}}执行结果", info, data)
 }
 
 // resolveChatName 解析动态群组名称

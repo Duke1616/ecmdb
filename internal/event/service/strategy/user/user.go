@@ -109,6 +109,23 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, info strat
 				Name:   template,
 				Title:  title,
 				Fields: fields,
+				InputFields: slice.Map(property.Fields, func(idx int, src easyflow.Field) notification.InputField {
+					return notification.InputField{
+						Name:     src.Name,
+						Key:      src.Key,
+						Type:     notification.FieldType(src.Type),
+						Required: src.Required,
+						Value:    src.Value,
+						ReadOnly: src.ReadOnly,
+						Options: slice.Map(src.Options, func(idx int, src easyflow.Option) notification.InputOption {
+							return notification.InputOption{
+								Label: src.Label,
+								Value: src.Value,
+							}
+						}),
+						Props: src.Props,
+					}
+				}),
 				Values: []notification.Value{
 					{Key: "order_id", Value: info.Order.Id},
 					{Key: "task_id", Value: src.TaskID},

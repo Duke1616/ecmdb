@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/hashicorp/go-multierror"
+	"github.com/samber/lo"
 )
 
 // Target 是一种分配策略抽象，代表向哪个维度(Type)分配哪些实体(Ids/Fields)
@@ -25,10 +26,16 @@ type Resolver interface {
 	Resolve(ctx context.Context, target Target) ([]user.User, error)
 }
 
+// Engine 规则解析引擎接口，负责将各种维度的分配规则（Target）解析为具体的系统用户
+//
 //go:generate mockgen -source=./resolve.go -package=resolveblocks -destination=./mocks/resolve.mock.go -typed Engine
 type Engine interface {
+	// Register 注册一个或多个解析策略实现
 	Register(resolvers ...Resolver) Engine
+	// Resolve 并发解析一组目标，任一目标解析失败即返回错误（底层调用 ResolveWithErrorHandling 并开启 failFast）
 	Resolve(ctx context.Context, targets []Target) ([]user.User, error)
+	// ResolveWithErrorHandling 提供更细粒度的解析控制，支持配置 failFast（快速失败）模式
+	// failFast 为 true 时，任一解析任务失败将立即取消其他进行中的任务并返回
 	ResolveWithErrorHandling(ctx context.Context, targets []Target, failFast bool) ([]user.User, error)
 }
 
@@ -119,7 +126,8 @@ func (e *engine) resolveConcurrently(ctx context.Context, targets []Target, fail
 
 			resolver, ok := e.resolvers[target.Type]
 			if !ok {
-				err := fmt.Errorf("unsupported rule type: %s", target.Type)
+				err := fmt.Errorf("unsupported rule type: '%s' (values: %v)",
+					lo.Ternary(target.Type != "", target.Type, "<EMPTY>"), target.Values)
 				resultChan <- resolveResult{err: err}
 				if failFast && cancel != nil {
 					cancel()

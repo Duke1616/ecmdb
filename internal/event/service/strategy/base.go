@@ -101,7 +101,12 @@ func (s *service) ResolveAssignees(ctx context.Context, info *Info, assignees []
 	targets := s.EnrichTargets(*info, assignees)
 	users, err := s.assigneeService.Resolve(ctx, targets)
 	if err != nil {
-		return nil, err
+		nodeID := ""
+		if info.CurrentNode != nil {
+			nodeID = info.CurrentNode.NodeID
+		}
+		return nil, fmt.Errorf("解析审批人失败 [Node: %s, Workflow: %s]: %w",
+			nodeID, info.Workflow.Name, err)
 	}
 
 	// 自动同步到当前节点的审批人列表 (用于流程推进)
@@ -318,6 +323,11 @@ func (s *service) IsGlobalNotify(wf workflow.Workflow) bool {
 // EnrichTargets 处理运行时动态元数据注入
 func (s *service) EnrichTargets(info Info, assignees []easyflow.Assignee) []resolve.Target {
 	return slice.Map(assignees, func(idx int, src easyflow.Assignee) resolve.Target {
+		if src.Rule == "" {
+			s.logger.Warn("发现未定义的审批规则类型",
+				elog.String("nodeId", info.CurrentNode.NodeID),
+				elog.Any("assignee", src))
+		}
 		values := src.Values
 		switch src.Rule {
 		case easyflow.LEADER, easyflow.MAIN_LEADER, easyflow.FOUNDER:

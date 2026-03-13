@@ -3,6 +3,7 @@ package easyflow
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 )
 
 // UpdateEdgeProperties 更新边的属性，用于设置 Pass/Skip 状态
@@ -45,6 +46,29 @@ func UpdateEdgeProperties(edges []Edge, edgeMap map[string][]string, nodeStatusM
 
 		edges[i].Properties = properties
 	}
+
+	// 增加排序逻辑：解决重叠线条下，“通过”或“跳过”状态的线条被默认（灰色）线条覆盖的问题。
+	// 通过提高 Z-Index 逻辑（在 LogicFlow 中表现为数组顺序越后，层级越高），将点亮的线条放到数组末尾。
+	sort.Slice(edges, func(i, j int) bool {
+		pi, _ := edges[i].Properties.(map[string]interface{})
+		pj, _ := edges[j].Properties.(map[string]interface{})
+
+		// 定义渲染优先级：普通(0) < 已跳过(1) < 已通过(2)
+		getPriority := func(p map[string]interface{}) int {
+			if p == nil {
+				return 0
+			}
+			if p["is_pass"] == true {
+				return 2
+			}
+			if p["is_skipped"] == true {
+				return 1
+			}
+			return 0
+		}
+
+		return getPriority(pi) < getPriority(pj)
+	})
 
 	return edges
 }

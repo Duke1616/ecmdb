@@ -26,12 +26,12 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 	rotaRepository := repository.NewRotaRepository(rotaDao)
 	scheduler := InitScheduleRule()
 	serviceService := service.NewService(rotaRepository, scheduler)
-	handler := web.NewHandler(serviceService)
-	rotaServer := grpc.NewRotaServer(serviceService)
+	v := web.NewHandler(serviceService)
+	v2 := grpc.NewRotaServer(serviceService)
 	module := &Module{
-		Hdl:       handler,
+		Hdl:       v,
 		Svc:       serviceService,
-		RpcServer: rotaServer,
+		RpcServer: v2,
 	}
 	return module, nil
 }

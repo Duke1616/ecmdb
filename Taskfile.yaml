@@ -22,4 +22,9 @@ tasks:
     cmds:
       - buf generate api/proto
 
+  mock:
+    desc: 生成 Mock 代码
+    cmds:
+      - go generate ./...
+
 

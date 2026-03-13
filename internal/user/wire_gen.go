@@ -28,18 +28,18 @@ import (
 func InitModule(db *mongox.Mongo, redisClient *redisearch.Client, ldapConfig ldapx.Config, policyModule *policy.Module, departmentModule *department.Module, sp session.Provider, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	userDAO := dao.NewUserDao(db)
 	userRepository := repository.NewResourceRepository(userDAO)
-	serviceService := policyModule.Svc
+	v := policyModule.Svc
 	cryptoxCrypto := InitCrypto(crypto)
-	service2 := service.NewService(userRepository, serviceService, cryptoxCrypto)
+	serviceService := service.NewService(userRepository, v, cryptoxCrypto)
 	redisearchLdapUserCache := InitLdapUserCache(redisClient)
 	ldapService := service.NewLdapService(ldapConfig, redisearchLdapUserCache)
-	service3 := departmentModule.Svc
-	handler := web.NewHandler(service2, ldapService, service3, sp)
-	userServer := grpc.NewUserServer(service2)
+	v2 := departmentModule.Svc
+	handler := web.NewHandler(serviceService, ldapService, v2, sp)
+	v3 := grpc.NewUserServer(serviceService)
 	module := &Module{
 		Hdl:       handler,
-		Svc:       service2,
-		RpcServer: userServer,
+		Svc:       serviceService,
+		RpcServer: v3,
 	}
 	return module, nil
 }

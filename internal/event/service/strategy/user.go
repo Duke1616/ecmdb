@@ -15,7 +15,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/ecmdb/pkg/resolve"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -26,19 +25,16 @@ type UserNotification struct {
 	sender          sender.NotificationSender
 	departmentSvc   department.Service
 	notificationSvc notificationv1.NotificationServiceClient
-	assigneeService *resolve.Engine
 }
 
 func NewUserNotification(base Service, departmentSvc department.Service,
-	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient,
-	assigneeService *resolve.Engine) *UserNotification {
+	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient) *UserNotification {
 
 	return &UserNotification{
 		Service:         base,
 		sender:          sender,
 		departmentSvc:   departmentSvc,
 		notificationSvc: notificationSvc,
-		assigneeService: assigneeService,
 	}
 }
 

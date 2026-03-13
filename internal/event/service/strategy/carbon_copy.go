@@ -11,23 +11,19 @@ import (
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/ecmdb/pkg/resolve"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 )
 
 type CarbonCopyNotification struct {
 	Service
-	sender          sender.NotificationSender
-	assigneeService *resolve.Engine
+	sender sender.NotificationSender
 }
 
-func NewCarbonCopyNotification(base Service, sender sender.NotificationSender,
-	assigneeService *resolve.Engine) *CarbonCopyNotification {
+func NewCarbonCopyNotification(base Service, sender sender.NotificationSender) *CarbonCopyNotification {
 	return &CarbonCopyNotification{
-		Service:         base,
-		sender:          sender,
-		assigneeService: assigneeService,
+		Service: base,
+		sender:  sender,
 	}
 }
 

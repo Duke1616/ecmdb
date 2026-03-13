@@ -22,9 +22,9 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 	roleDAO := InitRoleDAO(db)
 	roleRepository := repository.NewRoleRepository(roleDAO)
 	serviceService := service.NewService(roleRepository)
-	handler := web.NewHandler(serviceService)
+	v := web.NewHandler(serviceService)
 	module := &Module{
-		Hdl: handler,
+		Hdl: v,
 		Svc: serviceService,
 	}
 	return module, nil

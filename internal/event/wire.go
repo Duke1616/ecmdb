@@ -58,7 +58,7 @@ func InitResolveEngine(
 	onCall *assignees.OnCallResolver,
 	template *assignees.TemplateResolver,
 	team *assignees.TeamResolver,
-) *resolve.Engine {
+) resolve.Engine {
 	return resolve.NewEngine().Register(
 		appoint,
 		founder,

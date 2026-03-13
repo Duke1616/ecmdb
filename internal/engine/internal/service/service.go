@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./service.go -package=enginemocks -destination=../../mocks/engine.mock.go -typed Service
 type Service interface {
 	// ListTodoTasks 查看todo任务
 	ListTodoTasks(ctx context.Context, userId, processName string, sortByAse bool, offset, limit int) (

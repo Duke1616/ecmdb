@@ -24,14 +24,14 @@ func InitModule(q mq.MQ, etcdClient *clientv3.Client) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	serviceService := service.NewService(q, taskWorkerEventProducer)
+	v := service.NewService(q, taskWorkerEventProducer)
 	registry, err := InitRegistry(etcdClient)
 	if err != nil {
 		return nil, err
 	}
-	serviceDiscoveryJob := initWatch(registry, serviceService)
+	serviceDiscoveryJob := initWatch(registry, v)
 	module := &Module{
-		Svc: serviceService,
+		Svc: v,
 		Job: serviceDiscoveryJob,
 	}
 	return module, nil

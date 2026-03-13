@@ -24,18 +24,18 @@ import (
 func InitModule(db *mongox.Mongo, rmModule *relation.Module, attrModule *attribute.Module, resourceSvc *resource.Module) (*Module, error) {
 	modelDAO := InitModelDAO(db)
 	modelRepository := repository.NewModelRepository(modelDAO)
-	serviceService := service.NewModelService(modelRepository)
+	v := service.NewModelService(modelRepository)
 	modelGroupDAO := dao.NewModelGroupDAO(db)
 	mgRepository := repository.NewMGRepository(modelGroupDAO)
-	mgService := service.NewMGService(mgRepository, modelRepository)
-	relationModelService := rmModule.RMSvc
-	service2 := attrModule.Svc
-	encryptedSvc := resourceSvc.EncryptedSvc
-	handler := web.NewHandler(serviceService, mgService, relationModelService, service2, encryptedSvc)
+	v2 := service.NewMGService(mgRepository, modelRepository)
+	v3 := rmModule.RMSvc
+	v4 := attrModule.Svc
+	v5 := resourceSvc.EncryptedSvc
+	v6 := web.NewHandler(v, v2, v3, v4, v5)
 	module := &Module{
-		Svc:   serviceService,
-		MGSvc: mgService,
-		Hdl:   handler,
+		Svc:   v,
+		MGSvc: v2,
+		Hdl:   v6,
 	}
 	return module, nil
 }

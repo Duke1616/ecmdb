@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./user.go -package=usermocks -destination=../../mocks/user.mock.go -typed Service
 type Service interface {
 	// FindOrCreateByLdap 查找或创建来自LDAP的用户
 	FindOrCreateByLdap(ctx context.Context, req domain.User) (domain.User, error)

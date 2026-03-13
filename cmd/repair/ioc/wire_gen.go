@@ -37,13 +37,13 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	service := modelModule.Svc
-	serviceService := attributeModule.Svc
-	encryptedSvc := resourceModule.EncryptedSvc
+	v := modelModule.Svc
+	v2 := attributeModule.Svc
+	v3 := resourceModule.EncryptedSvc
 	app := &App{
-		ModelSvc:    service,
-		AttrSvc:     serviceService,
-		ResourceSvc: encryptedSvc,
+		ModelSvc:    v,
+		AttrSvc:     v2,
+		ResourceSvc: v3,
 	}
 	return app, nil
 }

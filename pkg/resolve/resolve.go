@@ -25,20 +25,27 @@ type Resolver interface {
 	Resolve(ctx context.Context, target Target) ([]user.User, error)
 }
 
-// Engine 规则解析引擎（提供策略注册、并发调度与错误聚合功能）
-type Engine struct {
+//go:generate mockgen -source=./resolve.go -package=resolveblocks -destination=./mocks/resolve.mock.go -typed Engine
+type Engine interface {
+	Register(resolvers ...Resolver) Engine
+	Resolve(ctx context.Context, targets []Target) ([]user.User, error)
+	ResolveWithErrorHandling(ctx context.Context, targets []Target, failFast bool) ([]user.User, error)
+}
+
+// engine 规则解析引擎（提供策略注册、并发调度与错误聚合功能）
+type engine struct {
 	resolvers map[string]Resolver
 }
 
 // NewEngine 构造解析引擎
-func NewEngine() *Engine {
-	return &Engine{
+func NewEngine() Engine {
+	return &engine{
 		resolvers: make(map[string]Resolver),
 	}
 }
 
 // Register 注册一个或多个解析器，Key 由 resolver.Name() 自动推断，无需手动传递 ruleType
-func (e *Engine) Register(resolvers ...Resolver) *Engine {
+func (e *engine) Register(resolvers ...Resolver) Engine {
 	for _, r := range resolvers {
 		e.resolvers[r.Name()] = r
 	}
@@ -52,14 +59,14 @@ type resolveResult struct {
 }
 
 // Resolve 批量解析所有的分配规则（默认遇到错误直接短路）
-func (e *Engine) Resolve(ctx context.Context, targets []Target) ([]user.User, error) {
+func (e *engine) Resolve(ctx context.Context, targets []Target) ([]user.User, error) {
 	return e.ResolveWithErrorHandling(ctx, targets, true)
 }
 
 // ResolveWithErrorHandling 批量解析所有的分配规则
 // failFast 参数决定是否在任何一个规则解析出错时立即中断退回错误，
 // 若为 false，则收集所有的解析错误并尽可能返回部分成功的人员列表。
-func (e *Engine) ResolveWithErrorHandling(ctx context.Context, targets []Target, failFast bool) ([]user.User, error) {
+func (e *engine) ResolveWithErrorHandling(ctx context.Context, targets []Target, failFast bool) ([]user.User, error) {
 	if len(targets) == 0 {
 		return nil, nil
 	}
@@ -77,7 +84,7 @@ func (e *Engine) ResolveWithErrorHandling(ctx context.Context, targets []Target,
 }
 
 // resolveConcurrently 并发调度解析过程
-func (e *Engine) resolveConcurrently(ctx context.Context, targets []Target, failFast bool) []resolveResult {
+func (e *engine) resolveConcurrently(ctx context.Context, targets []Target, failFast bool) []resolveResult {
 	var wg sync.WaitGroup
 	resultChan := make(chan resolveResult, len(targets))
 
@@ -144,7 +151,7 @@ func (e *Engine) resolveConcurrently(ctx context.Context, targets []Target, fail
 }
 
 // mergeResults 合并并去重解析出来的用户实体
-func (e *Engine) mergeResults(results []resolveResult) []user.User {
+func (e *engine) mergeResults(results []resolveResult) []user.User {
 	var allUsers []user.User
 	for _, result := range results {
 		if result.err != nil {
@@ -163,7 +170,7 @@ func (e *Engine) mergeResults(results []resolveResult) []user.User {
 }
 
 // collectErrors 采集所有的错误
-func (e *Engine) collectErrors(results []resolveResult) *multierror.Error {
+func (e *engine) collectErrors(results []resolveResult) *multierror.Error {
 	var multiErr *multierror.Error
 	for _, result := range results {
 		if result.err == nil {

@@ -16,7 +16,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/Duke1616/ecmdb/pkg/resolve"
 	"github.com/Duke1616/enotify/notify/feishu"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
@@ -26,20 +25,18 @@ import (
 
 type ChatNotification struct {
 	Service
-	sender          sender.NotificationSender
-	larkClient      *lark.Client
-	assigneeService *resolve.Engine
-	teamSvc         teamv1.TeamServiceClient
+	sender     sender.NotificationSender
+	larkClient *lark.Client
+	teamSvc    teamv1.TeamServiceClient
 }
 
 func NewChatNotification(base Service, sender sender.NotificationSender,
-	larkClient *lark.Client, assigneeService *resolve.Engine, teamSvc teamv1.TeamServiceClient) *ChatNotification {
+	larkClient *lark.Client, teamSvc teamv1.TeamServiceClient) *ChatNotification {
 	return &ChatNotification{
-		Service:         base,
-		sender:          sender,
-		larkClient:      larkClient,
-		assigneeService: assigneeService,
-		teamSvc:         teamSvc,
+		Service:    base,
+		sender:     sender,
+		larkClient: larkClient,
+		teamSvc:    teamSvc,
 	}
 }
 
@@ -437,8 +434,7 @@ func (n *ChatNotification) resolveMembers(ctx context.Context, info Info, proper
 	}
 
 	// 2. 解析配置的参与者规则
-	targets := n.EnrichTargets(info, property.Assignees)
-	users, _ := n.assigneeService.Resolve(ctx, targets)
+	users, _ := n.ResolveAssignees(ctx, &info, property.Assignees)
 	return users
 }
 

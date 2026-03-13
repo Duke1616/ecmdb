@@ -28,7 +28,7 @@ import (
 
 // Service 提供所有通知策略共用的基础服务和辅助方法
 //
-//go:generate mockgen -source=./base.go -destination=../../mocks/strategy_base.mock.go -package=strategymocks -typed Service
+//go:generate mockgen -source=./base.go -package=strategymocks -destination=../../mocks/strategy.mock.go -typed Service
 type Service interface {
 	// FetchRequiredData 并行获取基础通知数据
 	FetchRequiredData(ctx context.Context, info Info, nodes []easyflow.Node) (*NotificationData, error)
@@ -63,7 +63,7 @@ type service struct {
 	taskSvc         task.Service
 	orderSvc        order.Service
 	engineSvc       engineSvc.Service
-	assigneeService *resolve.Engine
+	assigneeService resolve.Engine
 	logger          *elog.Component
 
 	// 通用重试配置
@@ -74,7 +74,7 @@ type service struct {
 
 func NewService(userSvc user.Service, templateSvc template.Service,
 	taskSvc task.Service, orderSvc order.Service, engineSvc engineSvc.Service,
-	assigneeService *resolve.Engine) Service {
+	assigneeService resolve.Engine) Service {
 	return &service{
 		templateSvc:     templateSvc,
 		userSvc:         userSvc,

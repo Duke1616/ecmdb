@@ -27,17 +27,17 @@ import (
 func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module, q mq.MQ, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	resourceDAO := InitResourceDAO(db)
 	resourceRepository := repository.NewResourceRepository(resourceDAO)
-	service := NewService(resourceRepository)
-	serviceService := attributeModule.Svc
+	v := NewService(resourceRepository)
+	v2 := attributeModule.Svc
 	cryptoxCrypto := InitCrypto(crypto)
-	encryptedSvc := NewEncryptedService(service, serviceService, cryptoxCrypto)
-	relationResourceService := relationModule.RRSvc
-	handler := web.NewHandler(encryptedSvc, serviceService, relationResourceService)
-	fieldSecureAttrChangeConsumer := initConsumer(q, encryptedSvc, cryptoxCrypto)
+	v3 := NewEncryptedService(v, v2, cryptoxCrypto)
+	v4 := relationModule.RRSvc
+	v5 := web.NewHandler(v3, v2, v4)
+	fieldSecureAttrChangeConsumer := initConsumer(q, v3, cryptoxCrypto)
 	module := &Module{
-		Svc:          service,
-		EncryptedSvc: encryptedSvc,
-		Hdl:          handler,
+		Svc:          v,
+		EncryptedSvc: v3,
+		Hdl:          v5,
 		c:            fieldSecureAttrChangeConsumer,
 	}
 	return module, nil

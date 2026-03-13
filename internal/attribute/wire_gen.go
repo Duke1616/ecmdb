@@ -29,11 +29,11 @@ func InitModule(db *mongox.Mongo, q mq.MQ) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	service := NewService(attributeRepository, attributeGroupRepository, fieldSecureAttrChangeEventProducer)
-	handler := web.NewHandler(service)
+	v := NewService(attributeRepository, attributeGroupRepository, fieldSecureAttrChangeEventProducer)
+	v2 := web.NewHandler(v)
 	module := &Module{
-		Svc: service,
-		Hdl: handler,
+		Svc: v,
+		Hdl: v2,
 	}
 	return module, nil
 }

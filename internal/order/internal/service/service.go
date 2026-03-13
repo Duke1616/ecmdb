@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./service.go -package=ordermocks -destination=../../mocks/order.mock.go -typed Service
 type Service interface {
 	// CreateBizOrder 创建业务工单
 	CreateBizOrder(ctx context.Context, order domain.Order) (domain.Order, error)

@@ -38,6 +38,7 @@ const (
 	DAY Unit = 3
 )
 
+//go:generate mockgen -source=./service.go -package=taskmocks -destination=../../mocks/task.mock.go -typed Service
 type Service interface {
 	// CreateTask 创建任务并在 Event 触发时同步初始化（查找 Runner、计算执行时间、装填参数）
 	CreateTask(ctx context.Context, orderId int64, processInstId int, nodeId string) (domain.Task, error)

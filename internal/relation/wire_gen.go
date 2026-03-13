@@ -19,43 +19,43 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *mongox.Mongo) (*Module, error) {
-	relationResourceService := InitRRService(db)
-	relationModelService := InitRMService(db)
+	v := InitRRService(db)
+	v2 := InitRMService(db)
 	relationTypeDAO := InitRelationTypeDAO(db)
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
 	relationModelDAO := initRmDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
 	relationResourceDAO := intRrDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
-	relationTypeService := service.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
-	relationResourceHandler := web.NewRelationResourceHandler(relationResourceService)
-	relationModelHandler := web.NewRelationModelHandler(relationModelService)
-	relationTypeHandler := web.NewRelationTypeHandler(relationTypeService)
+	v3 := service.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
+	v4 := web.NewRelationResourceHandler(v)
+	v5 := web.NewRelationModelHandler(v2)
+	v6 := web.NewRelationTypeHandler(v3)
 	module := &Module{
-		RRSvc: relationResourceService,
-		RMSvc: relationModelService,
-		RTSvc: relationTypeService,
-		RRHdl: relationResourceHandler,
-		RMHdl: relationModelHandler,
-		RTHdl: relationTypeHandler,
+		RRSvc: v,
+		RMSvc: v2,
+		RTSvc: v3,
+		RRHdl: v4,
+		RMHdl: v5,
+		RTHdl: v6,
 	}
 	return module, nil
 }
 
-func InitRMService(db *mongox.Mongo) service.RelationModelService {
+func InitRMService(db *mongox.Mongo) RMSvc {
 	relationModelDAO := initRmDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
 	relationResourceDAO := intRrDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
-	relationModelService := service.NewRelationModelService(relationModelRepository, relationResourceRepository)
-	return relationModelService
+	v := service.NewRelationModelService(relationModelRepository, relationResourceRepository)
+	return v
 }
 
-func InitRRService(db *mongox.Mongo) service.RelationResourceService {
+func InitRRService(db *mongox.Mongo) RRSvc {
 	relationResourceDAO := intRrDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
-	relationResourceService := service.NewRelationResourceService(relationResourceRepository)
-	return relationResourceService
+	v := service.NewRelationResourceService(relationResourceRepository)
+	return v
 }
 
 // wire.go:

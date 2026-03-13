@@ -24,10 +24,10 @@ func InitModule(db *mongox.Mongo, workflowSvc *workflow.Module, codebookModule *
 	runnerDAO := dao.NewRunnerDAO(db)
 	runnerRepository := repository.NewRunnerRepository(runnerDAO)
 	serviceService := service.NewService(runnerRepository)
-	service2 := workflowSvc.Svc
-	service3 := codebookModule.Svc
+	v := workflowSvc.Svc
+	v2 := codebookModule.Svc
 	cryptoxCrypto := InitCrypto(crypto)
-	handler := web.NewHandler(serviceService, service2, service3, cryptoxCrypto)
+	handler := web.NewHandler(serviceService, v, v2, cryptoxCrypto)
 	module := &Module{
 		Svc: serviceService,
 		Hdl: handler,

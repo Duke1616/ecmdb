@@ -7,6 +7,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/department/internal/repository"
 )
 
+//go:generate mockgen -source=./service.go -package=departmentmocks -destination=../../mocks/department.mock.go -typed Service
 type Service interface {
 	CreateDepartment(ctx context.Context, req domain.Department) (int64, error)
 	UpdateDepartment(ctx context.Context, req domain.Department) (int64, error)

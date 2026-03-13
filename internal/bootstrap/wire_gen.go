@@ -17,14 +17,14 @@ import (
 // Injectors from wire.go:
 
 func InitModule(modelModule *model.Module, attributeModule *attribute.Module, relationModule *relation.Module) (*Module, error) {
-	serviceService := modelModule.Svc
-	mgService := modelModule.MGSvc
-	service2 := attributeModule.Svc
-	relationTypeService := relationModule.RTSvc
-	relationModelService := relationModule.RMSvc
-	loader := service.NewLoader(serviceService, mgService, service2, relationTypeService, relationModelService)
+	v := modelModule.Svc
+	v2 := modelModule.MGSvc
+	v3 := attributeModule.Svc
+	v4 := relationModule.RTSvc
+	v5 := relationModule.RMSvc
+	v6 := service.NewLoader(v, v2, v3, v4, v5)
 	module := &Module{
-		Svc: loader,
+		Svc: v6,
 	}
 	return module, nil
 }

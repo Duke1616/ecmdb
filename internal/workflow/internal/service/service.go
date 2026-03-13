@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//go:generate mockgen -source=./service.go -package=workflowmocks -destination=../../mocks/workflow.mock.go -typed Service
 type Service interface {
 	// Create 创建流程定义
 	Create(ctx context.Context, req domain.Workflow) (int64, error)

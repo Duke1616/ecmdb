@@ -19,12 +19,12 @@ import (
 
 func InitModule(enforcer *casbin.SyncedEnforcer, sp session.Provider) (*Module, error) {
 	serviceService := service.NewService(enforcer)
-	handler := web.NewHandler(serviceService, sp)
-	policyServer := grpc.NewPolicyServer(serviceService, sp)
+	v := web.NewHandler(serviceService, sp)
+	v2 := grpc.NewPolicyServer(serviceService, sp)
 	module := &Module{
-		Hdl:       handler,
+		Hdl:       v,
 		Svc:       serviceService,
-		RpcServer: policyServer,
+		RpcServer: v2,
 	}
 	return module, nil
 }

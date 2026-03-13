@@ -41,6 +41,20 @@ func (m *MockResourceRepository) EXPECT() *MockResourceRepositoryMockRecorder {
 	return m.recorder
 }
 
+// BatchCreateOrUpdate mocks base method.
+func (m *MockResourceRepository) BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchCreateOrUpdate", ctx, resources)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchCreateOrUpdate indicates an expected call of BatchCreateOrUpdate.
+func (mr *MockResourceRepositoryMockRecorder) BatchCreateOrUpdate(ctx, resources any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateOrUpdate", reflect.TypeOf((*MockResourceRepository)(nil).BatchCreateOrUpdate), ctx, resources)
+}
+
 // BatchUpdateResources mocks base method.
 func (m *MockResourceRepository) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
 	m.ctrl.T.Helper()
@@ -131,6 +145,21 @@ func (mr *MockResourceRepositoryMockRecorder) FindSecureData(ctx, id, fieldUid a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSecureData", reflect.TypeOf((*MockResourceRepository)(nil).FindSecureData), ctx, id, fieldUid)
 }
 
+// ListBeforeUtime mocks base method.
+func (m *MockResourceRepository) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListBeforeUtime", ctx, utime, fields, modelUid, offset, limit)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListBeforeUtime indicates an expected call of ListBeforeUtime.
+func (mr *MockResourceRepositoryMockRecorder) ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListBeforeUtime", reflect.TypeOf((*MockResourceRepository)(nil).ListBeforeUtime), ctx, utime, fields, modelUid, offset, limit)
+}
+
 // ListExcludeAndFilterResourceByIds mocks base method.
 func (m *MockResourceRepository) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64, ids []int64, filter domain.Condition) ([]domain.Resource, error) {
 	m.ctrl.T.Helper()
@@ -174,6 +203,21 @@ func (m *MockResourceRepository) ListResourcesByIds(ctx context.Context, fields 
 func (mr *MockResourceRepositoryMockRecorder) ListResourcesByIds(ctx, fields, ids any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesByIds", reflect.TypeOf((*MockResourceRepository)(nil).ListResourcesByIds), ctx, fields, ids)
+}
+
+// ListResourcesWithFilters mocks base method.
+func (m *MockResourceRepository) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]domain.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListResourcesWithFilters", ctx, fields, modelUid, ids, offset, limit, filterGroups)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListResourcesWithFilters indicates an expected call of ListResourcesWithFilters.
+func (mr *MockResourceRepositoryMockRecorder) ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesWithFilters", reflect.TypeOf((*MockResourceRepository)(nil).ListResourcesWithFilters), ctx, fields, modelUid, ids, offset, limit, filterGroups)
 }
 
 // Search mocks base method.
@@ -234,6 +278,21 @@ func (m *MockResourceRepository) TotalExcludeAndFilterResourceByIds(ctx context.
 func (mr *MockResourceRepositoryMockRecorder) TotalExcludeAndFilterResourceByIds(ctx, modelUid, ids, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TotalExcludeAndFilterResourceByIds", reflect.TypeOf((*MockResourceRepository)(nil).TotalExcludeAndFilterResourceByIds), ctx, modelUid, ids, filter)
+}
+
+// TotalResourcesWithFilters mocks base method.
+func (m *MockResourceRepository) TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TotalResourcesWithFilters", ctx, modelUid, ids, filterGroups)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TotalResourcesWithFilters indicates an expected call of TotalResourcesWithFilters.
+func (mr *MockResourceRepositoryMockRecorder) TotalResourcesWithFilters(ctx, modelUid, ids, filterGroups any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TotalResourcesWithFilters", reflect.TypeOf((*MockResourceRepository)(nil).TotalResourcesWithFilters), ctx, modelUid, ids, filterGroups)
 }
 
 // UpdateResource mocks base method.

@@ -19,13 +19,13 @@ import (
 // Injectors from wire.go:
 
 func InitModule(attributeModule *attribute.Module, resourceModule *resource.Module, storage2 *storage.S3Storage, modelModule *model.Module) (*Module, error) {
-	serviceService := attributeModule.Svc
-	encryptedSvc := resourceModule.EncryptedSvc
-	service2 := modelModule.Svc
-	iDataIOService := service.NewDataIOService(serviceService, encryptedSvc, service2)
-	handler := web.NewHandler(iDataIOService, storage2)
+	v := attributeModule.Svc
+	v2 := resourceModule.EncryptedSvc
+	v3 := modelModule.Svc
+	iDataIOService := service.NewDataIOService(v, v2, v3)
+	v4 := web.NewHandler(iDataIOService, storage2)
 	module := &Module{
-		Hdl: handler,
+		Hdl: v4,
 	}
 	return module, nil
 }

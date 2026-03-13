@@ -21,15 +21,15 @@ import (
 // Injectors from wire.go:
 
 func InitModule(db *mongox.Mongo, q mq.MQ, roleModule *role.Module, menuModule *menu.Module, policyModule *policy.Module) (*Module, error) {
-	serviceService := roleModule.Svc
-	service2 := menuModule.Svc
-	service3 := policyModule.Svc
-	service4 := service.NewService(serviceService, service3, service2)
-	handler := web.NewHandler(serviceService, service2, service3, service4)
-	menuChangeEventConsumer := InitMenuChangeEventConsumer(q, service4)
+	v := roleModule.Svc
+	v2 := menuModule.Svc
+	v3 := policyModule.Svc
+	serviceService := service.NewService(v, v3, v2)
+	v4 := web.NewHandler(v, v2, v3, serviceService)
+	menuChangeEventConsumer := InitMenuChangeEventConsumer(q, serviceService)
 	module := &Module{
-		Hdl: handler,
-		Svc: service4,
+		Hdl: v4,
+		Svc: serviceService,
 		c:   menuChangeEventConsumer,
 	}
 	return module, nil

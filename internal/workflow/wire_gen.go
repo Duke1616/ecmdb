@@ -25,13 +25,13 @@ func InitModule(db *mongox.Mongo, engineModule *engine.Module) (*Module, error) 
 	workflowRepository := repository.NewWorkflowRepository(workflowDAO, snapshotDAO)
 	notifyBindingDAO := dao.NewNotifyBindingDAO(db)
 	notifyBindingRepository := repository.NewNotifyBindingRepository(notifyBindingDAO)
-	serviceService := engineModule.Svc
+	v := engineModule.Svc
 	processEngineConvert := easyflow.NewLogicFlowToEngineConvert()
-	service2 := service.NewService(workflowRepository, notifyBindingRepository, serviceService, processEngineConvert)
-	handler := web.NewHandler(service2, serviceService)
+	serviceService := service.NewService(workflowRepository, notifyBindingRepository, v, processEngineConvert)
+	handler := web.NewHandler(serviceService, v)
 	module := &Module{
 		Hdl: handler,
-		Svc: service2,
+		Svc: serviceService,
 	}
 	return module, nil
 }

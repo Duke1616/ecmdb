@@ -23,12 +23,12 @@ func InitModule(db *mongox.Mongo) (*Module, error) {
 	endpointDAO := InitEndpointDAO(db)
 	endpointRepository := repository.NewEndpointRepository(endpointDAO)
 	serviceService := service.NewService(endpointRepository)
-	handler := web.NewHandler(serviceService)
-	endpointServer := grpc.NewEndpointServer(serviceService)
+	v := web.NewHandler(serviceService)
+	v2 := grpc.NewEndpointServer(serviceService)
 	module := &Module{
-		Hdl:       handler,
+		Hdl:       v,
 		Svc:       serviceService,
-		RpcServer: endpointServer,
+		RpcServer: v2,
 	}
 	return module, nil
 }

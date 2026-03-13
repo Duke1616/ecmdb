@@ -32,26 +32,26 @@ func InitModule(q mq.MQ, db *mongox.Mongo, workflowModule *workflow.Module, engi
 	orderDAO := dao.NewOrderDAO(db)
 	taskFormDAO := dao.NewTaskFormDAO(db)
 	orderRepository := repository.NewOrderRepository(orderDAO, taskFormDAO)
-	serviceService := templateModule.Svc
+	v := templateModule.Svc
 	createProcessEventProducer, err := event.NewCreateProcessEventProducer(q)
 	if err != nil {
 		return nil, err
 	}
-	service2 := service.NewService(orderRepository, serviceService, createProcessEventProducer)
-	service3 := engineModule.Svc
-	service4 := workflowModule.Svc
-	processEngine := service.NewProcessEngine(service2, service3, service4)
-	service5 := userModule.Svc
-	handler := web.NewHandler(service2, service3, processEngine, service5, service4)
-	workOrderServer := grpc.NewWorkOrderServer(service2, serviceService)
-	wechatOrderConsumer := initWechatConsumer(service2, serviceService, service5, q)
-	processEventConsumer := InitProcessConsumer(q, service4, service2)
-	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, service2)
-	larkCallbackEventConsumer := InitLardCallbackConsumer(q, service3, lark2, service5, serviceService, service2, processEngine, service4, sender2)
+	serviceService := service.NewService(orderRepository, v, createProcessEventProducer)
+	v2 := engineModule.Svc
+	v3 := workflowModule.Svc
+	processEngine := service.NewProcessEngine(serviceService, v2, v3)
+	v4 := userModule.Svc
+	handler := web.NewHandler(serviceService, v2, processEngine, v4, v3)
+	v5 := grpc.NewWorkOrderServer(serviceService, v)
+	wechatOrderConsumer := initWechatConsumer(serviceService, v, v4, q)
+	processEventConsumer := InitProcessConsumer(q, v3, serviceService)
+	orderStatusModifyEventConsumer := InitModifyStatusConsumer(q, serviceService)
+	larkCallbackEventConsumer := InitLardCallbackConsumer(q, v2, lark2, v4, v, serviceService, processEngine, v3, sender2)
 	module := &Module{
 		Hdl:       handler,
-		RpcServer: workOrderServer,
-		Svc:       service2,
+		RpcServer: v5,
+		Svc:       serviceService,
 		EngineSvc: processEngine,
 		cw:        wechatOrderConsumer,
 		cs:        processEventConsumer,

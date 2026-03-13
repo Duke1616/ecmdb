@@ -16,9 +16,9 @@ import (
 // Injectors from wire.go:
 
 func InitModule(relationModule *relation.Module, resourceModule *resource.Module, attributeModule *attribute.Module) (*web.Handler, error) {
-	relationResourceService := relationModule.RRSvc
-	encryptedSvc := resourceModule.EncryptedSvc
-	service := attributeModule.Svc
-	handler := web.NewHandler(relationResourceService, encryptedSvc, service)
+	v := relationModule.RRSvc
+	v2 := resourceModule.EncryptedSvc
+	v3 := attributeModule.Svc
+	handler := web.NewHandler(v, v2, v3)
 	return handler, nil
 }

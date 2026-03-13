@@ -12,14 +12,14 @@ import (
 )
 
 type StartNotification struct {
-	BaseStrategy
+	Service
 	sender sender.NotificationSender
 }
 
-func NewStartNotification(base BaseStrategy, sender sender.NotificationSender) *StartNotification {
+func NewStartNotification(base Service, sender sender.NotificationSender) *StartNotification {
 	return &StartNotification{
-		BaseStrategy: base,
-		sender:       sender,
+		Service: base,
+		sender:  sender,
 	}
 }
 
@@ -30,7 +30,7 @@ func (s *StartNotification) Send(ctx context.Context, info Info) (notification.N
 	}
 
 	// 2. 开始节点通常通知发起人
-	s.Logger.Debug("开始节点发送通知",
+	s.Logger().Debug("开始节点发送通知",
 		elog.Int("instance_id", info.InstID),
 		elog.String("node_id", info.CurrentNode.NodeID))
 
@@ -55,7 +55,7 @@ func (s *StartNotification) Send(ctx context.Context, info Info) (notification.N
 		Template: notification.Template{
 			Name:   LarkTemplateApprovalRevokeName,
 			Title:  title,
-			Fields: s.ConvertRuleFields(fields),
+			Fields: ConvertRuleFields(fields),
 			Values: []notification.Value{
 				{Key: "order_id", Value: info.Order.Id},
 				{Key: "task_id", Value: "100001"},

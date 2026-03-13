@@ -13,14 +13,14 @@ import (
 )
 
 type AutomationNotification struct {
-	BaseStrategy
+	Service
 	sender sender.NotificationSender
 }
 
-func NewAutomationNotification(base BaseStrategy, sender sender.NotificationSender) *AutomationNotification {
+func NewAutomationNotification(base Service, sender sender.NotificationSender) *AutomationNotification {
 	return &AutomationNotification{
-		BaseStrategy: base,
-		sender:       sender,
+		Service: base,
+		sender:  sender,
 	}
 }
 
@@ -57,7 +57,7 @@ func (n *AutomationNotification) Send(ctx context.Context, info Info) (notificat
 	}
 
 	// 4. 发送消息
-	fields := n.BuildWantResultFields(data.WantResult)
+	fields := BuildWantResultFields(data.WantResult)
 
 	// 每两个字段插入一个空行（保持原有格式）
 	formattedFields := make([]notification.Field, 0, len(fields)*2)

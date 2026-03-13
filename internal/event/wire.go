@@ -30,7 +30,7 @@ import (
 )
 
 var InitStrategySet = wire.NewSet(
-	strategy.NewBaseStrategy,
+	strategy.NewService,
 	strategy.NewUserNotification,
 	strategy.NewAutomationNotification,
 	strategy.NewStartNotification,

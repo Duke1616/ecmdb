@@ -10,7 +10,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
-	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/resolve"
 	"github.com/ecodeclub/ekit/slice"
@@ -18,15 +17,15 @@ import (
 )
 
 type CarbonCopyNotification struct {
-	BaseStrategy
+	Service
 	sender          sender.NotificationSender
 	assigneeService *resolve.Engine
 }
 
-func NewCarbonCopyNotification(base BaseStrategy, sender sender.NotificationSender,
+func NewCarbonCopyNotification(base Service, sender sender.NotificationSender,
 	assigneeService *resolve.Engine) *CarbonCopyNotification {
 	return &CarbonCopyNotification{
-		BaseStrategy:    base,
+		Service:         base,
 		sender:          sender,
 		assigneeService: assigneeService,
 	}
@@ -49,37 +48,25 @@ func (n *CarbonCopyNotification) Send(ctx context.Context, info Info) (notificat
 		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), err
 	}
 
-	// 3. 解析抄送人员
-	targets := n.EnrichTargets(info, property.NormalizeAssignees())
-	users, err := n.assigneeService.Resolve(ctx, targets)
+	// 3. 解析抄送人员并自动同步到节点
+	users, err := n.ResolveAssignees(ctx, &info, property.NormalizeAssignees())
 	if err != nil {
 		return notification.NewErrorResponse(string(errs.ErrorCodeResolveRuleFailed), err.Error()), err
 	}
 
-	info.CurrentNode.UserIDs = slice.Map(users, func(idx int, u user.User) string {
-		return u.Username
+	// 4. 异步处理
+	n.SafeGo(ctx, 3*time.Minute, func(sendCtx context.Context) {
+		n.asyncHandleCarbonCopy(sendCtx, info, data, NewRecipientMap(users, info.Channel))
 	})
 
-	// 4. 异步处理
-	sendCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	go func() {
-		defer cancel()
-		defer func() {
-			if r := recover(); r != nil {
-				n.Logger.Error("CarbonCopyNotification async panic", elog.Any("recover", r))
-			}
-		}()
-		n.asyncHandleCarbonCopy(sendCtx, info, data, users)
-	}()
-
-	return notification.NotificationResponse{}, nil
+	return notification.NewSuccessResponse(0, "success"), nil
 }
 
-func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info Info, data *NotificationData, users []user.User) {
+func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info Info, data *NotificationData, userMap RecipientMap) {
 	// 1. 获取任务
 	tasks, err := n.FetchTasksWithRetry(ctx, info)
 	if err != nil {
-		n.Logger.Error("CarbonCopy 获取任务失败", elog.FieldErr(err))
+		n.Logger().Error("CarbonCopy 获取任务失败", elog.FieldErr(err))
 		return
 	}
 
@@ -87,15 +74,13 @@ func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info
 	if n.IsGlobalNotify(info.Workflow) {
 		title := rule.GenerateCCTitle(data.StartUser.DisplayName, data.TName)
 		fields := n.PrepareCommonFields(info, data)
-		userMap := n.AnalyzeUsers(users)
 
 		ns := slice.Map(tasks, func(idx int, src model.Task) notification.Notification {
-			receiver, _ := userMap[src.UserID]
+			receiver := userMap.GetID(src.UserID)
 			return notification.Notification{
-				Channel:      info.Channel,
-				WorkFlowID:   info.Workflow.Id,
-				Receiver:     receiver,
-				ReceiverType: "user_id",
+				Channel:    info.Channel,
+				WorkFlowID: info.Workflow.Id,
+				Receiver:   receiver,
 				Template: notification.Template{
 					Name:     LarkTemplateCC,
 					Title:    title,
@@ -106,15 +91,17 @@ func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info
 			}
 		})
 
-		if _, err = n.sender.BatchSend(ctx, ns); err != nil {
-			n.Logger.Warn("发送消息失败", elog.FieldErr(err))
+		for _, msg := range ns {
+			if _, err = n.sender.Send(ctx, msg); err != nil {
+				n.Logger().Error("CarbonCopyNotification 消息发送失败", elog.FieldErr(err), elog.String("receiver", msg.Receiver))
+			}
 		}
 	}
 
 	// 3. 立即自动通过
 	for _, t := range tasks {
-		if err = n.EngineSvc.Pass(ctx, t.TaskID, "抄送节点自动通过"); err != nil {
-			n.Logger.Error("抄送节点自动通过失败", elog.FieldErr(err), elog.Any("taskId", t.TaskID))
+		if err = n.PassTask(ctx, t.TaskID, "抄送节点自动通过"); err != nil {
+			n.Logger().Error("抄送节点自动通过失败", elog.FieldErr(err), elog.Any("taskId", t.TaskID))
 		}
 
 		if t.IsCosigned != 1 {

@@ -58,11 +58,11 @@ type Dispatcher struct {
 	startStrategy      SendStrategy
 	chatStrategy       SendStrategy
 	carbonCopyStrategy SendStrategy
-	base               BaseStrategy
+	base               Service
 }
 
 func NewDispatcher(user *UserNotification, auto *AutomationNotification,
-	start *StartNotification, chat *ChatNotification, carbonCopy *CarbonCopyNotification, base BaseStrategy) *Dispatcher {
+	start *StartNotification, chat *ChatNotification, carbonCopy *CarbonCopyNotification, base Service) *Dispatcher {
 	return &Dispatcher{
 		userStrategy:       user,
 		autoStrategy:       auto,
@@ -77,16 +77,28 @@ func (d *Dispatcher) Send(ctx context.Context, info Info) (notification.Notifica
 	strategy := d.selectStrategy(info)
 
 	// 1. 预解析流程节点，避免策略内重复解析
-	if nodes, err := d.base.UnmarshalNodes(info.Workflow); err == nil {
+	if nodes, err := UnmarshalNodes(info.Workflow); err == nil {
 		info.Nodes = nodes
 	}
 
 	// 2. 分发器根据流程属性注入通知渠道类型
 	if info.Channel == "" {
-		info.Channel = d.base.GetChannel(info.Workflow)
+		info.Channel = getChannel(info.Workflow)
 	}
 
 	return strategy.Send(ctx, info)
+}
+
+// GetChannel 根据流程配置获取通知渠道
+func getChannel(wf workflow.Workflow) notification.Channel {
+	switch wf.NotifyMethod {
+	case workflow.Feishu:
+		return notification.ChannelLarkCard
+	case workflow.Wechat:
+		return notification.ChannelWechat
+	default:
+		return notification.ChannelLarkCard
+	}
 }
 
 func (d *Dispatcher) selectStrategy(not Info) SendStrategy {

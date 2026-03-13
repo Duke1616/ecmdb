@@ -13,7 +13,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
-	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/ecmdb/pkg/resolve"
@@ -23,19 +22,19 @@ import (
 )
 
 type UserNotification struct {
-	BaseStrategy
+	Service
 	sender          sender.NotificationSender
 	departmentSvc   department.Service
 	notificationSvc notificationv1.NotificationServiceClient
 	assigneeService *resolve.Engine
 }
 
-func NewUserNotification(base BaseStrategy, departmentSvc department.Service,
+func NewUserNotification(base Service, departmentSvc department.Service,
 	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient,
 	assigneeService *resolve.Engine) *UserNotification {
 
 	return &UserNotification{
-		BaseStrategy:    base,
+		Service:         base,
 		sender:          sender,
 		departmentSvc:   departmentSvc,
 		notificationSvc: notificationSvc,
@@ -44,7 +43,7 @@ func NewUserNotification(base BaseStrategy, departmentSvc department.Service,
 }
 
 func (n *UserNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
-	// 1. 获取当前节点信息（利用 BaseStrategy 封装好的逻辑）
+	// 1. 获取当前节点信息
 	nodes, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
 		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
@@ -55,48 +54,33 @@ func (n *UserNotification) Send(ctx context.Context, info Info) (notification.No
 		return notification.NewErrorResponse(string(errs.ErrorCodeNodeNotConfigured), err.Error()), fmt.Errorf("%w: %v", errs.ErrNodeNotConfigured, err)
 	}
 
-	// 2. 并行获取所需元数据（规则、自动化结果、发起人）
-	data, err := n.FetchRequiredData(ctx, info, nodes)
+	// 2. 解析审批人
+	users, err := n.ResolveAssignees(ctx, &info, property.NormalizeAssignees())
 	if err != nil {
-		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), fmt.Errorf("%w: %v", errs.ErrFetchData, err)
-	}
-
-	// 3. 利用解析引擎解析审批人，并同步回流程节点（由 easy-workflow 接管后续的任务下发）
-	targets := n.EnrichTargets(info, property.NormalizeAssignees())
-
-	users, err := n.assigneeService.Resolve(ctx, targets)
-	if err != nil {
-		n.Logger.Error("解析审批人规则失败", elog.FieldErr(err), elog.String("node", info.CurrentNode.NodeID))
+		n.Logger().Error("解析审批人规则失败", elog.FieldErr(err), elog.String("node", info.CurrentNode.NodeID))
 		return notification.NewErrorResponse(string(errs.ErrorCodeResolveRuleFailed), err.Error()), err
 	}
 
-	// 更新 CurrentNode.UserIDs 协助引擎分发任务
-	info.CurrentNode.UserIDs = slice.Map(users, func(idx int, u user.User) string {
-		return u.Username
+	// 3. 构建通知元数据
+	data, err := n.FetchRequiredData(ctx, info, nodes)
+	if err != nil {
+		return notification.NewErrorResponse(string(errs.ErrorCodeFetchDataFailed), err.Error()), err
+	}
+
+	// 4. 异步处理
+	n.SafeGo(ctx, 3*time.Minute, func(sendCtx context.Context) {
+		n.asyncSendNotification(sendCtx, info, property, data, NewRecipientMap(users, info.Channel))
 	})
 
-	// 4. 异步处理消息发送（因需等待任务记录创建）
-	// 创建独立的 context，但保留 trace 信息
-	sendCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	go func() {
-		defer cancel()
-		defer func() {
-			if r := recover(); r != nil {
-				n.Logger.Error("异步发送通知发生panic", elog.Any("recover", r))
-			}
-		}()
-		n.asyncSendNotification(sendCtx, info, property, data, users)
-	}()
-
-	return notification.NotificationResponse{}, nil
+	return notification.NewSuccessResponse(0, "success"), nil
 }
 
 func (n *UserNotification) asyncSendNotification(ctx context.Context, info Info,
-	property easyflow.UserProperty, data *NotificationData, users []user.User) {
-	// 1. 获取任务信息（带重试）
+	property easyflow.UserProperty, data *NotificationData, userMap RecipientMap) {
+	// 1. 尝试拉取任务，支持重试（引擎异步落库需时间）
 	tasks, err := n.FetchTasksWithRetry(ctx, info)
 	if err != nil {
-		n.Logger.Error("获取任务信息失败", elog.FieldErr(err), elog.Int("instanceId", info.InstID))
+		n.Logger().Warn("UserNotification 任务拉取失败，跳过通知发送", elog.FieldErr(err), elog.Int("instanceId", info.InstID))
 		return
 	}
 
@@ -108,24 +92,21 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, info Info,
 		return
 	}
 
-	// 4. 组装接收者映射
-	userMap := n.AnalyzeUsers(users)
-
-	// 5. 特殊处理：告警转工单通知
+	// 4. 特殊处理：告警转工单通知
 	if info.Order.Provide.IsAlert() {
 		if err = n.sendAlertNotification(ctx, tasks, info.Order, userMap); err != nil {
-			n.Logger.Error("告警转工单消息发送失败", elog.FieldErr(err))
+			n.Logger().Error("告警转工单消息发送失败", elog.FieldErr(err))
 		}
 		return
 	}
 
-	// 6. 准备通知展示字段
+	// 5. 发行标准通知卡片
 	fields := n.PrepareCommonFields(info, data)
-
-	// 7. 构建并批量发送消息
 	notifications := n.buildNotifications(info, property, tasks, userMap, template, title, fields)
-	if _, err = n.sender.BatchSend(ctx, notifications); err != nil {
-		n.Logger.Warn("发送消息失败", elog.FieldErr(err))
+	for _, msg := range notifications {
+		if _, err = n.sender.Send(ctx, msg); err != nil {
+			n.Logger().Error("UserNotification 消息发送失败", elog.FieldErr(err), elog.String("receiver", msg.Receiver))
+		}
 	}
 }
 
@@ -136,11 +117,10 @@ func (n *UserNotification) prepareNotificationMetadata(ctx context.Context, prop
 	return
 }
 
-func (n *UserNotification) buildNotifications(info Info, property easyflow.UserProperty,
-	tasks []model.Task, userMap map[string]string,
-	template workflow.NotifyType, title string, fields []notification.Field) []notification.Notification {
+func (n *UserNotification) buildNotifications(info Info, property easyflow.UserProperty, tasks []model.Task,
+	userMap RecipientMap, template workflow.NotifyType, title string, fields []notification.Field) []notification.Notification {
 	return slice.Map(tasks, func(idx int, src model.Task) notification.Notification {
-		receiver, _ := userMap[src.UserID]
+		receiver := userMap.GetID(src.UserID)
 		return notification.Notification{
 			Channel:    info.Channel,
 			WorkFlowID: info.Workflow.Id,
@@ -177,13 +157,17 @@ func (n *UserNotification) buildNotifications(info Info, property easyflow.UserP
 }
 
 func (n *UserNotification) sendAlertNotification(ctx context.Context, tasks []model.Task,
-	oInfo order.Order, userMap map[string]string) error {
-	userIds := slice.Map(tasks, func(idx int, src model.Task) string {
-		receiver, _ := userMap[src.UserID]
-		return receiver
-	})
+	orderInfo order.Order, userMap RecipientMap) error {
+	var userIds []string
+	for _, src := range tasks {
+		receiver := userMap.GetID(src.UserID)
+		if receiver == "" {
+			continue
+		}
+		userIds = append(userIds, receiver)
+	}
 
-	params, err := structpb.NewStruct(oInfo.NotificationConf.TemplateParams)
+	params, err := structpb.NewStruct(orderInfo.NotificationConf.TemplateParams)
 	if err != nil {
 		return fmt.Errorf("解析模版数据失败: %w", err)
 	}
@@ -193,9 +177,9 @@ func (n *UserNotification) sendAlertNotification(ctx context.Context, tasks []mo
 		Notification: &notificationv1.Notification{
 			Key:            "ecmdb",
 			Receivers:      userIds,
-			Channel:        order.ChannelToDomainProto(oInfo.NotificationConf.Channel),
+			Channel:        order.ChannelToDomainProto(orderInfo.NotificationConf.Channel),
 			TemplateParams: params,
-			TemplateId:     oInfo.NotificationConf.TemplateID,
+			TemplateId:     orderInfo.NotificationConf.TemplateID,
 		},
 	})
 

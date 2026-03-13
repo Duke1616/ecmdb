@@ -25,17 +25,17 @@ import (
 )
 
 type ChatNotification struct {
-	BaseStrategy
+	Service
 	sender          sender.NotificationSender
 	larkClient      *lark.Client
 	assigneeService *resolve.Engine
 	teamSvc         teamv1.TeamServiceClient
 }
 
-func NewChatNotification(base BaseStrategy, sender sender.NotificationSender,
+func NewChatNotification(base Service, sender sender.NotificationSender,
 	larkClient *lark.Client, assigneeService *resolve.Engine, teamSvc teamv1.TeamServiceClient) *ChatNotification {
 	return &ChatNotification{
-		BaseStrategy:    base,
+		Service:         base,
 		sender:          sender,
 		larkClient:      larkClient,
 		assigneeService: assigneeService,
@@ -70,36 +70,29 @@ func (n *ChatNotification) Send(ctx context.Context, info Info) (notification.No
 	})
 
 	// 3. 异步处理：等待任务创建、发送群组消息、自动推进流程
-	sendCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	go func() {
-		defer cancel()
-		defer func() {
-			if r := recover(); r != nil {
-				n.Logger.Error("ChatNotification async panic", elog.Any("recover", r))
-			}
-		}()
+	n.SafeGo(ctx, 3*time.Minute, func(sendCtx context.Context) {
 		n.asyncHandleChat(sendCtx, info, data)
-	}()
+	})
 
 	return notification.NotificationResponse{}, nil
 }
 
 // asyncHandleChat 异步处理核心逻辑
 func (n *ChatNotification) asyncHandleChat(ctx context.Context, info Info, data *chatContext) {
-	n.Logger.Info("ChatNotification 开始异步处理群组通知",
+	n.Logger().Info("ChatNotification 开始异步处理群组通知",
 		elog.Int("instId", info.InstID),
 		elog.String("node", info.CurrentNode.NodeID))
 
 	// 1. 获取任务信息 (带重试，等待引擎完成任务下发)
 	tasks, err := n.FetchTasksWithRetry(ctx, info)
 	if err != nil {
-		n.Logger.Error("ChatNotification 获取任务失败", elog.FieldErr(err), elog.Int("instId", info.InstID))
+		n.Logger().Error("ChatNotification 获取任务失败", elog.FieldErr(err), elog.Int("instId", info.InstID))
 		return
 	}
 
 	// 2. 检查全局消息通知开关
 	if !n.IsGlobalNotify(info.Workflow) {
-		n.Logger.Info("ChatNotification 全局流程通知开关已关闭，跳过消息发送，仅执行流程自动推进",
+		n.Logger().Info("ChatNotification 全局流程通知开关已关闭，跳过消息发送，仅执行流程自动推进",
 			elog.Int64("wfId", info.Workflow.Id))
 	} else {
 		n.sendChatNotifications(ctx, info, data)
@@ -111,14 +104,14 @@ func (n *ChatNotification) asyncHandleChat(ctx context.Context, info Info, data 
 
 func (n *ChatNotification) autoPassTasks(ctx context.Context, tasks []model.Task) {
 	for _, t := range tasks {
-		if err := n.EngineSvc.Pass(ctx, t.TaskID, "ChatGroup Auto Pass"); err != nil {
-			n.Logger.Error("ChatNotification 流程自动推进失败",
+		if err := n.PassTask(ctx, t.TaskID, "ChatGroup Auto Pass"); err != nil {
+			n.Logger().Error("ChatNotification 流程自动推进失败",
 				elog.FieldErr(err),
 				elog.Int("taskId", t.TaskID))
 			continue
 		}
 
-		n.Logger.Info("ChatNotification 节点任务已自动推进",
+		n.Logger().Info("ChatNotification 节点任务已自动推进",
 			elog.Int("taskId", t.TaskID))
 
 		// 抄送或自动通知通常一人通过全组通过 (非会签)
@@ -131,23 +124,23 @@ func (n *ChatNotification) autoPassTasks(ctx context.Context, tasks []model.Task
 func (n *ChatNotification) sendChatNotifications(ctx context.Context, info Info, data *chatContext) {
 	recipients, err := n.resolveRecipients(ctx, info, data)
 	if err != nil {
-		n.Logger.Error("ChatNotification 解析接收群组失败", elog.FieldErr(err))
+		n.Logger().Error("ChatNotification 解析接收群组失败", elog.FieldErr(err))
 		return
 	}
 
 	if len(recipients) == 0 {
-		n.Logger.Info("ChatNotification 未匹配到合法的群组接收者，跳过发送")
+		n.Logger().Info("ChatNotification 未匹配到合法的群组接收者，跳过发送")
 		return
 	}
 
 	notifications := n.buildNotifications(info, data, recipients)
 
 	if _, err = n.sender.BatchSend(ctx, notifications); err != nil {
-		n.Logger.Warn("ChatNotification 发送群组消息失败", elog.FieldErr(err))
+		n.Logger().Warn("ChatNotification 发送群组消息失败", elog.FieldErr(err))
 		return
 	}
 
-	n.Logger.Info("ChatNotification 群组消息批量发送成功",
+	n.Logger().Info("ChatNotification 群组消息批量发送成功",
 		elog.Int("recipientCount", len(recipients)))
 }
 
@@ -159,7 +152,7 @@ func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, dat
 	case easyflow.ChatGroupCreate:
 		return n.handleCreateGroup(ctx, info, data)
 	default:
-		n.Logger.Warn("未知的群组通知模式", elog.Any("mode", data.property.Mode))
+		n.Logger().Warn("未知的群组通知模式", elog.Any("mode", data.property.Mode))
 		return nil, nil
 	}
 }
@@ -168,7 +161,7 @@ func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, dat
 func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
 	// 1. 检查是否配置了群组 ID
 	if len(data.property.ChatGroupIDs) == 0 {
-		n.Logger.Warn("ChatNotification (ExistingMode) 未显式配置群组 ID，跳过处理",
+		n.Logger().Warn("ChatNotification (ExistingMode) 未显式配置群组 ID，跳过处理",
 			elog.Int("instId", info.InstID))
 		return nil, nil
 	}
@@ -183,7 +176,7 @@ func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, 
 	if members := n.extractMemberIDs(data.members); len(members) > 0 {
 		for _, cg := range resp.Groups {
 			if err = n.addMembersToChat(ctx, cg.ChatId, members); err != nil {
-				n.Logger.Warn("ChatNotification 添加成员到现有群组失败",
+				n.Logger().Warn("ChatNotification 添加成员到现有群组失败",
 					elog.FieldErr(err),
 					elog.String("chatId", cg.ChatId))
 			}
@@ -192,7 +185,7 @@ func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, 
 
 	// 4. 转换为接收者对象
 	return slice.Map(resp.Groups, func(idx int, src *teamv1.ChatGroup) recipient {
-		ch := n.GetChatChannel(src.Channel.String())
+		ch := GetChatChannel(src.Channel.String())
 		if src.Channel == notificationv1.Channel_CHANNEL_UNSPECIFIED {
 			ch = info.Channel
 		}
@@ -221,14 +214,14 @@ func (n *ChatNotification) handleCreateGroup(ctx context.Context, info Info, dat
 		n.syncMembersToExistingChat(ctx, chat.ChatId, data)
 		return []recipient{{
 			chatID:  chat.ChatId,
-			channel: n.GetChatChannel(chat.Channel.String()),
+			channel: GetChatChannel(chat.Channel.String()),
 		}}, nil
 	}
 
 	// 创建群组
 	chatID, err := n.createChatGroup(ctx, chatName, data)
 	if err != nil {
-		n.Logger.Error("创建通知群组失败", elog.FieldErr(err))
+		n.Logger().Error("创建通知群组失败", elog.FieldErr(err))
 		return nil, err
 	}
 
@@ -251,7 +244,7 @@ func (n *ChatNotification) asyncBindGroupToTeam(chatName, chatID string) {
 	})
 
 	if err != nil {
-		n.Logger.Error("异步绑定群组到默认团队", elog.FieldErr(err))
+		n.Logger().Error("异步绑定群组到默认团队", elog.FieldErr(err))
 	}
 }
 
@@ -262,7 +255,7 @@ func (n *ChatNotification) syncMembersToExistingChat(ctx context.Context, chatID
 	}
 
 	if err := n.addMembersToChat(ctx, chatID, members); err != nil {
-		n.Logger.Warn("ChatNotification 添加成员到现有群组失败",
+		n.Logger().Warn("ChatNotification 添加成员到现有群组失败",
 			elog.FieldErr(err),
 			elog.String("chatId", chatID),
 		)
@@ -345,7 +338,7 @@ func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatC
 	// 2. 依据配置拉取扩展信息
 	var inputs []order.FormValue
 	if slice.Contains(property.OutputMode, easyflow.OutputUserInput) {
-		inputs, _ = n.OrderSvc.FindTaskFormsByOrderID(ctx, info.Order.Id)
+		inputs, _ = n.FindTaskForms(ctx, info.Order.Id)
 	}
 
 	return &chatContext{
@@ -466,7 +459,7 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 	// 1. 工单信息（对应 OutputTicketData）
 	if modeSet[easyflow.OutputTicketData] {
 		ruleFields := rule.GetFields(data.Rules, info.Order.Provide.ToUint8(), info.Order.Data)
-		modeFields := n.ConvertRuleFields(ruleFields)
+		modeFields := ConvertRuleFields(ruleFields)
 		if len(modeFields) > 0 {
 			fields = append(fields, sectionHeader("📋 工单信息"))
 			fields = append(fields, modeFields...)
@@ -491,7 +484,7 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 
 	// 3. 执行结果（对应 OutputAutoTask）
 	if modeSet[easyflow.OutputAutoTask] {
-		modeFields := n.BuildWantResultFields(data.WantResult)
+		modeFields := BuildWantResultFields(data.WantResult)
 		if len(modeFields) > 0 {
 			fields = append(fields, sectionHeader("⚙️ 执行结果"))
 			fields = append(fields, modeFields...)

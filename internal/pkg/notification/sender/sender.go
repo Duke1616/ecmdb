@@ -33,9 +33,15 @@ func NewSender(channel channel.Channel) NotificationSender {
 func (d *sender) Send(ctx context.Context, n notification.Notification) (notification.NotificationResponse, error) {
 	_, err := d.channel.Send(ctx, n)
 	if err != nil {
-		d.logger.Error("发送失败", elog.FieldErr(err))
+		d.logger.Error("发送失败", elog.FieldErr(err), elog.String("receiver", n.Receiver))
 		return notification.NotificationResponse{}, err
 	}
+
+	d.logger.Info("【Notification】通知发送成功",
+		elog.String("receiver", n.Receiver),
+		elog.String("receiver_type", n.ReceiverType),
+		elog.String("template", string(n.Template.Name)),
+		elog.String("channel", n.Channel.String()))
 
 	return notification.NotificationResponse{}, nil
 }
@@ -58,11 +64,18 @@ func (d *sender) BatchSend(ctx context.Context, notifications []notification.Not
 			}()
 			_, err := d.channel.Send(ctx, n)
 			if err != nil {
-				d.logger.Error("发送失败", elog.FieldErr(err))
+				d.logger.Error("发送失败", elog.FieldErr(err), elog.String("receiver", n.Receiver))
+			} else {
+				d.logger.Info("【Notification】通知发送成功",
+					elog.String("receiver", n.Receiver),
+					elog.String("receiver_type", n.ReceiverType),
+					elog.String("template", string(n.Template.Name)),
+					elog.String("channel", n.Channel.String()))
 			}
 		}()
 	}
 	wg.Wait()
+	d.logger.Info("【Notification】批量通知发送处理完成", elog.Int("total", len(notifications)))
 
 	return notification.NotificationResponse{}, nil
 }

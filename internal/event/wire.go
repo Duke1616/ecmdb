@@ -15,6 +15,11 @@ import (
 	"github.com/Duke1616/ecmdb/internal/event/service/assignees"
 	"github.com/Duke1616/ecmdb/internal/event/service/easyflow"
 	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy/automation"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy/carbon_copy"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy/chat"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy/start"
+	userstrategy "github.com/Duke1616/ecmdb/internal/event/service/strategy/user"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/rota"
@@ -31,12 +36,12 @@ import (
 
 var InitStrategySet = wire.NewSet(
 	strategy.NewService,
-	strategy.NewUserNotification,
-	strategy.NewAutomationNotification,
-	strategy.NewStartNotification,
-	strategy.NewChatNotification,
-	strategy.NewCarbonCopyNotification,
-	strategy.NewDispatcher,
+	userstrategy.NewUserNotification,
+	automation.NewAutomationNotification,
+	start.NewStartNotification,
+	chat.NewChatNotification,
+	carbon_copy.NewCarbonCopyNotification,
+	ProviderNewDispatcher,
 	wire.Bind(new(strategy.SendStrategy), new(*strategy.Dispatcher)),
 
 	// Resolvers
@@ -111,4 +116,15 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer prod
 	})
 
 	return event
+}
+
+func ProviderNewDispatcher(
+	user *userstrategy.UserNotification,
+	auto *automation.AutomationNotification,
+	start *start.StartNotification,
+	chat *chat.ChatNotification,
+	cc *carbon_copy.CarbonCopyNotification,
+	base strategy.Service,
+) *strategy.Dispatcher {
+	return strategy.NewDispatcher(user, auto, start, chat, cc, base)
 }

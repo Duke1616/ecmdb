@@ -61,8 +61,8 @@ type Dispatcher struct {
 	base               Service
 }
 
-func NewDispatcher(user *UserNotification, auto *AutomationNotification,
-	start *StartNotification, chat *ChatNotification, carbonCopy *CarbonCopyNotification, base Service) *Dispatcher {
+func NewDispatcher(user SendStrategy, auto SendStrategy,
+	start SendStrategy, chat SendStrategy, carbonCopy SendStrategy, base Service) *Dispatcher {
 	return &Dispatcher{
 		userStrategy:       user,
 		autoStrategy:       auto,

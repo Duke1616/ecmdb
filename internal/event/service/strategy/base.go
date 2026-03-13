@@ -471,7 +471,3 @@ func (rm RecipientMap) GetIDs() []string {
 	}
 	return ids
 }
-
-func containsAutoNotifyMethod(methods []int64, target int64) bool {
-	return slice.Contains(methods, target)
-}

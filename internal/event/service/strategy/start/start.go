@@ -1,10 +1,11 @@
-package strategy
+package start
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/event/errs"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -12,18 +13,18 @@ import (
 )
 
 type StartNotification struct {
-	Service
+	strategy.Service
 	sender sender.NotificationSender
 }
 
-func NewStartNotification(base Service, sender sender.NotificationSender) *StartNotification {
+func NewStartNotification(base strategy.Service, sender sender.NotificationSender) *StartNotification {
 	return &StartNotification{
 		Service: base,
 		sender:  sender,
 	}
 }
 
-func (s *StartNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
+func (s *StartNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 全局通知校验
 	if !s.IsGlobalNotify(info.Workflow) {
 		return notification.NewSuccessResponse(0, "全局通知已关闭"), nil
@@ -53,9 +54,9 @@ func (s *StartNotification) Send(ctx context.Context, info Info) (notification.N
 		WorkFlowID: info.Workflow.Id,
 		Receiver:   data.StartUser.FeishuInfo.UserId,
 		Template: notification.Template{
-			Name:   LarkTemplateApprovalRevokeName,
+			Name:   strategy.LarkTemplateApprovalRevokeName,
 			Title:  title,
-			Fields: ConvertRuleFields(fields),
+			Fields: strategy.ConvertRuleFields(fields),
 			Values: []notification.Value{
 				{Key: "order_id", Value: info.Order.Id},
 				{Key: "task_id", Value: "100001"},

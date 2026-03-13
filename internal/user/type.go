@@ -13,4 +13,8 @@ type Service = service.Service
 
 type User = domain.User
 
+type FeishuInfo = domain.FeishuInfo
+
+type WechatInfo = domain.WechatInfo
+
 type RpcServer = grpc.UserServer

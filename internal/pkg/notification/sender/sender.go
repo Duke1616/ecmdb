@@ -9,6 +9,7 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
+//go:generate mockgen -source=./sender.go -package=sendermocks -destination=../../mocks/sender.mock.go -typed NotificationSender
 type NotificationSender interface {
 	Send(ctx context.Context, n notification.Notification) (notification.NotificationResponse, error)
 	BatchSend(ctx context.Context, notifications []notification.Notification) (notification.NotificationResponse, error)

@@ -1,4 +1,4 @@
-package strategy
+package carbon_copy
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/event/errs"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
@@ -16,18 +17,18 @@ import (
 )
 
 type CarbonCopyNotification struct {
-	Service
+	strategy.Service
 	sender sender.NotificationSender
 }
 
-func NewCarbonCopyNotification(base Service, sender sender.NotificationSender) *CarbonCopyNotification {
+func NewCarbonCopyNotification(base strategy.Service, sender sender.NotificationSender) *CarbonCopyNotification {
 	return &CarbonCopyNotification{
 		Service: base,
 		sender:  sender,
 	}
 }
 
-func (n *CarbonCopyNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
+func (n *CarbonCopyNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 获取节点属性
 	nodes, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
@@ -52,13 +53,13 @@ func (n *CarbonCopyNotification) Send(ctx context.Context, info Info) (notificat
 
 	// 4. 异步处理
 	n.SafeGo(ctx, 3*time.Minute, func(sendCtx context.Context) {
-		n.asyncHandleCarbonCopy(sendCtx, info, data, NewRecipientMap(users, info.Channel))
+		n.asyncHandleCarbonCopy(sendCtx, info, data, strategy.NewRecipientMap(users, info.Channel))
 	})
 
 	return notification.NewSuccessResponse(0, "success"), nil
 }
 
-func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info Info, data *NotificationData, userMap RecipientMap) {
+func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info strategy.Info, data *strategy.NotificationData, userMap strategy.RecipientMap) {
 	// 1. 获取任务
 	tasks, err := n.FetchTasksWithRetry(ctx, info)
 	if err != nil {
@@ -78,7 +79,7 @@ func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info
 				WorkFlowID: info.Workflow.Id,
 				Receiver:   receiver,
 				Template: notification.Template{
-					Name:     LarkTemplateCC,
+					Name:     strategy.LarkTemplateCC,
 					Title:    title,
 					Fields:   fields,
 					Values:   []notification.Value{{Key: "order_id", Value: info.Order.Id}},

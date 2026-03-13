@@ -1,30 +1,39 @@
-package strategy
+package automation
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/event/errs"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/pkg/rule"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
 	"github.com/Duke1616/enotify/notify/feishu"
+	"github.com/ecodeclub/ekit/slice"
+)
+
+const (
+	// ProcessEndSend 流程结束后发送
+	ProcessEndSend = 1
+	// ProcessNowSend 当前节点通过直接发送
+	ProcessNowSend = 2
 )
 
 type AutomationNotification struct {
-	Service
+	strategy.Service
 	sender sender.NotificationSender
 }
 
-func NewAutomationNotification(base Service, sender sender.NotificationSender) *AutomationNotification {
+func NewAutomationNotification(base strategy.Service, sender sender.NotificationSender) *AutomationNotification {
 	return &AutomationNotification{
 		Service: base,
 		sender:  sender,
 	}
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
+func (n *AutomationNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 获取当前节点信息
 	_, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
@@ -57,7 +66,7 @@ func (n *AutomationNotification) Send(ctx context.Context, info Info) (notificat
 	}
 
 	// 4. 发送消息
-	fields := BuildWantResultFields(data.WantResult)
+	fields := strategy.BuildWantResultFields(data.WantResult)
 
 	// 每两个字段插入一个空行（保持原有格式）
 	formattedFields := make([]notification.Field, 0, len(fields)*2)
@@ -78,10 +87,14 @@ func (n *AutomationNotification) Send(ctx context.Context, info Info) (notificat
 		WorkFlowID:   info.Workflow.Id,
 		Receiver:     data.StartUser.FeishuInfo.UserId,
 		Template: notification.Template{
-			Name:     LarkTemplateApprovalName,
+			Name:     strategy.LarkTemplateApprovalName,
 			Title:    rule.GenerateAutoTitle("你提交", data.TName),
 			Fields:   formattedFields,
 			HideForm: true,
 		},
 	})
+}
+
+func containsAutoNotifyMethod(methods []int64, target int64) bool {
+	return slice.Contains(methods, target)
 }

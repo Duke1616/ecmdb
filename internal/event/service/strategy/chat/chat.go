@@ -1,4 +1,4 @@
-package strategy
+package chat
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	notificationv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
 	teamv1 "github.com/Duke1616/ecmdb/api/proto/gen/ealert/team"
 	"github.com/Duke1616/ecmdb/internal/event/errs"
+	"github.com/Duke1616/ecmdb/internal/event/service/strategy"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
@@ -24,13 +25,13 @@ import (
 )
 
 type ChatNotification struct {
-	Service
+	strategy.Service
 	sender     sender.NotificationSender
 	larkClient *lark.Client
 	teamSvc    teamv1.TeamServiceClient
 }
 
-func NewChatNotification(base Service, sender sender.NotificationSender,
+func NewChatNotification(base strategy.Service, sender sender.NotificationSender,
 	larkClient *lark.Client, teamSvc teamv1.TeamServiceClient) *ChatNotification {
 	return &ChatNotification{
 		Service:    base,
@@ -42,10 +43,10 @@ func NewChatNotification(base Service, sender sender.NotificationSender,
 
 // chatContext 封装发送所需的所有元数据
 type chatContext struct {
-	*NotificationData                            // 基础元数据 (Rules, StartUser, TName, WantResult)
-	property          easyflow.ChatGroupProperty // 节点配置属性
-	members           []user.User                // 运行解析出的成员
-	userInputs        []order.FormValue          // 动态加载的用户输入
+	*strategy.NotificationData                            // 基础元数据 (Rules, StartUser, TName, WantResult)
+	property                   easyflow.ChatGroupProperty // 节点配置属性
+	members                    []user.User                // 运行解析出的成员
+	userInputs                 []order.FormValue          // 动态加载的用户输入
 }
 
 // recipient 内部接收者描述
@@ -54,7 +55,7 @@ type recipient struct {
 	channel notification.Channel
 }
 
-func (n *ChatNotification) Send(ctx context.Context, info Info) (notification.NotificationResponse, error) {
+func (n *ChatNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 获取通知元数据 (同步获取以注入 UserIDs)
 	data, err := n.fetchChatData(ctx, info)
 	if err != nil {
@@ -75,7 +76,7 @@ func (n *ChatNotification) Send(ctx context.Context, info Info) (notification.No
 }
 
 // asyncHandleChat 异步处理核心逻辑
-func (n *ChatNotification) asyncHandleChat(ctx context.Context, info Info, data *chatContext) {
+func (n *ChatNotification) asyncHandleChat(ctx context.Context, info strategy.Info, data *chatContext) {
 	n.Logger().Info("ChatNotification 开始异步处理群组通知",
 		elog.Int("instId", info.InstID),
 		elog.String("node", info.CurrentNode.NodeID))
@@ -118,7 +119,7 @@ func (n *ChatNotification) autoPassTasks(ctx context.Context, tasks []model.Task
 	}
 }
 
-func (n *ChatNotification) sendChatNotifications(ctx context.Context, info Info, data *chatContext) {
+func (n *ChatNotification) sendChatNotifications(ctx context.Context, info strategy.Info, data *chatContext) {
 	recipients, err := n.resolveRecipients(ctx, info, data)
 	if err != nil {
 		n.Logger().Error("ChatNotification 解析接收群组失败", elog.FieldErr(err))
@@ -142,7 +143,7 @@ func (n *ChatNotification) sendChatNotifications(ctx context.Context, info Info,
 }
 
 // resolveRecipients 根据模式分发解析接收者逻辑
-func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
+func (n *ChatNotification) resolveRecipients(ctx context.Context, info strategy.Info, data *chatContext) ([]recipient, error) {
 	switch data.property.Mode {
 	case easyflow.ChatGroupUseExisting:
 		return n.handleExistingGroups(ctx, info, data)
@@ -155,7 +156,7 @@ func (n *ChatNotification) resolveRecipients(ctx context.Context, info Info, dat
 }
 
 // handleExistingGroups 处理现有群组逻辑：必须显式指定 ChatGroupIDs
-func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
+func (n *ChatNotification) handleExistingGroups(ctx context.Context, info strategy.Info, data *chatContext) ([]recipient, error) {
 	// 1. 检查是否配置了群组 ID
 	if len(data.property.ChatGroupIDs) == 0 {
 		n.Logger().Warn("ChatNotification (ExistingMode) 未显式配置群组 ID，跳过处理",
@@ -182,7 +183,7 @@ func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, 
 
 	// 4. 转换为接收者对象
 	return slice.Map(resp.Groups, func(idx int, src *teamv1.ChatGroup) recipient {
-		ch := GetChatChannel(src.Channel.String())
+		ch := strategy.GetChatChannel(src.Channel.String())
 		if src.Channel == notificationv1.Channel_CHANNEL_UNSPECIFIED {
 			ch = info.Channel
 		}
@@ -191,7 +192,7 @@ func (n *ChatNotification) handleExistingGroups(ctx context.Context, info Info, 
 }
 
 // handleCreateGroup 处理新建群组及其团队绑定
-func (n *ChatNotification) handleCreateGroup(ctx context.Context, info Info, data *chatContext) ([]recipient, error) {
+func (n *ChatNotification) handleCreateGroup(ctx context.Context, info strategy.Info, data *chatContext) ([]recipient, error) {
 	// 解析动态群组名称，解析失败则使用默认名称
 	chatName := n.resolveChatName(data.property.Create.Name, info, data)
 
@@ -211,7 +212,7 @@ func (n *ChatNotification) handleCreateGroup(ctx context.Context, info Info, dat
 		n.syncMembersToExistingChat(ctx, chat.ChatId, data)
 		return []recipient{{
 			chatID:  chat.ChatId,
-			channel: GetChatChannel(chat.Channel.String()),
+			channel: strategy.GetChatChannel(chat.Channel.String()),
 		}}, nil
 	}
 
@@ -260,7 +261,7 @@ func (n *ChatNotification) syncMembersToExistingChat(ctx context.Context, chatID
 }
 
 // buildNotifications 组装最终的批量通知对象
-func (n *ChatNotification) buildNotifications(info Info, data *chatContext, recipients []recipient) []notification.Notification {
+func (n *ChatNotification) buildNotifications(info strategy.Info, data *chatContext, recipients []recipient) []notification.Notification {
 	title := n.resolveTitle(data.property.Title, info, data)
 	fields := n.resolveFields(info, data)
 
@@ -275,7 +276,7 @@ func (n *ChatNotification) buildNotifications(info Info, data *chatContext, reci
 			WorkFlowID:   info.Workflow.Id,
 			Receiver:     r.chatID,
 			Template: notification.Template{
-				Name:     LarkTemplateChatGroup,
+				Name:     strategy.LarkTemplateChatGroup,
 				Title:    title,
 				Fields:   fields,
 				HideForm: true,
@@ -315,7 +316,7 @@ func (n *ChatNotification) createChatGroup(ctx context.Context, chatName string,
 }
 
 // fetchChatData 获取发送消息所需的全量元数据
-func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatContext, error) {
+func (n *ChatNotification) fetchChatData(ctx context.Context, info strategy.Info) (*chatContext, error) {
 	// 1. 获取节点属性与基础数据
 	nodes, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
@@ -348,17 +349,17 @@ func (n *ChatNotification) fetchChatData(ctx context.Context, info Info) (*chatC
 
 var variableRegex = regexp.MustCompile(`{{(.*?)}}`)
 
-func (n *ChatNotification) resolveTitle(rule string, info Info, data *chatContext) string {
+func (n *ChatNotification) resolveTitle(rule string, info strategy.Info, data *chatContext) string {
 	return n.resolveDynamicString(rule, "{{creator}}发起的{{template}}执行结果", info, data)
 }
 
 // resolveChatName 解析动态群组名称
-func (n *ChatNotification) resolveChatName(rule string, info Info, data *chatContext) string {
+func (n *ChatNotification) resolveChatName(rule string, info strategy.Info, data *chatContext) string {
 	return n.resolveDynamicString(rule, fmt.Sprintf("【ECMDB】- %s", data.TName), info, data)
 }
 
 // resolveDynamicString 解析动态字符串 (支持变量替换)
-func (n *ChatNotification) resolveDynamicString(value, defaultVal string, info Info, data *chatContext) string {
+func (n *ChatNotification) resolveDynamicString(value, defaultVal string, info strategy.Info, data *chatContext) string {
 	target := value
 	if target == "" {
 		target = defaultVal
@@ -427,7 +428,7 @@ func (n *ChatNotification) addMembersToChat(ctx context.Context, chatID string, 
 }
 
 // resolveMembers 解析规则获取最终用户列表
-func (n *ChatNotification) resolveMembers(ctx context.Context, info Info, property easyflow.ChatGroupProperty) []user.User {
+func (n *ChatNotification) resolveMembers(ctx context.Context, info strategy.Info, property easyflow.ChatGroupProperty) []user.User {
 	// 1. 如果未配置分配规则，则不解析成员
 	if len(property.Assignees) == 0 {
 		return nil
@@ -441,7 +442,7 @@ func (n *ChatNotification) resolveMembers(ctx context.Context, info Info, proper
 // resolveFields 依据 OutputMode 解析通知内容字段
 // 每个区块有数据时才插入全宽小标题字段（IsShort: false），
 // 使飞书卡片形成清晰的分组视觉层次，无需改动模板。
-func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notification.Field {
+func (n *ChatNotification) resolveFields(info strategy.Info, data *chatContext) []notification.Field {
 	var fields []notification.Field
 
 	// 为了快速检查是否存在，将前端传来的选项列表转化为 map
@@ -455,7 +456,7 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 	// 1. 工单信息（对应 OutputTicketData）
 	if modeSet[easyflow.OutputTicketData] {
 		ruleFields := rule.GetFields(data.Rules, info.Order.Provide.ToUint8(), info.Order.Data)
-		modeFields := ConvertRuleFields(ruleFields)
+		modeFields := strategy.ConvertRuleFields(ruleFields)
 		if len(modeFields) > 0 {
 			fields = append(fields, sectionHeader("📋 工单信息"))
 			fields = append(fields, modeFields...)
@@ -480,7 +481,7 @@ func (n *ChatNotification) resolveFields(info Info, data *chatContext) []notific
 
 	// 3. 执行结果（对应 OutputAutoTask）
 	if modeSet[easyflow.OutputAutoTask] {
-		modeFields := BuildWantResultFields(data.WantResult)
+		modeFields := strategy.BuildWantResultFields(data.WantResult)
 		if len(modeFields) > 0 {
 			fields = append(fields, sectionHeader("⚙️ 执行结果"))
 			fields = append(fields, modeFields...)

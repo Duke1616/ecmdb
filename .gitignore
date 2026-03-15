@@ -1,4 +1,7 @@
 config/prod.toml
 config/prod.yaml
 logs/
+**/logs/
+*.log
 .idea/
+internal/test/config.yaml

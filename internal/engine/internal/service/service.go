@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Bunny3th/easy-workflow/workflow/database"
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
@@ -67,6 +68,8 @@ type Service interface {
 	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
 	// CreateSkippedTask 创建一个被条件跳过的已完成任务
 	CreateSkippedTask(ctx context.Context, processInstId int, nodeId, prevNodeId, comment string, status uint8) error
+	// ProcessSave 保存流程定义并返回 ID
+	ProcessSave(ctx context.Context, process *model.Process) (int, error)
 }
 
 type service struct {
@@ -215,6 +218,15 @@ func (s *service) TaskRecord(ctx context.Context, processInstId, offset, limit i
 		return records, total, err
 	}
 	return records, total, nil
+}
+
+func (s *service) ProcessSave(ctx context.Context, process *model.Process) (int, error) {
+	bs, err := json.Marshal(process)
+	if err != nil {
+		return 0, err
+	}
+
+	return engine.ProcessSave(string(bs), process.ProcessName)
 }
 
 func NewService(repo repository.ProcessEngineRepository) Service {

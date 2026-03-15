@@ -36,11 +36,11 @@ import (
 
 var InitStrategySet = wire.NewSet(
 	strategy.NewService,
-	userstrategy.NewUserNotification,
-	automation.NewAutomationNotification,
-	start.NewStartNotification,
-	chat.NewChatNotification,
-	carbon_copy.NewCarbonCopyNotification,
+	userstrategy.NewNotification,
+	automation.NewNotification,
+	start.NewNotification,
+	chat.NewNotification,
+	carbon_copy.NewNotification,
 	ProviderNewDispatcher,
 	wire.Bind(new(strategy.SendStrategy), new(*strategy.Dispatcher)),
 
@@ -119,11 +119,11 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer prod
 }
 
 func ProviderNewDispatcher(
-	user *userstrategy.UserNotification,
-	auto *automation.AutomationNotification,
-	start *start.StartNotification,
-	chat *chat.ChatNotification,
-	cc *carbon_copy.CarbonCopyNotification,
+	user *userstrategy.Notification,
+	auto *automation.Notification,
+	start *start.Notification,
+	chat *chat.Notification,
+	cc *carbon_copy.Notification,
 	base strategy.Service,
 ) *strategy.Dispatcher {
 	return strategy.NewDispatcher(user, auto, start, chat, cc, base)

@@ -21,17 +21,17 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type UserNotification struct {
+type Notification struct {
 	strategy.Service
 	sender          sender.NotificationSender
 	departmentSvc   department.Service
 	notificationSvc notificationv1.NotificationServiceClient
 }
 
-func NewUserNotification(base strategy.Service, departmentSvc department.Service,
-	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient) *UserNotification {
+func NewNotification(base strategy.Service, departmentSvc department.Service,
+	sender sender.NotificationSender, notificationSvc notificationv1.NotificationServiceClient) *Notification {
 
-	return &UserNotification{
+	return &Notification{
 		Service:         base,
 		sender:          sender,
 		departmentSvc:   departmentSvc,
@@ -39,7 +39,7 @@ func NewUserNotification(base strategy.Service, departmentSvc department.Service
 	}
 }
 
-func (n *UserNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
+func (n *Notification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 获取当前节点信息
 	nodes, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
@@ -72,12 +72,12 @@ func (n *UserNotification) Send(ctx context.Context, info strategy.Info) (notifi
 	return notification.NewSuccessResponse(0, "success"), nil
 }
 
-func (n *UserNotification) asyncSendNotification(ctx context.Context, info strategy.Info,
+func (n *Notification) asyncSendNotification(ctx context.Context, info strategy.Info,
 	property easyflow.UserProperty, data *strategy.NotificationData, userMap strategy.RecipientMap) {
 	// 1. 尝试拉取任务，支持重试（引擎异步落库需时间）
 	tasks, err := n.FetchTasksWithRetry(ctx, info)
 	if err != nil {
-		n.Logger().Warn("UserNotification 任务拉取失败，跳过通知发送", elog.FieldErr(err), elog.Int("instanceId", info.InstID))
+		n.Logger().Warn("Notification 任务拉取失败，跳过通知发送", elog.FieldErr(err), elog.Int("instanceId", info.InstID))
 		return
 	}
 
@@ -136,17 +136,17 @@ func (n *UserNotification) asyncSendNotification(ctx context.Context, info strat
 	})
 
 	if _, err = n.sender.BatchSend(ctx, notifications); err != nil {
-		n.Logger().Error("UserNotification 批量发送消息失败", elog.FieldErr(err), elog.Int("instanceId", info.InstID))
+		n.Logger().Error("Notification 批量发送消息失败", elog.FieldErr(err), elog.Int("instanceId", info.InstID))
 	}
 }
 
-func (n *UserNotification) prepareNotificationMetadata(ctx context.Context,
+func (n *Notification) prepareNotificationMetadata(ctx context.Context,
 	property easyflow.UserProperty, data *strategy.NotificationData, tasks []model.Task) (workflow.NotifyType, string) {
 	return strategy.LarkTemplateApprovalName, rule.GenerateTitle(data.StartUser.DisplayName, data.TName)
 }
 
 // sendAlertNotification 针对告警工单的特殊简化通知逻辑
-func (n *UserNotification) sendAlertNotification(ctx context.Context, tasks []model.Task,
+func (n *Notification) sendAlertNotification(ctx context.Context, tasks []model.Task,
 	orderInfo order.Order, userMap strategy.RecipientMap) error {
 	var userIds []string
 	for _, src := range tasks {

@@ -12,19 +12,19 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type StartNotification struct {
+type Notification struct {
 	strategy.Service
 	sender sender.NotificationSender
 }
 
-func NewStartNotification(base strategy.Service, sender sender.NotificationSender) *StartNotification {
-	return &StartNotification{
+func NewNotification(base strategy.Service, sender sender.NotificationSender) *Notification {
+	return &Notification{
 		Service: base,
 		sender:  sender,
 	}
 }
 
-func (s *StartNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
+func (s *Notification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 全局通知校验
 	if !s.IsGlobalNotify(info.Workflow) {
 		return notification.NewSuccessResponse(0, "全局通知已关闭"), nil

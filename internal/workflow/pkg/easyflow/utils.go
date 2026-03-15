@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 // UpdateEdgeProperties 更新边的属性，用于设置 Pass/Skip 状态
@@ -117,4 +119,45 @@ func EdgeToMap(edge Edge) map[string]interface{} {
 		"pointsList":   edge.PointsList,
 		"text":         edge.Text,
 	}
+}
+
+// ToEdgeProperty edge连线字段解析
+func ToEdgeProperty(edges Edge) (EdgeProperty, error) {
+	var property EdgeProperty
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &property,
+		TagName: "json",
+	})
+	if err != nil {
+		return EdgeProperty{}, err
+	}
+
+	if err = decoder.Decode(edges.Properties); err != nil {
+		return EdgeProperty{}, err
+	}
+
+	return property, nil
+}
+
+// ToNodeProperty node节点字段解析
+func ToNodeProperty[T any](node Node) (T, error) {
+	var property T
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &property,
+		TagName: "json",
+	})
+	if err != nil {
+		return zeroValue[T](), err
+	}
+
+	if err = decoder.Decode(node.Properties); err != nil {
+		return zeroValue[T](), err
+	}
+
+	return property, nil
+}
+
+func zeroValue[T any]() T {
+	var zero T
+	return zero
 }

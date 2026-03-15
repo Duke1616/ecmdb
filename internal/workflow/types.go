@@ -12,6 +12,8 @@ type Service = service.Service
 
 type Workflow = domain.Workflow
 
+type LogicFlow = domain.LogicFlow
+
 type NotifyMethod = domain.NotifyMethod
 
 // NotifyBinding 暴露 domain.NotifyBinding

@@ -61,12 +61,12 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 	teamResolver := assignees.NewTeamResolver(teamSvc, service4)
 	resolveEngine := InitResolveEngine(appointResolver, founderResolver, leaderResolver, mainLeaderResolver, onCallResolver, templateResolver, teamResolver)
 	strategyService := strategy.NewService(service4, service5, serviceService, service2, service, resolveEngine)
-	userNotification := user2.NewUserNotification(strategyService, service6, sender2, notificationSvc)
-	automationNotification := automation.NewAutomationNotification(strategyService, sender2)
-	startNotification := start.NewStartNotification(strategyService, sender2)
-	chatNotification := chat.NewChatNotification(strategyService, sender2, lark2, teamSvc)
-	carbonCopyNotification := carbon_copy.NewCarbonCopyNotification(strategyService, sender2)
-	dispatcher := ProviderNewDispatcher(userNotification, automationNotification, startNotification, chatNotification, carbonCopyNotification, strategyService)
+	notification := user2.NewNotification(strategyService, service6, sender2, notificationSvc)
+	automationNotification := automation.NewNotification(strategyService, sender2)
+	startNotification := start.NewNotification(strategyService, sender2)
+	chatNotification := chat.NewNotification(strategyService, sender2, lark2, teamSvc)
+	carbon_copyNotification := carbon_copy.NewNotification(strategyService, sender2)
+	dispatcher := ProviderNewDispatcher(notification, automationNotification, startNotification, chatNotification, carbon_copyNotification, strategyService)
 	processEvent := InitWorkflowEngineOnce(db, service, orderStatusModifyEventProducer, serviceService, service2, service3, dispatcher)
 	module := &Module{
 		Event: processEvent,
@@ -76,7 +76,7 @@ func InitModule(q mq.MQ, db *gorm.DB, engineModule *engine.Module, taskModule *t
 
 // wire.go:
 
-var InitStrategySet = wire.NewSet(strategy.NewService, user2.NewUserNotification, automation.NewAutomationNotification, start.NewStartNotification, chat.NewChatNotification, carbon_copy.NewCarbonCopyNotification, ProviderNewDispatcher, wire.Bind(new(strategy.SendStrategy), new(*strategy.Dispatcher)), assignees.NewAppointResolver, assignees.NewFounderResolver, assignees.NewLeaderResolver, assignees.NewMainLeaderResolver, assignees.NewOnCallResolver, assignees.NewTemplateResolver, assignees.NewTeamResolver, InitResolveEngine)
+var InitStrategySet = wire.NewSet(strategy.NewService, user2.NewNotification, automation.NewNotification, start.NewNotification, chat.NewNotification, carbon_copy.NewNotification, ProviderNewDispatcher, wire.Bind(new(strategy.SendStrategy), new(*strategy.Dispatcher)), assignees.NewAppointResolver, assignees.NewFounderResolver, assignees.NewLeaderResolver, assignees.NewMainLeaderResolver, assignees.NewOnCallResolver, assignees.NewTemplateResolver, assignees.NewTeamResolver, InitResolveEngine)
 
 func InitResolveEngine(
 	appoint *assignees.AppointResolver,
@@ -116,9 +116,9 @@ func InitWorkflowEngineOnce(db *gorm.DB, engineSvc engine.Service, producer2 pro
 	return event
 }
 
-func ProviderNewDispatcher(user3 *user2.UserNotification,
-	auto *automation.AutomationNotification, start2 *start.StartNotification, chat2 *chat.ChatNotification,
-	cc *carbon_copy.CarbonCopyNotification,
+func ProviderNewDispatcher(user3 *user2.Notification,
+	auto *automation.Notification, start2 *start.Notification, chat2 *chat.Notification,
+	cc *carbon_copy.Notification,
 	base strategy.Service,
 ) *strategy.Dispatcher {
 	return strategy.NewDispatcher(user3, auto, start2, chat2, cc, base)

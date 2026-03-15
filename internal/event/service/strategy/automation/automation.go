@@ -21,19 +21,19 @@ const (
 	ProcessNowSend = 2
 )
 
-type AutomationNotification struct {
+type Notification struct {
 	strategy.Service
 	sender sender.NotificationSender
 }
 
-func NewAutomationNotification(base strategy.Service, sender sender.NotificationSender) *AutomationNotification {
-	return &AutomationNotification{
+func NewNotification(base strategy.Service, sender sender.NotificationSender) *Notification {
+	return &Notification{
 		Service: base,
 		sender:  sender,
 	}
 }
 
-func (n *AutomationNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
+func (n *Notification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 获取当前节点信息
 	_, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {

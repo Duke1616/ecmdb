@@ -16,19 +16,19 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 )
 
-type CarbonCopyNotification struct {
+type Notification struct {
 	strategy.Service
 	sender sender.NotificationSender
 }
 
-func NewCarbonCopyNotification(base strategy.Service, sender sender.NotificationSender) *CarbonCopyNotification {
-	return &CarbonCopyNotification{
+func NewNotification(base strategy.Service, sender sender.NotificationSender) *Notification {
+	return &Notification{
 		Service: base,
 		sender:  sender,
 	}
 }
 
-func (n *CarbonCopyNotification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
+func (n *Notification) Send(ctx context.Context, info strategy.Info) (notification.NotificationResponse, error) {
 	// 1. 获取节点属性
 	nodes, rawProps, err := n.GetNodeProperty(info, info.CurrentNode.NodeID)
 	if err != nil {
@@ -59,7 +59,7 @@ func (n *CarbonCopyNotification) Send(ctx context.Context, info strategy.Info) (
 	return notification.NewSuccessResponse(0, "success"), nil
 }
 
-func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info strategy.Info, data *strategy.NotificationData, userMap strategy.RecipientMap) {
+func (n *Notification) asyncHandleCarbonCopy(ctx context.Context, info strategy.Info, data *strategy.NotificationData, userMap strategy.RecipientMap) {
 	// 1. 获取任务
 	tasks, err := n.FetchTasksWithRetry(ctx, info)
 	if err != nil {
@@ -90,7 +90,7 @@ func (n *CarbonCopyNotification) asyncHandleCarbonCopy(ctx context.Context, info
 
 		for _, msg := range ns {
 			if _, err = n.sender.Send(ctx, msg); err != nil {
-				n.Logger().Error("CarbonCopyNotification 消息发送失败", elog.FieldErr(err), elog.String("receiver", msg.Receiver))
+				n.Logger().Error("Notification 消息发送失败", elog.FieldErr(err), elog.String("receiver", msg.Receiver))
 			}
 		}
 	}

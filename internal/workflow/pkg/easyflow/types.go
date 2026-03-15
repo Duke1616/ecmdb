@@ -1,14 +1,151 @@
 package easyflow
 
 import (
+	"fmt"
+
 	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/mitchellh/mapstructure"
 )
 
-type ProcessEngineConvert interface {
-	Deploy(workflow Workflow) (int, error)
-	Edge(workflow Workflow, tasks []model.Task) ([]string, error)
-	GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error)
+// Converter 工作流转换器接口
+type Converter interface {
+	// Convert 将工作流 DSL 转换为流程引擎模型
+	Convert(workflow Workflow) (*model.Process, error)
+}
+
+// INodeHandler 节点解析器接口
+type INodeHandler interface {
+	Type() string
+	Handle(ctx *Context, node Node) ([]model.Node, error)
+}
+
+// Context 转换过程的上下文
+type Context struct {
+	Workflow     Workflow
+	NodesMap     map[string]Node     // ID -> DSL Node
+	EdgesMap     map[string][]Edge   // SourceNodeId -> []Edge
+	PrevNodesMap map[string][]string // TargetNodeId -> []SourceNodeId
+	OutputNodes  []model.Node        // 转换生成的最终节点集
+	ProxyNodes   map[string]struct{} // 已创建的代理节点 ID 集合，防止重复
+}
+
+// GetPrevNodeIDs 获取目标节点的上级节点 ID
+func (ctx *Context) GetPrevNodeIDs(nodeID string) []string {
+	return ctx.PrevNodesMap[nodeID]
+}
+
+// GetTargetEdges 获取指定节点的出边
+func (ctx *Context) GetTargetEdges(nodeID string) []Edge {
+	return ctx.EdgesMap[nodeID]
+}
+
+// GetNodeInfo 获取原始节点信息
+func (ctx *Context) GetNodeInfo(nodeID string) Node {
+	return ctx.NodesMap[nodeID]
+}
+
+// AddOutputNode 添加生成后的 Engine 节点
+func (ctx *Context) AddOutputNode(n ...model.Node) {
+	ctx.OutputNodes = append(ctx.OutputNodes, n...)
+}
+
+// GetOrGenerateProxyID 获取或生成代理节点 ID
+// 当目标节点是网关类型时，创建并返回代理节点 ID
+// 否则返回目标节点 ID
+func (ctx *Context) GetOrGenerateProxyID(srcID, targetID string) string {
+	if ctx.ProxyNodes == nil {
+		ctx.ProxyNodes = make(map[string]struct{})
+	}
+
+	targetNode := ctx.GetNodeInfo(targetID)
+	// 只有目标是特定网关类型时才需要代理
+	if targetNode.Type == "parallel" || targetNode.Type == "inclusion" || targetNode.Type == "selective" {
+		proxyID := fmt.Sprintf("proxy_%s_%s", srcID, targetID)
+		if _, ok := ctx.ProxyNodes[proxyID]; !ok {
+			ctx.createProxyNode(proxyID, srcID, targetID)
+		}
+		return proxyID
+	}
+	return targetID
+}
+
+// GetOrGenerateProxyForGateway 当源节点是条件网关连接到并行/包容/条件并行网关时，获取或生成代理节点 ID
+// 用于处理条件网关到其他网关的连接
+func (ctx *Context) GetOrGenerateProxyForGateway(conditionGatewayID, targetID string) string {
+	if ctx.ProxyNodes == nil {
+		ctx.ProxyNodes = make(map[string]struct{})
+	}
+
+	conditionNode := ctx.GetNodeInfo(conditionGatewayID)
+	// 只有源节点是条件网关时才需要代理
+	if conditionNode.Type == "condition" {
+		proxyID := fmt.Sprintf("proxy_%s_%s", conditionGatewayID, targetID)
+		if _, ok := ctx.ProxyNodes[proxyID]; !ok {
+			ctx.createProxyNodeForGateway(proxyID, conditionGatewayID, targetID)
+		}
+		return proxyID
+	}
+	return conditionGatewayID
+}
+
+func (ctx *Context) createProxyNode(proxyID, srcID, targetID string) {
+	if ctx.ProxyNodes == nil {
+		ctx.ProxyNodes = make(map[string]struct{})
+	}
+	ctx.ProxyNodes[proxyID] = struct{}{}
+
+	targetNode := ctx.GetNodeInfo(targetID)
+	var passEvents []string
+	switch targetNode.Type {
+	case "parallel":
+		passEvents = []string{"EventTaskParallelNodePass"}
+	case "inclusion":
+		passEvents = []string{"EventTaskInclusionNodePass"}
+	case "selective":
+		passEvents = []string{"EventTaskSelectiveNodePass"}
+	}
+
+	n := model.Node{
+		NodeID:           proxyID,
+		NodeName:         SysProxyNodeName,
+		NodeType:         1,
+		PrevNodeIDs:      []string{srcID},
+		UserIDs:          []string{SysAutoUser},
+		NodeStartEvents:  []string{"EventNotify"},
+		NodeEndEvents:    []string{},
+		TaskFinishEvents: passEvents,
+	}
+	ctx.AddOutputNode(n)
+}
+
+func (ctx *Context) createProxyNodeForGateway(proxyID, conditionGatewayID, targetID string) {
+	if ctx.ProxyNodes == nil {
+		ctx.ProxyNodes = make(map[string]struct{})
+	}
+	ctx.ProxyNodes[proxyID] = struct{}{}
+
+	targetNode := ctx.GetNodeInfo(targetID)
+	var passEvents []string
+	switch targetNode.Type {
+	case "parallel":
+		passEvents = []string{"EventTaskParallelNodePass"}
+	case "inclusion":
+		passEvents = []string{"EventTaskInclusionNodePass"}
+	case "selective":
+		passEvents = []string{"EventTaskSelectiveNodePass"}
+	}
+
+	n := model.Node{
+		NodeID:           proxyID,
+		NodeName:         SysProxyNodeName,
+		NodeType:         1,
+		PrevNodeIDs:      []string{conditionGatewayID},
+		UserIDs:          []string{SysAutoUser},
+		NodeStartEvents:  []string{"EventNotify"},
+		NodeEndEvents:    []string{},
+		TaskFinishEvents: passEvents,
+	}
+	ctx.AddOutputNode(n)
 }
 
 type Rule string
@@ -153,7 +290,7 @@ type Assignee struct {
 type UserProperty struct {
 	Name          string     `json:"name"`           // 节点名称
 	Approved      []string   `json:"approved"`       // 审批人、抄送人
-	Type          Rule       `json:"type"`           // 匹配策略 (兼容历史数据，数据库存储为 Type）
+	Rule          Rule       `json:"type"`           // 匹配策略 (兼容历史数据，数据库存储为 Type）
 	TemplateField string     `json:"template_field"` // 模版字段
 	Assignees     []Assignee `json:"assignees"`      // 新模式字段，支持配置多条分配规则
 	IsCosigned    bool       `json:"is_cosigned"`    // 是否会签
@@ -169,18 +306,18 @@ func (u *UserProperty) NormalizeAssignees() []Assignee {
 	}
 
 	// 兼容老版本情况
-	switch u.Type {
+	switch u.Rule {
 	case TEMPLATE:
 		return []Assignee{
 			{
-				Rule:   u.Type,
+				Rule:   u.Rule,
 				Values: []string{u.TemplateField},
 			},
 		}
 	default:
 		return []Assignee{
 			{
-				Rule:   u.Type,
+				Rule:   u.Rule,
 				Values: u.Approved,
 			},
 		}

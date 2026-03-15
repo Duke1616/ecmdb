@@ -1,657 +1,85 @@
 package easyflow
 
 import (
-	"sync"
-
-	"github.com/mitchellh/mapstructure"
-
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
-	"github.com/ecodeclub/ekit/slice"
 )
 
+// 节点类型标识，对应前端 LogicFlow DSL 中的 type 字段
 const (
-	AutomationApproval = "automation"
-	ChatGroupApproval  = "chat_group"
-	SysAutoUser        = "sys_auto"
-	SysProxyNodeName   = "系统代理流转"
+	NodeTypeStart     = "start"
+	NodeTypeEnd       = "end"
+	NodeTypeUser      = "user"
+	NodeTypeCondition = "condition"
+	NodeTypeParallel  = "parallel"
+	NodeTypeInclusion = "inclusion"
+	NodeTypeSelective = "selective"
+	NodeTypeAuto      = "automation"
+	NodeTypeChat      = "chat"
+)
+
+// 节点默认名称
+const (
+	DefaultNameStart     = "Start"
+	DefaultNameEnd       = "End"
+	DefaultNameUser      = "审批节点"
+	DefaultNameParallel  = "并行网关"
+	DefaultNameInclusion = "包容网关"
+	DefaultNameSelective = "条件并行网关"
+)
+
+// 系统内置用户标识
+const (
+	UserStarter        = "$starter"   // 工单发起人
+	AutomationApproval = "automation" // 自动化节点占位用户
+	ChatGroupApproval  = "chat_group" // 群通知节点占位用户
+	SysAutoUser        = "sys_auto"   // 系统代理节点自动审批用户
+)
+
+// SysProxyNodeName 系统代理节点名称
+const SysProxyNodeName = "系统代理流转"
+
+// 工作流引擎事件名称
+const (
+	// EventStart 开始节点触发事件
+	EventStart = "EventStart"
+	// EventNotify 通用通知事件（节点开始时通知审批人）
+	EventNotify = "EventNotify"
+	// EventCarbonCopy 抄送事件
+	EventCarbonCopy = "EventCarbonCopy"
+	// EventAutomation 自动化节点执行事件
+	EventAutomation = "EventAutomation"
+	// EventChatGroup 群通知节点事件
+	EventChatGroup = "EventChatGroup"
+	// EventSelectiveGatewaySplit 条件并行网关分裂事件
+	EventSelectiveGatewaySplit = "EventSelectiveGatewaySplit"
+	// EventRevoke 撤销事件
+	EventRevoke = "EventRevoke"
+
+	// EventTaskParallelNodePass 并行网关：分支通过事件
+	EventTaskParallelNodePass = "EventTaskParallelNodePass"
+	// EventTaskInclusionNodePass 包容网关：分支通过事件
+	EventTaskInclusionNodePass = "EventTaskInclusionNodePass"
+
+	// EventConcurrentRejectCleanup 并发拒绝时清理其他分支的事件（condition -> parallel/inclusion/selective）
+	EventConcurrentRejectCleanup = "EventConcurrentRejectCleanup"
+	// EventInclusionPassCleanup 包容网关通过时清理未完成分支的事件
+	EventInclusionPassCleanup = "EventInclusionPassCleanup"
+	// EventGatewayConditionReject 网关条件拒绝事件（gateway -> condition 场景下的拒绝）
+	EventGatewayConditionReject = "EventGatewayConditionReject"
+	// EventUserNodeRejectProxyCleanup 用户节点拒绝时清理代理节点的事件
+	EventUserNodeRejectProxyCleanup = "EventUserNodeRejectProxyCleanup"
 )
 
 type logicFlow struct {
-	Workflow Workflow
-	Edges    []Edge
-	Nodes    []Node
-
-	// 后端存储结构体
-	NodeList []model.Node
-	mu       sync.Mutex
+	converter *DefaultConverter
 }
 
-func NewLogicFlowToEngineConvert() ProcessEngineConvert {
+func NewLogicFlowToEngineConvert() Converter {
 	return &logicFlow{
-		mu: sync.Mutex{},
+		converter: NewDefaultConverterWithHandlers(),
 	}
 }
 
-func (l *logicFlow) GetAutomationProperty(workflow Workflow, nodeId string) (AutomationProperty, error) {
-	nodes, err := ParseNodes(workflow.FlowData.Nodes)
-	if err != nil {
-		return AutomationProperty{}, err
-	}
-
-	for _, node := range nodes {
-		if node.ID == nodeId {
-			return ToNodeProperty[AutomationProperty](node)
-		}
-	}
-
-	return AutomationProperty{}, nil
-}
-
-func (l *logicFlow) Edge(workflow Workflow, tasks []model.Task) ([]string, error) {
-	return nil, nil
-}
-
-func (l *logicFlow) Deploy(workflow Workflow) (int, error) {
-	// 加锁
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	// 赋值数据
-	l.Workflow = workflow
-
-	// 清空 NodeList
-	l.NodeList = []model.Node{}
-
-	if err := l.toEdges(); err != nil {
-		return 0, err
-	}
-	if err := l.toNodes(); err != nil {
-		return 0, err
-	}
-
-	for _, node := range l.Nodes {
-		switch node.Type {
-		case "start":
-			l.Start(node)
-		case "end":
-			l.End(node)
-		case "user":
-			l.User(node)
-		case "condition":
-			l.Condition(node)
-		case "parallel":
-			l.Parallel(node)
-		case "inclusion":
-			l.Inclusion(node)
-		case "selective":
-			l.Selective(node)
-		case "automation":
-			l.Automation(node)
-		case "chat":
-			l.ChatGroup(node)
-		}
-	}
-
-	// 发布流程
-	process := model.Process{ProcessName: l.Workflow.Name, Source: "工单系统", RevokeEvents: []string{"EventRevoke"}, Nodes: l.NodeList}
-
-	// 列表重新为空
-	l.NodeList = nil
-
-	j, err := engine.JSONMarshal(process, false)
-	if err != nil {
-		return 0, err
-	}
-
-	return engine.ProcessSave(string(j), l.Workflow.Owner)
-}
-
-func (l *logicFlow) Start(node Node) {
-	NodeName := "Start"
-	property, _ := ToNodeProperty[StartProperty](node)
-	if property.Name != "" {
-		NodeName = property.Name
-	}
-	n := model.Node{NodeID: node.ID, NodeName: NodeName,
-		NodeType: 0, UserIDs: []string{"$starter"},
-		NodeEndEvents: []string{"EventStart"},
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) End(node Node) {
-	NodeName := "End"
-	property, _ := ToNodeProperty[EndProperty](node)
-	if property.Name != "" {
-		NodeName = property.Name
-	}
-	n := model.Node{NodeID: node.ID, NodeName: NodeName,
-		NodeType: 3, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		NodeStartEvents: []string{"EventNotify"},
-	}
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) Automation(node Node) {
-	NodeName := "自动化节点"
-	property, _ := ToNodeProperty[AutomationProperty](node)
-	if property.Name != "" {
-		NodeName = property.Name
-	}
-
-	n := model.Node{NodeID: node.ID, NodeName: NodeName,
-		NodeType: 1, PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-		UserIDs:          []string{AutomationApproval},
-		NodeStartEvents:  []string{"EventAutomation"},
-		NodeEndEvents:    []string{"EventNotify"},
-		TaskFinishEvents: l.getPassEvents(node.ID),
-	}
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) ChatGroup(node Node) {
-	NodeName := "群通知节点"
-	property, _ := ToNodeProperty[ChatGroupProperty](node)
-	if property.Name != "" {
-		NodeName = property.Name
-	}
-
-	// 群通知节点为纯广播型，无需人工操作，NodeType=1
-	// 启动时触发 EventChatGroup，handler 负责发送群消息后直接调用 TaskPass 推进流程
-	// 不设置 NodeEndEvents：发送群消息不等同于审批通知，无需推送 EventNotify
-	n := model.Node{
-		NodeID:           node.ID,
-		NodeName:         NodeName,
-		NodeType:         1,
-		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
-		UserIDs:          []string{ChatGroupApproval},
-		NodeStartEvents:  []string{"EventChatGroup"},
-		TaskFinishEvents: l.getPassEvents(node.ID),
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) Parallel(node Node) {
-	// 查看下级 node 节点 id
-	edgesDst := l.FindTargetNodeId(node.ID)
-	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
-		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
-	})
-	gwParallel := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 1}
-
-	// 查看上级 node 节点 id
-	preNodeIds := l.findAndProxySrcNodes(node)
-
-	n := model.Node{NodeID: node.ID, NodeName: "并行网关",
-		NodeType: 2, GWConfig: gwParallel,
-		PrevNodeIDs: preNodeIds,
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) Inclusion(node Node) {
-	// 查看下级 node 节点 id
-	edgesDst := l.FindTargetNodeId(node.ID)
-	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
-		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
-	})
-
-	gwInclusion := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 0}
-	preNodeIds := l.findAndProxySrcNodes(node)
-
-	n := model.Node{NodeID: node.ID, NodeName: "包容网关",
-		NodeType: 2, GWConfig: gwInclusion,
-		PrevNodeIDs: preNodeIds,
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) Selective(node Node) {
-	// 查看下级 node 节点 id
-	edgesDst := l.FindTargetNodeId(node.ID)
-	InevitableNodes := slice.Map(edgesDst, func(idx int, src Edge) string {
-		return l.getProxyTargetNodeId(node.ID, src.TargetNodeId)
-	})
-	gwSelective := model.HybridGateway{Conditions: nil, InevitableNodes: InevitableNodes, WaitForAllPrevNode: 1}
-
-	// 查看上级 node 节点 id
-	preNodeIds := l.findAndProxySrcNodes(node)
-
-	n := model.Node{NodeID: node.ID, NodeName: "条件并行网关",
-		NodeType: 2, GWConfig: gwSelective,
-		PrevNodeIDs:     preNodeIds,
-		NodeStartEvents: []string{"EventSelectiveGatewaySplit"},
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) Condition(node Node) {
-	// 获取所有判断条件的连接线
-	edgesDst := l.FindTargetNodeId(node.ID)
-
-	// 组合 conditions 条件
-	conditions := slice.Map(edgesDst, func(idx int, src Edge) model.Condition {
-		property, _ := ToEdgeProperty(src)
-		// 如果没有设置表达式，默认设置为 1 = 1, 自动通过
-		expression := property.Expression
-		if expression == "" {
-			expression = "1 = 1"
-		}
-
-		return model.Condition{
-			Expression: expression,
-			NodeID:     l.getProxyTargetNodeId(node.ID, src.TargetNodeId),
-		}
-	})
-
-	// 拼接网关
-	// 如果存在两个连续的Condition网关, 会导致 easy-workflow 内部处理出现问题， WaitForAllPrevNode = 3
-	GwCondition := model.HybridGateway{Conditions: conditions, InevitableNodes: []string{}, WaitForAllPrevNode: 3}
-
-	// node 节点录入
-	property, _ := ToNodeProperty[ConditionProperty](node)
-	n := model.Node{NodeID: node.ID, NodeName: property.Name,
-		NodeType: 2, GWConfig: GwCondition,
-		PrevNodeIDs: l.FindPrevNodeIDs(node.ID),
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) User(node Node) {
-	// node 节点录入
-	property, _ := ToNodeProperty[UserProperty](node)
-
-	// 判断是否为会签节点
-	IsCosigned := 0
-	if property.IsCosigned == true {
-		IsCosigned = 1
-	}
-
-	// 动态判定启动事件
-	// 如果是抄送节点 (Carbon Copy)，绑定 EventCarbonCopy；否则绑定 EventNotify
-	startEvents := []string{"EventNotify"}
-	if property.IsCC {
-		startEvents = []string{"EventCarbonCopy"}
-	}
-
-	// 录入数据
-	n := model.Node{NodeID: node.ID, NodeName: property.Name,
-		NodeType: 1, UserIDs: property.Approved,
-		PrevNodeIDs:      l.FindPrevNodeIDs(node.ID),
-		TaskFinishEvents: append(l.getPassEvents(node.ID), l.getRejectEvents(node.ID)...),
-		NodeStartEvents:  startEvents,
-		IsCosigned:       IsCosigned,
-	}
-
-	l.NodeList = append(l.NodeList, n)
-}
-
-func (l *logicFlow) getPassEvents(nodeId string) []string {
-	var events []string
-	edges := l.FindTargetNodeId(nodeId)
-	existEvent := make(map[string]struct{})
-
-	for _, edge := range edges {
-		info := l.GetNodeInfo(edge.TargetNodeId)
-		switch info.Type {
-		case "parallel":
-			if _, ok := existEvent["EventTaskParallelNodePass"]; !ok {
-				events = append(events, "EventTaskParallelNodePass")
-				existEvent["EventTaskParallelNodePass"] = struct{}{}
-			}
-		case "inclusion":
-			if _, ok := existEvent["EventTaskInclusionNodePass"]; !ok {
-				events = append(events, "EventTaskInclusionNodePass")
-				existEvent["EventTaskInclusionNodePass"] = struct{}{}
-			}
-		}
-	}
-	return events
-}
-
-type nodeWithInfo struct {
-	ID   string
-	Type string
-}
-
-// 获取某个节点的直接上级节点（带类型）
-func (l *logicFlow) parents(nodeId string) []nodeWithInfo {
-	edges := l.FindSourceNodeId(nodeId)
-	res := make([]nodeWithInfo, 0, len(edges))
-
-	for _, e := range edges {
-		n := l.GetNodeInfo(e.SourceNodeId)
-		res = append(res, nodeWithInfo{
-			ID:   n.ID,
-			Type: n.Type,
-		})
-	}
-
-	return res
-}
-
-// 判断节点列表中是否存在某种类型
-func hasType(nodes []nodeWithInfo, types ...string) bool {
-	typeSet := make(map[string]struct{}, len(types))
-	for _, t := range types {
-		typeSet[t] = struct{}{}
-	}
-
-	for _, n := range nodes {
-		if _, ok := typeSet[n.Type]; ok {
-			return true
-		}
-	}
-	return false
-}
-
-// 添加事件（自动去重）
-func addEvent(events *[]string, exist map[string]struct{}, event string) {
-	if _, ok := exist[event]; ok {
-		return
-	}
-	*events = append(*events, event)
-	exist[event] = struct{}{}
-}
-
-func isGateway(t string) bool {
-	return t == "parallel" || t == "inclusion" || t == "selective"
-}
-
-func (l *logicFlow) getRejectEvents(nodeId string) []string {
-	events := make([]string, 0, 2)
-	existEvent := make(map[string]struct{})
-
-	// Me 的直接上级
-	parents := l.parents(nodeId)
-
-	for _, p := range parents {
-		// Me 的上级的上级
-		grandParents := l.parents(p.ID)
-
-		// ------------------------------------------------
-		// 规则一：
-		// Gateway -> Condition -> Me
-		// ------------------------------------------------
-		if p.Type == "condition" &&
-			hasType(grandParents, "parallel", "inclusion", "selective") {
-			addEvent(&events, existEvent, "EventConcurrentRejectCleanup")
-		}
-
-		// ------------------------------------------------
-		// 规则二：
-		// Inclusion -> Condition -> Me
-		// ------------------------------------------------
-		if p.Type == "condition" &&
-			hasType(grandParents, "inclusion") {
-			addEvent(&events, existEvent, "EventInclusionPassCleanup")
-		}
-
-		// ------------------------------------------------
-		// 规则三：
-		// Condition -> Gateway -> Me
-		// ------------------------------------------------
-		if isGateway(p.Type) &&
-			hasType(grandParents, "condition") {
-
-			addEvent(&events, existEvent, "EventGatewayConditionReject")
-		}
-
-		// ------------------------------------------------
-		// 规则四：检测网关内是否存在 proxy 节点
-		// 场景：Gateway -> Me（同时网关内存在其他分支有 proxy 节点）
-		// 作用：当 Me 节点驳回时，清理同级的 proxy 节点
-		// ------------------------------------------------
-		if isGateway(p.Type) {
-			// 检查该网关是否有兄弟节点使用了 proxy
-			// 方法：检查网关的所有下级节点，看是否有 proxy 节点存在
-			hasProxy := l.hasProxyInGateway(p.ID)
-			// DEBUG: 输出调试信息
-			nodeInfo := l.GetNodeInfo(nodeId)
-			_ = nodeInfo // 避免未使用变量警告
-			// fmt.Printf("[规则三] 节点=%s, 上级网关=%s, 检测到proxy=%v\n", nodeInfo.Properties, p.ID, hasProxy)
-
-			if hasProxy {
-				addEvent(&events, existEvent, "EventUserNodeRejectProxyCleanup")
-			}
-		}
-	}
-
-	return events
-}
-
-// hasProxyInGateway 检查网关的下级节点中是否存在 proxy 节点
-// 检测方式：递归检查网关的所有下级分支，看是否存在条件网关
-// 因为条件网关最终会连接到汇聚网关时创建 proxy 节点
-func (l *logicFlow) hasProxyInGateway(gatewayId string) bool {
-	// 获取网关的所有下级节点
-	targetEdges := l.FindTargetNodeId(gatewayId)
-
-	for _, edge := range targetEdges {
-		if l.checkBranchHasProxy(edge.TargetNodeId, make(map[string]bool)) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// checkBranchHasProxy 递归检查分支路径中是否会创建 proxy 节点
-// visited 用于防止循环引用
-func (l *logicFlow) checkBranchHasProxy(nodeId string, visited map[string]bool) bool {
-	// 防止循环
-	if visited[nodeId] {
-		return false
-	}
-	visited[nodeId] = true
-
-	nodeInfo := l.GetNodeInfo(nodeId)
-
-	// 如果当前节点是条件网关，说明这个分支最终可能会创建 proxy
-	if nodeInfo.Type == "condition" {
-		return true
-	}
-
-	// 如果是用户节点、自动化节点或群通知节点，继续检查下级
-	if nodeInfo.Type == "user" || nodeInfo.Type == "automation" || nodeInfo.Type == "chat_group" {
-		targetEdges := l.FindTargetNodeId(nodeId)
-		for _, edge := range targetEdges {
-			if l.checkBranchHasProxy(edge.TargetNodeId, visited) {
-				return true
-			}
-		}
-	}
-
-	// 如果是并行网关或包容网关，不继续递归（到达汇聚点）
-	// 结束节点也不继续
-	return false
-}
-
-// createProxyWaitNode 创建代理等待节点（自动化节点）
-// eventNodeId: 实际需要接收事件通知的网关节点 ID (parallel/inclusion)
-func (l *logicFlow) createProxyWaitNode(prevNodeId, eventNodeId string) string {
-	proxyNodeId := "proxy_" + prevNodeId + "_" + eventNodeId
-	// 代理节点是一个通过型的自动化节点
-	// 它接收 prevNodeId 的输入，然后自己可以瞬间完成
-	// 完成时触发 eventNodeId 需要的事件
-	n := model.Node{
-		NodeID:           proxyNodeId,
-		NodeName:         SysProxyNodeName,
-		NodeType:         1, // User 节点
-		PrevNodeIDs:      []string{prevNodeId},
-		UserIDs:          []string{SysAutoUser},   // 标识为系统自动节点
-		NodeStartEvents:  []string{"EventNotify"}, // User节点启动时触发Notify
-		NodeEndEvents:    []string{},
-		TaskFinishEvents: l.getPassEvents(proxyNodeId), // 这会根据 proxyNodeId 查找下级
-	}
-
-	// 修正：l.getPassEvents 依赖 l.Edges。我们的代理节点不在 Edge 表里。
-	// 所以我们手动指定事件。
-	// 我们知道 eventNodeId 是 parallel 或 inclusion。
-	info := l.GetNodeInfo(eventNodeId)
-	switch info.Type {
-	case "parallel":
-		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
-	case "inclusion":
-		n.TaskFinishEvents = []string{"EventTaskInclusionNodePass"}
-	case "selective":
-		n.TaskFinishEvents = []string{"EventTaskParallelNodePass"}
-	}
-
-	l.NodeList = append(l.NodeList, n)
-	return proxyNodeId
-}
-
-func (l *logicFlow) getProxyTargetNodeId(sourceId, targetId string) string {
-	// 只有当 Source 是 Gateway (Cond/Parallel/Inc) 且 Target 也是 Gateway (Parallel/Inc) 时
-	// 才使用了代理节点。
-	// 注意：Condition节点后面也可以接代理，只要Target是Parallel/Inc。
-	// Source节点的类型检查不需要在这里做，因为调用者本身就是 Condition/Parallel/Inclusion 方法。
-	// 我们只需要检查 Target 类型。
-
-	targetInfo := l.GetNodeInfo(targetId)
-	if targetInfo.Type == "parallel" || targetInfo.Type == "inclusion" || targetInfo.Type == "selective" {
-		return "proxy_" + sourceId + "_" + targetId
-	}
-	return targetId
-}
-
-func (l *logicFlow) findAndProxySrcNodes(node Node) []string {
-	edgesSrc := l.FindSourceNodeId(node.ID)
-	return slice.Map(edgesSrc, func(idx int, src Edge) string {
-		// 检查上级节点类型，如果是 Condition / Parallel / Inclusion / Selective，则通过中间节点桥接
-		srcNodeInfo := l.GetNodeInfo(src.SourceNodeId)
-		if srcNodeInfo.Type == "condition" || srcNodeInfo.Type == "parallel" || srcNodeInfo.Type == "inclusion" || srcNodeInfo.Type == "selective" {
-			proxyNodeId := l.createProxyWaitNode(src.SourceNodeId, node.ID)
-			return proxyNodeId
-		}
-
-		return src.SourceNodeId
-	})
-}
-
-// FindPrevNodeIDs 查找上级节点的信息
-func (l *logicFlow) FindPrevNodeIDs(id string) []string {
-	edgesSrc := l.FindSourceNodeId(id)
-	return slice.Map(edgesSrc, func(idx int, src Edge) string {
-		return src.SourceNodeId
-	})
-}
-
-// FindSourceNodeId 查找下级节点的连接线
-func (l *logicFlow) FindSourceNodeId(id string) []Edge {
-	return slice.FilterMap(l.Edges, func(idx int, src Edge) (Edge, bool) {
-		if src.TargetNodeId == id {
-			return src, true
-		}
-
-		return Edge{}, false
-	})
-}
-
-// FindTargetNodeId 查找上级节点的连接线
-func (l *logicFlow) FindTargetNodeId(id string) []Edge {
-	return slice.FilterMap(l.Edges, func(idx int, src Edge) (Edge, bool) {
-		if src.SourceNodeId == id {
-			return src, true
-		}
-
-		return Edge{}, false
-	})
-}
-
-func (l *logicFlow) ToTargetNode(nodeId string) string {
-	for _, edge := range l.Edges {
-		if edge.SourceNodeId == nodeId {
-			return edge.TargetNodeId
-		}
-	}
-
-	return ""
-}
-
-func (l *logicFlow) GetNodeInfo(nodeId string) Node {
-	for _, node := range l.Nodes {
-		if node.ID == nodeId {
-			return node
-		}
-	}
-
-	return Node{}
-}
-
-// ToEdgeProperty edge连线字段解析
-func ToEdgeProperty(edges Edge) (EdgeProperty, error) {
-	var property EdgeProperty
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:  &property,
-		TagName: "json",
-	})
-	if err != nil {
-		return EdgeProperty{}, err
-	}
-
-	if err = decoder.Decode(edges.Properties); err != nil {
-		return EdgeProperty{}, err
-	}
-
-	return property, nil
-}
-
-// ToNodeProperty node节点字段解析
-func ToNodeProperty[T any](node Node) (T, error) {
-	var property T
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:  &property,
-		TagName: "json",
-	})
-	if err != nil {
-		return zeroValue[T](), err
-	}
-
-	if err = decoder.Decode(node.Properties); err != nil {
-		return zeroValue[T](), err
-	}
-
-	return property, nil
-}
-
-func (l *logicFlow) toEdges() error {
-	var edges []Edge
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:  &edges,
-		TagName: "json",
-	})
-	if err != nil {
-		return err
-	}
-
-	if err = decoder.Decode(l.Workflow.FlowData.Edges); err != nil {
-		return err
-	}
-
-	l.Edges = edges
-	return nil
-}
-
-func (l *logicFlow) toNodes() error {
-	nodes, err := ParseNodes(l.Workflow.FlowData.Nodes)
-	if err != nil {
-		return err
-	}
-
-	l.Nodes = nodes
-	return nil
-}
-
-func zeroValue[T any]() T {
-	var zero T
-	return zero
+func (l *logicFlow) Convert(workflow Workflow) (*model.Process, error) {
+	return l.converter.Convert(workflow)
 }

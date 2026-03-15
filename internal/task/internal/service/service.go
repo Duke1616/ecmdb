@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -592,7 +593,7 @@ func (s *service) buildTaskProcessContext(ctx context.Context, task domain.Task)
 	}
 
 	// 4. 获取自动化配置
-	automation, err := s.getAutomationProperties(ctx, flow, task)
+	automation, err := getAutomationProperties(flow, task)
 	if err != nil {
 		return nil, s.handleTaskError(ctx, task.Id, domain.TriggerPositionErrorExtractAutomationInfo.ToString(), domain.FAILED, err)
 	}
@@ -739,17 +740,22 @@ func (s *service) prepareUserArgs(ctx context.Context, orderResp order.Order) (m
 	return args, nil
 }
 
-func (s *service) getAutomationProperties(ctx context.Context, flow workflow.Workflow, task domain.Task) (
+func getAutomationProperties(flow workflow.Workflow, task domain.Task) (
 	easyflow.AutomationProperty, error) {
-	return s.workflowSvc.GetAutomationProperty(easyflow.Workflow{
-		Id:    flow.Id,
-		Name:  flow.Name,
-		Owner: flow.Owner,
-		FlowData: easyflow.LogicFlow{
-			Edges: flow.FlowData.Edges,
-			Nodes: flow.FlowData.Nodes,
-		},
-	}, task.CurrentNodeId)
+	nodes, err := easyflow.ParseNodes(flow.FlowData.Nodes)
+	if err != nil {
+		return easyflow.AutomationProperty{}, err
+	}
+
+	for _, node := range nodes {
+		if node.ID != task.CurrentNodeId {
+			continue
+		}
+
+		return easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
+	}
+
+	return easyflow.AutomationProperty{}, errors.New("node not found")
 }
 
 func (s *service) handleTaskError(ctx context.Context, taskID int64, triggerPosition string, status domain.Status, err error) error {

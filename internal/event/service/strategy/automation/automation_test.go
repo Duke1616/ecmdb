@@ -12,18 +12,31 @@ import (
 	sendermocks "github.com/Duke1616/ecmdb/internal/pkg/notification/mocks"
 	"github.com/Duke1616/ecmdb/internal/user"
 	"github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
 
-func TestAutomationNotification_Send(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+type AutomationTestSuite struct {
+	suite.Suite
+	ctrl       *gomock.Controller
+	mockBase   *strategymocks.MockService
+	mockSender *sendermocks.MockNotificationSender
+	strategy   strategy.SendStrategy
+}
 
-	mockBase := strategymocks.NewMockService(ctrl)
-	mockSender := sendermocks.NewMockNotificationSender(ctrl)
-	n := automation.NewAutomationNotification(mockBase, mockSender)
+func (s *AutomationTestSuite) SetupTest() {
+	s.ctrl = gomock.NewController(s.T())
+	s.mockBase = strategymocks.NewMockService(s.ctrl)
+	s.mockSender = sendermocks.NewMockNotificationSender(s.ctrl)
 
+	s.strategy = automation.NewNotification(s.mockBase, s.mockSender)
+}
+
+func (s *AutomationTestSuite) TearDownTest() {
+	s.ctrl.Finish()
+}
+
+func (s *AutomationTestSuite) TestSend() {
 	ctx := context.Background()
 	info := strategy.Info{
 		FlowContext: strategy.FlowContext{
@@ -35,16 +48,16 @@ func TestAutomationNotification_Send(t *testing.T) {
 	}
 
 	// 1. Mock GetNodeProperty
-	mockBase.EXPECT().GetNodeProperty(info, "auto1").Return([]easyflow.Node{}, map[string]interface{}{
+	s.mockBase.EXPECT().GetNodeProperty(info, "auto1").Return([]easyflow.Node{}, map[string]interface{}{
 		"is_notify":     true,
 		"notify_method": []int64{2}, // ProcessNowSend
 	}, nil).Times(2)
 
 	// 2. Mock IsGlobalNotify
-	mockBase.EXPECT().IsGlobalNotify(gomock.Any()).Return(true)
+	s.mockBase.EXPECT().IsGlobalNotify(gomock.Any()).Return(true)
 
 	// 3. Mock FetchRequiredData
-	mockBase.EXPECT().FetchRequiredData(gomock.Any(), gomock.Any(), gomock.Any()).Return(&strategy.NotificationData{
+	s.mockBase.EXPECT().FetchRequiredData(gomock.Any(), gomock.Any(), gomock.Any()).Return(&strategy.NotificationData{
 		TName: "测试模板",
 		StartUser: user.User{
 			FeishuInfo: user.FeishuInfo{
@@ -54,10 +67,14 @@ func TestAutomationNotification_Send(t *testing.T) {
 	}, nil)
 
 	// 4. Mock Sender
-	mockSender.EXPECT().Send(gomock.Any(), gomock.Any()).Return(notification.NewSuccessResponse(0, "success"), nil)
+	s.mockSender.EXPECT().Send(gomock.Any(), gomock.Any()).Return(notification.NewSuccessResponse(0, "success"), nil)
 
-	resp, err := n.Send(ctx, info)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, "success", resp.Status)
+	resp, err := s.strategy.Send(ctx, info)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal("success", resp.Status)
+}
+
+func TestAutomationSuite(t *testing.T) {
+	suite.Run(t, new(AutomationTestSuite))
 }

@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
 
-	"github.com/Bunny3th/easy-workflow/workflow/model"
 	"github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/workflow/internal/repository"
@@ -27,8 +27,6 @@ type Service interface {
 	Deploy(ctx context.Context, flow domain.Workflow) error
 	// FindByKeyword 根据关键字搜索流程
 	FindByKeyword(ctx context.Context, keyword string, offset, limit int64) ([]domain.Workflow, int64, error)
-	// FindPassEdgeIds 查找所有已经完成的边id
-	FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error)
 	// GetAutomationProperty 获取指定节点的自动化属性配置
 	GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error)
 	// GetWorkflowSnapshot 获取指定版本的流程快照（原子语义，直接返回快照数据）
@@ -57,7 +55,7 @@ type service struct {
 	repo         repository.WorkflowRepository
 	bindingRepo  repository.NotifyBindingRepository
 	engineSvc    engine.Service
-	engineCovert easyflow.ProcessEngineConvert
+	engineCovert easyflow.Converter
 }
 
 // 内部实现：Binding Service
@@ -86,11 +84,22 @@ func (s *adminNotifyBindingService) GetEffective(ctx context.Context, workflowId
 }
 
 func (s *service) GetAutomationProperty(workflow easyflow.Workflow, nodeId string) (easyflow.AutomationProperty, error) {
-	return s.engineCovert.GetAutomationProperty(workflow, nodeId)
+	nodes, err := easyflow.ParseNodes(workflow.FlowData.Nodes)
+	if err != nil {
+		return easyflow.AutomationProperty{}, err
+	}
+
+	for _, node := range nodes {
+		if node.ID == nodeId {
+			return easyflow.ToNodeProperty[easyflow.AutomationProperty](node)
+		}
+	}
+
+	return easyflow.AutomationProperty{}, errors.New("node not found")
 }
 
 func NewService(repo repository.WorkflowRepository, bindingRepo repository.NotifyBindingRepository,
-	engineSvc engine.Service, engineCovert easyflow.ProcessEngineConvert) Service {
+	engineSvc engine.Service, engineCovert easyflow.Converter) Service {
 	return &service{
 		repo:         repo,
 		bindingRepo:  bindingRepo,
@@ -144,13 +153,14 @@ func (s *service) Delete(ctx context.Context, id int64) (int64, error) {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *service) FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error) {
-	return s.engineCovert.Edge(s.toEasyWorkflow(wf), tasks)
-}
-
 func (s *service) Deploy(ctx context.Context, wf domain.Workflow) error {
 	// 发布到流程引擎
-	processId, err := s.engineCovert.Deploy(s.toEasyWorkflow(wf))
+	process, err := s.engineCovert.Convert(s.toEasyWorkflow(wf))
+	if err != nil {
+		return err
+	}
+
+	processId, err := s.engineSvc.ProcessSave(ctx, process)
 	if err != nil {
 		return err
 	}

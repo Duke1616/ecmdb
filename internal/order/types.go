@@ -17,10 +17,16 @@ type RpcServer = grpc.WorkOrderServer
 type Handler = web.Handler
 
 const (
-	EndProcess    = domain.END
-	SystemProvide = domain.SYSTEM
-	WechatProvide = domain.WECHAT
+	EndProcess      = domain.END
+	SystemProvide   = domain.SYSTEM
+	WechatProvide   = domain.WECHAT
+	AlertProvide    = domain.ALERT
+	ChannelLarkCard = domain.ChannelLarkCard
 )
+
+type NotificationConf = domain.NotificationConf
+
+type Channel = domain.Channel
 
 type Order = domain.Order
 

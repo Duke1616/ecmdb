@@ -290,12 +290,20 @@ type Assignee struct {
 type UserProperty struct {
 	Name          string     `json:"name"`           // 节点名称
 	Approved      []string   `json:"approved"`       // 审批人、抄送人
-	Rule          Rule       `json:"type"`           // 匹配策略 (兼容历史数据，数据库存储为 Type）
+	Rule          Rule       `json:"rule"`           // 匹配策略 (兼容历史数据)
+	Type          Rule       `json:"type"`           // 匹配策略 (兼容历史数据
 	TemplateField string     `json:"template_field"` // 模版字段
 	Assignees     []Assignee `json:"assignees"`      // 新模式字段，支持配置多条分配规则
 	IsCosigned    bool       `json:"is_cosigned"`    // 是否会签
 	IsCC          bool       `json:"is_cc"`          // 是否抄送
 	Fields        []Field    `json:"fields"`         // 表单字段配置
+}
+
+func (u *UserProperty) getRule() Rule {
+	if u.Rule != "" {
+		return u.Rule
+	}
+	return u.Type
 }
 
 // NormalizeAssignees 统一格式化获取人员分配规则，屏蔽新老版本数据差异
@@ -306,7 +314,7 @@ func (u *UserProperty) NormalizeAssignees() []Assignee {
 	}
 
 	// 兼容老版本情况
-	switch u.Rule {
+	switch u.getRule() {
 	case TEMPLATE:
 		return []Assignee{
 			{

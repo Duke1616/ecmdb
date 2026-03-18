@@ -93,6 +93,11 @@ func (e *processEngine) Pass(ctx context.Context, taskId int, comment string, ex
 	var formValues []domain.FormValue
 
 	for _, field := range property.Fields {
+		// tips 类型仅用于展示提示，不存储表单数据
+		if field.Type == easyflow.FieldTips {
+			continue
+		}
+
 		val, exists := extraData[field.Key]
 		// 数据校验
 		if err = e.validate(field, exists, val); err != nil {

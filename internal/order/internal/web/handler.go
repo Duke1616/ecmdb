@@ -58,6 +58,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/start/user", ginx.WrapBody[StartUserReq](h.StartUser))
 	g.POST("/pass", ginx.WrapBody[PassOrderReq](h.Pass))
 	g.POST("/reject", ginx.WrapBody[RejectOrderReq](h.Reject))
+	g.POST("/transfer", ginx.WrapBody[TransferReq](h.Transfer))
 	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
 	g.POST("/task/form_config", ginx.WrapBody[TaskFormConfigReq](h.GetTaskFormConfig))
 }
@@ -196,6 +197,17 @@ func (h *Handler) TodoByUser(ctx *gin.Context, req Todo) (ginx.Result, error) {
 		},
 		Msg: "查看待办工单列表成功",
 	}, err
+}
+
+func (h *Handler) Transfer(ctx *gin.Context, req TransferReq) (ginx.Result, error) {
+	_, err := h.processEngineSvc.Transfer(ctx, req.TaskId, req.Usernames)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Msg: "转签成功",
+	}, nil
 }
 
 func (h *Handler) Revoke(ctx *gin.Context, req RevokeOrderReq) (ginx.Result, error) {

@@ -48,6 +48,10 @@ type TaskFormConfigReq struct {
 	TaskId     int   `json:"task_id"`
 }
 
+type TransferReq struct {
+	TaskId    int      `json:"task_id"`
+	Usernames []string `json:"usernames"`
+}
 type RejectOrderReq struct {
 	TaskId  int    `json:"task_id"`
 	Comment string `json:"comment"`

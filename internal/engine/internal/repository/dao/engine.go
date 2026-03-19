@@ -9,6 +9,7 @@ import (
 
 	"github.com/Bunny3th/easy-workflow/workflow/database"
 	"github.com/Bunny3th/easy-workflow/workflow/model"
+	"github.com/ecodeclub/ekit/slice"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +55,9 @@ type ProcessEngineDAO interface {
 	GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error)
 	// GetLatestProcessVersion 获取流程的最新版本号
 	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
+
+	// Transfer 任务转签
+	Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error)
 }
 
 type processEngineDAO struct {
@@ -62,6 +66,71 @@ type processEngineDAO struct {
 
 func (g *processEngineDAO) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
 	return g.db.WithContext(ctx).Table("proc_task").Where("id = ?", taskId).Update("prev_node_id", prevNodeId).Error
+}
+
+func (g *processEngineDAO) Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error) {
+	var newTasks []model.Task
+	err := g.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 获取旧任务
+		var oldTask database.ProcTask
+		if err := tx.Table("proc_task").Where("id = ?", taskId).First(&oldTask).Error; err != nil {
+			return fmt.Errorf("查询原任务失败: %w", err)
+		}
+
+		// 2. 校验状态
+		if oldTask.IsFinished == 1 {
+			return errors.New("任务已完成，无法转交")
+		}
+
+		// 3. 删除旧任务
+		if err := tx.Table("proc_task").Delete(&database.ProcTask{}, taskId).Error; err != nil {
+			return fmt.Errorf("删除原任务失败: %w", err)
+		}
+
+		// 4. 创建新任务
+		dbTasks := slice.Map(userIds, func(idx int, uid string) database.ProcTask {
+			newTask := oldTask                          // 拷贝全部字段
+			newTask.ID = 0                              // 清空 ID 以便自动生成
+			newTask.UserID = uid                        // 重新分配用户
+			newTask.Status = 0                          // 重置状态
+			newTask.IsFinished = 0                      // 重置完成标记
+			newTask.CreateTime = database.LTime.Now()   // 设置新任务创建时间
+			newTask.FinishedTime = database.LocalTime{} // 重置处理时间
+			newTask.Comment = ""                        // 清空意见
+			return newTask
+		})
+
+		if err := tx.Table("proc_task").Create(&dbTasks).Error; err != nil {
+			return fmt.Errorf("批量创建新任务失败: %w", err)
+		}
+
+		// 5. 转换为返回模型
+		newTasks = slice.Map(dbTasks, func(idx int, dt database.ProcTask) model.Task {
+			return model.Task{
+				TaskID:             dt.ID,
+				ProcID:             dt.ProcID,
+				ProcInstID:         dt.ProcInstID,
+				BusinessID:         dt.BusinessID,
+				Starter:            dt.Starter,
+				NodeID:             dt.NodeID,
+				NodeName:           dt.NodeName,
+				PrevNodeID:         dt.PrevNodeID,
+				IsCosigned:         dt.IsCosigned,
+				BatchCode:          dt.BatchCode,
+				UserID:             dt.UserID,
+				Status:             dt.Status,
+				IsFinished:         dt.IsFinished,
+				Comment:            dt.Comment,
+				ProcInstCreateTime: &dt.ProcInstCreateTime,
+				CreateTime:         &dt.CreateTime,
+				FinishedTime:       &dt.FinishedTime,
+			}
+		})
+
+		return nil
+	})
+
+	return newTasks, err
 }
 
 func (g *processEngineDAO) CreateSkippedTask(ctx context.Context, task model.Task) error {

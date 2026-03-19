@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/Bunny3th/easy-workflow/workflow/engine"
+	"github.com/Bunny3th/easy-workflow/workflow/model"
 	engineSvc "github.com/Duke1616/ecmdb/internal/engine"
 	"github.com/Duke1616/ecmdb/internal/order/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/order/internal/errs"
@@ -22,6 +23,8 @@ type ProcessEngine interface {
 	Reject(ctx context.Context, taskId int, comment string) error
 	// Revoke 撤销工单
 	Revoke(ctx context.Context, instanceId int, userId string, force bool) error
+	// Transfer 将任务转交给他人处理
+	Transfer(ctx context.Context, taskId int, users []string) ([]model.Task, error)
 }
 
 type processEngine struct {
@@ -29,6 +32,10 @@ type processEngine struct {
 	logger      *elog.Component
 	engineSvc   engineSvc.Service
 	workflowSvc workflow.Service
+}
+
+func (e *processEngine) Transfer(ctx context.Context, taskId int, users []string) ([]model.Task, error) {
+	return e.engineSvc.Transfer(ctx, taskId, users)
 }
 
 func NewProcessEngine(svc Service, engineSvc engineSvc.Service, workflowSvc workflow.Service) ProcessEngine {

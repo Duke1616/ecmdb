@@ -70,6 +70,8 @@ type Service interface {
 	CreateSkippedTask(ctx context.Context, processInstId int, nodeId, prevNodeId, comment string, status uint8) error
 	// ProcessSave 保存流程定义并返回 ID
 	ProcessSave(ctx context.Context, process *model.Process) (int, error)
+	// Transfer 任务转签
+	Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error)
 }
 
 type service struct {
@@ -166,6 +168,10 @@ func (s *service) Pass(ctx context.Context, taskId int, comment string) error {
 
 func (s *service) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
 	return s.repo.UpdateTaskPrevNodeID(ctx, taskId, prevNodeId)
+}
+
+func (s *service) Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error) {
+	return s.repo.Transfer(ctx, taskId, userIds)
 }
 
 func (s *service) CreateSkippedTask(ctx context.Context, processInstId int, nodeId, prevNodeId, comment string, status uint8) error {

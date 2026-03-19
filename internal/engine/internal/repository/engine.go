@@ -48,6 +48,8 @@ type ProcessEngineRepository interface {
 	GetProcessDefineByVersion(ctx context.Context, processID, version int) (model.Process, error)
 	// GetLatestProcessVersion 获取流程的最新版本号
 	GetLatestProcessVersion(ctx context.Context, processID int) (int, error)
+	// Transfer 任务转签
+	Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error)
 }
 
 type processEngineRepository struct {
@@ -56,6 +58,10 @@ type processEngineRepository struct {
 
 func (repo *processEngineRepository) UpdateTaskPrevNodeID(ctx context.Context, taskId int, prevNodeId string) error {
 	return repo.engineDao.UpdateTaskPrevNodeID(ctx, taskId, prevNodeId)
+}
+
+func (repo *processEngineRepository) Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error) {
+	return repo.engineDao.Transfer(ctx, taskId, userIds)
 }
 
 func (repo *processEngineRepository) CreateSkippedTask(ctx context.Context, task model.Task) error {

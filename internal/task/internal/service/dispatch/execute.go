@@ -13,6 +13,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/task/domain"
 	"github.com/Duke1616/ecmdb/internal/task/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
+	"github.com/Duke1616/etask/pkg/grpc/interceptors/jwt"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 )
@@ -43,7 +44,7 @@ func (e *executeService) Dispatch(ctx context.Context, task domain.Task) error {
 	taskHash := e.sumHash(taskId, task.Code, args, vars)
 
 	// 3. 启动分布式任务派发
-	taskResult, err := e.grpcClient.CreateTask(ctx, &taskv1.CreateTaskRequest{
+	taskResult, err := e.grpcClient.CreateTask(jwt.SetTicketBizID(ctx), &taskv1.CreateTaskRequest{
 		Name:     fmt.Sprintf("%s_%s", task.CodebookName, taskHash),
 		Type:     taskv1.TaskType_ONE_TIME,
 		CronExpr: e.calculateCronExpr(task),

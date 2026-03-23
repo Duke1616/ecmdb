@@ -67,8 +67,8 @@ github.com/Duke1616/easy-workflow v1.0.5 h1:p2JXLUUSRhhOMvuJREMciJTjCqUzSCATjfdR
 github.com/Duke1616/easy-workflow v1.0.5/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
 github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9 h1:qc0xHyvDM2+8hbXgB8fOLYqDVsNt2pf/8fIYbgibIq0=
 github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
-github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90 h1:sF2eif6JjXOcArY90mipf2onC9RNbcB3cLjUKZps0jM=
-github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90/go.mod h1:m2ybNBkCQuSQzWyPVlZTvG+q+uXsOBGpEXyNpokSX3k=
+github.com/Duke1616/etask v0.0.4-0.20260323090746-21b54a8ee320 h1:NovKr/M7Ge0dOfxx6U6vaacHN4iurpLHnXwKj+2wSww=
+github.com/Duke1616/etask v0.0.4-0.20260323090746-21b54a8ee320/go.mod h1:3rq5BkHARpSaqIth5w3ikzgUvMfuVK15HF021ERbMjg=
 github.com/Duke1616/vuefinder-go v1.1.0 h1:4QAxNo8filt8lU0orUk/88MN7hWsPWPBAip7dmKmAuA=
 github.com/Duke1616/vuefinder-go v1.1.0/go.mod h1:SKdWxjsLHG5VFmDJL6pBtah5MdfJSit3IB8bW6dgr28=
 github.com/IBM/sarama v1.43.3 h1:Yj6L2IaNvb2mRBop39N7mmJAHBVY3dTPncr3qGVkxPA=
@@ -451,7 +451,6 @@ github.com/jcmturner/rpc/v2 v2.0.3 h1:7FXXj8Ti1IaVFpSAziCZWNzbNuZmnvw/i6CqLNdWfZ
 github.com/jcmturner/rpc/v2 v2.0.3/go.mod h1:VUJYCIDm3PVOEHw8sgt091/20OJjskO/YJki3ELg/Hc=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
-github.com/jinzhu/inflection v1.0.0+incompatible/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
@@ -525,8 +524,6 @@ github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.2/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
-github.com/mattn/go-sqlite3 v1.14.22 h1:2gZY6PC6kBnID23Tichd1K+Z0oS6nE/XwU+Vz/5o4kU=
-github.com/mattn/go-sqlite3 v1.14.22/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/microsoft/go-mssqldb v1.6.0/go.mod h1:00mDtPbeQCRGC1HwOOR5K/gr30P1NcEG0vx6Kbv2aJU=
@@ -1273,8 +1270,6 @@ gorm.io/driver/mysql v1.6.0 h1:eNbLmNTpPpTOVZi8MMxCi2aaIm0ZpInbORNXDwyLGvg=
 gorm.io/driver/mysql v1.6.0/go.mod h1:D/oCC2GWK3M/dqoLxnOlaNKmXz8WNTfcS9y5ovaSqKo=
 gorm.io/driver/postgres v1.5.7 h1:8ptbNJTDbEmhdr62uReG5BGkdQyeasu/FZHxI0IMGnM=
 gorm.io/driver/postgres v1.5.7/go.mod h1:3e019WlBaYI5o5LIdNV+LyxCMNtLOQETBXL2h4chKpA=
-gorm.io/driver/sqlite v1.6.0 h1:WHRRrIiulaPiPFmDcod6prc4l2VGVWHz80KspNsxSfQ=
-gorm.io/driver/sqlite v1.6.0/go.mod h1:AO9V1qIQddBESngQUKWL9yoH93HIeA1X6V633rBwyT8=
 gorm.io/driver/sqlserver v1.5.3 h1:rjupPS4PVw+rjJkfvr8jn2lJ8BMhT4UW5FwuJY0P3Z0=
 gorm.io/driver/sqlserver v1.5.3/go.mod h1:B+CZ0/7oFJ6tAlefsKoyxdgDCXJKSgwS2bMOQZT0I00=
 gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde/go.mod h1:hbnx/Oo0ChWMn1BIhpy1oYozzpM15i4YPuHDmfYtwg8=

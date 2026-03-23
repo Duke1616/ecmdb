@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
 	github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9
-	github.com/Duke1616/etask v0.0.4-0.20260304125743-69d51cb90d90
+	github.com/Duke1616/etask v0.0.4-0.20260323090746-21b54a8ee320
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/IBM/sarama v1.43.3
 	github.com/RediSearch/redisearch-go/v2 v2.1.1
@@ -141,7 +141,6 @@ require (
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/microsoft/go-mssqldb v1.9.6 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
@@ -216,7 +215,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/postgres v1.5.7 // indirect
-	gorm.io/driver/sqlite v1.6.0 // indirect
 	gorm.io/driver/sqlserver v1.5.3 // indirect
 	gorm.io/plugin/dbresolver v1.6.2 // indirect
 	modernc.org/libc v1.68.0 // indirect

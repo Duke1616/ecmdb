@@ -44,6 +44,7 @@ func NewHandler(svc service.Service, engineSvc engine.Service, processEngineSvc 
 func (h *Handler) PublicRoute(server *gin.Engine) {
 	g := server.Group("/api/order")
 	g.POST("/progress", ginx.WrapBody[ProgressReq](h.Progress))
+	g.GET("/upstream/:task_id", ginx.Wrap(h.Upstream))
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
@@ -61,6 +62,21 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/transfer", ginx.WrapBody[TransferReq](h.Transfer))
 	g.POST("/revoke", ginx.WrapBody[RevokeOrderReq](h.Revoke))
 	g.POST("/task/form_config", ginx.WrapBody[TaskFormConfigReq](h.GetTaskFormConfig))
+}
+
+func (h *Handler) Upstream(ctx *gin.Context) (ginx.Result, error) {
+	g := gctx.Context{Context: ctx}
+	taskID, err := g.Param("task_id").AsInt()
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	upstream, err := h.engineSvc.Upstream(ctx, taskID)
+	if err != nil {
+		return ginx.Result{}, err
+	}
+
+	return ginx.Result{Data: upstream}, nil
 }
 
 func (h *Handler) GetTaskFormConfig(ctx *gin.Context, req TaskFormConfigReq) (ginx.Result, error) {

@@ -266,10 +266,10 @@
     "path": "start",
     "pid": "13",
     "redirect": "",
-    "sort": "1",
+    "sort": "1000",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1773910932886"
   },
   {
     "_id": "66bb0617997ef9afad60c427",
@@ -282,10 +282,10 @@
     "path": "list",
     "pid": "13",
     "redirect": "",
-    "sort": "2",
+    "sort": "2000",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1773910932886"
   },
   {
     "_id": "66bb0638997ef9afad60c428",
@@ -298,10 +298,10 @@
     "path": "convert",
     "pid": "13",
     "redirect": "",
-    "sort": "3",
+    "sort": "4000",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1773910932886"
   },
   {
     "_id": "66bb066a997ef9afad60c429",
@@ -341,15 +341,15 @@
     "ctime": "1723532969916",
     "endpoints": "[ ]",
     "id": "36",
-    "meta": "{ \"title\" : \"任务管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"task-history\" }",
-    "name": "task-manager",
-    "path": "manager",
+    "meta": "{ \"title\" : \"任务记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"task-history\" }",
+    "name": "task-history",
+    "path": "history",
     "pid": "8",
     "redirect": "",
     "sort": "4",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1774252334221"
   },
   {
     "_id": "66bb06f1997ef9afad60c42c",
@@ -947,23 +947,23 @@
     "_id": "66bdb801ce7b5a67a43e8c84",
     "component": "",
     "ctime": "1723709441243",
-    "endpoints": "[ { \"path\" : \"/api/order/task/form_config\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/detail/process_inst_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/task/record\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/workflow/graph\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/workflow/graph\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/template/detail\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/task/list/by_instance_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/detail/process_inst_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/task/record\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "90",
     "meta": "{ \"title\" : \"工单详情\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "detail_order",
     "path": "",
     "pid": "32",
     "redirect": "",
-    "sort": "5",
+    "sort": "1008",
     "status": "1",
     "type": "3",
-    "utime": "1770033409964"
+    "utime": "1773911984850"
   },
   {
     "_id": "66bdb876ce7b5a67a43e8c86",
     "component": "",
     "ctime": "1723709558759",
-    "endpoints": "[ { \"path\" : \"/api/order/todo/user\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/order/task/form_config\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/todo/user\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "92",
     "meta": "{ \"title\" : \"我的待办\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "my_todo_order",
@@ -973,13 +973,13 @@
     "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1770033391648"
+    "utime": "1773911973467"
   },
   {
     "_id": "66bdb89bce7b5a67a43e8c87",
     "component": "",
     "ctime": "1723709595245",
-    "endpoints": "[ { \"path\" : \"/api/order/todo\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "endpoints": "[ { \"path\" : \"/api/order/task/form_config\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/todo\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "93",
     "meta": "{ \"title\" : \"全部待办\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "all_todo_order",
@@ -989,7 +989,7 @@
     "sort": "3",
     "status": "1",
     "type": "3",
-    "utime": "1770033402101"
+    "utime": "1773911978751"
   },
   {
     "_id": "66bdb900ce7b5a67a43e8c89",
@@ -1000,12 +1000,12 @@
     "meta": "{ \"title\" : \"同意审批\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "pass_order",
     "path": "",
-    "pid": "32",
+    "pid": "314",
     "redirect": "",
-    "sort": "6",
+    "sort": "5000",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773911088512"
   },
   {
     "_id": "66bdb91cce7b5a67a43e8c8a",
@@ -1016,12 +1016,12 @@
     "meta": "{ \"title\" : \"驳回审批\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "reject_order",
     "path": "",
-    "pid": "32",
+    "pid": "314",
     "redirect": "",
-    "sort": "7",
+    "sort": "6000",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773911631266"
   },
   {
     "_id": "66bdb98ece7b5a67a43e8c8c",
@@ -1766,14 +1766,14 @@
     "endpoints": "[ { \"path\" : \"/api/order/history\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" }, { \"path\" : \"/api/order/start/user\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
     "id": "145",
     "meta": "{ \"title\" : \"历史工单\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
-    "name": "",
+    "name": "history_order",
     "path": "",
     "pid": "32",
     "redirect": "",
     "sort": "8",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773911325433"
   },
   {
     "_id": "66fe5404590fa9a15c8ae5d1",
@@ -1784,12 +1784,12 @@
     "meta": "{ \"title\" : \"撤销工单\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "order-revoke",
     "path": "",
-    "pid": "32",
+    "pid": "314",
     "redirect": "",
-    "sort": "9",
+    "sort": "6750",
     "status": "1",
     "type": "3",
-    "utime": "1758897424032"
+    "utime": "1773911637515"
   },
   {
     "_id": "6721dd2fb90a59d0bbabcf08",
@@ -2096,22 +2096,6 @@
     "utime": "1758897424032"
   },
   {
-    "_id": "68c57a12175628f9c3ab47b9",
-    "component": "",
-    "ctime": "1757772306124",
-    "endpoints": "[ { \"path\" : \"/api/order/history\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
-    "id": "94",
-    "meta": "{ \"title\" : \"历史工单\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
-    "name": "history_order",
-    "path": "",
-    "pid": "32",
-    "redirect": "",
-    "sort": "4",
-    "status": "1",
-    "type": "3",
-    "utime": "1770033406827"
-  },
-  {
     "_id": "68c57a12175628f9c3ab47ba",
     "component": "",
     "ctime": "1757772306124",
@@ -2126,22 +2110,6 @@
     "status": "1",
     "type": "3",
     "utime": "1760525738445"
-  },
-  {
-    "_id": "68c57a12175628f9c3ab47bb",
-    "component": "",
-    "ctime": "1757772306124",
-    "endpoints": "[ { \"path\" : \"/api/task/list/by_instance_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
-    "id": "162",
-    "meta": "{ \"title\" : \"任务记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
-    "name": "list-task",
-    "path": "",
-    "pid": "32",
-    "redirect": "",
-    "sort": "10",
-    "status": "1",
-    "type": "3",
-    "utime": "1758897424032"
   },
   {
     "_id": "68d5053f7ee1315a0c692ab0",
@@ -4462,5 +4430,165 @@
     "status": "1",
     "type": "3",
     "utime": "1773026473509"
+  },
+  {
+    "_id": "69bbbb6010edb029dc53ba00",
+    "component": "",
+    "ctime": "1773910880009",
+    "endpoints": "[ { \"path\" : \"/api/order/transfer\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "313",
+    "meta": "{ \"title\" : \"工单转签\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "314",
+    "redirect": "",
+    "sort": "6500",
+    "status": "1",
+    "type": "3",
+    "utime": "1773911634798"
+  },
+  {
+    "_id": "69bbbb7a10edb029dc53ba01",
+    "component": "",
+    "ctime": "1773910906493",
+    "endpoints": "[ ]",
+    "id": "314",
+    "meta": "{ \"title\" : \"执行动作\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "13",
+    "redirect": "",
+    "sort": "3000",
+    "status": "1",
+    "type": "3",
+    "utime": "1773911049730"
+  },
+  {
+    "_id": "69c0f172c48ccc6e36346734",
+    "component": "/views/task/manager/index.vue",
+    "ctime": "1774252402741",
+    "endpoints": "[ ]",
+    "id": "315",
+    "meta": "{ \"title\" : \"任务管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"task-manager\" }",
+    "name": "task-manager",
+    "path": "manager",
+    "pid": "8",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "2",
+    "utime": "1774252718524"
+  },
+  {
+    "_id": "69c0f185c48ccc6e36346735",
+    "component": "",
+    "ctime": "1774252421430",
+    "endpoints": "[ { \"path\" : \"/api/manager/list\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "316",
+    "meta": "{ \"title\" : \"任务列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774257934859"
+  },
+  {
+    "_id": "69c0f5dcc48ccc6e36346736",
+    "component": "",
+    "ctime": "1774253532393",
+    "endpoints": "[ { \"path\" : \"/api/manager/create\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "317",
+    "meta": "{ \"title\" : \"创建任务\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "1999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774257943953"
+  },
+  {
+    "_id": "69c10b4011d36fe295082da4",
+    "component": "",
+    "ctime": "1774259008672",
+    "endpoints": "[ { \"path\" : \"/api/manager/detail/:id\", \"method\" : \"GET\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "318",
+    "meta": "{ \"title\" : \"任务详情\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774259043874"
+  },
+  {
+    "_id": "69c10b4611d36fe295082da5",
+    "component": "",
+    "ctime": "1774259014107",
+    "endpoints": "[ { \"path\" : \"/api/manager/delete/:id\", \"method\" : \"DELETE\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "319",
+    "meta": "{ \"title\" : \"删除任务\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774259050317"
+  },
+  {
+    "_id": "69c10b4d11d36fe295082da6",
+    "component": "",
+    "ctime": "1774259021119",
+    "endpoints": "[ { \"path\" : \"/api/manager/update\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "320",
+    "meta": "{ \"title\" : \"修改任务\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774259054279"
+  },
+  {
+    "_id": "69c10df811d36fe295082da9",
+    "component": "",
+    "ctime": "1774259704957",
+    "endpoints": "[ { \"path\" : \"/api/manager/stop/:id\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "321",
+    "meta": "{ \"title\" : \"停止任务\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774259753065"
+  },
+  {
+    "_id": "69c10e0011d36fe295082daa",
+    "component": "",
+    "ctime": "1774259712650",
+    "endpoints": "[ { \"path\" : \"/api/manager/run/:id\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "322",
+    "meta": "{ \"title\" : \"启动任务\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "999",
+    "status": "1",
+    "type": "3",
+    "utime": "1774259738060"
   }
 ]

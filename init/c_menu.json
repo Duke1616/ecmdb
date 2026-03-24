@@ -71,13 +71,13 @@
     "id": "10",
     "meta": "{ \"title\" : \"执行节点\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"worker\" }",
     "name": "task-worker",
-    "path": "worker",
+    "path": "/task/executor",
     "pid": "8",
     "redirect": "",
     "sort": "2",
     "status": "1",
     "type": "2",
-    "utime": "1772005416634"
+    "utime": "1774343914357"
   },
   {
     "_id": "66baeaf51246cddd8f64abec",
@@ -269,7 +269,7 @@
     "sort": "1000",
     "status": "1",
     "type": "2",
-    "utime": "1773910932886"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bb0617997ef9afad60c427",
@@ -285,7 +285,7 @@
     "sort": "2000",
     "status": "1",
     "type": "2",
-    "utime": "1773910932886"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bb0638997ef9afad60c428",
@@ -301,7 +301,7 @@
     "sort": "4000",
     "status": "1",
     "type": "2",
-    "utime": "1773910932886"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bb066a997ef9afad60c429",
@@ -349,7 +349,7 @@
     "sort": "4",
     "status": "1",
     "type": "2",
-    "utime": "1774252334221"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bb06f1997ef9afad60c42c",
@@ -957,7 +957,7 @@
     "sort": "1008",
     "status": "1",
     "type": "3",
-    "utime": "1773911984850"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bdb876ce7b5a67a43e8c86",
@@ -973,7 +973,7 @@
     "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1773911973467"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bdb89bce7b5a67a43e8c87",
@@ -989,7 +989,7 @@
     "sort": "3",
     "status": "1",
     "type": "3",
-    "utime": "1773911978751"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bdb900ce7b5a67a43e8c89",
@@ -1005,7 +1005,7 @@
     "sort": "5000",
     "status": "1",
     "type": "3",
-    "utime": "1773911088512"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bdb91cce7b5a67a43e8c8a",
@@ -1021,7 +1021,7 @@
     "sort": "6000",
     "status": "1",
     "type": "3",
-    "utime": "1773911631266"
+    "utime": "1774340763898"
   },
   {
     "_id": "66bdb98ece7b5a67a43e8c8c",
@@ -1773,7 +1773,7 @@
     "sort": "8",
     "status": "1",
     "type": "3",
-    "utime": "1773911325433"
+    "utime": "1774340763898"
   },
   {
     "_id": "66fe5404590fa9a15c8ae5d1",
@@ -1789,7 +1789,7 @@
     "sort": "6750",
     "status": "1",
     "type": "3",
-    "utime": "1773911637515"
+    "utime": "1774340763898"
   },
   {
     "_id": "6721dd2fb90a59d0bbabcf08",
@@ -4471,13 +4471,13 @@
     "id": "315",
     "meta": "{ \"title\" : \"任务管理\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"task-manager\" }",
     "name": "task-manager",
-    "path": "manager",
+    "path": "/task/manager",
     "pid": "8",
     "redirect": "",
     "sort": "999",
     "status": "1",
     "type": "2",
-    "utime": "1774252718524"
+    "utime": "1774342923754"
   },
   {
     "_id": "69c0f185c48ccc6e36346735",
@@ -4493,7 +4493,7 @@
     "sort": "999",
     "status": "1",
     "type": "3",
-    "utime": "1774257934859"
+    "utime": "1774340955825"
   },
   {
     "_id": "69c0f5dcc48ccc6e36346736",
@@ -4590,5 +4590,37 @@
     "status": "1",
     "type": "3",
     "utime": "1774259738060"
+  },
+  {
+    "_id": "69c249f7cab360250bd0bffb",
+    "component": "",
+    "ctime": "1774340599337",
+    "endpoints": "[ { \"path\" : \"/api/order/history\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "94",
+    "meta": "{ \"title\" : \"历史工单\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "history_order",
+    "path": "",
+    "pid": "32",
+    "redirect": "",
+    "sort": "4",
+    "status": "1",
+    "type": "3",
+    "utime": "1774340599337"
+  },
+  {
+    "_id": "69c249f7cab360250bd0bffc",
+    "component": "",
+    "ctime": "1774340599337",
+    "endpoints": "[ { \"path\" : \"/api/task/list/by_instance_id\", \"method\" : \"POST\", \"resource\" : \"CMDB\", \"desc\" : \"\" } ]",
+    "id": "162",
+    "meta": "{ \"title\" : \"任务记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "list-task",
+    "path": "",
+    "pid": "32",
+    "redirect": "",
+    "sort": "10",
+    "status": "1",
+    "type": "3",
+    "utime": "1774340599337"
   }
 ]

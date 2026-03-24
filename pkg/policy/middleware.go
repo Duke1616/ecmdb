@@ -84,6 +84,10 @@ func (s *SDK) CheckLogin() gin.HandlerFunc {
 func (s *SDK) CheckPolicy(resource string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var res apiResult[authorizeResult]
+		s.logger.Debug("开始权限校验", elog.String("path", ctx.Request.URL.Path),
+			elog.String("method", ctx.Request.Method),
+			elog.String("resource", resource))
+
 		if err := s.callAPI(ctx, "/api/policy/check_policy", checkPolicyReq{
 			Path:     ctx.Request.URL.Path,
 			Method:   ctx.Request.Method,

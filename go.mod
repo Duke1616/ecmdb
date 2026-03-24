@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
 	github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9
-	github.com/Duke1616/etask v0.0.4-0.20260323090746-21b54a8ee320
+	github.com/Duke1616/etask v0.0.4-0.20260324064953-aa67039a916b
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/IBM/sarama v1.43.3
 	github.com/RediSearch/redisearch-go/v2 v2.1.1
@@ -142,6 +142,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/microsoft/go-mssqldb v1.9.6 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
@@ -154,6 +155,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/pressly/goose/v3 v3.27.0 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
@@ -167,6 +169,7 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
+	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

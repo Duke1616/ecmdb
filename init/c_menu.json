@@ -38,14 +38,14 @@
     "endpoints": "[ ]",
     "id": "8",
     "meta": "{ \"title\" : \"任务中心\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\", \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"task\" }",
-    "name": "",
+    "name": "task",
     "path": "/cmdb/task",
     "pid": "0",
     "redirect": "/cmdb/task/codebook",
     "sort": "7000",
     "status": "1",
     "type": "1",
-    "utime": "1770271006340"
+    "utime": "1774497203866"
   },
   {
     "_id": "66b7063fdd76ba0f5d3fbb8b",
@@ -4490,10 +4490,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "999",
+    "sort": "1000",
     "status": "1",
     "type": "3",
-    "utime": "1774340955825"
+    "utime": "1774497216175"
   },
   {
     "_id": "69c0f5dcc48ccc6e36346736",
@@ -4506,10 +4506,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "1999",
+    "sort": "2000",
     "status": "1",
     "type": "3",
-    "utime": "1774257943953"
+    "utime": "1774497216175"
   },
   {
     "_id": "69c10b4011d36fe295082da4",
@@ -4522,10 +4522,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "999",
+    "sort": "6500",
     "status": "1",
     "type": "3",
-    "utime": "1774259043874"
+    "utime": "1774497224504"
   },
   {
     "_id": "69c10b4611d36fe295082da5",
@@ -4538,10 +4538,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "999",
+    "sort": "4000",
     "status": "1",
     "type": "3",
-    "utime": "1774259050317"
+    "utime": "1774497216175"
   },
   {
     "_id": "69c10b4d11d36fe295082da6",
@@ -4554,10 +4554,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "999",
+    "sort": "2500",
     "status": "1",
     "type": "3",
-    "utime": "1774259054279"
+    "utime": "1774497220171"
   },
   {
     "_id": "69c10df811d36fe295082da9",
@@ -4570,10 +4570,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "999",
+    "sort": "7500",
     "status": "1",
     "type": "3",
-    "utime": "1774259753065"
+    "utime": "1774497229187"
   },
   {
     "_id": "69c10e0011d36fe295082daa",
@@ -4586,10 +4586,10 @@
     "path": "",
     "pid": "315",
     "redirect": "",
-    "sort": "999",
+    "sort": "7000",
     "status": "1",
     "type": "3",
-    "utime": "1774259738060"
+    "utime": "1774497216175"
   },
   {
     "_id": "69c249f7cab360250bd0bffb",
@@ -4622,5 +4622,21 @@
     "status": "1",
     "type": "3",
     "utime": "1774340599337"
+  },
+  {
+    "_id": "69c350c3925cae7099bc305d",
+    "component": "",
+    "ctime": "1774407875141",
+    "endpoints": "[ { \"path\" : \"/api/manager/executions\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" }, { \"path\" : \"/api/manager/logs\", \"method\" : \"POST\", \"resource\" : \"TASK\", \"desc\" : \"\" } ]",
+    "id": "323",
+    "meta": "{ \"title\" : \"执行记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "315",
+    "redirect": "",
+    "sort": "8000",
+    "status": "1",
+    "type": "3",
+    "utime": "1774497216175"
   }
 ]

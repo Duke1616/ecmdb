@@ -37,6 +37,9 @@ grpc:
     scheduler:
       name: "scheduler"
       auth_token: "1234567890"
+    # 新增：调度中心访问执行器的客户端配置
+    executor:
+      auth_token: "1234567890"
 
 # Agent 模块配置 (基于 Kafka 队列的异步执行器)
 agent:

@@ -69,7 +69,7 @@
     "ctime": "1723271087360",
     "endpoints": "[ ]",
     "id": "10",
-    "meta": "{ \"title\" : \"执行节点\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"worker\" }",
+    "meta": "{ \"title\" : \"执行节点\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\", \"order\" ], \"is_keepalive\" : false, \"icon\" : \"worker\" }",
     "name": "task-worker",
     "path": "/task/executor",
     "pid": "8",
@@ -77,7 +77,7 @@
     "sort": "2",
     "status": "1",
     "type": "2",
-    "utime": "1774343914357"
+    "utime": "1774925238123"
   },
   {
     "_id": "66baeaf51246cddd8f64abec",
@@ -288,22 +288,6 @@
     "utime": "1774340763898"
   },
   {
-    "_id": "66bb0638997ef9afad60c428",
-    "component": "/views/order/convert/index.vue",
-    "ctime": "1723532856127",
-    "endpoints": "[ ]",
-    "id": "33",
-    "meta": "{ \"title\" : \"工单流转\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"order-convert\" }",
-    "name": "order-convert",
-    "path": "convert",
-    "pid": "13",
-    "redirect": "",
-    "sort": "4000",
-    "status": "1",
-    "type": "2",
-    "utime": "1774340763898"
-  },
-  {
     "_id": "66bb066a997ef9afad60c429",
     "component": "/views/process/manager/index.vue",
     "ctime": "1723532906782",
@@ -333,7 +317,7 @@
     "sort": "3",
     "status": "1",
     "type": "2",
-    "utime": "1758897424032"
+    "utime": "1774925289728"
   },
   {
     "_id": "66bb06a9997ef9afad60c42b",
@@ -341,15 +325,15 @@
     "ctime": "1723532969916",
     "endpoints": "[ ]",
     "id": "36",
-    "meta": "{ \"title\" : \"任务记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"automation\" ], \"is_keepalive\" : false, \"icon\" : \"task-history\" }",
+    "meta": "{ \"title\" : \"任务记录\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"order\" ], \"is_keepalive\" : false, \"icon\" : \"task-history\" }",
     "name": "task-history",
     "path": "history",
-    "pid": "8",
+    "pid": "13",
     "redirect": "",
-    "sort": "4",
+    "sort": "2500",
     "status": "1",
     "type": "2",
-    "utime": "1774340763898"
+    "utime": "1774925118228"
   },
   {
     "_id": "66bb06f1997ef9afad60c42c",

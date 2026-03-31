@@ -37,7 +37,7 @@ grpc:
     scheduler:
       name: "scheduler"
       auth_token: "1234567890"
-    # 新增：调度中心访问执行器的客户端配置
+    # 调度中心访问执行器的客户端配置
     executor:
       auth_token: "1234567890"
 

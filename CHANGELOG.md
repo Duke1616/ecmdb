@@ -6,6 +6,91 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [v1.11.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.11.0) - 2026-03-31
+
+- [`6e1fe7c`](https://github.com/Duke1616/ecmdb/commit/6e1fe7c71113e90cabe89f633e26392e19c8896d) chore: 同步最新菜单
+- [`4c7f1f8`](https://github.com/Duke1616/ecmdb/commit/4c7f1f8170f2e0aac84a7ac68eb88e2cd5135e65) fix: 配置文件缺少 auth_token
+- [`e133b05`](https://github.com/Duke1616/ecmdb/commit/e133b0500a46ee98088bd4867d5dc6175a0e39ca) chore: 同步最新菜单
+- [`7ad9b89`](https://github.com/Duke1616/ecmdb/commit/7ad9b895127bb6bcde40a6ac8ca0a2a93d06a5a2) chore: 同步菜单
+- [`e7e3cb1`](https://github.com/Duke1616/ecmdb/commit/e7e3cb1c7f45fed5181385713e86c44cea568d55) chore: 去除调试日志
+- [`0dea63c`](https://github.com/Duke1616/ecmdb/commit/0dea63ca17eb3194f5ce21359d43d3fc477adac6) chore: 打印调试日志
+- [`b07ea57`](https://github.com/Duke1616/ecmdb/commit/b07ea5733a92fdd1cf7808d5bc1ebadf5e73a158) chore: 同步最新菜单
+- [`1b4f953`](https://github.com/Duke1616/ecmdb/commit/1b4f953a9c70ef7f8cac9839310902e589644531) chore: 同步菜单
+- [`024e9ca`](https://github.com/Duke1616/ecmdb/commit/024e9cabe7e0867138d3661085b6cda278d9caec) chore: 传递 biz_id
+- [`ecf8d23`](https://github.com/Duke1616/ecmdb/commit/ecf8d23ebbbfb096798f387e52f2021e67ff5933) chore: 创建任务，ctx 传递 biz_id
+- [`7c1faf9`](https://github.com/Duke1616/ecmdb/commit/7c1faf9f2507ec77a33b3ab9261cc20d7a7071c5) chore: web实现转签功能
+- [`a0d4ea5`](https://github.com/Duke1616/ecmdb/commit/a0d4ea52a5cfc6b42544f9ab92ce1920e0714da9) chore: 去除 tips 表单样式保存到 taskForm
+- [`bc2e75d`](https://github.com/Duke1616/ecmdb/commit/bc2e75ded74a6df354d2a0d584985182f0787c80) fix: types 兼容 rule、type 字段
+- [`96ace94`](https://github.com/Duke1616/ecmdb/commit/96ace94f6f6abe8dc1232bae0d8aae4234d98b4d) refactor: 重构 workflow 下面 convert 转换方法
+- [`41e290b`](https://github.com/Duke1616/ecmdb/commit/41e290b5377c6ec62578883903d7f1af78e8e525) fix: UserProperty 数据结构和数据库对其
+- [`b5b9879`](https://github.com/Duke1616/ecmdb/commit/b5b9879a8f26f79b6bb4c326f769c9fe50357799) fix: 重构丢失用户 input fields 数据
+- [`130cc8a`](https://github.com/Duke1616/ecmdb/commit/130cc8ab57b8b1b8c0a46b2c686affea0d76f597) chore: 独立目录设计
+- [`6d527dc`](https://github.com/Duke1616/ecmdb/commit/6d527dcc8e22b8a9b7610198b4667b2339646112) chore: 详细报错说明
+- [`c4ae516`](https://github.com/Duke1616/ecmdb/commit/c4ae5163abd8fa4d2792c9092073b4342108054c) chore: 生成 mock 文件
+- [`7915c02`](https://github.com/Duke1616/ecmdb/commit/7915c02dd78799c21137de5ae66a32c3cdc2ec9e) chore: wire 生成
+- [`61bd53a`](https://github.com/Duke1616/ecmdb/commit/61bd53a269d09e9d40068346b57fb1c05c0f08ff) refactor: 为了更好测试，调整 base 封装接口
+- [`7944389`](https://github.com/Duke1616/ecmdb/commit/7944389fc1de43e43a1af78c27acd8059c641833) chore: 线条排序
+- [`4bb96a5`](https://github.com/Duke1616/ecmdb/commit/4bb96a5569d0aad1c5f6604d821f5a128a3b9e5f) fix: 兼容老版本用户通知
+- [`01fac87`](https://github.com/Duke1616/ecmdb/commit/01fac876149a53d966cf45163e39b1a9f70cf953) chore: 消息通知排版
+- [`1c549b9`](https://github.com/Duke1616/ecmdb/commit/1c549b96ca7098409b73183a82c4b28ef540f65d) chore: 通过 isDivider 控制小标题
+- [`cb67172`](https://github.com/Duke1616/ecmdb/commit/cb6717204727bd7c2ec442d1902a92a31a52bbb8) chore: 新增 caht 消息通知模版
+- [`9348deb`](https://github.com/Duke1616/ecmdb/commit/9348debecb92e71ca228fa462f706fc3a5d2a15a) fix: start 消息通知模版使用错误
+- [`5eb5f81`](https://github.com/Duke1616/ecmdb/commit/5eb5f81ff1f36393f39ff80efaaf57d23d6e7df6) chore: chat 新增 title 自定义
+- [`5dbb59d`](https://github.com/Duke1616/ecmdb/commit/5dbb59d983e9e43c4e577a869ca982a7a4f931f7) chore: 任务重试机制
+- [`6bd1732`](https://github.com/Duke1616/ecmdb/commit/6bd17321f8622c5e64998eda6fd01ad90f05c013) chore: 同步 etask 配置文件
+- [`304013f`](https://github.com/Duke1616/ecmdb/commit/304013fcc5fa570c78801c73a31c8de11ece820a) chore: 同步最新菜单
+- [`47c7cd7`](https://github.com/Duke1616/ecmdb/commit/47c7cd71a995f01429c6cb5a692980cc1d293a10) chore: 通过 detail 查询详情，减轻 list 接口压力
+- [`2c48b97`](https://github.com/Duke1616/ecmdb/commit/2c48b9797127b438700e57a2bc256b167648cb1f) chore: 优化
+- [`076fd84`](https://github.com/Duke1616/ecmdb/commit/076fd84b2a9c13c8c642b2205099e78070281f8c) chore: chat 创建模式，可以复用群
+- [`932a563`](https://github.com/Duke1616/ecmdb/commit/932a563a6c9147a24b42d251b89d3c2a48b7e130) chore: 修正 chat 处理逻辑
+- [`166f20d`](https://github.com/Duke1616/ecmdb/commit/166f20de1fb7ec181ea30ee1262897663044714b) chore: 工作流处理群组事件
+- [`8438a9b`](https://github.com/Duke1616/ecmdb/commit/8438a9be1f34c4f312e148b96efb0aa8bf5bc953) refactor: 重构 event 模块，新增 chat group 消息模式
+- [`7852b9e`](https://github.com/Duke1616/ecmdb/commit/7852b9e77580e6952ec3fc6f74206614d4142d05) fix: 打包错误
+- [`a708c9a`](https://github.com/Duke1616/ecmdb/commit/a708c9a9b10abdc84b6388fed06536ebb70a5da3) chore: 升级消息通知模版
+- [`6e27639`](https://github.com/Duke1616/ecmdb/commit/6e27639c1da42037f6534d874c420d386b0da5c3) fix: 修复 etask agent 注册，无法实时新增 producer 监听
+- [`8f878d2`](https://github.com/Duke1616/ecmdb/commit/8f878d237a367485b2a777a9bd72fa2e38957a91) chore: 调整配置文件顺序
+- [`f595260`](https://github.com/Duke1616/ecmdb/commit/f595260fe00f92feb1f192dc37daf354a0918e74) chore: 将 Uid 写入 Context
+- [`e903c1d`](https://github.com/Duke1616/ecmdb/commit/e903c1d4f6e1109f742936f4fa55f75b4381b2fa) chore: 登录验证与权限鉴权 SDK 封装
+- [`0da0718`](https://github.com/Duke1616/ecmdb/commit/0da071839e2154d28d6deb51dd0923ce1dd2e7f8) fix: 配置文件错误
+- [`a6cdb5f`](https://github.com/Duke1616/ecmdb/commit/a6cdb5f1dafb5ebefbd115291fa717ab674f301d) chore: 新增 setLogLevel 日志等级
+- [`be249a2`](https://github.com/Duke1616/ecmdb/commit/be249a2c59ab4d0723f2434957e93f824d8561f7) chore: 同步最新菜单
+- [`78f5bec`](https://github.com/Duke1616/ecmdb/commit/78f5becc7b71f91ac7706560ee33784e0d83562a) chore: 配置文件注释完善
+- [`640327b`](https://github.com/Duke1616/ecmdb/commit/640327ba2c3a36ec5d72cc34f7a3b99d94516b80) fix: 配置文件错误
+- [`0b340df`](https://github.com/Duke1616/ecmdb/commit/0b340dfbbae1bec317457210a1f4bb495ce7483c) fix: 配置文件错误
+- [`ddd0bea`](https://github.com/Duke1616/ecmdb/commit/ddd0bea0548774d1ab30c5cc4d94ad45ee61ed60) chore: 补充 etask 启动配置
+- [`592381c`](https://github.com/Duke1616/ecmdb/commit/592381cb9b1c4ac872193148d804febf486f2804) refactor: ework-runner 替换为 etask
+- [`4b434b4`](https://github.com/Duke1616/ecmdb/commit/4b434b4ca8444753e742189232fbac60bfb1d45d) fix: 修复 want_resulst 字段缺失
+- [`c73445c`](https://github.com/Duke1616/ecmdb/commit/c73445cdc78c2d4346d5ada69328bd125c4873bf) refactor: 重构 worker 模块， 通过 etcd 作为唯一源，数据一致性
+- [`0520722`](https://github.com/Duke1616/ecmdb/commit/0520722df7d1cad5293223380c359969aaa43f17) refactor: 任务模式重构 (RunMode -> Kind) 及 Handler 路由优化
+- [`5c000f0`](https://github.com/Duke1616/ecmdb/commit/5c000f0cd49eea279eccd431a6d459ad0dc9db3e) refactor: 任务模式重构 (RunMode -> Kind) 及 Handler 路由优化
+- [`f58c572`](https://github.com/Duke1616/ecmdb/commit/f58c57277181b492e0bd769478cd9843414328ee) chore: 同步最新菜单
+- [`458a5bc`](https://github.com/Duke1616/ecmdb/commit/458a5bc5e2acf18b62ceaf48e2989f150f708b1e) fix: 修复消息推送模式，自动化任务 topic 存储错误
+- [`69bfb25`](https://github.com/Duke1616/ecmdb/commit/69bfb250ee9255397ee09624805dae9ab9503e52) chore: 修改接口返回
+- [`4393943`](https://github.com/Duke1616/ecmdb/commit/4393943c3fb37897543fca103cc1ba569faa0228) feat: 工单模版新增收藏功能
+- [`35a4a05`](https://github.com/Duke1616/ecmdb/commit/35a4a057e8187348312f965f66fbed262e7a8dd4) chore: 修改 dockerfile
+- [`14da0d1`](https://github.com/Duke1616/ecmdb/commit/14da0d137488e0f7a9c2dbb0a5180fadc42a9acd) chore: 通过 detail 获取工单信息
+- [`76203cf`](https://github.com/Duke1616/ecmdb/commit/76203cf0c4d6271ccbaf5c444a22dca31de683e5) refactor: 优化创建 task 时候直接初始化数据
+- [`00aac20`](https://github.com/Duke1616/ecmdb/commit/00aac20cc3e6e4615fb1f358457fa2b77d82dbda) chore: 优化 TriggerPosition 展示
+- [`37d10b8`](https://github.com/Duke1616/ecmdb/commit/37d10b884d072e3e02fa8f95ad20539e57866f5a) chore: 细节处理，任务自动重试
+- [`1df8ab6`](https://github.com/Duke1616/ecmdb/commit/1df8ab61dbf6c5ddf9c9b057ec6ae4ebf7dc6393) feat: 集成分布式任务平台
+- [`b53428e`](https://github.com/Duke1616/ecmdb/commit/b53428e77f126e24cff476bb5cc7cf1d1cf4e8f4) feat: runner 执行单元，新增分布式任务平台模式
+- [`dfa785f`](https://github.com/Duke1616/ecmdb/commit/dfa785f152ba1a1f667d93d3753dfc9c47d683b4) chore: consume 增加错误后，睡 1秒，防止错误风暴
+- [`a5093c7`](https://github.com/Duke1616/ecmdb/commit/a5093c78816db0fa36f176ca9f4af02cd6fbc57a) refactor: 重构 deploy 部署目录结构
+- [`df3d89d`](https://github.com/Duke1616/ecmdb/commit/df3d89da97716ba36047d5c8675545111734e165) refactor: 重构 deploy 部署目录结构
+- [`f478439`](https://github.com/Duke1616/ecmdb/commit/f478439710967c0b0205defcc0544b84305a2760) refactor: 重构 task 代码结构，增强阅读性
+- [`ee6e11d`](https://github.com/Duke1616/ecmdb/commit/ee6e11d65a8de25ac507de6b927bcd2ffa27e420) chore: crypto 升级 V2 版本
+- [`8b4f62c`](https://github.com/Duke1616/ecmdb/commit/8b4f62cd67db3ecd56ede18c369cd2ec5c08b399) chore: 自动化任务新增工单用户 form 数据填充
+- [`9f8dc0f`](https://github.com/Duke1616/ecmdb/commit/9f8dc0ff83ab6f8a2e5e348097531477343f9038) chore: 同步模版信息
+- [`aff4e43`](https://github.com/Duke1616/ecmdb/commit/aff4e434dfbabf9e165025e2341e975ff4bc1ee9) chore:  消息通知数据传递
+- [`ccdefd3`](https://github.com/Duke1616/ecmdb/commit/ccdefd30d33a44ae9f390df9a832bfac8c0a706c) feat: 新增选择性条件并行网关，支持并行子网内的条件判断，在所有分支均无法满足时自动跳过
+- [`67e3cf1`](https://github.com/Duke1616/ecmdb/commit/67e3cf18785d3690138938b9ff7cf632974dafb1) fix: 消息通知 NewLarkTextProvider 初始化错误
+- [`46f5a44`](https://github.com/Duke1616/ecmdb/commit/46f5a44e4325718ed49724180cd03a49b07500c1) chore: 自动化任务打印日志
+- [`e83df4c`](https://github.com/Duke1616/ecmdb/commit/e83df4ca924d8c521976bdb4bf17c80cac927dbf) chore: 通过 sender 作为统一消息通知
+- [`f686489`](https://github.com/Duke1616/ecmdb/commit/f686489e0de898f4d9c34024b75621634b44a934) fix: FindInstanceFlow 缺少元数据，消息通知失败
+- [`5142525`](https://github.com/Duke1616/ecmdb/commit/514252566dac891be1241be58e1292981e5aded9) fix: validate 校验不正常，修复 form_config 找到正确的流程版本
+- [`b44e0ec`](https://github.com/Duke1616/ecmdb/commit/b44e0ec2bccfb4e63ae9c226c312197eea11480b) fix: 节点自处理 SQL 不严谨，遗漏流程实例参数，会造成严重破坏
+- [`4a2ad64`](https://github.com/Duke1616/ecmdb/commit/4a2ad6453db53d732b6f68673016d1ca6c62709e) feat: 支持通知绑定与文本消息类型
+
 ## [v1.10.0](https://github.com/Duke1616/ecmdb/releases/tag/v1.10.0) - 2026-02-07
 
 - [`fc614bf`](https://github.com/Duke1616/ecmdb/commit/fc614bf608e808793daff2f32d417c010eef26ac) chore: 优化错误处理

@@ -13,7 +13,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/Bunny3th/easy-workflow/workflow/model"
 	domain "github.com/Duke1616/ecmdb/internal/workflow/internal/domain"
 	service "github.com/Duke1616/ecmdb/internal/workflow/internal/service"
 	easyflow "github.com/Duke1616/ecmdb/internal/workflow/pkg/easyflow"
@@ -312,45 +311,6 @@ func (c *MockServiceFindInstanceFlowCall) Do(f func(context.Context, int64, int,
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServiceFindInstanceFlowCall) DoAndReturn(f func(context.Context, int64, int, int) (domain.Workflow, error)) *MockServiceFindInstanceFlowCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// FindPassEdgeIds mocks base method.
-func (m *MockService) FindPassEdgeIds(ctx context.Context, wf domain.Workflow, tasks []model.Task) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindPassEdgeIds", ctx, wf, tasks)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindPassEdgeIds indicates an expected call of FindPassEdgeIds.
-func (mr *MockServiceMockRecorder) FindPassEdgeIds(ctx, wf, tasks any) *MockServiceFindPassEdgeIdsCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPassEdgeIds", reflect.TypeOf((*MockService)(nil).FindPassEdgeIds), ctx, wf, tasks)
-	return &MockServiceFindPassEdgeIdsCall{Call: call}
-}
-
-// MockServiceFindPassEdgeIdsCall wrap *gomock.Call
-type MockServiceFindPassEdgeIdsCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockServiceFindPassEdgeIdsCall) Return(arg0 []string, arg1 error) *MockServiceFindPassEdgeIdsCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockServiceFindPassEdgeIdsCall) Do(f func(context.Context, domain.Workflow, []model.Task) ([]string, error)) *MockServiceFindPassEdgeIdsCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceFindPassEdgeIdsCall) DoAndReturn(f func(context.Context, domain.Workflow, []model.Task) ([]string, error)) *MockServiceFindPassEdgeIdsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

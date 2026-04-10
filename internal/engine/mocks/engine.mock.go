@@ -819,6 +819,45 @@ func (c *MockServicePassCall) DoAndReturn(f func(context.Context, int, string) e
 	return c
 }
 
+// ProcessSave mocks base method.
+func (m *MockService) ProcessSave(ctx context.Context, process *model.Process) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProcessSave", ctx, process)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ProcessSave indicates an expected call of ProcessSave.
+func (mr *MockServiceMockRecorder) ProcessSave(ctx, process any) *MockServiceProcessSaveCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessSave", reflect.TypeOf((*MockService)(nil).ProcessSave), ctx, process)
+	return &MockServiceProcessSaveCall{Call: call}
+}
+
+// MockServiceProcessSaveCall wrap *gomock.Call
+type MockServiceProcessSaveCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceProcessSaveCall) Return(arg0 int, arg1 error) *MockServiceProcessSaveCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceProcessSaveCall) Do(f func(context.Context, *model.Process) (int, error)) *MockServiceProcessSaveCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceProcessSaveCall) DoAndReturn(f func(context.Context, *model.Process) (int, error)) *MockServiceProcessSaveCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // TaskInfo mocks base method.
 func (m *MockService) TaskInfo(ctx context.Context, taskId int) (model.Task, error) {
 	m.ctrl.T.Helper()
@@ -894,6 +933,45 @@ func (c *MockServiceTaskRecordCall) Do(f func(context.Context, int, int, int) ([
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServiceTaskRecordCall) DoAndReturn(f func(context.Context, int, int, int) ([]model.Task, int64, error)) *MockServiceTaskRecordCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Transfer mocks base method.
+func (m *MockService) Transfer(ctx context.Context, taskId int, userIds []string) ([]model.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Transfer", ctx, taskId, userIds)
+	ret0, _ := ret[0].([]model.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Transfer indicates an expected call of Transfer.
+func (mr *MockServiceMockRecorder) Transfer(ctx, taskId, userIds any) *MockServiceTransferCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockService)(nil).Transfer), ctx, taskId, userIds)
+	return &MockServiceTransferCall{Call: call}
+}
+
+// MockServiceTransferCall wrap *gomock.Call
+type MockServiceTransferCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceTransferCall) Return(arg0 []model.Task, arg1 error) *MockServiceTransferCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceTransferCall) Do(f func(context.Context, int, []string) ([]model.Task, error)) *MockServiceTransferCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceTransferCall) DoAndReturn(f func(context.Context, int, []string) ([]model.Task, error)) *MockServiceTransferCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

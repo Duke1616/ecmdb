@@ -2597,7 +2597,7 @@
     "ctime": "1759055424041",
     "endpoints": "[ { \"path\" : \"/api/datasource/save\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
     "id": "199",
-    "meta": "{ \"title\" : \"新增数据源\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "meta": "{ \"title\" : \"新增操作\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "add_datasource",
     "path": "",
     "pid": "198",
@@ -2605,7 +2605,7 @@
     "sort": "2",
     "status": "1",
     "type": "3",
-    "utime": "1759055505807"
+    "utime": "1775791112928"
   },
   {
     "_id": "68d90e761fc47ae9102ccdfa",
@@ -2613,7 +2613,7 @@
     "ctime": "1759055478141",
     "endpoints": "[ { \"path\" : \"/api/datasource/list\", \"method\" : \"POST\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
     "id": "200",
-    "meta": "{ \"title\" : \"数据源列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "meta": "{ \"title\" : \"数据列表\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
     "name": "list_datasource",
     "path": "",
     "pid": "198",
@@ -2621,7 +2621,7 @@
     "sort": "1",
     "status": "1",
     "type": "3",
-    "utime": "1759055491266"
+    "utime": "1775791119708"
   },
   {
     "_id": "68d9108e1fc47ae9102ccdfb",
@@ -4622,5 +4622,21 @@
     "status": "1",
     "type": "3",
     "utime": "1774497216175"
+  },
+  {
+    "_id": "69d86c0536d70e8539b1e098",
+    "component": "",
+    "ctime": "1775791109131",
+    "endpoints": "[ { \"path\" : \"/api/datasource/delete/:id\", \"method\" : \"DELETE\", \"resource\" : \"ALERT\", \"desc\" : \"\" } ]",
+    "id": "324",
+    "meta": "{ \"title\" : \"删除操作\", \"is_hidden\" : false, \"is_affix\" : false, \"platforms\" : [ \"alert\" ], \"is_keepalive\" : false, \"icon\" : \"\" }",
+    "name": "",
+    "path": "",
+    "pid": "198",
+    "redirect": "",
+    "sort": "1002",
+    "status": "1",
+    "type": "3",
+    "utime": "1775791305872"
   }
 ]

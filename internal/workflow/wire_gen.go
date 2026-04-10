@@ -26,8 +26,8 @@ func InitModule(db *mongox.Mongo, engineModule *engine.Module) (*Module, error) 
 	notifyBindingDAO := dao.NewNotifyBindingDAO(db)
 	notifyBindingRepository := repository.NewNotifyBindingRepository(notifyBindingDAO)
 	v := engineModule.Svc
-	processEngineConvert := easyflow.NewLogicFlowToEngineConvert()
-	serviceService := service.NewService(workflowRepository, notifyBindingRepository, v, processEngineConvert)
+	converter := easyflow.NewLogicFlowToEngineConvert()
+	serviceService := service.NewService(workflowRepository, notifyBindingRepository, v, converter)
 	handler := web.NewHandler(serviceService, v)
 	module := &Module{
 		Hdl: handler,

@@ -44,7 +44,8 @@ func (e *executeService) Dispatch(ctx context.Context, task domain.Task) error {
 	taskHash := e.sumHash(taskId, task.Code, args, vars)
 
 	// 3. 启动分布式任务派发
-	taskResult, err := e.grpcClient.CreateTask(bizid.SetAlert(ctx), &taskv1.CreateTaskRequest{
+	ctx = bizid.SetAlert(ctx)
+	taskResult, err := e.grpcClient.CreateTask(ctx, &taskv1.CreateTaskRequest{
 		Name:     fmt.Sprintf("%s_%s", task.CodebookName, taskHash),
 		Type:     taskv1.TaskType_ONE_TIME,
 		CronExpr: e.calculateCronExpr(task),

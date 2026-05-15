@@ -16,6 +16,7 @@ import (
 	"github.com/Duke1616/etask/pkg/grpc/interceptors/bizid"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
+	"google.golang.org/grpc/metadata"
 )
 
 type executeService struct {
@@ -44,7 +45,7 @@ func (e *executeService) Dispatch(ctx context.Context, task domain.Task) error {
 	taskHash := e.sumHash(taskId, task.Code, args, vars)
 
 	// 3. 启动分布式任务派发
-	ctx = bizid.SetAlert(ctx)
+	ctx = metadata.AppendToOutgoingContext(ctx, bizid.MetadataKey, strconv.FormatInt(bizid.Alert, 10))
 	taskResult, err := e.grpcClient.CreateTask(ctx, &taskv1.CreateTaskRequest{
 		Name:     fmt.Sprintf("%s_%s", task.CodebookName, taskHash),
 		Type:     taskv1.TaskType_ONE_TIME,

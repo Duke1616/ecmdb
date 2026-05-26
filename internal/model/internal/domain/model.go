@@ -21,6 +21,15 @@ type ModelGroup struct {
 	Name string
 }
 
+// EnsureDeletable 校验模型是否允许删除
+// NOTE: 内置模型禁止删除，将此业务规则内聚到领域对象
+func (m *Model) EnsureDeletable() error {
+	if m.Builtin {
+		return fmt.Errorf("内置模型不允许删除")
+	}
+	return nil
+}
+
 func (m *Model) SheetName() string {
 	name := fmt.Sprintf("%s(%s)", m.Name, m.UID)
 	if len(name) > 31 {

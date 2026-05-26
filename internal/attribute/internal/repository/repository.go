@@ -6,7 +6,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository/dao"
 	"github.com/ecodeclub/ekit/slice"
-	"github.com/gin-gonic/gin"
 )
 
 type AttributeRepository interface {
@@ -32,10 +31,10 @@ type AttributeRepository interface {
 	DeleteAttribute(ctx context.Context, id int64) (int64, error)
 
 	// CustomAttributeFieldColumns 自定义展示字段
-	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+	CustomAttributeFieldColumns(ctx context.Context, modelUid string, customField []string) (int64, error)
 
 	// CustomAttributeFieldColumnsReverse 变更顺序
-	CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+	CustomAttributeFieldColumnsReverse(ctx context.Context, modelUid string, customField []string) (int64, error)
 
 	// ListAttributePipeline 根据模型字段分组，进行聚合返回
 	ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error)
@@ -113,11 +112,11 @@ func (repo *attributeRepository) Total(ctx context.Context, modelUID string) (in
 	return repo.dao.Count(ctx, modelUID)
 }
 
-func (repo *attributeRepository) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+func (repo *attributeRepository) CustomAttributeFieldColumns(ctx context.Context, modelUid string, customField []string) (int64, error) {
 	return repo.dao.UpdateFieldIndex(ctx, modelUid, customField)
 }
 
-func (repo *attributeRepository) CustomAttributeFieldColumnsReverse(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+func (repo *attributeRepository) CustomAttributeFieldColumnsReverse(ctx context.Context, modelUid string, customField []string) (int64, error) {
 	return repo.dao.UpdateFieldIndexReverse(ctx, modelUid, customField)
 }
 

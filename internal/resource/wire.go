@@ -23,7 +23,7 @@ var ProviderSet = wire.NewSet(
 	web.NewHandler,
 	repository.NewResourceRepository)
 
-func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationModule *relation.Module,
+func InitModule(db *mongox.DB, attributeModule *attribute.Module, relationModule *relation.Module,
 	q mq.MQ, crypto *cryptox.CryptoRegistry) (*Module, error) {
 	wire.Build(
 		ProviderSet,
@@ -32,6 +32,7 @@ func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationMod
 		NewService,
 		InitCrypto,
 		initConsumer,
+		initDeleteConsumer,
 		wire.FieldsOf(new(*attribute.Module), "Svc"),
 		wire.FieldsOf(new(*relation.Module), "RRSvc"),
 		wire.Struct(new(Module), "*"),
@@ -41,7 +42,7 @@ func InitModule(db *mongox.Mongo, attributeModule *attribute.Module, relationMod
 
 var daoOnce = sync.Once{}
 
-func InitCollectionOnce(db *mongox.Mongo) {
+func InitCollectionOnce(db *mongox.DB) {
 	daoOnce.Do(func() {
 		err := dao.InitIndexes(db)
 		if err != nil {
@@ -50,7 +51,7 @@ func InitCollectionOnce(db *mongox.Mongo) {
 	})
 }
 
-func InitResourceDAO(db *mongox.Mongo) dao.ResourceDAO {
+func InitResourceDAO(db *mongox.DB) dao.ResourceDAO {
 	InitCollectionOnce(db)
 	return dao.NewResourceDAO(db)
 }
@@ -70,6 +71,16 @@ func InitCrypto(reg *cryptox.CryptoRegistry) cryptox.Crypto {
 
 func initConsumer(q mq.MQ, svc service.EncryptedSvc, cryptox cryptox.Crypto) *event.FieldSecureAttrChangeConsumer {
 	consumer, err := event.NewFieldSecureAttrChangeConsumer(q, svc, 20, cryptox)
+	if err != nil {
+		panic(err)
+	}
+
+	consumer.Start(context.Background())
+	return consumer
+}
+
+func initDeleteConsumer(q mq.MQ, svc Service) *event.FieldDeleteConsumer {
+	consumer, err := event.NewFieldDeleteConsumer(q, svc)
 	if err != nil {
 		panic(err)
 	}

@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/Duke1616/ecmdb/pkg/mongox/plugin"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitMongoDB() *mongox.Mongo {
+func InitMongoDB() *mongox.DB {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -26,5 +27,9 @@ func InitMongoDB() *mongox.Mongo {
 		log.Panicf("ping mongodb server error, %s", err)
 	}
 
-	return mongox.NewMongo(client, "cmdb-e2e")
+	dbV2 := mongox.NewDB(client, "cmdb-e2e")
+	dbV2.Use(plugin.NewAutoIDPlugin(dbV2.Database()))
+	dbV2.Use(plugin.NewTenantPlugin())
+
+	return dbV2
 }

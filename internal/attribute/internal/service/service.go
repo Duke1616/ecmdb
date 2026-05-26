@@ -11,7 +11,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/attribute/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/sorter"
 	"github.com/ecodeclub/ekit/slice"
-	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -47,10 +46,10 @@ type Service interface {
 	UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error)
 
 	// CustomAttributeFieldColumns 自定义展示字段、以及排序
-	CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error)
+	CustomAttributeFieldColumns(ctx context.Context, modelUid string, customField []string) (int64, error)
 
 	// ListAttributePipeline 根据组聚合获取每个组下的所有字段
-	ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error)
+	ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error)
 
 	// CreateDefaultAttribute 创建新模型，创建默认字段信息
 	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
@@ -81,12 +80,12 @@ type Service interface {
 }
 
 type service struct {
-	repo      repository.AttributeRepository
-	producer  event.FieldSecureAttrChangeEventProducer
-	groupRepo repository.AttributeGroupRepository
-	// NOTE: 使用泛型排序器替代重复的排序逻辑
-	attrSorter  *sorter.Sorter[domain.Attribute, domain.AttributeSortItem]
-	groupSorter *sorter.Sorter[domain.AttributeGroup, domain.AttributeGroupSortItem]
+	repo           repository.AttributeRepository
+	producer       event.FieldSecureAttrChangeEventProducer
+	deleteProducer event.IFieldDeleteEventProducer
+	groupRepo      repository.AttributeGroupRepository
+	attrSorter     *sorter.Sorter[domain.Attribute, domain.AttributeSortItem]
+	groupSorter    *sorter.Sorter[domain.AttributeGroup, domain.AttributeGroupSortItem]
 }
 
 func (s *service) BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
@@ -122,11 +121,12 @@ func (s *service) UpdateAttribute(ctx context.Context, attribute domain.Attribut
 }
 
 func NewService(repo repository.AttributeRepository, groupRepo repository.AttributeGroupRepository,
-	producer event.FieldSecureAttrChangeEventProducer) Service {
+	producer event.FieldSecureAttrChangeEventProducer, deleteProducer event.IFieldDeleteEventProducer) Service {
 	return &service{
-		repo:      repo,
-		groupRepo: groupRepo,
-		producer:  producer,
+		repo:           repo,
+		groupRepo:      groupRepo,
+		producer:       producer,
+		deleteProducer: deleteProducer,
 		// NOTE: 初始化属性排序器,传入转换函数
 		attrSorter: sorter.NewSorter[domain.Attribute, domain.AttributeSortItem](
 			func(elem domain.Attribute, idx int) domain.AttributeSortItem {
@@ -202,7 +202,7 @@ func (s *service) ListAttributes(ctx context.Context, modelUid string) ([]domain
 	return attrs, total, nil
 }
 
-func (s *service) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+func (s *service) CustomAttributeFieldColumns(ctx context.Context, modelUid string, customField []string) (int64, error) {
 	var (
 		total int64
 		eg    errgroup.Group
@@ -231,7 +231,24 @@ func (s *service) DeleteAttribute(ctx context.Context, id int64) (int64, error) 
 	if attr.Builtin {
 		return 0, fmt.Errorf("内置属性不允许删除")
 	}
-	return s.repo.DeleteAttribute(ctx, id)
+	deletedId, err := s.repo.DeleteAttribute(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+
+	// 异步发布删除事件以清理资源中的垃圾平铺字段
+	// NOTE: 仅在删除成功时发布事件，触发 Cascade Cleaner
+	go func() {
+		// 使用 Background 避免 ctx 被请求生命周期取消
+		evtCtx := context.Background()
+		_ = s.deleteProducer.Produce(evtCtx, event.FieldDelete{
+			ModelUid:    attr.ModelUid,
+			FieldUid:    attr.FieldUid,
+			TriggerTime: time.Now().UnixMilli(),
+		})
+	}()
+
+	return deletedId, nil
 }
 
 func (s *service) CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error) {
@@ -267,7 +284,7 @@ func (s *service) CreateAttributeGroup(ctx context.Context, req domain.Attribute
 	return s.groupRepo.CreateAttributeGroup(ctx, req)
 }
 
-func (s *service) ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error) {
+func (s *service) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {
 	return s.repo.ListAttributePipeline(ctx, modelUid)
 }
 

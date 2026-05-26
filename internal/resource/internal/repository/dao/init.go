@@ -9,8 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitIndexes(db *mongox.Mongo) error {
-	col := db.Collection(ResourceCollection)
+func InitIndexes(db *mongox.DB) error {
+	col := db.Database().Collection(ResourceCollection)
 
 	indexes := []mongo.IndexModel{
 		{

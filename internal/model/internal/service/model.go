@@ -13,6 +13,9 @@ type Service interface {
 	// Create 创建模型
 	Create(ctx context.Context, req domain.Model) (int64, error)
 
+	// CreateModelWithDefaults 创建模型并初始化默认属性（原子化编排）
+	CreateModelWithDefaults(ctx context.Context, req domain.Model) (int64, error)
+
 	// List 获取模型列表、带有分页
 	List(ctx context.Context, offset, limit int64) ([]domain.Model, int64, error)
 
@@ -38,8 +41,22 @@ type Service interface {
 	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
 }
 
+// IDefaultAttributeCreator 创建模型时初始化默认属性的能力接口
+// NOTE: 接口反转设计——model 模块仅依赖自定义的窄接口，由 attribute 模块的 Service 提供实现
+type IDefaultAttributeCreator interface {
+	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
+}
+
+// IDeleteModelDependencyChecker 多维度依赖探测接口，各子模块注册以在删除模型前实施级联阻断校验
+type IDeleteModelDependencyChecker interface {
+	// CheckBeforeDelete 深度校验模型是否可删除，若已被使用则返回 error
+	CheckBeforeDelete(ctx context.Context, modelUid string) error
+}
+
 type service struct {
-	repo repository.ModelRepository
+	repo        repository.ModelRepository
+	checkers    []IDeleteModelDependencyChecker
+	attrCreator IDefaultAttributeCreator
 }
 
 func (s *service) GetByUid(ctx context.Context, uid string) (domain.Model, error) {
@@ -50,9 +67,11 @@ func (s *service) GetByUids(ctx context.Context, uids []string) ([]domain.Model,
 	return s.repo.GetByUids(ctx, uids)
 }
 
-func NewModelService(repo repository.ModelRepository) Service {
+func NewModelService(repo repository.ModelRepository, checkers []IDeleteModelDependencyChecker, attrCreator IDefaultAttributeCreator) Service {
 	return &service{
-		repo: repo,
+		repo:        repo,
+		checkers:    checkers,
+		attrCreator: attrCreator,
 	}
 }
 
@@ -62,6 +81,25 @@ func (s *service) ListAll(ctx context.Context) ([]domain.Model, error) {
 
 func (s *service) Create(ctx context.Context, req domain.Model) (int64, error) {
 	return s.repo.Create(ctx, req)
+}
+
+// CreateModelWithDefaults 创建模型并初始化默认属性
+// NOTE: 创建默认属性失败时补偿回滚模型，确保不会产生「无属性的孤儿模型」
+func (s *service) CreateModelWithDefaults(ctx context.Context, req domain.Model) (int64, error) {
+	id, err := s.repo.Create(ctx, req)
+	if err != nil {
+		return 0, err
+	}
+
+	if s.attrCreator != nil {
+		if _, err = s.attrCreator.CreateDefaultAttribute(ctx, req.UID); err != nil {
+			// 补偿：创建默认属性失败时回滚模型
+			_, _ = s.repo.DeleteByUid(ctx, req.UID)
+			return 0, fmt.Errorf("创建默认属性失败，模型已回滚: %w", err)
+		}
+	}
+
+	return id, nil
 }
 
 func (s *service) FindModelById(ctx context.Context, id int64) (domain.Model, error) {
@@ -99,9 +137,18 @@ func (s *service) DeleteById(ctx context.Context, id int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if m.Builtin {
-		return 0, fmt.Errorf("内置模型不允许删除")
+	// 委托领域对象校验是否允许删除
+	if err = m.EnsureDeletable(); err != nil {
+		return 0, err
 	}
+
+	// 级联删除安全守卫：遍历所有模块探测器进行安全校验
+	for _, checker := range s.checkers {
+		if err = checker.CheckBeforeDelete(ctx, m.UID); err != nil {
+			return 0, err
+		}
+	}
+
 	return s.repo.DeleteById(ctx, id)
 }
 
@@ -110,8 +157,19 @@ func (s *service) DeleteByModelUid(ctx context.Context, modelUid string) (int64,
 	if err != nil {
 		return 0, err
 	}
-	if len(models) > 0 && models[0].Builtin {
-		return 0, fmt.Errorf("内置模型不允许删除")
+	// 委托领域对象校验是否允许删除
+	if len(models) > 0 {
+		if err = models[0].EnsureDeletable(); err != nil {
+			return 0, err
+		}
 	}
+
+	// 级联删除安全守卫：遍历所有模块探测器进行安全校验
+	for _, checker := range s.checkers {
+		if err = checker.CheckBeforeDelete(ctx, modelUid); err != nil {
+			return 0, err
+		}
+	}
+
 	return s.repo.DeleteByUid(ctx, modelUid)
 }

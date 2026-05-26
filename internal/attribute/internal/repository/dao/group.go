@@ -7,6 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -44,24 +45,24 @@ type AttributeGroupDAO interface {
 }
 
 type attributeGroupDAO struct {
-	db *mongox.Mongo
+	db   *mongox.DB
+	coll *mongox.Collection[AttributeGroup]
 }
 
-func NewAttributeGroupDAO(db *mongox.Mongo) AttributeGroupDAO {
+func NewAttributeGroupDAO(db *mongox.DB) AttributeGroupDAO {
 	return &attributeGroupDAO{
-		db: db,
+		db:   db,
+		coll: mongox.NewCollection[AttributeGroup](db, AttributeGroupCollection),
 	}
 }
 
 func (dao *attributeGroupDAO) GetMaxSortKeyByModuleUid(ctx context.Context, modelUid string) (int64, error) {
-	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"model_uid": modelUid}
 	opts := &options.FindOneOptions{
 		Sort: bson.D{{Key: "sort_key", Value: -1}}, // 按 sort_key 降序取第一个
 	}
 
-	var result Attribute
-	err := col.FindOne(ctx, filter, opts).Decode(&result)
+	result, err := dao.coll.FindOne(ctx, filter, opts)
 	if err != nil {
 		if mongox.IsNotFoundError(err) {
 			return 0, nil // 分组为空时返回 0
@@ -76,28 +77,24 @@ func (dao *attributeGroupDAO) BatchCreateAttributeGroup(ctx context.Context, ags
 		return nil, nil
 	}
 
-	col := dao.db.Collection(AttributeGroupCollection)
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID（一次数据库调用）
+	// 批量获取起始 ID
 	startID, err := dao.db.GetBatchIdGenerator(AttributeGroupCollection, len(ags))
 	if err != nil {
 		return nil, fmt.Errorf("获取批量 ID 错误: %w", err)
 	}
 
-	// 为每个属性设置 ID 和时间戳
 	result := make([]AttributeGroup, len(ags))
-	docs := make([]interface{}, len(ags))
+	docs := make([]*AttributeGroup, len(ags))
 	for i := range ags {
-		// 创建新的对象，避免修改原参数
 		result[i] = ags[i]
 		result[i].Id = startID + int64(i)
 		result[i].Ctime, result[i].Utime = now, now
-		docs[i] = result[i]
+		docs[i] = &result[i]
 	}
 
-	// 执行批量插入
-	_, err = col.InsertMany(ctx, docs)
+	_, err = dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return nil, fmt.Errorf("批量插入属性组: %w", errs.ErrUniqueDuplicate)
@@ -112,9 +109,8 @@ func (dao *attributeGroupDAO) CreateAttributeGroup(ctx context.Context, req Attr
 	now := time.Now()
 	req.Ctime, req.Utime = now.UnixMilli(), now.UnixMilli()
 
-	// 直接插入数据，并自增ID
-	_, err := dao.db.InsertOneWithAutoID(ctx, AttributeGroupCollection, &req)
-
+	// 直接插入数据，借助 AutoIDPlugin 插件自动分配自增 ID
+	_, err := dao.coll.InsertOne(ctx, &req)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return 0, fmt.Errorf("模型插入: %w", errs.ErrUniqueDuplicate)
@@ -126,48 +122,24 @@ func (dao *attributeGroupDAO) CreateAttributeGroup(ctx context.Context, req Attr
 }
 
 func (dao *attributeGroupDAO) ListAttributeGroup(ctx context.Context, modelUid string) ([]AttributeGroup, error) {
-	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"model_uid": modelUid}
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "sort_key", Value: 1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []AttributeGroup
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *attributeGroupDAO) ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]AttributeGroup, error) {
-	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"id": bson.M{"$in": ids}}
 
-	cursor, err := col.Find(ctx, filter)
-	var result []AttributeGroup
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter)
 }
 
 func (dao *attributeGroupDAO) DeleteAttributeGroup(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"id": id}
 
-	res, err := col.DeleteOne(ctx, filter)
+	res, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除属性组错误: %w", err)
 	}
@@ -176,7 +148,6 @@ func (dao *attributeGroupDAO) DeleteAttributeGroup(ctx context.Context, id int64
 }
 
 func (dao *attributeGroupDAO) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
-	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{
 		"$set": bson.M{
@@ -185,7 +156,7 @@ func (dao *attributeGroupDAO) RenameAttributeGroup(ctx context.Context, id int64
 		},
 	}
 
-	res, err := col.UpdateOne(ctx, filter, update)
+	res, err := dao.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return 0, fmt.Errorf("重命名属性组错误: %w", err)
 	}
@@ -194,7 +165,6 @@ func (dao *attributeGroupDAO) RenameAttributeGroup(ctx context.Context, id int64
 }
 
 func (dao *attributeGroupDAO) UpdateSort(ctx context.Context, id int64, sortKey int64) error {
-	col := dao.db.Collection(AttributeGroupCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{
 		"$set": bson.M{
@@ -203,7 +173,7 @@ func (dao *attributeGroupDAO) UpdateSort(ctx context.Context, id int64, sortKey 
 		},
 	}
 
-	_, err := col.UpdateOne(ctx, filter, update)
+	_, err := dao.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("更新排序错误: %w", err)
 	}
@@ -215,19 +185,17 @@ func (dao *attributeGroupDAO) BatchUpdateSort(ctx context.Context, items []Attri
 		return nil
 	}
 
-	col := dao.db.Collection(AttributeGroupCollection)
-	var models []mongo.WriteModel
-	for _, item := range items {
-		update := mongo.NewUpdateOneModel().
+	// NOTE: 使用 lo.Map 代替手动 slice 组装，精简 BulkWrite 的 WriteModel 构造逻辑
+	models := lo.Map(items, func(item AttributeGroupSortItem, _ int) mongo.WriteModel {
+		return mongo.NewUpdateOneModel().
 			SetFilter(bson.M{"id": item.ID}).
 			SetUpdate(bson.M{"$set": bson.M{
 				"sort_key": item.SortKey,
 				"utime":    time.Now().UnixMilli(),
 			}})
-		models = append(models, update)
-	}
+	})
 
-	_, err := col.BulkWrite(ctx, models)
+	_, err := dao.coll.Native().BulkWrite(ctx, models)
 	if err != nil {
 		return fmt.Errorf("批量更新排序错误: %w", err)
 	}

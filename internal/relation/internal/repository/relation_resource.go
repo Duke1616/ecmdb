@@ -111,6 +111,9 @@ func (r *resourceRepository) toEntity(req domain.ResourceRelation) dao.ResourceR
 		RelationName:     req.RelationName,
 		SourceResourceID: req.SourceResourceID,
 		TargetResourceID: req.TargetResourceID,
+		SourceModelUID:   req.SourceModelUID,
+		TargetModelUID:   req.TargetModelUID,
+		RelationTypeUID:  req.RelationTypeUID,
 	}
 }
 

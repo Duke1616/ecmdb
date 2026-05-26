@@ -7,8 +7,8 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -51,6 +51,9 @@ type ResourceDAO interface {
 	// FindSecureData 查找指定资产的加密字段数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 
+	// UnsetCustomField 抹除指定模型下所有资产的自定义字段（平铺键）
+	UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error)
+
 	// UpdateAttribute 更新资产属性
 	UpdateAttribute(ctx context.Context, resource Resource) (int64, error)
 
@@ -76,18 +79,19 @@ type ResourceDAO interface {
 }
 
 type resourceDAO struct {
-	db *mongox.Mongo
+	db   *mongox.DB
+	coll *mongox.Collection[Resource]
 }
 
-func NewResourceDAO(db *mongox.Mongo) ResourceDAO {
+func NewResourceDAO(db *mongox.DB) ResourceDAO {
 	return &resourceDAO{
-		db: db,
+		db:   db,
+		coll: mongox.NewCollection[Resource](db, ResourceCollection),
 	}
 }
 
 func (dao *resourceDAO) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
 	offset, limit int64) ([]Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
 	filter["utime"] = bson.M{"$lte": utime}
 	projection := buildProjection(fields)
@@ -98,19 +102,7 @@ func (dao *resourceDAO) ListBeforeUtime(ctx context.Context, utime int64, fields
 		Sort:       bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误: %w", err)
-	}
-
-	var result []Resource
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *resourceDAO) BatchUpdateResources(ctx context.Context, resources []Resource) (int64, error) {
@@ -118,48 +110,23 @@ func (dao *resourceDAO) BatchUpdateResources(ctx context.Context, resources []Re
 		return 0, nil
 	}
 
-	col := dao.db.Collection(ResourceCollection)
-	var totalModified int64
-
-	// 为批量操作创建切片
-	models := make([]mongo.WriteModel, 0, len(resources))
-
 	utime := time.Now().UnixMilli()
-	for _, resource := range resources {
-		updateDoc := bson.M{
-			"utime": utime,
-		}
-
-		// 将资源数据合并到更新文档中
-		for key, value := range resource.Data {
-			updateDoc[key] = value
-		}
-
-		// 创建更新模型
-		filter := bson.M{"id": resource.ID}
-		update := bson.M{"$set": updateDoc}
-
-		model := mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update).
+	models := lo.Map(resources, func(r Resource, _ int) mongo.WriteModel {
+		return mongo.NewUpdateOneModel().
+			SetFilter(bson.M{"id": r.ID}).
+			SetUpdate(bson.M{"$set": dao.buildUpdateDoc(r.Data, utime)}).
 			SetUpsert(false)
+	})
 
-		models = append(models, model)
-	}
-
-	// 执行批量操作
-	result, err := col.BulkWrite(ctx, models)
+	result, err := dao.coll.Native().BulkWrite(ctx, models)
 	if err != nil {
 		return 0, fmt.Errorf("批量更新文档操作: %w", err)
 	}
 
-	totalModified = result.ModifiedCount
-	return totalModified, nil
+	return result.ModifiedCount, nil
 }
 
 func (dao *resourceDAO) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
-
 	updateDoc := bson.M{
 		"$set": bson.M{
 			field:   data,
@@ -168,7 +135,7 @@ func (dao *resourceDAO) SetCustomField(ctx context.Context, id int64, field stri
 	}
 
 	filter := bson.M{"id": id}
-	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	count, err := dao.coll.UpdateOne(ctx, filter, updateDoc)
 	if err != nil {
 		return 0, fmt.Errorf("修改文档操作: %w", err)
 	}
@@ -177,23 +144,12 @@ func (dao *resourceDAO) SetCustomField(ctx context.Context, id int64, field stri
 }
 
 func (dao *resourceDAO) UpdateAttribute(ctx context.Context, resource Resource) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
-
-	updateDoc := bson.M{
-		"utime": time.Now().UnixMilli(),
-	}
-
-	for key, value := range resource.Data {
-		updateDoc[key] = value
-	}
-
-	// 构建最终的更新文档
 	updateCommand := bson.M{
-		"$set": updateDoc,
+		"$set": dao.buildUpdateDoc(resource.Data, time.Now().UnixMilli()),
 	}
 
 	filter := bson.M{"id": resource.ID}
-	count, err := col.UpdateOne(ctx, filter, updateCommand)
+	count, err := dao.coll.UpdateOne(ctx, filter, updateCommand)
 	if err != nil {
 		return 0, fmt.Errorf("修改文档操作: %w", err)
 	}
@@ -202,7 +158,6 @@ func (dao *resourceDAO) UpdateAttribute(ctx context.Context, resource Resource) 
 }
 
 func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
 	projection := make(map[string]int, 1)
 	projection[fieldUid] = 1
@@ -211,13 +166,11 @@ func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid s
 	}
 
 	var result = make(map[string]string)
-
-	if err := col.FindOne(ctx, filter, opts).Decode(&result); err != nil {
+	if err := dao.coll.Native().FindOne(ctx, filter, opts).Decode(&result); err != nil {
 		return "", fmt.Errorf("解码错误: %w", err)
 	}
 
 	fieldValue, ok := result[fieldUid]
-
 	if !ok {
 		return "无", nil
 	}
@@ -228,10 +181,9 @@ func (dao *resourceDAO) FindSecureData(ctx context.Context, id int64, fieldUid s
 func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, error) {
 	now := time.Now()
 	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
-	r.ID = dao.db.GetIdGenerator(ResourceCollection)
-	col := dao.db.Collection(ResourceCollection)
 
-	_, err := col.InsertOne(ctx, r)
+	// 依靠 mongox 的 AutoIDPlugin 插件自动分配并注入 ID，不需要再手动管理 id_generator
+	_, err := dao.coll.InsertOne(ctx, &r)
 	if err != nil {
 		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
@@ -240,22 +192,20 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, 
 }
 
 func (dao *resourceDAO) FindResourceById(ctx context.Context, fields []string, id int64) (Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
 	projection := buildProjection(fields)
 	opts := &options.FindOneOptions{
 		Projection: projection,
 	}
 
-	var result Resource
-	if err := col.FindOne(ctx, filter, opts).Decode(&result); err != nil {
+	m, err := dao.coll.FindOne(ctx, filter, opts)
+	if err != nil {
 		return Resource{}, fmt.Errorf("解码错误: %w", err)
 	}
-	return result, nil
+	return *m, nil
 }
 
 func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
 	projection := buildProjection(fields)
 	opts := &options.FindOptions{
@@ -265,26 +215,12 @@ func (dao *resourceDAO) ListResource(ctx context.Context, fields []string, model
 		Sort:       bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误: %w", err)
-	}
-
-	var result []Resource
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"model_uid": modelUid}
-
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -293,12 +229,10 @@ func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUid string) (i
 }
 
 func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": bson.M{"$in": ids}}
-	projection := make(map[string]int, len(fields))
-	for _, v := range fields {
-		projection[v] = 1
-	}
+	projection := lo.Associate(fields, func(f string) (string, int) {
+		return f, 1
+	})
 	projection["_id"] = 0
 	projection["id"] = 1
 	projection["name"] = 1
@@ -307,26 +241,12 @@ func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string,
 		Projection: projection,
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误: %w", err)
-	}
-
-	var result []Resource
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"id": id}
-
-	result, err := col.DeleteOne(ctx, filter)
+	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
 	}
@@ -335,7 +255,6 @@ func (dao *resourceDAO) DeleteResource(ctx context.Context, id int64) (int64, er
 }
 
 func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{}
 	if len(modelUids) > 0 {
 		filter["model_uid"] = bson.D{{Key: "$in", Value: modelUids}}
@@ -349,20 +268,17 @@ func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string
 		}}},
 	}
 
-	// 执行聚合查询
-	cursor, err := col.Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
 	defer cursor.Close(ctx)
 
-	// 定义结果结构体
 	var results []struct {
 		ModelUID string `bson:"_id"`
 		Total    int    `bson:"total"`
 	}
 
-	// 将游标中的数据解码到 results 变量
 	if err = cursor.All(ctx, &results); err != nil {
 		return nil, fmt.Errorf("解码错误: %w", err)
 	}
@@ -370,18 +286,18 @@ func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string
 		return nil, fmt.Errorf("游标遍历错误: %w", err)
 	}
 
-	// 将结果转换为 map[model_uid]total_count
-	modelCountMap := make(map[string]int)
-	for _, result := range results {
-		modelCountMap[result.ModelUID] = result.Total
-	}
+	// NOTE: 使用 lo.Associate 将结构体切片直接映射并组装为计数 map
+	modelCountMap := lo.Associate(results, func(r struct {
+		ModelUID string `bson:"_id"`
+		Total    int    `bson:"total"`
+	}) (string, int) {
+		return r.ModelUID, r.Total
+	})
 
 	return modelCountMap, nil
-
 }
 
 func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResource, error) {
-	col := dao.db.Collection(ResourceCollection)
 	filter := bson.M{"$text": bson.M{"$search": text}}
 	groupStage := bson.D{
 		{Key: "$group", Value: bson.D{
@@ -397,7 +313,7 @@ func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResour
 		{{Key: "$sort", Value: bson.D{{Key: "total", Value: -1}}}},
 	}
 
-	cursor, err := col.Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -416,70 +332,154 @@ func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResour
 
 func (dao *resourceDAO) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string,
 	offset, limit int64, ids []int64, filter domain.Condition) ([]Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
-	filters := bson.M{"model_uid": modelUid}
-	if len(ids) > 0 {
-		filters["id"] = bson.M{
-			"$nin": ids,
-		}
-	}
-
-	switch filter.Condition {
-	case "not_equal":
-		filters[filter.Name] = bson.M{"$ne": filter.Input}
-	case "equal":
-		filters[filter.Name] = filter.Input
-	case "contains":
-		filters[filter.Name] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
-	}
-
+	filters := dao.buildExcludeAndFilterBson(modelUid, ids, filter)
 	projection := buildProjection(fields)
-
 	opts := &options.FindOptions{
 		Projection: projection,
 		Limit:      &limit,
 		Skip:       &offset,
 	}
 
-	cursor, err := col.Find(ctx, filters, opts)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误: %w", err)
-	}
-
-	var result []Resource
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filters, opts)
 }
 
 func (dao *resourceDAO) TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string,
 	ids []int64, filter domain.Condition) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
-	filters := bson.M{"model_uid": modelUid}
-	if len(ids) > 0 {
-		filters["id"] = bson.M{
-			"$nin": ids,
-		}
-	}
-
-	switch filter.Condition {
-	case "not_equal":
-		filters[filter.Name] = bson.M{"$ne": filter.Input}
-	case "equal":
-		filters[filter.Name] = filter.Input
-	case "contains":
-		filters[filter.Name] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
-	}
-
-	count, err := col.CountDocuments(ctx, filters)
+	filters := dao.buildExcludeAndFilterBson(modelUid, ids, filter)
+	count, err := dao.coll.CountDocuments(ctx, filters)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
 
+	return count, nil
+}
+
+// BatchCreateOrUpdate 批量创建或更新资产
+func (dao *resourceDAO) BatchCreateOrUpdate(ctx context.Context, resources []Resource) error {
+	if len(resources) == 0 {
+		return nil
+	}
+
+	now := time.Now().UnixMilli()
+
+	startID, err := dao.db.GetBatchIdGenerator(ResourceCollection, len(resources))
+	if err != nil {
+		return fmt.Errorf("获取批量 ID 失败: %w", err)
+	}
+
+	// NOTE: 使用 lo.Map 高效装配批量写入模型，消除手写循环与切片长度预设
+	models := lo.Map(resources, func(r Resource, i int) mongo.WriteModel {
+		filter := bson.M{
+			"model_uid": r.ModelUID,
+			"data.name": r.Data["name"],
+		}
+
+		update := bson.M{
+			"$set": dao.buildUpdateDoc(r.Data, now),
+			"$setOnInsert": bson.M{
+				"id":    startID + int64(i),
+				"ctime": now,
+			},
+		}
+
+		return mongo.NewUpdateOneModel().
+			SetFilter(filter).
+			SetUpdate(update).
+			SetUpsert(true)
+	})
+
+	_, err = dao.coll.Native().BulkWrite(ctx, models)
+	if err != nil {
+		return fmt.Errorf("批量创建或更新操作失败: %w", err)
+	}
+
+	return nil
+}
+
+func (dao *resourceDAO) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]Resource, error) {
+	baseFilter := bson.M{"model_uid": modelUid}
+	if len(ids) > 0 {
+		baseFilter["id"] = bson.M{"$in": ids}
+	}
+
+	if len(filterGroups) == 0 {
+		projection := buildProjection(fields)
+		opts := &options.FindOptions{
+			Projection: projection,
+			Limit:      &limit,
+			Skip:       &offset,
+			Sort:       bson.D{{Key: "ctime", Value: -1}},
+		}
+		return dao.coll.Find(ctx, baseFilter, opts)
+	}
+
+	orConditions := lo.FilterMap(filterGroups, func(group domain.FilterGroup, _ int) (bson.M, bool) {
+		if len(group.Filters) == 0 {
+			return nil, false
+		}
+
+		andConditions := lo.FilterMap(group.Filters, func(f domain.FilterCondition, _ int) (bson.M, bool) {
+			cond := buildBsonCondition(f)
+			return cond, cond != nil
+		})
+
+		if len(andConditions) == 0 {
+			return nil, false
+		}
+		if len(andConditions) == 1 {
+			return andConditions[0], true
+		}
+		return bson.M{"$and": andConditions}, true
+	})
+
+	finalFilter := dao.combineFilters(baseFilter, orConditions)
+
+	projection := buildProjection(fields)
+	opts := &options.FindOptions{
+		Projection: projection,
+		Limit:      &limit,
+		Skip:       &offset,
+		Sort:       bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	return dao.coll.Find(ctx, finalFilter, opts)
+}
+
+func (dao *resourceDAO) TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error) {
+	baseFilter := bson.M{"model_uid": modelUid}
+	if len(ids) > 0 {
+		baseFilter["id"] = bson.M{"$in": ids}
+	}
+
+	if len(filterGroups) == 0 {
+		return dao.coll.CountDocuments(ctx, baseFilter)
+	}
+
+	orConditions := lo.FilterMap(filterGroups, func(group domain.FilterGroup, _ int) (bson.M, bool) {
+		if len(group.Filters) == 0 {
+			return nil, false
+		}
+
+		andConditions := lo.FilterMap(group.Filters, func(f domain.FilterCondition, _ int) (bson.M, bool) {
+			cond := buildBsonCondition(f)
+			return cond, cond != nil
+		})
+
+		if len(andConditions) == 0 {
+			return nil, false
+		}
+		if len(andConditions) == 1 {
+			return andConditions[0], true
+		}
+		return bson.M{"$and": andConditions}, true
+	})
+
+	finalFilter := dao.combineFilters(baseFilter, orConditions)
+
+	count, err := dao.coll.CountDocuments(ctx, finalFilter)
+	if err != nil {
+		return 0, fmt.Errorf("文档计数错误: %w", err)
+	}
 	return count, nil
 }
 
@@ -491,6 +491,26 @@ type Resource struct {
 	Utime    int64         `bson:"utime"`
 }
 
+func (r *Resource) SetID(id int64) {
+	r.ID = id
+}
+
+func (r *Resource) GetID() int64 {
+	return r.ID
+}
+
+func (dao *resourceDAO) UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error) {
+	filter := bson.M{"model_uid": modelUid}
+	update := bson.M{"$unset": bson.M{fieldUid: ""}}
+
+	result, err := dao.coll.Native().UpdateMany(ctx, filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("批量抹除平铺字段错误: %w", err)
+	}
+
+	return result.ModifiedCount, nil
+}
+
 type Pipeline struct {
 	ModelUid string `bson:"_id"`
 	Total    int    `bson:"total"`
@@ -500,261 +520,4 @@ type SearchResource struct {
 	ModelUid string          `bson:"_id"`
 	Total    int             `bson:"total"`
 	Data     []mongox.MapStr `bson:"data"`
-}
-
-// BatchCreateOrUpdate 批量创建或更新资产
-// NOTE: 基于 model_uid + name 进行 upsert,使用 MongoDB BulkWrite 提升性能
-func (dao *resourceDAO) BatchCreateOrUpdate(ctx context.Context, resources []Resource) error {
-	if len(resources) == 0 {
-		return nil
-	}
-
-	col := dao.db.Collection(ResourceCollection)
-	now := time.Now().UnixMilli()
-
-	// 批量获取 ID(用于新创建的资源)
-	// NOTE: 如果是更新操作,$setOnInsert 不会生效,ID 会被浪费,但这不是问题
-	startID, err := dao.db.GetBatchIdGenerator(ResourceCollection, len(resources))
-	if err != nil {
-		return fmt.Errorf("获取批量 ID 失败: %w", err)
-	}
-
-	// 构建 BulkWrite 模型
-	models := make([]mongo.WriteModel, 0, len(resources))
-	currentID := startID
-
-	for _, resource := range resources {
-		// 构建 filter: 基于 model_uid + name
-		filter := bson.M{
-			"model_uid": resource.ModelUID,
-			"data.name": resource.Data["name"],
-		}
-
-		// 构建 update 文档
-		updateDoc := bson.M{
-			"utime": now,
-		}
-
-		// 合并资源数据
-		for key, value := range resource.Data {
-			updateDoc[key] = value
-		}
-
-		// 构建 upsert 操作
-		update := bson.M{
-			"$set": updateDoc,
-			"$setOnInsert": bson.M{
-				"id":    currentID,
-				"ctime": now,
-			},
-		}
-
-		model := mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update).
-			SetUpsert(true)
-
-		models = append(models, model)
-		currentID++
-	}
-
-	// 执行批量操作
-	_, err = col.BulkWrite(ctx, models)
-	if err != nil {
-		return fmt.Errorf("批量创建或更新操作失败: %w", err)
-	}
-
-	return nil
-}
-
-func (dao *resourceDAO) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]Resource, error) {
-	col := dao.db.Collection(ResourceCollection)
-
-	// 基础过滤条件
-	baseFilter := bson.M{"model_uid": modelUid}
-	if len(ids) > 0 {
-		baseFilter["id"] = bson.M{"$in": ids}
-	}
-
-	// 若没有筛选条件，直接使用基础条件
-	if len(filterGroups) == 0 {
-		projection := buildProjection(fields)
-		opts := &options.FindOptions{
-			Projection: projection,
-			Limit:      &limit,
-			Skip:       &offset,
-			Sort:       bson.D{{Key: "ctime", Value: -1}},
-		}
-		cursor, err := col.Find(ctx, baseFilter, opts)
-		if err != nil {
-			return nil, fmt.Errorf("查询错误: %w", err)
-		}
-
-		var result []Resource
-		if err = cursor.All(ctx, &result); err != nil {
-			return nil, fmt.Errorf("解码错误: %w", err)
-		}
-		if err = cursor.Err(); err != nil {
-			return nil, fmt.Errorf("游标遍历错误: %w", err)
-		}
-		return result, nil
-	}
-
-	// 构建复杂筛选条件 (Disjunctive Normal Form: (A AND B) OR (C AND D))
-	var orConditions []bson.M
-
-	for _, group := range filterGroups {
-		// 跳过空组
-		if len(group.Filters) == 0 {
-			continue
-		}
-
-		var andConditions []bson.M
-		for _, f := range group.Filters {
-			cond := buildBsonCondition(f)
-			if cond != nil {
-				andConditions = append(andConditions, cond)
-			}
-		}
-
-		if len(andConditions) > 0 {
-			if len(andConditions) == 1 {
-				orConditions = append(orConditions, andConditions[0])
-			} else {
-				orConditions = append(orConditions, bson.M{"$and": andConditions})
-			}
-		}
-	}
-
-	var finalFilter interface{} = baseFilter
-
-	// 如果有有效筛选组
-	if len(orConditions) > 0 {
-		// 如果只有一个 OR 分支，直接合并
-		if len(orConditions) == 1 {
-			// 将 OR 分支的条件与 model_uid (和 ids) 合并
-			// 注意: 这里使用 $and 确保安全，避免 key 冲突
-			finalFilter = bson.M{
-				"$and": []bson.M{
-					baseFilter,
-					orConditions[0],
-				},
-			}
-		} else {
-			// 多个 GROUP 之间是 OR 关系
-			finalFilter = bson.M{
-				"$and": []bson.M{
-					baseFilter,
-					{"$or": orConditions},
-				},
-			}
-		}
-	}
-
-	projection := buildProjection(fields)
-	opts := &options.FindOptions{
-		Projection: projection,
-		Limit:      &limit,
-		Skip:       &offset,
-		Sort:       bson.D{{Key: "ctime", Value: -1}},
-	}
-
-	cursor, err := col.Find(ctx, finalFilter, opts)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误: %w", err)
-	}
-
-	var result []Resource
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
-}
-
-func buildBsonCondition(f domain.FilterCondition) bson.M {
-	key := f.FieldUID
-	val := f.Value
-
-	// MongoDB 字段名匹配 (Data inline)
-	switch f.Operator {
-	case "eq":
-		return bson.M{key: val}
-	case "ne":
-		return bson.M{key: bson.M{"$ne": val}}
-	case "contains":
-		s, ok := val.(string)
-		if !ok {
-			return nil
-		}
-		return bson.M{key: bson.M{"$regex": primitive.Regex{Pattern: s, Options: "i"}}}
-	case "gt":
-		return bson.M{key: bson.M{"$gt": val}}
-	case "lt":
-		return bson.M{key: bson.M{"$lt": val}}
-	case "gte":
-		return bson.M{key: bson.M{"$gte": val}}
-	case "lte":
-		return bson.M{key: bson.M{"$lte": val}}
-	case "in":
-		return bson.M{key: bson.M{"$in": val}}
-	case "nin":
-		return bson.M{key: bson.M{"$nin": val}}
-	default:
-		return bson.M{key: val}
-	}
-}
-
-func (dao *resourceDAO) TotalResourcesWithFilters(ctx context.Context, modelUid string, ids []int64, filterGroups []domain.FilterGroup) (int64, error) {
-	col := dao.db.Collection(ResourceCollection)
-	baseFilter := bson.M{"model_uid": modelUid}
-	if len(ids) > 0 {
-		baseFilter["id"] = bson.M{"$in": ids}
-	}
-
-	if len(filterGroups) == 0 {
-		return dao.db.Collection(ResourceCollection).CountDocuments(ctx, baseFilter)
-	}
-
-	var orConditions []bson.M
-	for _, group := range filterGroups {
-		if len(group.Filters) == 0 {
-			continue
-		}
-		var andConditions []bson.M
-		for _, f := range group.Filters {
-			cond := buildBsonCondition(f)
-			if cond != nil {
-				andConditions = append(andConditions, cond)
-			}
-		}
-		if len(andConditions) > 0 {
-			if len(andConditions) == 1 {
-				orConditions = append(orConditions, andConditions[0])
-			} else {
-				orConditions = append(orConditions, bson.M{"$and": andConditions})
-			}
-		}
-	}
-
-	var finalFilter interface{} = baseFilter
-	if len(orConditions) > 0 {
-		if len(orConditions) == 1 {
-			finalFilter = bson.M{
-				"$and": []bson.M{baseFilter, orConditions[0]},
-			}
-		} else {
-			finalFilter = bson.M{
-				"$and": []bson.M{baseFilter, {"$or": orConditions}},
-			}
-		}
-	}
-
-	count, err := col.CountDocuments(ctx, finalFilter)
-	if err != nil {
-		return 0, fmt.Errorf("文档计数错误: %w", err)
-	}
-	return count, nil
 }

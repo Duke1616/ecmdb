@@ -2,133 +2,136 @@ package mongox
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// AutoIDModel 定义需要自动生成 ID 的模型接口
-type AutoIDModel interface {
-	SetID(id int64)
-	GetID() int64
-}
+// Plugin 代表全局 MongoDB 插件拦截器（IMongoPlugin 别名）
+type Plugin IMongoPlugin
 
-type Mongo struct {
-	DBClient *mongo.Client
-	Sess     mongo.Session
+// DB 是支持插件生命周期管理与泛型数据集代理的 MongoDB 核心管理器
+type DB struct {
+	dbClient *mongo.Client
 	dbName   string
+	native   *mongo.Database
+	plugins  []Plugin
 }
 
-func NewMongo(client *mongo.Client, dbName string) *Mongo {
-	return &Mongo{
-		DBClient: client,
+// NewDB 实例化支持生命周期拦截的 DB 管理器
+func NewDB(client *mongo.Client, dbName string) *DB {
+	return &DB{
+		dbClient: client,
 		dbName:   dbName,
+		native:   client.Database(dbName),
+		plugins:  []Plugin{},
 	}
 }
 
-func (m *Mongo) Database() *mongo.Database {
-	return m.DBClient.Database(m.dbName)
+// Use 注册插件拦截器（类似 GORM 的 db.Use()）
+func (db *DB) Use(plugin Plugin) {
+	db.plugins = append(db.plugins, plugin)
 }
 
-func (m *Mongo) Collection(collName string) *mongo.Collection {
-	return m.Database().Collection(collName)
+// Client 返回底层原生 *mongo.Client
+func (db *DB) Client() *mongo.Client {
+	return db.dbClient
 }
 
-func (m *Mongo) Collections(collName string) Collection {
-	col := Coll{}
-	col.collName = collName
-	return &col
+// Database 返回默认原生 *mongo.Database
+func (db *DB) Database() *mongo.Database {
+	return db.native
 }
 
-func (m *Mongo) GetIdGenerator(collection string) int64 {
-	coll := m.Database().Collection("c_id_generator")
+// DatabaseWithTenant 物理隔离专用：根据 Context 动态路由并返回租户的物理数据库
+func (db *DB) DatabaseWithTenant(ctx context.Context) *mongo.Database {
+	tenantID := ctxutil.GetTenantID(ctx)
+	if tenantID <= 0 {
+		return db.native
+	}
+	dynamicDBName := fmt.Sprintf("%s_tenant_%d", db.dbName, tenantID.Int64())
+	return db.dbClient.Database(dynamicDBName)
+}
+
+// CollectionWithTenant 物理隔离专用：获取租户物理隔离库的原生集合（不做逻辑拦截）
+func (db *DB) CollectionWithTenant(ctx context.Context, collName string) *mongo.Collection {
+	return db.DatabaseWithTenant(ctx).Collection(collName)
+}
+
+// ==========================================
+// 插件生命周期核心分发总线
+// ==========================================
+
+func (db *DB) runBeforeFind(stmt *Statement) error {
+	for _, p := range db.plugins {
+		if hook, ok := p.(BeforeFinder); ok {
+			if err := hook.BeforeFind(stmt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (db *DB) runBeforeInsert(stmt *Statement) error {
+	for _, p := range db.plugins {
+		if hook, ok := p.(BeforeInserter); ok {
+			if err := hook.BeforeInsert(stmt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (db *DB) runBeforeUpdate(stmt *Statement) error {
+	for _, p := range db.plugins {
+		if hook, ok := p.(BeforeUpdater); ok {
+			if err := hook.BeforeUpdate(stmt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (db *DB) runBeforeDelete(stmt *Statement) error {
+	for _, p := range db.plugins {
+		if hook, ok := p.(BeforeDeleter); ok {
+			if err := hook.BeforeDelete(stmt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// GetBatchIdGenerator 从 c_id_generator 中原子地为指定集合申请 count 个连续自增 ID，供手动批量 Upsert 场景使用
+func (db *DB) GetBatchIdGenerator(collection string, count int) (int64, error) {
+	coll := db.native.Collection("c_id_generator")
 	var result struct {
-		Name   string `json:"name" bson:"name"`
-		NextID int64  `json:"next_id" bson:"next_id"`
+		Name   string `bson:"name"`
+		NextID int64  `bson:"next_id"`
 	}
-
-	update := bson.M{
-		"$inc": bson.M{"next_id": int64(1)},
-	}
-	filter := bson.M{"name": collection}
 
 	upsert := true
-	returnChange := options.After
-	opt := &options.FindOneAndUpdateOptions{
-		Upsert:         &upsert,
-		ReturnDocument: &returnChange,
-	}
+	returnAfter := options.After
+	err := coll.FindOneAndUpdate(
+		context.Background(),
+		bson.M{"name": collection},
+		bson.M{"$inc": bson.M{"next_id": int64(count)}},
+		&options.FindOneAndUpdateOptions{
+			Upsert:         &upsert,
+			ReturnDocument: &returnAfter,
+		},
+	).Decode(&result)
 
-	err := coll.FindOneAndUpdate(context.Background(), filter, update, opt).Decode(&result)
-	if err != nil {
-		return 0
-	}
-
-	return result.NextID
-}
-
-// GetBatchIdGenerator 批量获取自增 ID，提高批量插入性能
-func (m *Mongo) GetBatchIdGenerator(collection string, count int) (startID int64, err error) {
-	if count <= 0 {
-		return 0, nil
-	}
-
-	coll := m.Database().Collection("c_id_generator")
-	var result struct {
-		Name   string `json:"name" bson:"name"`
-		NextID int64  `json:"next_id" bson:"next_id"`
-	}
-
-	update := bson.M{
-		"$inc": bson.M{"next_id": int64(count)},
-	}
-	filter := bson.M{"name": collection}
-
-	upsert := true
-	returnChange := options.After
-	opt := &options.FindOneAndUpdateOptions{
-		Upsert:         &upsert,
-		ReturnDocument: &returnChange,
-	}
-
-	err = coll.FindOneAndUpdate(context.Background(), filter, update, opt).Decode(&result)
 	if err != nil {
 		return 0, err
 	}
 
-	// 返回起始 ID（result.NextID 是增加后的值，所以要减去 count 再加 1）
 	return result.NextID - int64(count) + 1, nil
-}
-
-// InsertOneWithAutoID 插入单个文档，自动生成 ID
-func (m *Mongo) InsertOneWithAutoID(ctx context.Context, collectionName string, doc AutoIDModel) (*mongo.InsertOneResult, error) {
-	if doc.GetID() == 0 {
-		doc.SetID(m.GetIdGenerator(collectionName))
-	}
-	return m.Collection(collectionName).InsertOne(ctx, doc)
-}
-
-// InsertManyWithAutoID 批量插入文档，自动生成 ID（性能优化版）
-func (m *Mongo) InsertManyWithAutoID(ctx context.Context, collectionName string, docs []AutoIDModel) (*mongo.InsertManyResult, error) {
-	if len(docs) == 0 {
-		return nil, nil
-	}
-
-	// 批量获取 ID
-	startID, err := m.GetBatchIdGenerator(collectionName, len(docs))
-	if err != nil {
-		return nil, err
-	}
-
-	// 转换为 interface{} 切片并设置 ID
-	interfaceDocs := make([]interface{}, len(docs))
-	for i, doc := range docs {
-		if doc.GetID() == 0 {
-			doc.SetID(startID + int64(i))
-		}
-		interfaceDocs[i] = doc
-	}
-
-	return m.Collection(collectionName).InsertMany(ctx, interfaceDocs)
 }

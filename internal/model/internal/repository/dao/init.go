@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitIndexes(db *mongox.Mongo) error {
+func InitIndexes(db *mongox.DB) error {
 	if err := InitModelIndexes(db); err != nil {
 		return err
 	}
@@ -21,8 +21,8 @@ func InitIndexes(db *mongox.Mongo) error {
 	return nil
 }
 
-func InitModelIndexes(db *mongox.Mongo) error {
-	col := db.Collection(ModelCollection)
+func InitModelIndexes(db *mongox.DB) error {
+	col := db.Database().Collection(ModelCollection)
 
 	indexes := []mongo.IndexModel{
 		{
@@ -36,8 +36,8 @@ func InitModelIndexes(db *mongox.Mongo) error {
 	return err
 }
 
-func initModelGroupIndex(db *mongox.Mongo) error {
-	col := db.Collection(ModelGroupCollection)
+func initModelGroupIndex(db *mongox.DB) error {
+	col := db.Database().Collection(ModelGroupCollection)
 
 	indexes := []mongo.IndexModel{
 		{

@@ -25,7 +25,7 @@ var ProviderSet = wire.NewSet(
 	intRrDAO,
 )
 
-func InitModule(db *mongox.Mongo) (*Module, error) {
+func InitModule(db *mongox.DB) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		InitRelationTypeDAO,
@@ -43,7 +43,7 @@ var (
 	rrd       dao.RelationResourceDAO
 )
 
-func initRmDAO(db *mongox.Mongo) dao.RelationModelDAO {
+func initRmDAO(db *mongox.DB) dao.RelationModelDAO {
 	rmDaoOnce.Do(func() {
 		rmd = dao.NewRelationModelDAO(db)
 	})
@@ -52,7 +52,7 @@ func initRmDAO(db *mongox.Mongo) dao.RelationModelDAO {
 
 var daoOnce = sync.Once{}
 
-func InitCollectionOnce(db *mongox.Mongo) {
+func InitCollectionOnce(db *mongox.DB) {
 	daoOnce.Do(func() {
 		err := dao.InitIndexes(db)
 		if err != nil {
@@ -61,12 +61,12 @@ func InitCollectionOnce(db *mongox.Mongo) {
 	})
 }
 
-func InitRelationTypeDAO(db *mongox.Mongo) dao.RelationTypeDAO {
+func InitRelationTypeDAO(db *mongox.DB) dao.RelationTypeDAO {
 	InitCollectionOnce(db)
 	return dao.NewRelationTypeDAO(db)
 }
 
-func InitRMService(db *mongox.Mongo) RMSvc {
+func InitRMService(db *mongox.DB) RMSvc {
 	wire.Build(
 		initRmDAO,
 		intRrDAO,
@@ -77,17 +77,19 @@ func InitRMService(db *mongox.Mongo) RMSvc {
 	return nil
 }
 
-func intRrDAO(db *mongox.Mongo) dao.RelationResourceDAO {
+func intRrDAO(db *mongox.DB) dao.RelationResourceDAO {
 	rrDaoOnce.Do(func() {
 		rrd = dao.NewRelationResourceDAO(db)
 	})
 	return rrd
 }
 
-func InitRRService(db *mongox.Mongo) RRSvc {
+func InitRRService(db *mongox.DB) RRSvc {
 	wire.Build(
 		intRrDAO,
+		initRmDAO,
 		repository.NewRelationResourceRepository,
+		repository.NewRelationModelRepository,
 		service.NewRelationResourceService,
 	)
 	return nil

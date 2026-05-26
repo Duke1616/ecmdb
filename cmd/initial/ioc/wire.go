@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRedisSearch,
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMongoDBV2, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitRedisSearch,
 	ioc.InitMQ, ioc.InitEtcdClient, ioc.InitLdapConfig, ioc.InitModuleCrypto)
 
 func InitApp() (*App, error) {

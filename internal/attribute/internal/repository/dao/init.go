@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitIndexes(db *mongox.Mongo) error {
+func InitIndexes(db *mongox.DB) error {
 	if err := initAttrIndex(db); err != nil {
 		return err
 	}
@@ -21,8 +21,9 @@ func InitIndexes(db *mongox.Mongo) error {
 	return nil
 }
 
-func initAttrIndex(db *mongox.Mongo) error {
-	col := db.Collection(AttributeCollection)
+func initAttrIndex(db *mongox.DB) error {
+	// 使用 Collection[Attribute].Native() 拿到底层原始驱动连接以安全操作 Index
+	col := mongox.NewCollection[Attribute](db, AttributeCollection)
 
 	indexes := []mongo.IndexModel{
 		{
@@ -46,13 +47,14 @@ func initAttrIndex(db *mongox.Mongo) error {
 		},
 	}
 
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
+	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
 
 	return err
 }
 
-func initAttrGroupIndex(db *mongox.Mongo) error {
-	col := db.Collection(AttributeGroupCollection)
+func initAttrGroupIndex(db *mongox.DB) error {
+	// 使用 Collection[AttributeGroup].Native() 拿到底层原始驱动连接以安全操作 Index
+	col := mongox.NewCollection[AttributeGroup](db, AttributeGroupCollection)
 
 	indexes := []mongo.IndexModel{
 		{
@@ -64,7 +66,7 @@ func initAttrGroupIndex(db *mongox.Mongo) error {
 		},
 	}
 
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
+	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
 
 	return err
 }

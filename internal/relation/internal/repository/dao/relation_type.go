@@ -37,36 +37,25 @@ type RelationTypeDAO interface {
 	GetByID(ctx context.Context, id int64) (RelationType, error)
 }
 
-func NewRelationTypeDAO(db *mongox.Mongo) RelationTypeDAO {
+func NewRelationTypeDAO(db *mongox.DB) RelationTypeDAO {
 	return &relationDAO{
-		db: db,
+		db:   db,
+		coll: mongox.NewCollection[RelationType](db, RelationTypeCollection),
 	}
 }
 
 type relationDAO struct {
-	db *mongox.Mongo
+	db   *mongox.DB
+	coll *mongox.Collection[RelationType]
 }
 
 func (dao *relationDAO) GetByUids(ctx context.Context, uids []string) ([]RelationType, error) {
-	col := dao.db.Collection(RelationTypeCollection)
-	filter := bson.M{}
-	filter["uid"] = bson.M{"$in": uids}
+	filter := bson.M{
+		"uid": bson.M{"$in": uids},
+	}
 	opts := &options.FindOptions{}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []RelationType
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *relationDAO) BatchCreate(ctx context.Context, rts []RelationType) error {
@@ -74,24 +63,22 @@ func (dao *relationDAO) BatchCreate(ctx context.Context, rts []RelationType) err
 		return nil
 	}
 
-	col := dao.db.Collection(RelationTypeCollection)
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID（一次数据库调用）
+	// 批量获取起始 ID
 	startID, err := dao.db.GetBatchIdGenerator(RelationTypeCollection, len(rts))
 	if err != nil {
 		return fmt.Errorf("获取批量 ID 错误: %w", err)
 	}
 
-	// 为每个属性设置 ID 和时间戳
-	docs := make([]interface{}, len(rts))
+	docs := make([]*RelationType, len(rts))
 	for i := range rts {
 		rts[i].Id = startID + int64(i)
 		rts[i].Ctime, rts[i].Utime = now, now
-		docs[i] = rts[i]
+		docs[i] = &rts[i]
 	}
 
-	_, err = col.InsertMany(ctx, docs)
+	_, err = dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return fmt.Errorf("批量插入关联类型: %w", errs.ErrUniqueDuplicate)
@@ -106,9 +93,8 @@ func (dao *relationDAO) Create(ctx context.Context, r RelationType) (int64, erro
 	now := time.Now()
 	r.Ctime, r.Utime = now.UnixMilli(), now.UnixMilli()
 
-	// 直接插入数据，并自增ID
-	_, err := dao.db.InsertOneWithAutoID(ctx, RelationTypeCollection, &r)
-
+	// 借助 AutoIDPlugin 插件自动分配自增主键，无须再手动管理自增 ID。
+	_, err := dao.coll.InsertOne(ctx, &r)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return 0, fmt.Errorf("关联类型插入: %w", errs.ErrUniqueDuplicate)
@@ -120,7 +106,6 @@ func (dao *relationDAO) Create(ctx context.Context, r RelationType) (int64, erro
 }
 
 func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]RelationType, error) {
-	col := dao.db.Collection(RelationTypeCollection)
 	filter := bson.M{}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
@@ -128,27 +113,12 @@ func (dao *relationDAO) List(ctx context.Context, offset, limit int64) ([]Relati
 		Skip:  &offset,
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []RelationType
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
-	col := dao.db.Collection(RelationTypeCollection)
-	filer := bson.M{}
-
-	count, err := col.CountDocuments(ctx, filer)
+	filter := bson.M{}
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -157,7 +127,6 @@ func (dao *relationDAO) Count(ctx context.Context) (int64, error) {
 }
 
 func (dao *relationDAO) Update(ctx context.Context, r RelationType) (int64, error) {
-	col := dao.db.Collection(RelationTypeCollection)
 	filter := bson.M{"id": r.Id}
 	update := bson.M{
 		"$set": bson.M{
@@ -167,7 +136,7 @@ func (dao *relationDAO) Update(ctx context.Context, r RelationType) (int64, erro
 			"utime":           time.Now().UnixMilli(),
 		},
 	}
-	res, err := col.UpdateOne(ctx, filter, update)
+	res, err := dao.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return 0, fmt.Errorf("更新关联类型失败: %w", err)
 	}
@@ -175,9 +144,8 @@ func (dao *relationDAO) Update(ctx context.Context, r RelationType) (int64, erro
 }
 
 func (dao *relationDAO) Delete(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(RelationTypeCollection)
 	filter := bson.M{"id": id}
-	res, err := col.DeleteOne(ctx, filter)
+	res, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除关联类型失败: %w", err)
 	}
@@ -185,13 +153,12 @@ func (dao *relationDAO) Delete(ctx context.Context, id int64) (int64, error) {
 }
 
 func (dao *relationDAO) GetByID(ctx context.Context, id int64) (RelationType, error) {
-	col := dao.db.Collection(RelationTypeCollection)
 	filter := bson.M{"id": id}
-	var res RelationType
-	if err := col.FindOne(ctx, filter).Decode(&res); err != nil {
+	res, err := dao.coll.FindOne(ctx, filter)
+	if err != nil {
 		return RelationType{}, fmt.Errorf("查询关联类型失败: %w", err)
 	}
-	return res, nil
+	return *res, nil
 }
 
 type RelationType struct {

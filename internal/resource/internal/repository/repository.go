@@ -25,6 +25,9 @@ type ResourceRepository interface {
 	// SetCustomField 设置指定资产的自定义字段值
 	SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error)
 
+	// UnsetCustomField 抹除指定模型下所有资产的自定义字段（平铺键）
+	UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error)
+
 	// ListResourcesByIds 根据 ID 列表批量获取资产
 	ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
@@ -91,6 +94,10 @@ func (repo *resourceRepository) BatchUpdateResources(ctx context.Context, resour
 
 func (repo *resourceRepository) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
 	return repo.dao.SetCustomField(ctx, id, field, data)
+}
+
+func (repo *resourceRepository) UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error) {
+	return repo.dao.UnsetCustomField(ctx, modelUid, fieldUid)
 }
 
 func NewResourceRepository(dao dao.ResourceDAO) ResourceRepository {

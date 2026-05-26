@@ -30,6 +30,9 @@ type Service interface {
 	// SetCustomField 变更指定字段的数据
 	SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error)
 
+	// UnsetCustomField 抹除指定模型下所有资产的自定义字段（平铺键）
+	UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error)
+
 	// ListResourceByIds 资源关联关系调用，查询关联数据
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
@@ -62,6 +65,9 @@ type Service interface {
 	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表
 	ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
 		filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error)
+
+	// CheckBeforeDelete 检查指定模型下是否还有资产实例，有则拦截
+	CheckBeforeDelete(ctx context.Context, modelUid string) error
 }
 
 type service struct {
@@ -83,6 +89,10 @@ func (s *service) BatchUpdateResources(ctx context.Context, resources []domain.R
 
 func (s *service) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
 	return s.repo.SetCustomField(ctx, id, field, data)
+}
+
+func (s *service) UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error) {
+	return s.repo.UnsetCustomField(ctx, modelUid, fieldUid)
 }
 
 func (s *service) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
@@ -208,4 +218,15 @@ func (s *service) ListResourcesWithFilters(ctx context.Context, fields []string,
 		return resources, total, err
 	}
 	return resources, total, nil
+}
+
+func (s *service) CheckBeforeDelete(ctx context.Context, modelUid string) error {
+	count, err := s.repo.TotalByModelUid(ctx, modelUid)
+	if err != nil {
+		return fmt.Errorf("资产检查异常: %w", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("资产实例依赖拦截：模型 [%s] 正在被 %d 个资产实例使用，请先清空资产数据", modelUid, count)
+	}
+	return nil
 }

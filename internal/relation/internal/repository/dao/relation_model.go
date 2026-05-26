@@ -43,14 +43,16 @@ type RelationModelDAO interface {
 	UpdateModelRelation(ctx context.Context, mr ModelRelation) (int64, error)
 }
 
-func NewRelationModelDAO(db *mongox.Mongo) RelationModelDAO {
+func NewRelationModelDAO(db *mongox.DB) RelationModelDAO {
 	return &modelDAO{
-		db: db,
+		db:   db,
+		coll: mongox.NewCollection[ModelRelation](db, ModelRelationCollection),
 	}
 }
 
 type modelDAO struct {
-	db *mongox.Mongo
+	db   *mongox.DB
+	coll *mongox.Collection[ModelRelation]
 }
 
 func (dao *modelDAO) BatchCreate(ctx context.Context, relations []ModelRelation) error {
@@ -58,27 +60,25 @@ func (dao *modelDAO) BatchCreate(ctx context.Context, relations []ModelRelation)
 		return nil
 	}
 
-	col := dao.db.Collection(ModelRelationCollection)
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID（一次数据库调用）
+	// 批量获取起始 ID
 	startID, err := dao.db.GetBatchIdGenerator(ModelRelationCollection, len(relations))
 	if err != nil {
 		return fmt.Errorf("获取批量 ID 错误: %w", err)
 	}
 
-	// 为每个属性设置 ID 和时间戳
-	docs := make([]interface{}, len(relations))
+	docs := make([]*ModelRelation, len(relations))
 	for i := range relations {
 		relations[i].Id = startID + int64(i)
 		relations[i].Ctime, relations[i].Utime = now, now
-		docs[i] = relations[i]
+		docs[i] = &relations[i]
 	}
 
-	_, err = col.InsertMany(ctx, docs)
+	_, err = dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
-			return fmt.Errorf("批量插入关联类型: %w", errs.ErrUniqueDuplicate)
+			return fmt.Errorf("批量插入关联关系: %w", errs.ErrUniqueDuplicate)
 		}
 		return fmt.Errorf("批量插入数据错误: %w", err)
 	}
@@ -87,34 +87,20 @@ func (dao *modelDAO) BatchCreate(ctx context.Context, relations []ModelRelation)
 }
 
 func (dao *modelDAO) GetByRelationNames(ctx context.Context, names []string) ([]ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-	filter := bson.M{}
-	filter["relation_name"] = bson.M{"$in": names}
+	filter := bson.M{
+		"relation_name": bson.M{"$in": names},
+	}
 	opts := &options.FindOptions{}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []ModelRelation
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
 	now := time.Now()
 	mr.Ctime, mr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	// 直接插入数据，并自增ID
-	_, err := dao.db.InsertOneWithAutoID(ctx, ModelRelationCollection, &mr)
-
+	// 直接插入数据，借助 AutoIDPlugin 插件自动注入自增 ID。
+	_, err := dao.coll.InsertOne(ctx, &mr)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return 0, fmt.Errorf("模型关联关系插入: %w", errs.ErrUniqueDuplicate)
@@ -126,71 +112,41 @@ func (dao *modelDAO) CreateModelRelation(ctx context.Context, mr ModelRelation) 
 }
 
 func (dao *modelDAO) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
-	filter := bson.M{"source_model_uid": bson.M{"$in": srcUids}}
+	filter := bson.M{
+		"source_model_uid": bson.M{"$in": srcUids},
+	}
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []ModelRelation
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *modelDAO) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
 	filter := bson.M{
 		"$or": bson.A{
 			bson.M{"source_model_uid": modelUid},
 			bson.M{"target_model_uid": modelUid},
 		},
 	}
-	// 这种情况会出现意外、比如 host-1 host-2 会查询错误
-	//filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []ModelRelation
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
-	col := dao.db.Collection(ModelRelationCollection)
 	filter := bson.M{
 		"$or": bson.A{
 			bson.M{"source_model_uid": modelUid},
 			bson.M{"target_model_uid": modelUid},
 		},
 	}
-	//filter := bson.M{"relation_name": bson.M{"$regex": primitive.Regex{Pattern: modelUid, Options: "i"}}}
 
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -199,10 +155,9 @@ func (dao *modelDAO) CountByModelUid(ctx context.Context, modelUid string) (int6
 }
 
 func (dao *modelDAO) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(ModelRelationCollection)
 	filter := bson.M{"id": id}
 
-	result, err := col.DeleteOne(ctx, filter)
+	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
 	}
@@ -211,9 +166,8 @@ func (dao *modelDAO) DeleteModelRelation(ctx context.Context, id int64) (int64, 
 }
 
 func (dao *modelDAO) CountByRelationTypeUid(ctx context.Context, uid string) (int64, error) {
-	col := dao.db.Collection(ModelRelationCollection)
 	filter := bson.M{"relation_type_uid": uid}
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("关联引用统计错误: %w", err)
 	}
@@ -221,17 +175,15 @@ func (dao *modelDAO) CountByRelationTypeUid(ctx context.Context, uid string) (in
 }
 
 func (dao *modelDAO) GetByID(ctx context.Context, id int64) (ModelRelation, error) {
-	col := dao.db.Collection(ModelRelationCollection)
 	filter := bson.M{"id": id}
-	var res ModelRelation
-	if err := col.FindOne(ctx, filter).Decode(&res); err != nil {
+	res, err := dao.coll.FindOne(ctx, filter)
+	if err != nil {
 		return ModelRelation{}, fmt.Errorf("查询错误: %w", err)
 	}
-	return res, nil
+	return *res, nil
 }
 
 func (dao *modelDAO) UpdateModelRelation(ctx context.Context, mr ModelRelation) (int64, error) {
-	col := dao.db.Collection(ModelRelationCollection)
 	filter := bson.M{"id": mr.Id}
 	update := bson.M{
 		"$set": bson.M{
@@ -243,7 +195,7 @@ func (dao *modelDAO) UpdateModelRelation(ctx context.Context, mr ModelRelation) 
 			"utime":             time.Now().UnixMilli(),
 		},
 	}
-	res, err := col.UpdateOne(ctx, filter, update)
+	res, err := dao.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return 0, fmt.Errorf("更新文档错误: %w", err)
 	}

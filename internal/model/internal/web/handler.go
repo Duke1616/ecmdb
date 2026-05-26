@@ -3,7 +3,6 @@ package web
 import (
 	"errors"
 
-	"github.com/Duke1616/ecmdb/internal/attribute"
 	"github.com/Duke1616/ecmdb/internal/model/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/model/internal/service"
 	"github.com/Duke1616/ecmdb/internal/relation"
@@ -20,15 +19,13 @@ type Handler struct {
 	mgSvc       service.MGService
 	resourceSvc resource.EncryptedSvc
 	RMSvc       relation.RMSvc
-	AttrSvc     attribute.Service
 }
 
-func NewHandler(svc service.Service, mgSvc service.MGService, rmSvc relation.RMSvc, attrSvc attribute.Service,
+func NewHandler(svc service.Service, mgSvc service.MGService, rmSvc relation.RMSvc,
 	resourceSvc resource.EncryptedSvc) *Handler {
 	return &Handler{
 		svc:         svc,
 		mgSvc:       mgSvc,
-		AttrSvc:     attrSvc,
 		RMSvc:       rmSvc,
 		resourceSvc: resourceSvc,
 	}
@@ -84,18 +81,13 @@ func (h *Handler) CreateModelGroup(ctx *gin.Context, req CreateModelGroupReq) (g
 }
 
 func (h *Handler) CreateModel(ctx *gin.Context, req CreateModelReq) (ginx.Result, error) {
-	id, err := h.svc.Create(ctx, domain.Model{
+	// NOTE: 业务编排已下沉到 Service 层，Handler 仅负责协议适配
+	id, err := h.svc.CreateModelWithDefaults(ctx.Request.Context(), domain.Model{
 		Name:    req.Name,
 		GroupId: req.GroupId,
 		UID:     req.UID,
 		Icon:    req.Icon,
 	})
-
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	_, err = h.AttrSvc.CreateDefaultAttribute(ctx, req.UID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -146,57 +138,15 @@ var (
 )
 
 func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (ginx.Result, error) {
-	var (
-		eg errgroup.Group
-	)
-
-	eg.Go(func() error {
-		var err error
-		mTotal, err := h.RMSvc.CountByModelUid(ctx, req.ModelUid)
-		if err != nil {
-			return err
-		}
-
-		if mTotal != 0 {
-			return errModelRelationNotEmpty
-		}
-
-		return err
-	})
-
-	eg.Go(func() error {
-		var err error
-		rTotal, err := h.resourceSvc.CountByModelUid(ctx, req.ModelUid)
-		if err != nil {
-			return err
-		}
-
-		if rTotal != 0 {
-			return errModelResourceNotEmpty
-		}
-
-		return err
-	})
-
-	if err := eg.Wait(); err != nil {
+	// NOTE: 依赖检查已下沉到 Service 层的 IDeleteModelDependencyChecker 机制
+	count, err := h.svc.DeleteByModelUid(ctx.Request.Context(), req.ModelUid)
+	if err != nil {
 		if errors.Is(err, errModelRelationNotEmpty) {
-			return ginx.Result{
-				Code: 501002,
-				Msg:  err.Error(),
-			}, nil
+			return ginx.Result{Code: 501002, Msg: err.Error()}, nil
 		}
 		if errors.Is(err, errModelResourceNotEmpty) {
-			return ginx.Result{
-				Code: 501003,
-				Msg:  err.Error(),
-			}, nil
+			return ginx.Result{Code: 501003, Msg: err.Error()}, nil
 		}
-		return systemErrorResult, err
-	}
-
-	// TODO 删除模型，同步删除模型属性 +  模型属性分组
-	count, err := h.svc.DeleteByModelUid(ctx, req.ModelUid)
-	if err != nil {
 		return systemErrorResult, err
 	}
 	return ginx.Result{
@@ -210,19 +160,17 @@ func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, er
 		eg            errgroup.Group
 		mgs           []domain.ModelGroup
 		models        []domain.Model
-		total         int64
 		resourceCount map[string]int
 	)
 
 	// 获取执行分组下的所有模型数据
 	eg.Go(func() error {
 		var err error
-		mgs, total, err = h.mgSvc.List(ctx, req.Offset, req.Limit)
+		mgs, _, err = h.mgSvc.List(ctx, req.Offset, req.Limit)
 		if err != nil {
 			return err
 		}
-		mgids := make([]int64, total)
-		mgids = slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
+		mgids := slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
 			return src.ID
 		})
 
@@ -307,8 +255,7 @@ func (h *Handler) FindModelsGraph(ctx *gin.Context, req Page) (ginx.Result, erro
 	if err != nil {
 		return systemErrorResult, err
 	}
-	mn := make([]ModelNode, len(models))
-	mn = slice.Map(models, func(idx int, src domain.Model) ModelNode {
+	mn := slice.Map(models, func(idx int, src domain.Model) ModelNode {
 		data := make(map[string]string, 1)
 		data["icon"] = src.Icon
 		return ModelNode{
@@ -329,8 +276,7 @@ func (h *Handler) FindModelsGraph(ctx *gin.Context, req Page) (ginx.Result, erro
 		return systemErrorResult, err
 	}
 
-	ml := make([]ModelLine, len(ds))
-	ml = slice.Map(ds, func(idx int, src relation.ModelDiagram) ModelLine {
+	ml := slice.Map(ds, func(idx int, src relation.ModelDiagram) ModelLine {
 		return ModelLine{
 			From: src.SourceModelUid,
 			To:   src.TargetModelUid,

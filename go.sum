@@ -32,6 +32,8 @@ github.com/BurntSushi/toml v1.1.0 h1:ksErzDEI1khOiGPgpwuI7x2ebx/uXQNw7xJpn9Eq1+I
 github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/Duke1616/easy-workflow v1.0.5 h1:p2JXLUUSRhhOMvuJREMciJTjCqUzSCATjfdR9xFHzXU=
 github.com/Duke1616/easy-workflow v1.0.5/go.mod h1:hVMIuk8yoJXpIOu59HXBTKgfOHtpx8nBfzdvKk6c6Dw=
+github.com/Duke1616/eiam v0.0.7 h1:tfWvCOXwj9IFzKluIVp96f4fRAI8CAlvm4epB8OsRjA=
+github.com/Duke1616/eiam v0.0.7/go.mod h1:UUZPmVgUZB4LsjNg2ZWGXDdvGovYoXZKQj6tJmnpzp0=
 github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9 h1:qc0xHyvDM2+8hbXgB8fOLYqDVsNt2pf/8fIYbgibIq0=
 github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9/go.mod h1:zsmuFYtr0k+5szd5cjkkLcetveKbBOsSlmz0t1HmUcw=
 github.com/Duke1616/etask v0.0.6 h1:73I33D7AmfRqAhWyzD3IBQy6+zPhT/C7rKLTytJqdUQ=
@@ -172,8 +174,8 @@ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7
 github.com/fasthttp/websocket v1.5.2 h1:KdCb0EpLpdJpfE3IPA5YLK/aYBO3dhZcvwxz6tXe2LQ=
 github.com/fasthttp/websocket v1.5.2/go.mod h1:S0KC1VBlx1SaXGXq7yi1wKz4jMub58qEnHQG9oHuqBw=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
-github.com/fatih/color v1.14.1 h1:qfhVLaG5s+nCROl1zJsZRxFeYrHLqWroPOQ8BWiNb4w=
-github.com/fatih/color v1.14.1/go.mod h1:2oHN61fhTpgcxD3TSWCgKDiH1+x4OiDVVGH8WlgGZGg=
+github.com/fatih/color v1.15.0 h1:kOqh6YHBtK8aywxGerMG2Eq3H6Qgoqeo13Bk2Mv/nBs=
+github.com/fatih/color v1.15.0/go.mod h1:0h5ZqXfHYED7Bhv2ZJamyIOUej9KtShiJESRwBDUSsw=
 github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8vw=
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
 github.com/franela/goblin v0.0.0-20200105215937-c9ffbefa60db/go.mod h1:7dvUGVsVBjqR7JHJk0brhHOZYGmfBYOrK0ZhYMEtBr4=

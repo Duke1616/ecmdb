@@ -38,6 +38,9 @@ type RelationModelService interface {
 
 	// UpdateModelRelation 更新模型关联关系
 	UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)
+
+	// CheckBeforeDelete 检查模型是否被关联配置使用，有则拦截
+	CheckBeforeDelete(ctx context.Context, modelUid string) error
 }
 
 type modelService struct {
@@ -136,4 +139,15 @@ func (s *modelService) UpdateModelRelation(ctx context.Context, req domain.Model
 
 func (s *modelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
 	return s.repo.CountByRelationTypeUID(ctx, uid)
+}
+
+func (s *modelService) CheckBeforeDelete(ctx context.Context, modelUid string) error {
+	count, err := s.repo.TotalByModelUid(ctx, modelUid)
+	if err != nil {
+		return fmt.Errorf("关联检查异常: %w", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("关联关系依赖拦截：模型 [%s] 已配置 %d 个关联关系定义，请先删除关联关系", modelUid, count)
+	}
+	return nil
 }

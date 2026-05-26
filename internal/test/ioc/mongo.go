@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/Duke1616/ecmdb/pkg/mongox/plugin"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -75,4 +76,15 @@ func InitMongoDB() *mongox.Mongo {
 	}
 
 	return mongox.NewMongo(client, cfg.DB)
+}
+
+func InitMongoDBV2(db *mongox.Mongo) *mongox.DB {
+	client := db.DBClient
+	dbName := db.Database().Name()
+	dbV2 := mongox.NewDB(client, dbName)
+
+	dbV2.Use(plugin.NewAutoIDPlugin(dbV2.Database()))
+	dbV2.Use(plugin.NewTenantPlugin())
+
+	return dbV2
 }

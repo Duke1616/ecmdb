@@ -7,6 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/ecodeclub/ekit/slice"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -37,29 +38,28 @@ type ModelGroupDAO interface {
 	Rename(ctx context.Context, id int64, name string) (int64, error)
 }
 
-func NewModelGroupDAO(db *mongox.Mongo) ModelGroupDAO {
+func NewModelGroupDAO(db *mongox.DB) ModelGroupDAO {
 	return &groupDAO{
-		db: db,
+		coll: mongox.NewCollection[ModelGroup](db, ModelGroupCollection),
 	}
 }
 
 type groupDAO struct {
-	db *mongox.Mongo
+	coll *mongox.Collection[ModelGroup]
 }
 
 func (dao *groupDAO) GetByName(ctx context.Context, name string) (ModelGroup, error) {
-	col := dao.db.Collection(ModelGroupCollection)
 	filter := bson.M{"name": name}
 
-	var result ModelGroup
-	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+	m, err := dao.coll.FindOne(ctx, filter)
+	if err != nil {
 		if mongox.IsNotFoundError(err) {
 			return ModelGroup{}, fmt.Errorf("属性组查询: %w", errs.ErrNotFound)
 		}
 		return ModelGroup{}, fmt.Errorf("解码错误: %w", err)
 	}
 
-	return result, nil
+	return *m, nil
 }
 
 func (dao *groupDAO) BatchCreate(ctx context.Context, mgs []ModelGroup) ([]ModelGroup, error) {
@@ -67,28 +67,18 @@ func (dao *groupDAO) BatchCreate(ctx context.Context, mgs []ModelGroup) ([]Model
 		return nil, nil
 	}
 
-	col := dao.db.Collection(ModelGroupCollection)
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID（一次数据库调用）
-	startID, err := dao.db.GetBatchIdGenerator(ModelGroupCollection, len(mgs))
-	if err != nil {
-		return nil, fmt.Errorf("获取批量 ID 错误: %w", err)
-	}
+	// 依靠 mongoxv2 的 AutoIDPlugin 插件，一次获取批量 ID 并自动设置。
+	docs := slice.Map(mgs, func(idx int, src ModelGroup) *ModelGroup {
+		return &ModelGroup{
+			Name:  mgs[idx].Name,
+			Ctime: now,
+			Utime: now,
+		}
+	})
 
-	// 为每个属性设置 ID 和时间戳
-	result := make([]ModelGroup, len(mgs))
-	docs := make([]interface{}, len(mgs))
-	for i := range mgs {
-		// 创建新的对象，避免修改原参数
-		result[i] = mgs[i]
-		result[i].Id = startID + int64(i)
-		result[i].Ctime, result[i].Utime = now, now
-		docs[i] = result[i]
-	}
-
-	// 执行批量插入
-	_, err = col.InsertMany(ctx, docs)
+	_, err := dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return nil, fmt.Errorf("批量插入属性组: %w", errs.ErrUniqueDuplicate)
@@ -96,52 +86,33 @@ func (dao *groupDAO) BatchCreate(ctx context.Context, mgs []ModelGroup) ([]Model
 		return nil, fmt.Errorf("批量插入数据错误: %w", err)
 	}
 
+	result := make([]ModelGroup, len(docs))
+	for i, doc := range docs {
+		result[i] = *doc
+	}
+
 	return result, nil
 }
 
 func (dao *groupDAO) GetByNames(ctx context.Context, names []string) ([]ModelGroup, error) {
-	col := dao.db.Collection(ModelGroupCollection)
 	filter := bson.M{"name": bson.M{"$in": names}}
-	cursor, err := col.Find(ctx, filter)
-	var result []ModelGroup
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter)
 }
 
 func (dao *groupDAO) List(ctx context.Context, offset, limit int64) ([]ModelGroup, error) {
-	col := dao.db.Collection(ModelGroupCollection)
-	filer := bson.M{}
+	filter := bson.M{}
 	opt := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: 1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
-	cursor, err := col.Find(ctx, filer, opt)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []ModelGroup
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opt)
 }
 
 func (dao *groupDAO) Count(ctx context.Context) (int64, error) {
-	col := dao.db.Collection(ModelGroupCollection)
 	filter := bson.M{}
 
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -150,10 +121,9 @@ func (dao *groupDAO) Count(ctx context.Context) (int64, error) {
 }
 
 func (dao *groupDAO) Delete(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(ModelGroupCollection)
 	filter := bson.M{"id": id}
 
-	result, err := col.DeleteOne(ctx, filter)
+	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
 	}
@@ -165,9 +135,8 @@ func (dao *groupDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64
 	now := time.Now()
 	mg.Ctime, mg.Utime = now.UnixMilli(), now.UnixMilli()
 
-	// 直接插入数据，并自增ID
-	_, err := dao.db.InsertOneWithAutoID(ctx, ModelGroupCollection, &mg)
-
+	// 依靠 mongoxv2 的 AutoIDPlugin 插件自动分配并注入 ID，不需要再手动管理 id_generator
+	_, err := dao.coll.InsertOne(ctx, &mg)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return 0, fmt.Errorf("模型插入: %w", errs.ErrUniqueDuplicate)
@@ -179,7 +148,6 @@ func (dao *groupDAO) CreateModelGroup(ctx context.Context, mg ModelGroup) (int64
 }
 
 func (dao *groupDAO) Rename(ctx context.Context, id int64, name string) (int64, error) {
-	col := dao.db.Collection(ModelGroupCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{
 		"$set": bson.M{
@@ -187,7 +155,7 @@ func (dao *groupDAO) Rename(ctx context.Context, id int64, name string) (int64, 
 			"utime": time.Now().UnixMilli(),
 		},
 	}
-	res, err := col.UpdateOne(ctx, filter, update)
+	res, err := dao.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return 0, fmt.Errorf("模型组重命名失败: %w", err)
 	}

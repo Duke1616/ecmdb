@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitMongoDB() *mongox.Mongo {
+func InitMongoDB() *mongox.DB {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -26,5 +26,5 @@ func InitMongoDB() *mongox.Mongo {
 		log.Panicf("ping mongodb server error, %s", err)
 	}
 
-	return mongox.NewMongo(client, "cmdb-e2e")
+	return mongox.NewDB(client, "cmdb-e2e")
 }

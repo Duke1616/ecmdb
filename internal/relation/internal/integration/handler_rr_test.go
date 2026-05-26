@@ -19,21 +19,21 @@ type HandlerRRTestSuite struct {
 	suite.Suite
 
 	dao    dao.RelationResourceDAO
-	db     *mongox.Mongo
+	db     *mongox.DB
 	server *gin.Engine
 }
 
 func (s *HandlerRRTestSuite) TearDownSuite() {
-	_, err := s.db.Collection(dao.ResourceRelationCollection).DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection(dao.ResourceRelationCollection).DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
-	_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+	_, err = s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
 }
 
 func (s *HandlerRRTestSuite) TearDownTest() {
-	_, err := s.db.Collection(dao.ResourceRelationCollection).DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection(dao.ResourceRelationCollection).DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
-	_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+	_, err = s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
 }
 

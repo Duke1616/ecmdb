@@ -11,7 +11,7 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMQ, ioc.InitModuleCrypto)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMongoDBV2, ioc.InitMQ, ioc.InitModuleCrypto)
 
 func InitApp() (*App, error) {
 	wire.Build(wire.Struct(new(App), "*"),

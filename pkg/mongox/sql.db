@@ -1,1 +1,0 @@
-db.c_id_generator.save({name:"c_model_group", next_id:NumberInt("0")});

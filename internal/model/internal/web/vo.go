@@ -102,9 +102,10 @@ type ModelLine struct {
 
 func toModelVo(m domain.Model) Model {
 	return Model{
+		Id:      m.ID,
 		Name:    m.Name,
 		UID:     m.UID,
-		Ctime:   m.Utime.Format(time.DateTime),
+		Ctime:   m.Ctime.Format(time.DateTime),
 		Utime:   m.Utime.Format(time.DateTime),
 		Builtin: m.Builtin,
 	}

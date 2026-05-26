@@ -13,6 +13,7 @@ import (
 
 func InitHandler(rmModule *relation.Module, attrModule *attribute.Module, resourceModule *resource.Module) (*model.Handler, error) {
 	wire.Build(ioc.InitMongoDB,
+		ioc.InitMongoDBV2,
 		model.InitModule,
 		wire.FieldsOf(new(*model.Module), "Hdl"),
 	)

@@ -21,11 +21,12 @@ var ProviderSet = wire.NewSet(
 	repository.NewAttributeGroupRepository,
 	dao.NewAttributeGroupDAO)
 
-func InitModule(db *mongox.Mongo, q mq.MQ) (*Module, error) {
+func InitModule(db *mongox.DB, q mq.MQ) (*Module, error) {
 	wire.Build(
 		ProviderSet,
 		NewService,
 		event.NewFieldSecureAttrChangeEventProducer,
+		event.NewFieldDeleteEventProducer,
 		InitAttributeDAO,
 		wire.Struct(new(Module), "*"),
 	)
@@ -34,7 +35,7 @@ func InitModule(db *mongox.Mongo, q mq.MQ) (*Module, error) {
 
 var daoOnce = sync.Once{}
 
-func InitCollectionOnce(db *mongox.Mongo) {
+func InitCollectionOnce(db *mongox.DB) {
 	daoOnce.Do(func() {
 		err := dao.InitIndexes(db)
 		if err != nil {
@@ -43,12 +44,12 @@ func InitCollectionOnce(db *mongox.Mongo) {
 	})
 }
 
-func InitAttributeDAO(db *mongox.Mongo) dao.AttributeDAO {
+func InitAttributeDAO(db *mongox.DB) dao.AttributeDAO {
 	InitCollectionOnce(db)
 	return dao.NewAttributeDAO(db)
 }
 
 func NewService(repo repository.AttributeRepository, repoGroup repository.AttributeGroupRepository,
-	producer event.FieldSecureAttrChangeEventProducer) Service {
-	return service.NewService(repo, repoGroup, producer)
+	producer event.FieldSecureAttrChangeEventProducer, deleteProducer event.IFieldDeleteEventProducer) Service {
+	return service.NewService(repo, repoGroup, producer, deleteProducer)
 }

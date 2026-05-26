@@ -30,22 +30,22 @@ type HandlerTestSuite struct {
 	suite.Suite
 
 	dao    dao.ResourceDAO
-	db     *mongox.Mongo
+	db     *mongox.DB
 	server *gin.Engine
 	ctrl   *gomock.Controller
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	_, err := s.db.Collection("c_resources").DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection("c_resources").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
-	_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
-	_, err := s.db.Collection("c_resources").DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection("c_resources").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
-	_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
 }
 
@@ -108,8 +108,10 @@ func (s *HandlerTestSuite) TestCreate() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				_, err := s.dao.CreateResource(ctx, dao.Resource{
-					Name:     "Instance01",
 					ModelUID: "mysql",
+					Data: mongox.MapStr{
+						"name": "Instance01",
+					},
 				})
 
 				assert.NoError(t, err)
@@ -136,9 +138,9 @@ func (s *HandlerTestSuite) TestCreate() {
 			require.Equal(t, tc.wantCode, recorder.Code)
 			assert.Equal(t, tc.wantResp, recorder.MustScan())
 
-			_, err = s.db.Collection("c_resources").DeleteMany(context.Background(), bson.M{})
+			_, err = s.db.Database().Collection("c_resources").DeleteMany(context.Background(), bson.M{})
 			require.NoError(t, err)
-			_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+			_, err = s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 			require.NoError(t, err)
 		})
 	}
@@ -148,9 +150,9 @@ func (s *HandlerTestSuite) TestListManyByIds() {
 	total := 3
 	for idx := 1; idx < total; idx++ {
 		rs := dao.Resource{
-			Name:     fmt.Sprintf("instance-%d", idx),
 			ModelUID: "mysql",
 			Data: mongox.MapStr{
+				"name":     fmt.Sprintf("instance-%d", idx),
 				"hostname": fmt.Sprintf("张三-%d", idx),
 			},
 		}

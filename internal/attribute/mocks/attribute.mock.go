@@ -14,7 +14,6 @@ import (
 	reflect "reflect"
 
 	domain "github.com/Duke1616/ecmdb/internal/attribute/internal/domain"
-	gin "github.com/gin-gonic/gin"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -237,7 +236,7 @@ func (c *MockServiceCreateDefaultAttributeCall) DoAndReturn(f func(context.Conte
 }
 
 // CustomAttributeFieldColumns mocks base method.
-func (m *MockService) CustomAttributeFieldColumns(ctx *gin.Context, modelUid string, customField []string) (int64, error) {
+func (m *MockService) CustomAttributeFieldColumns(ctx context.Context, modelUid string, customField []string) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CustomAttributeFieldColumns", ctx, modelUid, customField)
 	ret0, _ := ret[0].(int64)
@@ -264,13 +263,13 @@ func (c *MockServiceCustomAttributeFieldColumnsCall) Return(arg0 int64, arg1 err
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceCustomAttributeFieldColumnsCall) Do(f func(*gin.Context, string, []string) (int64, error)) *MockServiceCustomAttributeFieldColumnsCall {
+func (c *MockServiceCustomAttributeFieldColumnsCall) Do(f func(context.Context, string, []string) (int64, error)) *MockServiceCustomAttributeFieldColumnsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceCustomAttributeFieldColumnsCall) DoAndReturn(f func(*gin.Context, string, []string) (int64, error)) *MockServiceCustomAttributeFieldColumnsCall {
+func (c *MockServiceCustomAttributeFieldColumnsCall) DoAndReturn(f func(context.Context, string, []string) (int64, error)) *MockServiceCustomAttributeFieldColumnsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -432,7 +431,7 @@ func (c *MockServiceListAttributeGroupByIdsCall) DoAndReturn(f func(context.Cont
 }
 
 // ListAttributePipeline mocks base method.
-func (m *MockService) ListAttributePipeline(ctx *gin.Context, modelUid string) ([]domain.AttributePipeline, error) {
+func (m *MockService) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAttributePipeline", ctx, modelUid)
 	ret0, _ := ret[0].([]domain.AttributePipeline)
@@ -459,13 +458,13 @@ func (c *MockServiceListAttributePipelineCall) Return(arg0 []domain.AttributePip
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceListAttributePipelineCall) Do(f func(*gin.Context, string) ([]domain.AttributePipeline, error)) *MockServiceListAttributePipelineCall {
+func (c *MockServiceListAttributePipelineCall) Do(f func(context.Context, string) ([]domain.AttributePipeline, error)) *MockServiceListAttributePipelineCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceListAttributePipelineCall) DoAndReturn(f func(*gin.Context, string) ([]domain.AttributePipeline, error)) *MockServiceListAttributePipelineCall {
+func (c *MockServiceListAttributePipelineCall) DoAndReturn(f func(context.Context, string) ([]domain.AttributePipeline, error)) *MockServiceListAttributePipelineCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
+	github.com/Duke1616/eiam v0.0.7
 	github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9
 	github.com/Duke1616/etask v0.0.6
 	github.com/Duke1616/vuefinder-go v1.1.0
@@ -16,7 +17,7 @@ require (
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
-	github.com/fatih/color v1.14.1
+	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0

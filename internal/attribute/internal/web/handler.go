@@ -76,7 +76,7 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 		return systemErrorResult, err
 	}
 
-	pipelines, err := h.svc.ListAttributePipeline(ctx, req.ModelUid)
+	pipelines, err := h.svc.ListAttributePipeline(ctx.Request.Context(), req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -129,7 +129,7 @@ func (h *Handler) ListAttributeField(ctx *gin.Context, req ListAttributeReq) (gi
 }
 
 func (h *Handler) CustomAttributeFieldColumns(ctx *gin.Context, req CustomAttributeFieldColumnsReq) (ginx.Result, error) {
-	columns, err := h.svc.CustomAttributeFieldColumns(ctx, req.ModelUid, req.CustomFieldName)
+	columns, err := h.svc.CustomAttributeFieldColumns(ctx.Request.Context(), req.ModelUid, req.CustomFieldName)
 	if err != nil {
 		return systemErrorResult, err
 	}

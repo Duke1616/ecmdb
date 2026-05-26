@@ -16,3 +16,9 @@ type Attribute = domain.Attribute
 type AttributeGroup = domain.AttributeGroup
 
 type Event = event.FieldSecureAttrChange
+
+const FieldDeleteEventName = event.FIELD_DELETE_EVENT_NAME
+
+type FieldDeleteEvent = event.FieldDelete
+
+type IFieldDeleteEventProducer = event.IFieldDeleteEventProducer

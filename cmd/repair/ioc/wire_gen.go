@@ -19,35 +19,36 @@ import (
 
 func InitApp() (*App, error) {
 	mongo := ioc.InitMongoDB()
-	module, err := relation.InitModule(mongo)
+	db := ioc.InitMongoDBV2(mongo)
+	module, err := relation.InitModule(db)
 	if err != nil {
 		return nil, err
 	}
 	mq := ioc.InitMQ()
-	attributeModule, err := attribute.InitModule(mongo, mq)
+	attributeModule, err := attribute.InitModule(db, mq)
 	if err != nil {
 		return nil, err
 	}
 	cryptoRegistry := ioc.InitModuleCrypto()
-	resourceModule, err := resource.InitModule(mongo, attributeModule, module, mq, cryptoRegistry)
+	resourceModule, err := resource.InitModule(db, attributeModule, module, mq, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(mongo, module, attributeModule, resourceModule)
+	modelModule, err := model.InitModule(db, module, attributeModule, resourceModule)
 	if err != nil {
 		return nil, err
 	}
-	v := modelModule.Svc
-	v2 := attributeModule.Svc
-	v3 := resourceModule.EncryptedSvc
+	service := modelModule.Svc
+	serviceService := attributeModule.Svc
+	encryptedSvc := resourceModule.EncryptedSvc
 	app := &App{
-		ModelSvc:    v,
-		AttrSvc:     v2,
-		ResourceSvc: v3,
+		ModelSvc:    service,
+		AttrSvc:     serviceService,
+		ResourceSvc: encryptedSvc,
 	}
 	return app, nil
 }
 
 // wire.go:
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMQ, ioc.InitModuleCrypto)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMongoDBV2, ioc.InitMQ, ioc.InitModuleCrypto)

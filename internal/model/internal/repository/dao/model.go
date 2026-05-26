@@ -47,85 +47,68 @@ type ModelDAO interface {
 	CountByGroupId(ctx context.Context, GroupId int64) (int64, error)
 }
 
-func NewModelDAO(db *mongox.Mongo) ModelDAO {
+func NewModelDAO(db *mongox.DB) ModelDAO {
 	return &modelDAO{
-		db: db,
+		coll: mongox.NewCollection[Model](db, ModelCollection),
 	}
 }
 
 type modelDAO struct {
-	db *mongox.Mongo
+	coll *mongox.Collection[Model]
 }
 
 func (dao *modelDAO) GetByUid(ctx context.Context, uid string) (Model, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"uid": uid}
 
-	var m Model
-	if err := col.FindOne(ctx, filter).Decode(&m); err != nil {
+	m, err := dao.coll.FindOne(ctx, filter)
+	if err != nil {
 		if mongox.IsNotFoundError(err) {
 			return Model{}, fmt.Errorf("模型查询: %w", errs.ErrNotFound)
 		}
 		return Model{}, fmt.Errorf("解码错误: %w", err)
 	}
 
-	return m, nil
+	return *m, nil
 }
 
 func (dao *modelDAO) GetByUids(ctx context.Context, uids []string) ([]Model, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"uid": bson.M{"$in": uids}}
-	cursor, err := col.Find(ctx, filter)
-	var result []Model
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
+	ms, err := dao.coll.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("查询错误: %w", err)
 	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return ms, nil
 }
 
 func (dao *modelDAO) ListByGroupIds(ctx context.Context, mgids []int64) ([]Model, error) {
-	col := dao.db.Collection(ModelCollection)
-	filter := bson.M{}
-
 	if len(mgids) <= 0 {
 		slog.Warn("没有匹配的数据, 模型组为空")
 		return nil, nil
 	}
 
-	filter["model_group_id"] = bson.M{
-		"$in": mgids,
+	filter := bson.M{
+		"model_group_id": bson.M{
+			"$in": mgids,
+		},
 	}
 
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: 1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
+	ms, err := dao.coll.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
+		return nil, fmt.Errorf("查询错误: %w", err)
 	}
-
-	var result []Model
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return ms, nil
 }
 
 func (dao *modelDAO) Create(ctx context.Context, m Model) (int64, error) {
 	now := time.Now()
 	m.Ctime, m.Utime = now.UnixMilli(), now.UnixMilli()
 
-	// 直接插入数据，并自增ID
-	_, err := dao.db.InsertOneWithAutoID(ctx, ModelCollection, &m)
-
+	// 依靠 mongoxv2 的 AutoIDPlugin 插件自动分配并注入 ID，不需要再手动管理 id_generator
+	_, err := dao.coll.InsertOne(ctx, &m)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return 0, fmt.Errorf("模型插入: %w", errs.ErrUniqueDuplicate)
@@ -137,71 +120,49 @@ func (dao *modelDAO) Create(ctx context.Context, m Model) (int64, error) {
 }
 
 func (dao *modelDAO) GetById(ctx context.Context, id int64) (Model, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"id": id}
 
-	var m Model
-	if err := col.FindOne(ctx, filter).Decode(&m); err != nil {
+	m, err := dao.coll.FindOne(ctx, filter)
+	if err != nil {
 		if mongox.IsNotFoundError(err) {
 			return Model{}, fmt.Errorf("模型查询: %w", errs.ErrNotFound)
 		}
 		return Model{}, fmt.Errorf("解码错误: %w", err)
 	}
 
-	return m, nil
+	return *m, nil
 }
 
 func (dao *modelDAO) ListAll(ctx context.Context) ([]Model, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{}
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
-	cursor, err := col.Find(ctx, filter, opt)
-	defer cursor.Close(ctx)
+	ms, err := dao.coll.Find(ctx, filter, opt)
 	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
+		return nil, fmt.Errorf("查询错误: %w", err)
 	}
-
-	var result []Model
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return ms, nil
 }
 
 func (dao *modelDAO) List(ctx context.Context, offset, limit int64) ([]Model, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{}
 	opt := &options.FindOptions{
 		Sort:  bson.D{{Key: "ctime", Value: -1}},
 		Limit: &limit,
 		Skip:  &offset,
 	}
-	cursor, err := col.Find(ctx, filter, opt)
-	defer cursor.Close(ctx)
+	ms, err := dao.coll.Find(ctx, filter, opt)
 	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
+		return nil, fmt.Errorf("查询错误: %w", err)
 	}
-
-	var result []Model
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return ms, nil
 }
 
 func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{}
 
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -210,10 +171,9 @@ func (dao *modelDAO) Count(ctx context.Context) (int64, error) {
 }
 
 func (dao *modelDAO) DeleteById(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"id": id}
 
-	result, err := col.DeleteOne(ctx, filter)
+	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
 	}
@@ -222,10 +182,9 @@ func (dao *modelDAO) DeleteById(ctx context.Context, id int64) (int64, error) {
 }
 
 func (dao *modelDAO) DeleteByUid(ctx context.Context, modelUid string) (int64, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"uid": modelUid}
 
-	result, err := col.DeleteOne(ctx, filter)
+	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
 	}
@@ -234,9 +193,8 @@ func (dao *modelDAO) DeleteByUid(ctx context.Context, modelUid string) (int64, e
 }
 
 func (dao *modelDAO) CountByGroupId(ctx context.Context, GroupId int64) (int64, error) {
-	col := dao.db.Collection(ModelCollection)
 	filter := bson.M{"model_group_id": GroupId}
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}

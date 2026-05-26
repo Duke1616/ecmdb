@@ -7,7 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -69,26 +69,32 @@ type AttributeDAO interface {
 }
 
 type attributeDAO struct {
-	db *mongox.Mongo
+	db   *mongox.DB
+	coll *mongox.Collection[Attribute]
+}
+
+func NewAttributeDAO(db *mongox.DB) AttributeDAO {
+	return &attributeDAO{
+		db:   db,
+		coll: mongox.NewCollection[Attribute](db, AttributeCollection),
+	}
 }
 
 func (dao *attributeDAO) DetailAttribute(ctx context.Context, id int64) (Attribute, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"id": id}
 
-	var result Attribute
-	if err := col.FindOne(ctx, filter).Decode(&result); err != nil {
+	result, err := dao.coll.FindOne(ctx, filter)
+	if err != nil {
 		if mongox.IsNotFoundError(err) {
 			return Attribute{}, fmt.Errorf("属性查询: %w", errs.ErrNotFound)
 		}
 		return Attribute{}, fmt.Errorf("解码错误: %w", err)
 	}
 
-	return result, nil
+	return *result, nil
 }
 
 func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
 	updateDoc := bson.M{
 		"$set": bson.M{
 			"field_name": attr.FieldName,
@@ -101,7 +107,7 @@ func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (i
 		},
 	}
 	filter := bson.M{"id": attr.Id}
-	count, err := col.UpdateOne(ctx, filter, updateDoc)
+	count, err := dao.coll.UpdateOne(ctx, filter, updateDoc)
 	if err != nil {
 		return 0, fmt.Errorf("修改文档操作: %w", err)
 	}
@@ -109,19 +115,12 @@ func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (i
 	return count.ModifiedCount, nil
 }
 
-func NewAttributeDAO(db *mongox.Mongo) AttributeDAO {
-	return &attributeDAO{
-		db: db,
-	}
-}
-
 func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (int64, error) {
 	now := time.Now()
 	attr.Ctime, attr.Utime = now.UnixMilli(), now.UnixMilli()
 
-	// 直接插入数据，并自增ID
-	_, err := dao.db.InsertOneWithAutoID(ctx, AttributeCollection, &attr)
-
+	// 借助 AutoIDPlugin 插件自动分配自增主键，无须再手动管理自增 ID。
+	_, err := dao.coll.InsertOne(ctx, &attr)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return 0, fmt.Errorf("模型插入: %w", errs.ErrUniqueDuplicate)
@@ -137,24 +136,22 @@ func (dao *attributeDAO) BatchCreateAttribute(ctx context.Context, attrs []Attri
 		return nil
 	}
 
-	col := dao.db.Collection(AttributeCollection)
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID（一次数据库调用）
+	// 批量获取起始 ID
 	startID, err := dao.db.GetBatchIdGenerator(AttributeCollection, len(attrs))
 	if err != nil {
 		return fmt.Errorf("获取批量 ID 错误: %w", err)
 	}
 
-	// 为每个属性设置 ID 和时间戳
-	docs := make([]interface{}, len(attrs))
+	docs := make([]*Attribute, len(attrs))
 	for i := range attrs {
 		attrs[i].Id = startID + int64(i)
 		attrs[i].Ctime, attrs[i].Utime = now, now
-		docs[i] = attrs[i]
+		docs[i] = &attrs[i]
 	}
 
-	_, err = col.InsertMany(ctx, docs)
+	_, err = dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return fmt.Errorf("批量插入模型属性: %w", errs.ErrUniqueDuplicate)
@@ -166,60 +163,30 @@ func (dao *attributeDAO) BatchCreateAttribute(ctx context.Context, attrs []Attri
 }
 
 func (dao *attributeDAO) SearchAttributeByModelUID(ctx context.Context, modelUid string) ([]Attribute, error) {
-	col := dao.db.Collection(AttributeCollection)
-	filter := bson.M{}
-	filter["model_uid"] = modelUid
-	filter["secure"] = bson.M{"$ne": true}
-
+	filter := bson.M{
+		"model_uid": modelUid,
+		"secure":    bson.M{"$ne": true},
+	}
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opt)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []Attribute
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-
-	return result, nil
+	return dao.coll.Find(ctx, filter, opt)
 }
 
 func (dao *attributeDAO) ListAttributes(ctx context.Context, modelUid string) ([]Attribute, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"model_uid": modelUid}
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "sort_key", Value: 1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []Attribute
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *attributeDAO) Count(ctx context.Context, modelUid string) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"model_uid": modelUid}
 
-	count, err := col.CountDocuments(ctx, filter)
+	count, err := dao.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("文档计数错误: %w", err)
 	}
@@ -228,17 +195,15 @@ func (dao *attributeDAO) Count(ctx context.Context, modelUid string) (int64, err
 }
 
 func (dao *attributeDAO) UpdateFieldIndex(ctx context.Context, modelUid string, customField []string) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
-
-	updates := make([]mongo.WriteModel, len(customField))
-	updates = slice.Map(customField, func(idx int, src string) mongo.WriteModel {
+	// NOTE: 使用 lo.Map 精简 BulkWrite 的 WriteModel 构造逻辑
+	updates := lo.Map(customField, func(src string, idx int) mongo.WriteModel {
 		return &mongo.UpdateOneModel{
 			Filter: bson.D{{Key: "model_uid", Value: modelUid}, {Key: "field_name", Value: src}},
 			Update: bson.D{{Key: "$set", Value: bson.D{{Key: "display", Value: true}, {Key: "index", Value: idx}}}},
 		}
 	})
 
-	result, err := col.BulkWrite(ctx, updates)
+	result, err := dao.coll.Native().BulkWrite(ctx, updates)
 	if err != nil {
 		return 0, fmt.Errorf("BulkWrite 修改错误, %w", err)
 	}
@@ -247,7 +212,6 @@ func (dao *attributeDAO) UpdateFieldIndex(ctx context.Context, modelUid string, 
 }
 
 func (dao *attributeDAO) UpdateFieldIndexReverse(ctx context.Context, modelUid string, customField []string) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.D{
 		{Key: "model_uid", Value: modelUid},
 		{Key: "field_name", Value: bson.D{{Key: "$nin", Value: customField}}},
@@ -255,7 +219,7 @@ func (dao *attributeDAO) UpdateFieldIndexReverse(ctx context.Context, modelUid s
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "display", Value: false}}}}
 
 	// 执行批量更新
-	result, err := col.UpdateMany(ctx, filter, update)
+	result, err := dao.coll.UpdateMany(ctx, filter, update)
 	if err != nil {
 		return 0, fmt.Errorf("取反修改错误, %w", err)
 	}
@@ -264,10 +228,9 @@ func (dao *attributeDAO) UpdateFieldIndexReverse(ctx context.Context, modelUid s
 }
 
 func (dao *attributeDAO) DeleteAttribute(ctx context.Context, id int64) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"id": id}
 
-	result, err := col.DeleteOne(ctx, filter)
+	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
 	}
@@ -276,10 +239,9 @@ func (dao *attributeDAO) DeleteAttribute(ctx context.Context, id int64) (int64, 
 }
 
 func (dao *attributeDAO) DeleteByGroupId(ctx context.Context, groupId int64) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"group_id": groupId}
 
-	result, err := col.DeleteMany(ctx, filter)
+	result, err := dao.coll.DeleteMany(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("批量删除属性失败: %w", err)
 	}
@@ -288,7 +250,6 @@ func (dao *attributeDAO) DeleteByGroupId(ctx context.Context, groupId int64) (in
 }
 
 func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid string) ([]AttributePipeline, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.D{
 		{Key: "model_uid", Value: modelUid},
 	}
@@ -303,11 +264,11 @@ func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid str
 		}}},
 	}
 
-	cursor, err := col.Aggregate(ctx, pipeline)
-	defer cursor.Close(ctx)
+	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
+	defer cursor.Close(ctx)
 
 	var result []AttributePipeline
 	if err = cursor.All(ctx, &result); err != nil {
@@ -321,30 +282,16 @@ func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid str
 }
 
 func (dao *attributeDAO) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) ([]Attribute, error) {
-	col := dao.db.Collection(AttributeCollection)
-	filter := bson.M{}
-	filter["secure"] = bson.M{"$eq": true}
-	filter["model_uid"] = bson.M{"$in": modelUids}
+	filter := bson.M{
+		"secure":    bson.M{"$eq": true},
+		"model_uid": bson.M{"$in": modelUids},
+	}
 
 	opt := &options.FindOptions{
 		Sort: bson.D{{Key: "ctime", Value: -1}},
 	}
 
-	cursor, err := col.Find(ctx, filter, opt)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []Attribute
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-
-	return result, nil
+	return dao.coll.Find(ctx, filter, opt)
 }
 
 type Attribute struct {
@@ -388,34 +335,21 @@ func (a *Attribute) GetID() int64 {
 }
 
 func (dao *attributeDAO) ListByGroupID(ctx context.Context, groupId int64) ([]Attribute, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"group_id": groupId}
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "sort_key", Value: 1}}, // 按 sort_key 升序
 	}
 
-	cursor, err := col.Find(ctx, filter, opts)
-	defer cursor.Close(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-
-	var result []Attribute
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	return result, nil
+	return dao.coll.Find(ctx, filter, opts)
 }
 
 func (dao *attributeDAO) GetMaxSortKeyByGroupID(ctx context.Context, groupId int64) (int64, error) {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"group_id": groupId}
 	opts := &options.FindOneOptions{
 		Sort: bson.D{{Key: "sort_key", Value: -1}}, // 按 sort_key 降序取第一个
 	}
 
-	var result Attribute
-	err := col.FindOne(ctx, filter, opts).Decode(&result)
+	result, err := dao.coll.FindOne(ctx, filter, opts)
 	if err != nil {
 		if mongox.IsNotFoundError(err) {
 			return 0, nil // 分组为空时返回 0
@@ -426,7 +360,6 @@ func (dao *attributeDAO) GetMaxSortKeyByGroupID(ctx context.Context, groupId int
 }
 
 func (dao *attributeDAO) UpdateSort(ctx context.Context, id, groupId, sortKey int64) error {
-	col := dao.db.Collection(AttributeCollection)
 	filter := bson.M{"id": id}
 	update := bson.M{
 		"$set": bson.M{
@@ -436,7 +369,7 @@ func (dao *attributeDAO) UpdateSort(ctx context.Context, id, groupId, sortKey in
 		},
 	}
 
-	_, err := col.UpdateOne(ctx, filter, update)
+	_, err := dao.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("更新排序错误: %w", err)
 	}
@@ -448,20 +381,18 @@ func (dao *attributeDAO) BatchUpdateSortKey(ctx context.Context, items []Attribu
 		return nil
 	}
 
-	col := dao.db.Collection(AttributeCollection)
-	var models []mongo.WriteModel
-	for _, item := range items {
-		update := mongo.NewUpdateOneModel().
+	// NOTE: 借助 lo.Map 优雅构造 BulkWrite 序列化模型
+	models := lo.Map(items, func(item AttributeSortItem, _ int) mongo.WriteModel {
+		return mongo.NewUpdateOneModel().
 			SetFilter(bson.M{"id": item.ID}).
 			SetUpdate(bson.M{"$set": bson.M{
 				"group_id": item.GroupId,
 				"sort_key": item.SortKey,
 				"utime":    time.Now().UnixMilli(),
 			}})
-		models = append(models, update)
-	}
+	})
 
-	_, err := col.BulkWrite(ctx, models)
+	_, err := dao.coll.Native().BulkWrite(ctx, models)
 	if err != nil {
 		return fmt.Errorf("批量更新 SortKey 错误: %w", err)
 	}

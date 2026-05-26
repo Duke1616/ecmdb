@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitIndexes(db *mongox.Mongo) error {
+func InitIndexes(db *mongox.DB) error {
 	if err := initRTIndex(db); err != nil {
 		return err
 	}
@@ -21,8 +21,9 @@ func InitIndexes(db *mongox.Mongo) error {
 	return nil
 }
 
-func initRTIndex(db *mongox.Mongo) error {
-	col := db.Collection(RelationTypeCollection)
+func initRTIndex(db *mongox.DB) error {
+	// 使用 Collection[RelationType].Native() 拿到底层原始驱动连接以安全操作 Index
+	col := mongox.NewCollection[RelationType](db, RelationTypeCollection)
 
 	indexes := []mongo.IndexModel{
 		{
@@ -31,13 +32,14 @@ func initRTIndex(db *mongox.Mongo) error {
 		},
 	}
 
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
+	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
 
 	return err
 }
 
-func initRMIndex(db *mongox.Mongo) error {
-	col := db.Collection(ModelRelationCollection)
+func initRMIndex(db *mongox.DB) error {
+	// 使用 Collection[ModelRelation].Native() 拿到底层原始驱动连接以安全操作 Index
+	col := mongox.NewCollection[ModelRelation](db, ModelRelationCollection)
 
 	indexes := []mongo.IndexModel{
 		{
@@ -46,7 +48,7 @@ func initRMIndex(db *mongox.Mongo) error {
 		},
 	}
 
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
+	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
 
 	return err
 }

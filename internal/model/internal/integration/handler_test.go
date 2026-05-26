@@ -36,22 +36,22 @@ type HandlerTestSuite struct {
 	suite.Suite
 
 	dao    dao.ModelDAO
-	db     *mongox.Mongo
+	db     *mongox.DB
 	server *gin.Engine
 	svc    service.Service
 }
 
 func (s *HandlerTestSuite) TearDownSuite() {
-	_, err := s.db.Collection(dao.ModelCollection).DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection(dao.ModelCollection).DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
-	_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+	_, err = s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
 }
 
 func (s *HandlerTestSuite) TearDownTest() {
-	_, err := s.db.Collection(dao.ModelCollection).DeleteMany(context.Background(), bson.M{})
+	_, err := s.db.Database().Collection(dao.ModelCollection).DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
-	_, err = s.db.Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
+	_, err = s.db.Database().Collection("c_id_generator").DeleteMany(context.Background(), bson.M{})
 	require.NoError(s.T(), err)
 }
 
@@ -74,7 +74,7 @@ func (s *HandlerTestSuite) SetupSuite() {
 	server := gin.Default()
 	handler.PrivateRoutes(server)
 
-	s.db = testioc.InitMongoDB()
+	s.db = testioc.InitMongoDBV2(testioc.InitMongoDB())
 	s.dao = dao.NewModelDAO(s.db)
 	s.server = server
 }

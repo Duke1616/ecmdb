@@ -143,12 +143,7 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 
 	return ginx.Result{
 		Data: slice.Map(result, func(idx int, src domain.ResourceAggregatedAssets) RetrieveAggregatedAssets {
-			return RetrieveAggregatedAssets{
-				RelationName: src.RelationName,
-				ModelUid:     src.ModelUid,
-				Total:        src.Total,
-				ResourceIds:  src.ResourceIds,
-			}
+			return h.toAggregatedAssetsVo(src)
 		}),
 	}, nil
 }

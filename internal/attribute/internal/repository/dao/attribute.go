@@ -295,6 +295,7 @@ func (dao *attributeDAO) SearchAttributeFieldsBySecure(ctx context.Context, mode
 }
 
 type Attribute struct {
+	TenantID  int64       `bson:"tenant_id"`
 	Id        int64       `bson:"id"`
 	GroupId   int64       `bson:"group_id"`   // 属性所属分组
 	ModelUID  string      `bson:"model_uid"`  // 模型唯一标识

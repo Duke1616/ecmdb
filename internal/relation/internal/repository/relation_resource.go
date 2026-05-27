@@ -8,21 +8,28 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 )
 
+// RelationResourceRepository 资源实例关联关系仓储接口
 type RelationResourceRepository interface {
+	// CreateResourceRelation 创建资源关联关系
 	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
 
 	// ListSrcResources 查询资源列表
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
+	// ListDstResources 根据目标端查询资源关联列表
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error)
+	// TotalSrc 根据源端统计关联数量
 	TotalSrc(ctx context.Context, modelUid string, id int64) (int64, error)
+	// TotalDst 根据目标端统计关联数量
 	TotalDst(ctx context.Context, modelUid string, id int64) (int64, error)
 
 	// ListSrcAggregated 聚合查询关联列表
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error)
+	// ListDstAggregated 聚合查询目标关联列表
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error)
 
 	// ListSrcRelated 查询当前已经关联的数据，新增资源关联使用
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+	// ListDstRelated 查询当前已经关联的目标数据，新增资源关联使用
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 
 	// CountByRelationTypeUID 根据关联类型 UID 获取数量
@@ -31,9 +38,17 @@ type RelationResourceRepository interface {
 	// CountByRelationName 根据关联名称获取数量
 	CountByRelationName(ctx context.Context, name string) (int64, error)
 
+	// DeleteResourceRelation 删除资源关联关系
 	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
+	// DeleteSrcRelation 删除源端关系
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+	// DeleteDstRelation 删除目标端关系
 	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+
+	// ListRecursiveSrc 递归查询下游关联资产列表（正向递归）
+	ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error)
+	// ListRecursiveDst 递归查询上游关联资产列表（反向递归）
+	ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error)
 }
 
 func NewRelationResourceRepository(dao dao.RelationResourceDAO) RelationResourceRepository {
@@ -144,4 +159,18 @@ func (r *resourceRepository) CountByRelationTypeUID(ctx context.Context, uid str
 
 func (r *resourceRepository) CountByRelationName(ctx context.Context, name string) (int64, error) {
 	return r.dao.CountByRelationName(ctx, name)
+}
+
+func (r *resourceRepository) ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error) {
+	rrs, err := r.dao.ListRecursiveSrc(ctx, modelUid, id, maxDepth)
+	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+		return r.toResourceDomain(src)
+	}), err
+}
+
+func (r *resourceRepository) ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error) {
+	rrs, err := r.dao.ListRecursiveDst(ctx, modelUid, id, maxDepth)
+	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+		return r.toResourceDomain(src)
+	}), err
 }

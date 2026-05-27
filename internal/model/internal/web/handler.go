@@ -11,7 +11,6 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/sync/errgroup"
 )
 
 type Handler struct {
@@ -156,45 +155,35 @@ func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (g
 }
 
 func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, error) {
-	var (
-		eg            errgroup.Group
-		mgs           []domain.ModelGroup
-		models        []domain.Model
-		resourceCount map[string]int
-	)
-
-	// 获取执行分组下的所有模型数据
-	eg.Go(func() error {
-		var err error
-		mgs, _, err = h.mgSvc.List(ctx, req.Offset, req.Limit)
-		if err != nil {
-			return err
-		}
-		mgids := slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
-			return src.ID
-		})
-
-		models, err = h.svc.ListModelByGroupIds(ctx, mgids)
-		if err != nil {
-			return err
-		}
-
-		return err
-	})
-
-	// 查看所有模型拥有资产的数量
-	eg.Go(func() error {
-		var err error
-		resourceCount, err = h.resourceSvc.CountByModelUids(ctx, []string{})
-		if err != nil {
-			return err
-		}
-
-		return err
-	})
-
-	if err := eg.Wait(); err != nil {
+	// 1. 先分页获取模型分组列表
+	mgs, _, err := h.mgSvc.List(ctx, req.Offset, req.Limit)
+	if err != nil {
 		return systemErrorResult, err
+	}
+
+	// 2. 根据分组 ID 获取对应的模型列表
+	mgids := slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
+		return src.ID
+	})
+	models, err := h.svc.ListModelByGroupIds(ctx, mgids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	// 3. 提取所有模型 UID，实现精准按需统计
+	modelUids := slice.Map(models, func(idx int, src domain.Model) string {
+		return src.UID
+	})
+
+	// 4. 仅查询当前页面所涉模型的资产数量，彻底消除 MongoDB 全表无匹配大范围 Match & Group 统计灾难
+	var resourceCount map[string]int
+	if len(modelUids) > 0 {
+		resourceCount, err = h.resourceSvc.CountByModelUids(ctx, modelUids)
+		if err != nil {
+			return systemErrorResult, err
+		}
+	} else {
+		resourceCount = make(map[string]int)
 	}
 
 	// 前端展示

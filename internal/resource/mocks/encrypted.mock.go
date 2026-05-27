@@ -118,6 +118,44 @@ func (c *MockEncryptedSvcBatchUpdateResourcesCall) DoAndReturn(f func(context.Co
 	return c
 }
 
+// CheckBeforeDelete mocks base method.
+func (m *MockEncryptedSvc) CheckBeforeDelete(ctx context.Context, modelUid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckBeforeDelete", ctx, modelUid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CheckBeforeDelete indicates an expected call of CheckBeforeDelete.
+func (mr *MockEncryptedSvcMockRecorder) CheckBeforeDelete(ctx, modelUid any) *MockEncryptedSvcCheckBeforeDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckBeforeDelete", reflect.TypeOf((*MockEncryptedSvc)(nil).CheckBeforeDelete), ctx, modelUid)
+	return &MockEncryptedSvcCheckBeforeDeleteCall{Call: call}
+}
+
+// MockEncryptedSvcCheckBeforeDeleteCall wrap *gomock.Call
+type MockEncryptedSvcCheckBeforeDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockEncryptedSvcCheckBeforeDeleteCall) Return(arg0 error) *MockEncryptedSvcCheckBeforeDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockEncryptedSvcCheckBeforeDeleteCall) Do(f func(context.Context, string) error) *MockEncryptedSvcCheckBeforeDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockEncryptedSvcCheckBeforeDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockEncryptedSvcCheckBeforeDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CountByModelUid mocks base method.
 func (m *MockEncryptedSvc) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -663,6 +701,45 @@ func (c *MockEncryptedSvcSetCustomFieldCall) Do(f func(context.Context, int64, s
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockEncryptedSvcSetCustomFieldCall) DoAndReturn(f func(context.Context, int64, string, any) (int64, error)) *MockEncryptedSvcSetCustomFieldCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// UnsetCustomField mocks base method.
+func (m *MockEncryptedSvc) UnsetCustomField(ctx context.Context, modelUid, fieldUid string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnsetCustomField", ctx, modelUid, fieldUid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UnsetCustomField indicates an expected call of UnsetCustomField.
+func (mr *MockEncryptedSvcMockRecorder) UnsetCustomField(ctx, modelUid, fieldUid any) *MockEncryptedSvcUnsetCustomFieldCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetCustomField", reflect.TypeOf((*MockEncryptedSvc)(nil).UnsetCustomField), ctx, modelUid, fieldUid)
+	return &MockEncryptedSvcUnsetCustomFieldCall{Call: call}
+}
+
+// MockEncryptedSvcUnsetCustomFieldCall wrap *gomock.Call
+type MockEncryptedSvcUnsetCustomFieldCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockEncryptedSvcUnsetCustomFieldCall) Return(arg0 int64, arg1 error) *MockEncryptedSvcUnsetCustomFieldCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockEncryptedSvcUnsetCustomFieldCall) Do(f func(context.Context, string, string) (int64, error)) *MockEncryptedSvcUnsetCustomFieldCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockEncryptedSvcUnsetCustomFieldCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockEncryptedSvcUnsetCustomFieldCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -295,6 +295,21 @@ func (mr *MockResourceRepositoryMockRecorder) TotalResourcesWithFilters(ctx, mod
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TotalResourcesWithFilters", reflect.TypeOf((*MockResourceRepository)(nil).TotalResourcesWithFilters), ctx, modelUid, ids, filterGroups)
 }
 
+// UnsetCustomField mocks base method.
+func (m *MockResourceRepository) UnsetCustomField(ctx context.Context, modelUid, fieldUid string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnsetCustomField", ctx, modelUid, fieldUid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UnsetCustomField indicates an expected call of UnsetCustomField.
+func (mr *MockResourceRepositoryMockRecorder) UnsetCustomField(ctx, modelUid, fieldUid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetCustomField", reflect.TypeOf((*MockResourceRepository)(nil).UnsetCustomField), ctx, modelUid, fieldUid)
+}
+
 // UpdateResource mocks base method.
 func (m *MockResourceRepository) UpdateResource(ctx context.Context, resource domain.Resource) (int64, error) {
 	m.ctrl.T.Helper()

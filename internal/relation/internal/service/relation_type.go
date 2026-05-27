@@ -12,6 +12,7 @@ import (
 
 var ErrDependency = errors.New("存在关联数据")
 
+// RelationTypeService 关联类型服务接口
 type RelationTypeService interface {
 	// Create 创建关联类型
 	Create(ctx context.Context, req domain.RelationType) (int64, error)

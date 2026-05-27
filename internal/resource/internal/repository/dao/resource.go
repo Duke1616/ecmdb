@@ -484,6 +484,7 @@ func (dao *resourceDAO) TotalResourcesWithFilters(ctx context.Context, modelUid 
 }
 
 type Resource struct {
+	TenantID int64         `bson:"tenant_id"`
 	ID       int64         `bson:"id"`
 	ModelUID string        `bson:"model_uid"`
 	Data     mongox.MapStr `bson:",inline"`

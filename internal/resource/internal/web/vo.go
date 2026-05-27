@@ -68,6 +68,7 @@ type ListDiagramReq struct {
 	ModelUid     string `json:"model_uid"`
 	ResourceId   int64  `json:"resource_id"`
 	ResourceName string `json:"resource_name"`
+	MaxDepth     int    `json:"max_depth"`
 }
 
 type ResourceRelation struct {

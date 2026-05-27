@@ -56,26 +56,26 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	service := userModule.Svc
+	v := userModule.Svc
 	roleModule, err := role.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	serviceService := roleModule.Svc
+	v2 := roleModule.Svc
 	mq := ioc.InitMQ()
 	menuModule, err := menu.InitModule(mq, mongo)
 	if err != nil {
 		return nil, err
 	}
-	service2 := menuModule.Svc
+	v3 := menuModule.Svc
 	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, module)
 	if err != nil {
 		return nil, err
 	}
-	service3 := permissionModule.Svc
-	service4 := module.Svc
+	v4 := permissionModule.Svc
+	v5 := module.Svc
 	dao := version.NewDao(mongo)
-	versionService := version.NewService(dao)
+	service := version.NewService(dao)
 	mongoxDB := ioc.InitMongoDBV2(mongo)
 	relationModule, err := relation.InitModule(mongoxDB)
 	if err != nil {
@@ -97,7 +97,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	loader := bootstrapModule.Svc
+	v6 := bootstrapModule.Svc
 	clientv3Client := ioc.InitEtcdClient()
 	registry := InitRegistry(clientv3Client)
 	clientConnInterface := InitEALERTGrpcClient(registry)
@@ -110,17 +110,17 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	service5 := workflowModule.Svc
+	v7 := workflowModule.Svc
 	app := &App{
-		UserSvc:        service,
-		RoleSvc:        serviceService,
-		MenuSvc:        service2,
-		PermissionSvc:  service3,
-		policySvc:      service4,
-		VerSvc:         versionService,
-		BootstrapSvc:   loader,
+		UserSvc:        v,
+		RoleSvc:        v2,
+		MenuSvc:        v3,
+		PermissionSvc:  v4,
+		policySvc:      v5,
+		VerSvc:         service,
+		BootstrapSvc:   v6,
 		TemplateClient: templateServiceClient,
-		WorkflowSvc:    service5,
+		WorkflowSvc:    v7,
 		GormDB:         db,
 		DB:             mongo,
 	}

@@ -203,8 +203,12 @@ func (h *Handler) ListCanBeFilterRelated(ctx *gin.Context, req ListCanBeRelatedR
 }
 
 func (h *Handler) FindAllGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
-	// 查询资产关联上下级拓扑
-	graph, _, err := h.RRSvc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
+	// 查询资产关联上下级拓扑（支持多级递归，默认递归3层）
+	maxDepth := req.MaxDepth
+	if maxDepth <= 0 {
+		maxDepth = 3
+	}
+	graph, err := h.RRSvc.ListRecursiveDiagram(ctx, req.ModelUid, req.ResourceId, maxDepth)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -237,28 +241,28 @@ func (h *Handler) FindAllGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Resul
 		return systemErrorResult, err
 	}
 
+	srcIdMap := make(map[int64]struct{}, len(srcId))
+	for _, id := range srcId {
+		srcIdMap[id] = struct{}{}
+	}
+
 	nodes := slice.Map(rs, func(idx int, src domain.Resource) Node {
 		data := make(map[string]any, 1)
 		data["model_uid"] = src.ModelUID
 		data["isNeedLoadDataFromRemoteServer"] = true
 		data["childrenLoaded"] = false
-		for _, id := range srcId {
-			if src.ID == id {
-				return Node{
-					ID:                   strconv.FormatInt(src.ID, 10),
-					Text:                 src.Name,
-					Data:                 data,
-					ExpandHolderPosition: "right",
-					Expanded:             false,
-				}
-			}
+
+		expandHolderPosition := "left"
+		if _, ok := srcIdMap[src.ID]; ok {
+			expandHolderPosition = "right"
 		}
+
 		return Node{
 			ID:                   strconv.FormatInt(src.ID, 10),
 			Text:                 src.Name,
-			ExpandHolderPosition: "left",
-			Expanded:             false,
 			Data:                 data,
+			ExpandHolderPosition: expandHolderPosition,
+			Expanded:             false,
 		}
 	})
 
@@ -383,8 +387,12 @@ func (h *Handler) FindRightGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Res
 }
 
 func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
-	// 查询资产关联上下级拓扑
-	diagram, _, err := h.RRSvc.ListDiagram(ctx, req.ModelUid, req.ResourceId)
+	// 查询资产关联上下级拓扑（支持多级递归，默认递归3层）
+	maxDepth := req.MaxDepth
+	if maxDepth <= 0 {
+		maxDepth = 3
+	}
+	diagram, err := h.RRSvc.ListRecursiveDiagram(ctx, req.ModelUid, req.ResourceId, maxDepth)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -419,18 +427,13 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 	}
 
 	// 组合前端返回数据
-	assets := make(map[string][]ResourceAssets, len(diagram.DST)+len(diagram.SRC))
-	assets = slice.ToMapV(rs, func(element domain.Resource) (string, []ResourceAssets) {
-		return element.ModelUID, slice.FilterMap(rs, func(idx int, src domain.Resource) (ResourceAssets, bool) {
-			if src.ModelUID == element.ModelUID {
-				return ResourceAssets{
-					ResourceID:   src.ID,
-					ResourceName: src.Name,
-				}, true
-			}
-			return ResourceAssets{}, false
+	assets := make(map[string][]ResourceAssets)
+	for _, src := range rs {
+		assets[src.ModelUID] = append(assets[src.ModelUID], ResourceAssets{
+			ResourceID:   src.ID,
+			ResourceName: src.Name,
 		})
-	})
+	}
 
 	return ginx.Result{
 		Data: RetrieveDiagram{

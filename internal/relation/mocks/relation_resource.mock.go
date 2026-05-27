@@ -394,6 +394,45 @@ func (c *MockRelationResourceServiceListDstResourcesCall) DoAndReturn(f func(con
 	return c
 }
 
+// ListRecursiveDiagram mocks base method.
+func (m *MockRelationResourceService) ListRecursiveDiagram(ctx context.Context, modelUid string, id int64, maxDepth int) (domain.ResourceDiagram, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRecursiveDiagram", ctx, modelUid, id, maxDepth)
+	ret0, _ := ret[0].(domain.ResourceDiagram)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRecursiveDiagram indicates an expected call of ListRecursiveDiagram.
+func (mr *MockRelationResourceServiceMockRecorder) ListRecursiveDiagram(ctx, modelUid, id, maxDepth any) *MockRelationResourceServiceListRecursiveDiagramCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecursiveDiagram", reflect.TypeOf((*MockRelationResourceService)(nil).ListRecursiveDiagram), ctx, modelUid, id, maxDepth)
+	return &MockRelationResourceServiceListRecursiveDiagramCall{Call: call}
+}
+
+// MockRelationResourceServiceListRecursiveDiagramCall wrap *gomock.Call
+type MockRelationResourceServiceListRecursiveDiagramCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationResourceServiceListRecursiveDiagramCall) Return(arg0 domain.ResourceDiagram, arg1 error) *MockRelationResourceServiceListRecursiveDiagramCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationResourceServiceListRecursiveDiagramCall) Do(f func(context.Context, string, int64, int) (domain.ResourceDiagram, error)) *MockRelationResourceServiceListRecursiveDiagramCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationResourceServiceListRecursiveDiagramCall) DoAndReturn(f func(context.Context, string, int64, int) (domain.ResourceDiagram, error)) *MockRelationResourceServiceListRecursiveDiagramCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListSrcAggregated mocks base method.
 func (m *MockRelationResourceService) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error) {
 	m.ctrl.T.Helper()

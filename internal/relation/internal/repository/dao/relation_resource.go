@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -35,6 +36,9 @@ type RelationResourceDAO interface {
 
 	// CountByRelationName 根据关联名称获取数量
 	CountByRelationName(ctx context.Context, name string) (int64, error)
+
+	ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error)
+	ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error)
 }
 
 func NewRelationResourceDAO(db *mongox.DB) RelationResourceDAO {
@@ -281,7 +285,136 @@ func (dao *resourceDAO) CountByRelationName(ctx context.Context, name string) (i
 	return count, nil
 }
 
+func (dao *resourceDAO) ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error) {
+	tenantID := ctxutil.GetTenantID(ctx).Int64()
+
+	// 1. 初始化 $match 条件，如果启用了逻辑租户隔离则注入租户过滤
+	matchFilter := bson.M{
+		"source_resource_id": id,
+		"source_model_uid":   modelUid,
+	}
+	if tenantID > 0 {
+		matchFilter["tenant_id"] = tenantID
+	}
+
+	// 2. 初始化 $graphLookup 条件
+	graphLookupVal := bson.M{
+		"from":             ResourceRelationCollection,
+		"startWith":        "$target_resource_id",
+		"connectFromField": "target_resource_id",
+		"connectToField":   "source_resource_id",
+		"as":               "dependencies",
+		"maxDepth":         maxDepth,
+	}
+	if tenantID > 0 {
+		graphLookupVal["restrictSearchWithMatch"] = bson.M{"tenant_id": tenantID}
+	}
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: matchFilter}},
+		{{Key: "$graphLookup", Value: graphLookupVal}},
+	}
+
+	// 3. 动态获取支持物理隔离的底层 Collection 并执行聚合，彻底解决逃生舱口 Native 绕过租户路由的架构漏洞
+	cursor, err := dao.db.CollectionWithTenant(ctx, ResourceRelationCollection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, fmt.Errorf("递归下游关系聚合查询失败: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var dbResults []struct {
+		ResourceRelation `bson:",inline"`
+		Dependencies     []ResourceRelation `bson:"dependencies"`
+	}
+
+	if err = cursor.All(ctx, &dbResults); err != nil {
+		return nil, fmt.Errorf("递归下游解码错误: %w", err)
+	}
+
+	var results []ResourceRelation
+	seen := make(map[int64]struct{})
+	for _, res := range dbResults {
+		if _, ok := seen[res.Id]; !ok {
+			seen[res.Id] = struct{}{}
+			results = append(results, res.ResourceRelation)
+		}
+		for _, dep := range res.Dependencies {
+			if _, ok := seen[dep.Id]; !ok {
+				seen[dep.Id] = struct{}{}
+				results = append(results, dep)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+func (dao *resourceDAO) ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error) {
+	tenantID := ctxutil.GetTenantID(ctx).Int64()
+
+	// 1. 初始化 $match 条件，如果启用了逻辑租户隔离则注入租户过滤
+	matchFilter := bson.M{
+		"target_resource_id": id,
+		"target_model_uid":   modelUid,
+	}
+	if tenantID > 0 {
+		matchFilter["tenant_id"] = tenantID
+	}
+
+	// 2. 初始化 $graphLookup 条件
+	graphLookupVal := bson.M{
+		"from":             ResourceRelationCollection,
+		"startWith":        "$source_resource_id",
+		"connectFromField": "source_resource_id",
+		"connectToField":   "target_resource_id",
+		"as":               "dependencies",
+		"maxDepth":         maxDepth,
+	}
+	if tenantID > 0 {
+		graphLookupVal["restrictSearchWithMatch"] = bson.M{"tenant_id": tenantID}
+	}
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: matchFilter}},
+		{{Key: "$graphLookup", Value: graphLookupVal}},
+	}
+
+	// 3. 动态获取支持物理隔离的底层 Collection 并执行聚合，彻底解决逃生舱口 Native 绕过租户路由的架构漏洞
+	cursor, err := dao.db.CollectionWithTenant(ctx, ResourceRelationCollection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, fmt.Errorf("递归上游关系聚合查询失败: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var dbResults []struct {
+		ResourceRelation `bson:",inline"`
+		Dependencies     []ResourceRelation `bson:"dependencies"`
+	}
+
+	if err = cursor.All(ctx, &dbResults); err != nil {
+		return nil, fmt.Errorf("递归上游解码错误: %w", err)
+	}
+
+	var results []ResourceRelation
+	seen := make(map[int64]struct{})
+	for _, res := range dbResults {
+		if _, ok := seen[res.Id]; !ok {
+			seen[res.Id] = struct{}{}
+			results = append(results, res.ResourceRelation)
+		}
+		for _, dep := range res.Dependencies {
+			if _, ok := seen[dep.Id]; !ok {
+				seen[dep.Id] = struct{}{}
+				results = append(results, dep)
+			}
+		}
+	}
+
+	return results, nil
+}
+
 type ResourceRelation struct {
+	TenantID         int64  `bson:"tenant_id"`
 	Id               int64  `bson:"id"`
 	SourceModelUID   string `bson:"source_model_uid"`
 	TargetModelUID   string `bson:"target_model_uid"`

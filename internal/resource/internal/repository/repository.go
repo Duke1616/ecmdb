@@ -58,7 +58,6 @@ type ResourceRepository interface {
 
 	// BatchCreateOrUpdate 批量创建或更新资产
 	// 基于 model_uid + name 进行 upsert,name 已存在则更新,不存在则创建
-	// NOTE: 使用 MongoDB BulkWrite 提升性能,适用于 Excel 导入等批量操作场景
 	BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error
 
 	// ListBeforeUtime 获取指定时间前的资产列表

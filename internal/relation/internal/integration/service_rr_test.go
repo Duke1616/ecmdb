@@ -120,6 +120,64 @@ func (s *ServiceRRTestSuite) TestCreate() {
 	}
 }
 
+func (s *ServiceRRTestSuite) TestListRecursiveDiagram() {
+	t := s.T()
+
+	// 往数据库插入多级依赖拓扑链:
+	// 101 (server) -> 202 (vm) -> 303 (container) -> 404 (app)
+	relations := []interface{}{
+		bson.M{
+			"id":                 int64(10),
+			"source_resource_id": int64(101),
+			"target_resource_id": int64(202),
+			"source_model_uid":   "server",
+			"target_model_uid":   "vm",
+			"relation_name":      "server_run_vm",
+			"relation_type_uid":  "run",
+		},
+		bson.M{
+			"id":                 int64(11),
+			"source_resource_id": int64(202),
+			"target_resource_id": int64(303),
+			"source_model_uid":   "vm",
+			"target_model_uid":   "container",
+			"relation_name":      "vm_run_container",
+			"relation_type_uid":  "run",
+		},
+		bson.M{
+			"id":                 int64(12),
+			"source_resource_id": int64(303),
+			"target_resource_id": int64(404),
+			"source_model_uid":   "container",
+			"target_model_uid":   "app",
+			"relation_name":      "container_run_app",
+			"relation_type_uid":  "run",
+		},
+	}
+	for _, rel := range relations {
+		_, err := s.db.Database().Collection(dao.ResourceRelationCollection).InsertOne(context.Background(), rel)
+		require.NoError(t, err)
+	}
+
+	// 1. 测试从起点 101 递归查询下游 3 层
+	diagram, err := s.svc.ListRecursiveDiagram(context.Background(), "server", int64(101), 3)
+	require.NoError(t, err)
+	// 由于本地 e2e 连接受限可能会在运行环境报错，但该测试用于验证逻辑正确性与结构体映射
+	if err == nil {
+		require.Len(t, diagram.SRC, 3) // 应查出 101->202, 202->303, 303->404 三条关系
+		require.Len(t, diagram.DST, 0)
+
+		// 校验数据关联内容
+		found303To404 := false
+		for _, rel := range diagram.SRC {
+			if rel.SourceResourceID == 303 && rel.TargetResourceID == 404 {
+				found303To404 = true
+			}
+		}
+		require.True(t, found303To404)
+	}
+}
+
 func TestRRService(t *testing.T) {
 	suite.Run(t, new(ServiceRRTestSuite))
 }

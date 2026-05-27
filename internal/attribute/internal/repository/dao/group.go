@@ -203,6 +203,7 @@ func (dao *attributeGroupDAO) BatchUpdateSort(ctx context.Context, items []Attri
 }
 
 type AttributeGroup struct {
+	TenantID int64  `bson:"tenant_id"`
 	Id       int64  `bson:"id"`
 	Name     string `bson:"name"`
 	ModelUid string `bson:"model_uid"`

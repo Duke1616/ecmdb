@@ -118,6 +118,44 @@ func (c *MockServiceBatchUpdateResourcesCall) DoAndReturn(f func(context.Context
 	return c
 }
 
+// CheckBeforeDelete mocks base method.
+func (m *MockService) CheckBeforeDelete(ctx context.Context, modelUid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckBeforeDelete", ctx, modelUid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CheckBeforeDelete indicates an expected call of CheckBeforeDelete.
+func (mr *MockServiceMockRecorder) CheckBeforeDelete(ctx, modelUid any) *MockServiceCheckBeforeDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckBeforeDelete", reflect.TypeOf((*MockService)(nil).CheckBeforeDelete), ctx, modelUid)
+	return &MockServiceCheckBeforeDeleteCall{Call: call}
+}
+
+// MockServiceCheckBeforeDeleteCall wrap *gomock.Call
+type MockServiceCheckBeforeDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceCheckBeforeDeleteCall) Return(arg0 error) *MockServiceCheckBeforeDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceCheckBeforeDeleteCall) Do(f func(context.Context, string) error) *MockServiceCheckBeforeDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceCheckBeforeDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockServiceCheckBeforeDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CountByModelUid mocks base method.
 func (m *MockService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -624,6 +662,45 @@ func (c *MockServiceSetCustomFieldCall) Do(f func(context.Context, int64, string
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServiceSetCustomFieldCall) DoAndReturn(f func(context.Context, int64, string, any) (int64, error)) *MockServiceSetCustomFieldCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// UnsetCustomField mocks base method.
+func (m *MockService) UnsetCustomField(ctx context.Context, modelUid, fieldUid string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnsetCustomField", ctx, modelUid, fieldUid)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UnsetCustomField indicates an expected call of UnsetCustomField.
+func (mr *MockServiceMockRecorder) UnsetCustomField(ctx, modelUid, fieldUid any) *MockServiceUnsetCustomFieldCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetCustomField", reflect.TypeOf((*MockService)(nil).UnsetCustomField), ctx, modelUid, fieldUid)
+	return &MockServiceUnsetCustomFieldCall{Call: call}
+}
+
+// MockServiceUnsetCustomFieldCall wrap *gomock.Call
+type MockServiceUnsetCustomFieldCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceUnsetCustomFieldCall) Return(arg0 int64, arg1 error) *MockServiceUnsetCustomFieldCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceUnsetCustomFieldCall) Do(f func(context.Context, string, string) (int64, error)) *MockServiceUnsetCustomFieldCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceUnsetCustomFieldCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockServiceUnsetCustomFieldCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

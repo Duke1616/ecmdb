@@ -8,18 +8,17 @@ package startup
 
 import (
 	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/attribute/internal/web"
 )
 
 // Injectors from wire.go:
 
-func InitHandler() (*web.Handler, error) {
+func InitHandler() (*attribute.Handler, error) {
 	db := InitMongoDB()
 	mq := InitMQ()
 	module, err := attribute.InitModule(db, mq)
 	if err != nil {
 		return nil, err
 	}
-	handler := module.Hdl
-	return handler, nil
+	v := module.Hdl
+	return v, nil
 }

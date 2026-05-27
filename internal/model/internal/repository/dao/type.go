@@ -6,6 +6,7 @@ const (
 )
 
 type Model struct {
+	TenantID     int64  `bson:"tenant_id"`
 	Id           int64  `bson:"id"`
 	ModelGroupId int64  `bson:"model_group_id"`
 	Name         string `bson:"name"`
@@ -17,10 +18,11 @@ type Model struct {
 }
 
 type ModelGroup struct {
-	Id    int64  `bson:"id"`
-	Name  string `bson:"name"`
-	Ctime int64  `bson:"ctime"`
-	Utime int64  `bson:"utime"`
+	TenantID int64  `bson:"tenant_id"`
+	Id       int64  `bson:"id"`
+	Name     string `bson:"name"`
+	Ctime    int64  `bson:"ctime"`
+	Utime    int64  `bson:"utime"`
 }
 
 func (a *ModelGroup) SetID(id int64) {

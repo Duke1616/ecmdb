@@ -9,6 +9,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 )
 
+// RelationTypeRepository 关联关系类型仓储接口
 type RelationTypeRepository interface {
 	// Create 创建关联类型
 	Create(ctx context.Context, req domain.RelationType) (int64, error)

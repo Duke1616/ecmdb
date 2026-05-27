@@ -79,6 +79,44 @@ func (c *MockRelationModelServiceBatchCreateCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// CheckBeforeDelete mocks base method.
+func (m *MockRelationModelService) CheckBeforeDelete(ctx context.Context, modelUid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckBeforeDelete", ctx, modelUid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CheckBeforeDelete indicates an expected call of CheckBeforeDelete.
+func (mr *MockRelationModelServiceMockRecorder) CheckBeforeDelete(ctx, modelUid any) *MockRelationModelServiceCheckBeforeDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckBeforeDelete", reflect.TypeOf((*MockRelationModelService)(nil).CheckBeforeDelete), ctx, modelUid)
+	return &MockRelationModelServiceCheckBeforeDeleteCall{Call: call}
+}
+
+// MockRelationModelServiceCheckBeforeDeleteCall wrap *gomock.Call
+type MockRelationModelServiceCheckBeforeDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationModelServiceCheckBeforeDeleteCall) Return(arg0 error) *MockRelationModelServiceCheckBeforeDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationModelServiceCheckBeforeDeleteCall) Do(f func(context.Context, string) error) *MockRelationModelServiceCheckBeforeDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationModelServiceCheckBeforeDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockRelationModelServiceCheckBeforeDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CountByModelUid mocks base method.
 func (m *MockRelationModelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	m.ctrl.T.Helper()

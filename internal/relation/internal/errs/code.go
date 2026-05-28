@@ -10,6 +10,5 @@ type ErrorCode struct {
 }
 
 func (e ErrorCode) Error() string {
-	//TODO implement me
-	panic("implement me")
+	return e.Msg
 }

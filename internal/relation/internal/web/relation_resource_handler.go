@@ -2,7 +2,6 @@ package web
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
@@ -187,18 +186,7 @@ func (h *RelationResourceHandler) ListAllAggregated(ctx *gin.Context, req ListRe
 }
 
 func (h *RelationResourceHandler) DeleteResourceRelation(ctx *gin.Context, req DeleteResourceRelationReq) (ginx.Result, error) {
-	var (
-		id  int64
-		err error
-	)
-
-	rn := strings.Split(req.RelationName, "_")
-	if rn[0] == req.ModelUid {
-		id, err = h.svc.DeleteSrcRelation(ctx, req.ResourceId, req.ModelUid, req.RelationName)
-	} else {
-		id, err = h.svc.DeleteDstRelation(ctx, req.ResourceId, req.ModelUid, req.RelationName)
-	}
-
+	id, err := h.svc.DeleteResourceRelationByName(ctx, req.ResourceId, req.ModelUid, req.RelationName)
 	if err != nil {
 		return systemErrorResult, err
 	}

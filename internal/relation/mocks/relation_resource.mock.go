@@ -197,6 +197,45 @@ func (c *MockRelationResourceServiceDeleteResourceRelationCall) DoAndReturn(f fu
 	return c
 }
 
+// DeleteResourceRelationByName mocks base method.
+func (m *MockRelationResourceService) DeleteResourceRelationByName(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResourceRelationByName", ctx, resourceId, modelUid, relationName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteResourceRelationByName indicates an expected call of DeleteResourceRelationByName.
+func (mr *MockRelationResourceServiceMockRecorder) DeleteResourceRelationByName(ctx, resourceId, modelUid, relationName any) *MockRelationResourceServiceDeleteResourceRelationByNameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceRelationByName", reflect.TypeOf((*MockRelationResourceService)(nil).DeleteResourceRelationByName), ctx, resourceId, modelUid, relationName)
+	return &MockRelationResourceServiceDeleteResourceRelationByNameCall{Call: call}
+}
+
+// MockRelationResourceServiceDeleteResourceRelationByNameCall wrap *gomock.Call
+type MockRelationResourceServiceDeleteResourceRelationByNameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRelationResourceServiceDeleteResourceRelationByNameCall) Return(arg0 int64, arg1 error) *MockRelationResourceServiceDeleteResourceRelationByNameCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRelationResourceServiceDeleteResourceRelationByNameCall) Do(f func(context.Context, int64, string, string) (int64, error)) *MockRelationResourceServiceDeleteResourceRelationByNameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRelationResourceServiceDeleteResourceRelationByNameCall) DoAndReturn(f func(context.Context, int64, string, string) (int64, error)) *MockRelationResourceServiceDeleteResourceRelationByNameCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // DeleteSrcRelation mocks base method.
 func (m *MockRelationResourceService) DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
 	m.ctrl.T.Helper()

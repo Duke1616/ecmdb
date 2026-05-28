@@ -58,6 +58,9 @@ func (s *service) BatchCreate(ctx context.Context, rts []domain.RelationType) er
 }
 
 func (s *service) Create(ctx context.Context, req domain.RelationType) (int64, error) {
+	if err := req.Validate(); err != nil {
+		return 0, err
+	}
 	return s.repo.Create(ctx, req)
 }
 

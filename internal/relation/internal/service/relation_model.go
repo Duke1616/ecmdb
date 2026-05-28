@@ -70,7 +70,9 @@ func (s *modelService) GetByRelationNames(ctx context.Context, names []string) (
 }
 
 func (s *modelService) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
-	req.RelationName = req.RM()
+	if err := req.Validate(); err != nil {
+		return 0, err
+	}
 	return s.repo.CreateModelRelation(ctx, req)
 }
 
@@ -125,7 +127,10 @@ func (s *modelService) UpdateModelRelation(ctx context.Context, req domain.Model
 		return 0, err
 	}
 
-	req.RelationName = req.RM()
+	// NOTE: 代理给 Domain 领域对象进行充血式参数自校验与 RelationName 自补齐
+	if err := req.Validate(); err != nil {
+		return 0, err
+	}
 	if mr.RelationName != req.RelationName {
 		count, err := s.resourceRepo.CountByRelationName(ctx, mr.RelationName)
 		if err != nil {

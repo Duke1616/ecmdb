@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/samber/lo"
@@ -60,6 +61,9 @@ func (dao *resourceDAO) CreateResourceRelation(ctx context.Context, rr ResourceR
 	// 借助 AutoIDPlugin 插件自动分配自增主键，无须再手动管理自增 ID。
 	_, err := dao.coll.InsertOne(ctx, &rr)
 	if err != nil {
+		if mongox.IsUniqueConstraintError(err) {
+			return 0, fmt.Errorf("资产关联关系已存在，请勿重复创建: %w", errs.ErrUniqueDuplicate)
+		}
 		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
 
@@ -315,8 +319,8 @@ func (dao *resourceDAO) ListRecursiveSrc(ctx context.Context, modelUid string, i
 		{{Key: "$graphLookup", Value: graphLookupVal}},
 	}
 
-	// 3. 动态获取支持物理隔离的底层 Collection 并执行聚合，彻底解决逃生舱口 Native 绕过租户路由的架构漏洞
-	cursor, err := dao.db.CollectionWithTenant(ctx, ResourceRelationCollection).Aggregate(ctx, pipeline)
+	// NOTE: 回归大一统逻辑字段隔离设计，直接在公共集合 Native() 上运行原生聚合，配合 matchFilter 里的租户字段安全过滤
+	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("递归下游关系聚合查询失败: %w", err)
 	}
@@ -331,22 +335,7 @@ func (dao *resourceDAO) ListRecursiveSrc(ctx context.Context, modelUid string, i
 		return nil, fmt.Errorf("递归下游解码错误: %w", err)
 	}
 
-	var results []ResourceRelation
-	seen := make(map[int64]struct{})
-	for _, res := range dbResults {
-		if _, ok := seen[res.Id]; !ok {
-			seen[res.Id] = struct{}{}
-			results = append(results, res.ResourceRelation)
-		}
-		for _, dep := range res.Dependencies {
-			if _, ok := seen[dep.Id]; !ok {
-				seen[dep.Id] = struct{}{}
-				results = append(results, dep)
-			}
-		}
-	}
-
-	return results, nil
+	return deduplicateRelations(dbResults), nil
 }
 
 func (dao *resourceDAO) ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error) {
@@ -379,8 +368,8 @@ func (dao *resourceDAO) ListRecursiveDst(ctx context.Context, modelUid string, i
 		{{Key: "$graphLookup", Value: graphLookupVal}},
 	}
 
-	// 3. 动态获取支持物理隔离的底层 Collection 并执行聚合，彻底解决逃生舱口 Native 绕过租户路由的架构漏洞
-	cursor, err := dao.db.CollectionWithTenant(ctx, ResourceRelationCollection).Aggregate(ctx, pipeline)
+	// NOTE: 回归大一统逻辑字段隔离设计，直接在公共集合 Native() 上运行原生聚合，配合 matchFilter 里的租户字段安全过滤
+	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("递归上游关系聚合查询失败: %w", err)
 	}
@@ -395,22 +384,26 @@ func (dao *resourceDAO) ListRecursiveDst(ctx context.Context, modelUid string, i
 		return nil, fmt.Errorf("递归上游解码错误: %w", err)
 	}
 
-	var results []ResourceRelation
-	seen := make(map[int64]struct{})
-	for _, res := range dbResults {
-		if _, ok := seen[res.Id]; !ok {
-			seen[res.Id] = struct{}{}
-			results = append(results, res.ResourceRelation)
-		}
-		for _, dep := range res.Dependencies {
-			if _, ok := seen[dep.Id]; !ok {
-				seen[dep.Id] = struct{}{}
-				results = append(results, dep)
-			}
-		}
-	}
+	return deduplicateRelations(dbResults), nil
+}
 
-	return results, nil
+// deduplicateRelations 使用 lo 泛型库优雅实现对包含 Dependencies 的聚合结果展平与唯一去重
+func deduplicateRelations(dbResults []struct {
+	ResourceRelation `bson:",inline"`
+	Dependencies     []ResourceRelation `bson:"dependencies"`
+}) []ResourceRelation {
+	// 1. 将每一个聚合实体及其下属 dependencies 依赖切片，全部平铺展平为一个统一的切片
+	allRelations := lo.FlatMap(dbResults, func(res struct {
+		ResourceRelation `bson:",inline"`
+		Dependencies     []ResourceRelation `bson:"dependencies"`
+	}, _ int) []ResourceRelation {
+		return append([]ResourceRelation{res.ResourceRelation}, res.Dependencies...)
+	})
+
+	// 2. 利用 lo.UniqBy 依照资源关联 Id 唯一主键进行一键去重，代替繁琐的手写 seen map 循环
+	return lo.UniqBy(allRelations, func(item ResourceRelation) int64 {
+		return item.Id
+	})
 }
 
 type ResourceRelation struct {

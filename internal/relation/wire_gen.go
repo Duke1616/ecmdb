@@ -25,7 +25,7 @@ func InitModule(db *mongox.DB) (*Module, error) {
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
 	relationModelDAO := initRmDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
-	relationResourceDAO := intRrDAO(db)
+	relationResourceDAO := initRrDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
 	v3 := service.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
 	v4 := web.NewRelationResourceHandler(v)
@@ -45,14 +45,14 @@ func InitModule(db *mongox.DB) (*Module, error) {
 func InitRMService(db *mongox.DB) RMSvc {
 	relationModelDAO := initRmDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
-	relationResourceDAO := intRrDAO(db)
+	relationResourceDAO := initRrDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
 	v := service.NewRelationModelService(relationModelRepository, relationResourceRepository)
 	return v
 }
 
 func InitRRService(db *mongox.DB) RRSvc {
-	relationResourceDAO := intRrDAO(db)
+	relationResourceDAO := initRrDAO(db)
 	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
 	relationModelDAO := initRmDAO(db)
 	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
@@ -63,7 +63,7 @@ func InitRRService(db *mongox.DB) RRSvc {
 // wire.go:
 
 var ProviderSet = wire.NewSet(web.NewRelationResourceHandler, web.NewRelationModelHandler, web.NewRelationTypeHandler, service.NewRelationTypeService, repository.NewRelationTypeRepository, repository.NewRelationModelRepository, repository.NewRelationResourceRepository, initRmDAO,
-	intRrDAO,
+	initRrDAO,
 )
 
 var (
@@ -96,7 +96,7 @@ func InitRelationTypeDAO(db *mongox.DB) dao.RelationTypeDAO {
 	return dao.NewRelationTypeDAO(db)
 }
 
-func intRrDAO(db *mongox.DB) dao.RelationResourceDAO {
+func initRrDAO(db *mongox.DB) dao.RelationResourceDAO {
 	rrDaoOnce.Do(func() {
 		rrd = dao.NewRelationResourceDAO(db)
 	})

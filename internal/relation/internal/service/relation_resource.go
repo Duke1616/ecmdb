@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/repository"
@@ -39,6 +38,9 @@ type RelationResourceService interface {
 	// DeleteResourceRelation 删除资源关联关系
 	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
 
+	// DeleteResourceRelationByName 根据关联名称和资源信息删除资产关联关系
+	DeleteResourceRelationByName(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+
 	// DeleteSrcRelation 删除源端关系
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 	// DeleteDstRelation 删除目标端关系
@@ -65,34 +67,27 @@ func NewRelationResourceService(repo repository.RelationResourceRepository,
 }
 
 func (s *resourceService) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
-	// 如果 RelationName 不为空但各个 Model/Type 字段为空（典型 REST API 入参），则进行 Split 解析补齐，确保数据落库完整性与拓扑校验通过
-	// NOTE: 关系名称格式为: <源模型UID>_<关系类型UID>_<目标模型UID>
-	if req.RelationName != "" && req.SourceModelUID == "" {
-		parts := strings.Split(req.RelationName, "_")
-		if len(parts) == 3 {
-			req.SourceModelUID = parts[0]
-			req.RelationTypeUID = parts[1]
-			req.TargetModelUID = parts[2]
-		}
+	// 1. 获取要校验的关系定义唯一标识名称
+	relationName := req.RelationName
+	if relationName == "" {
+		relationName = fmt.Sprintf("%s_%s_%s", req.SourceModelUID, req.RelationTypeUID, req.TargetModelUID)
 	}
 
-	// 拓扑一致性强校验：计算当前连线的 RelationName 并校验其在 ModelRelation 中是否存在
-	relationName := fmt.Sprintf("%s_%s_%s", req.SourceModelUID, req.RelationTypeUID, req.TargetModelUID)
-
-	// NOTE: 在保存前，我们还需要确保 req 的 RelationName 字段是正确的，以便后续查询
-	if req.RelationName == "" {
-		req.RelationName = relationName
-	}
-
-	mrs, err := s.modelRepo.GetByRelationNames(ctx, []string{req.RelationName})
+	// 2. 从数据库加载拓扑规则定义
+	mrs, err := s.modelRepo.GetByRelationNames(ctx, []string{relationName})
 	if err != nil {
 		return 0, fmt.Errorf("拓扑关联校验异常: %w", err)
 	}
 	if len(mrs) == 0 {
-		return 0, fmt.Errorf("拓扑关联校验失败：模型关系 %s -> %s (关系类型: %s) 未注册定义",
-			req.SourceModelUID, req.TargetModelUID, req.RelationTypeUID)
+		return 0, fmt.Errorf("拓扑关联校验失败：模型关系定义 %s 未注册", relationName)
 	}
 
+	// 3. 委派给领域模型进行自我充血式校验与数据补全
+	if err = req.ValidateAndComplete(mrs[0]); err != nil {
+		return 0, err
+	}
+
+	// 4. 流畅落库
 	return s.repo.CreateResourceRelation(ctx, req)
 }
 
@@ -193,6 +188,28 @@ func (s *resourceService) DeleteDstRelation(ctx context.Context, resourceId int6
 
 func (s *resourceService) DeleteResourceRelation(ctx context.Context, id int64) (int64, error) {
 	return s.repo.DeleteResourceRelation(ctx, id)
+}
+
+// DeleteResourceRelationByName 根据关联名称和资源信息删除资产关联关系
+func (s *resourceService) DeleteResourceRelationByName(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
+	// NOTE: 优先通过定义表获取正确的拓扑模型，无惧任何下划线分割，且完全规避了原本在 Web 层的 Split Bug
+	mrs, err := s.modelRepo.GetByRelationNames(ctx, []string{relationName})
+	if err != nil {
+		return 0, fmt.Errorf("查询关联定义异常: %w", err)
+	}
+	if len(mrs) == 0 {
+		return 0, fmt.Errorf("未找到对应的关联关系定义: %s", relationName)
+	}
+
+	// NOTE: 借助 Domain 领域对象的 IsSource 与 IsTarget 充血方法来判定删除方向，消除 Handler 层的业务污染
+	mr := mrs[0]
+	if mr.IsSource(modelUid) {
+		return s.repo.DeleteSrcRelation(ctx, resourceId, modelUid, relationName)
+	} else if mr.IsTarget(modelUid) {
+		return s.repo.DeleteDstRelation(ctx, resourceId, modelUid, relationName)
+	}
+
+	return 0, fmt.Errorf("模型 UID %s 不属于关联关系 %s", modelUid, relationName)
 }
 
 func (s *resourceService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {

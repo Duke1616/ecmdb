@@ -41,8 +41,7 @@ func InitApp() (*App, error) {
 	config := ioc.InitLdapConfig()
 	db := ioc.InitMySQLDB()
 	syncedEnforcer := ioc.InitCasbin(db)
-	cmdable := ioc.InitRedis()
-	provider := ioc.InitSession(cmdable)
+	provider := ioc.InitSession()
 	module, err := policy.InitModule(syncedEnforcer, provider)
 	if err != nil {
 		return nil, err

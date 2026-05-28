@@ -6,33 +6,50 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
 
 type RelationModelHandler struct {
 	svc service.RelationModelService
+	capability.IRegistry
 }
 
 func NewRelationModelHandler(svc service.RelationModelService) *RelationModelHandler {
 	return &RelationModelHandler{
-		svc: svc,
+		svc:       svc,
+		IRegistry: capability.NewRegistry("cmdb", "model", "模型管理"),
 	}
 }
 
+// PrivateRoute 注册模型关系管理需要中心化登录及权限判定（由 EIAM SDK 统一拦截承载）的私有路由
 func (h *RelationModelHandler) PrivateRoute(server *gin.Engine) {
 	g := server.Group("/api/model")
-	// 模型关联关系
-	g.POST("/relation/create", ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation))
+
+	// ==========================================
+	// 1. 模型关联关系管理接口
+	// ==========================================
+
+	// 创建模型关联关系
+	g.POST("/relation/create", h.Capability("创建模型关联关系", "relation_create").
+		Handle(ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation)),
+	)
 
 	// 查询模型拥有的所有关联信息
-	g.POST("/relation/list", ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation))
+	g.POST("/relation/list", h.Capability("查询模型关联列表", "relation_list").
+		Handle(ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation)),
+	)
 
 	// 删除模型关联关系
-	g.POST("/relation/delete", ginx.WrapBody[DeleteModelRelationReq](h.DeleteModelRelation))
+	g.POST("/relation/delete", h.Capability("删除模型关联关系", "relation_delete").
+		Handle(ginx.WrapBody[DeleteModelRelationReq](h.DeleteModelRelation)),
+	)
 
 	// 更新模型关联关系
-	g.POST("/relation/update", ginx.WrapBody[UpdateModelRelationReq](h.UpdateModelRelation))
+	g.POST("/relation/update", h.Capability("更新模型关联关系", "relation_update").
+		Handle(ginx.WrapBody[UpdateModelRelationReq](h.UpdateModelRelation)),
+	)
 }
 
 func (h *RelationModelHandler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {

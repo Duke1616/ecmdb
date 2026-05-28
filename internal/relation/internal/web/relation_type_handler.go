@@ -6,27 +6,50 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
 
 type RelationTypeHandler struct {
 	svc service.RelationTypeService
+	capability.IRegistry
 }
 
 func NewRelationTypeHandler(svc service.RelationTypeService) *RelationTypeHandler {
 	return &RelationTypeHandler{
-		svc: svc,
+		svc:       svc,
+		IRegistry: capability.NewRegistry("cmdb", "relation", "关系管理"),
 	}
 }
 
+// PrivateRoute 注册关系类型管理需要中心化登录及权限判定（由 EIAM SDK 统一拦截承载）的私有路由
 func (h *RelationTypeHandler) PrivateRoute(server *gin.Engine) {
 	g := server.Group("/api/relation")
-	// 关联类型
-	g.POST("/create", ginx.WrapBody[CreateRelationTypeReq](h.Create))
-	g.POST("/list", ginx.WrapBody[Page](h.List))
-	g.POST("/update", ginx.WrapBody[UpdateRelationTypeReq](h.Update))
-	g.POST("/delete", ginx.WrapBody[DeleteRelationTypeReq](h.Delete))
+
+	// ==========================================
+	// 1. 关系类型管理接口
+	// ==========================================
+
+	// 创建关联类型
+	g.POST("/create", h.Capability("创建关联类型", "type_create").
+		Handle(ginx.WrapBody[CreateRelationTypeReq](h.Create)),
+	)
+
+	// 查询关联类型列表
+	g.POST("/list", h.Capability("查询关联类型列表", "type_list").
+		Handle(ginx.WrapBody[Page](h.List)),
+	)
+
+	// 更新关联类型
+	g.POST("/update", h.Capability("更新关联类型", "type_update").
+		Handle(ginx.WrapBody[UpdateRelationTypeReq](h.Update)),
+	)
+
+	// 删除关联类型
+	g.POST("/delete", h.Capability("删除关联类型", "type_delete").
+		Handle(ginx.WrapBody[DeleteRelationTypeReq](h.Delete)),
+	)
 }
 
 func (h *RelationTypeHandler) Create(ctx *gin.Context, req CreateRelationTypeReq) (ginx.Result, error) {

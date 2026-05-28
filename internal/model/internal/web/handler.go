@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,7 @@ type Handler struct {
 	mgSvc       service.MGService
 	resourceSvc resource.EncryptedSvc
 	RMSvc       relation.RMSvc
+	capability.IRegistry
 }
 
 func NewHandler(svc service.Service, mgSvc service.MGService, rmSvc relation.RMSvc,
@@ -27,27 +29,80 @@ func NewHandler(svc service.Service, mgSvc service.MGService, rmSvc relation.RMS
 		mgSvc:       mgSvc,
 		RMSvc:       rmSvc,
 		resourceSvc: resourceSvc,
+		IRegistry:   capability.NewRegistry("cmdb", "model", "模型管理"),
 	}
 }
 
+// PrivateRoutes 注册模型管理模块需要中心化登录及权限判定（由 EIAM SDK 统一拦截承载）的私有路由
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/model")
-	// 模型 - 分组管理
-	g.POST("/group/create", ginx.WrapBody[CreateModelGroupReq](h.CreateModelGroup))
-	g.POST("/group/list", ginx.WrapBody[Page](h.ListModelGroups))
-	g.POST("/group/delete", ginx.WrapBody[DeleteModelGroup](h.DeleteModelGroup))
-	g.POST("/group/rename", ginx.WrapBody[RenameModelGroupReq](h.RenameModelGroup))
-	// 模型 - 基础操作
-	g.POST("/create", ginx.WrapBody[CreateModelReq](h.CreateModel))
-	g.GET("/detail/:id", ginx.Wrap(h.DetailModel))
-	g.POST("/list", ginx.WrapBody[Page](h.ListModels))
-	g.POST("/delete", ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid))
-	g.POST("/by_group", ginx.WrapBody[Page](h.ListModelsByGroup))
 
-	// 根据 uids 查询模型
-	g.POST("by_uids", ginx.WrapBody(h.GetByUids))
-	// 模型 - 关联拓扑图
-	g.POST("/relation/graph", ginx.WrapBody[Page](h.FindModelsGraph))
+	// ==========================================
+	// 1. 模型分组管理接口
+	// ==========================================
+
+	// 创建模型分组
+	g.POST("/group/create", h.Capability("创建模型分组", "group_add").
+		Handle(ginx.WrapBody[CreateModelGroupReq](h.CreateModelGroup)),
+	)
+
+	// 查询模型分组列表
+	g.POST("/group/list", h.Capability("查询模型分组列表", "group_view").
+		Handle(ginx.WrapBody[Page](h.ListModelGroups)),
+	)
+
+	// 删除模型分组
+	g.POST("/group/delete", h.Capability("删除模型分组", "group_delete").
+		Handle(ginx.WrapBody[DeleteModelGroup](h.DeleteModelGroup)),
+	)
+
+	// 重命名模型分组
+	g.POST("/group/rename", h.Capability("重命名模型分组", "group_rename").
+		Handle(ginx.WrapBody[RenameModelGroupReq](h.RenameModelGroup)),
+	)
+
+	// ==========================================
+	// 2. 模型核心基础操作接口
+	// ==========================================
+
+	// 创建模型
+	g.POST("/create", h.Capability("创建模型", "add").
+		Handle(ginx.WrapBody[CreateModelReq](h.CreateModel)),
+	)
+
+	// 查询模型详情
+	g.GET("/detail/:id", h.Capability("查询模型详情", "get").
+		Handle(ginx.Wrap(h.DetailModel)),
+	)
+
+	// 查询模型列表
+	g.POST("/list", h.Capability("查询模型列表", "view").
+		Handle(ginx.WrapBody[Page](h.ListModels)),
+	)
+
+	// 删除模型
+	g.POST("/delete", h.Capability("删除模型", "delete").
+		Handle(ginx.WrapBody[DeleteModelByUidReq](h.DeleteModelByUid)),
+	)
+
+	// 按分组查询模型列表
+	g.POST("/by_group", h.Capability("按分组查询模型", "view_by_group").
+		Handle(ginx.WrapBody[Page](h.ListModelsByGroup)),
+	)
+
+	// 按 UID 批量查询模型列表
+	g.POST("by_uids", h.Capability("按UID批量查询模型", "view_by_uids").
+		Handle(ginx.WrapBody(h.GetByUids)),
+	)
+
+	// ==========================================
+	// 3. 模型关联与拓扑图接口
+	// ==========================================
+
+	// 查询模型关联拓扑图
+	g.POST("/relation/graph", h.Capability("查询模型拓扑图", "relation_graph").
+		Handle(ginx.WrapBody[Page](h.FindModelsGraph)),
+	)
 }
 
 func (h *Handler) GetByUids(ctx *gin.Context, req GetByUidsReq) (ginx.Result, error) {

@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"context"
 	"net"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/permission"
-	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -31,27 +31,28 @@ import (
 	"github.com/Duke1616/ecmdb/internal/workflow"
 	"github.com/gotomicro/ego/core/econf"
 
-	"github.com/ecodeclub/ginx/session"
+	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/sdk"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 )
 
-func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,
-	mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
-	rtHdl *relation.RTHandler, userHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
+func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Syncer, providers []capability.PermissionProvider,
+	modelHdl *model.Handler, attributeHdl *attribute.Handler, resourceHdl *resource.Handler,
+	rmHdl *relation.RMHandler, rrHdl *relation.RRHandler, rtHdl *relation.RTHandler,
+	userHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
 	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
 	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
 	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
 	departmentHdl *department.Handler, toolsHdl *tools.Handler, termHdl *terminal.Handler, rotaHdl *rota.Handler,
-	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
-	listener net.Listener,
+	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, listener net.Listener,
 ) *egin.Component {
-	session.SetDefaultProvider(sp)
 
 	server := egin.Load("server.egin").Build(egin.WithListener(listener))
+	// 开启 ContextWithFallback：使 ctx.Context.Value() 自动 fallback 到 ctx.Request.Context().Value()
+	server.Engine.ContextWithFallback = true
 	server.Use(mdls...)
 
 	// 不需要登录认证鉴权的路由
@@ -61,14 +62,14 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	orderHdl.PublicRoute(server.Engine)
 	policyHdl.PublicRoutes(server.Engine)
 
-	// 验证是否登录
-	server.Use(session.CheckLoginMiddleware())
+	// 登录检查
+	server.Use(sdk.CheckLogin())
 
 	// 查看用户拥有权限
 	permissionHdl.PublicRoutes(server.Engine)
 
-	// 检查权限策略
-	server.Use(checkPolicyMiddleware.Build())
+	// 权限策略检查
+	server.Use(sdk.CheckPolicy())
 
 	// CMDB 相关接口
 	modelHdl.PrivateRoutes(server.Engine)
@@ -102,6 +103,20 @@ func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckP
 	endpointHdl.PrivateRoutes(server.Engine)
 	departmentHdl.PrivateRoutes(server.Engine)
 	roleHdl.PrivateRoutes(server.Engine)
+
+	// 异步启动 EIAM 资产注册控制器
+	go func() {
+		// 延迟执行，确保路由完全就绪
+		time.Sleep(time.Second)
+
+		// 新版本 SDK 内部会启动后台协程维持租约，需传入长生命周期的 Context
+		if err := syncer.WithOption(
+			capability.WithPermissions(providers...),
+			capability.WithRouter(server.Engine),
+		).Sync(context.Background()); err != nil {
+			elog.Error("EIAM 资产注册控制器启动失败", elog.FieldErr(err))
+		}
+	}()
 
 	return server
 }

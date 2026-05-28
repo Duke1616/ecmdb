@@ -114,7 +114,10 @@ func (s *resourceService) ListSrcResources(ctx context.Context, modelUid string,
 		return err
 	})
 
-	return rrs, total, eg.Wait()
+	if err := eg.Wait(); err != nil {
+		return nil, 0, err
+	}
+	return rrs, total, nil
 }
 
 func (s *resourceService) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error) {
@@ -135,7 +138,10 @@ func (s *resourceService) ListDstResources(ctx context.Context, modelUid string,
 		return err
 	})
 
-	return rrs, total, eg.Wait()
+	if err := eg.Wait(); err != nil {
+		return nil, 0, err
+	}
+	return rrs, total, nil
 }
 
 func (s *resourceService) ListDiagram(ctx context.Context, modelUid string, id int64) (domain.ResourceDiagram, int64, error) {
@@ -155,7 +161,10 @@ func (s *resourceService) ListDiagram(ctx context.Context, modelUid string, id i
 		return err
 	})
 
-	return rd, int64(len(rd.SRC) + len(rd.DST)), eg.Wait()
+	if err := eg.Wait(); err != nil {
+		return domain.ResourceDiagram{}, 0, err
+	}
+	return rd, int64(len(rd.SRC) + len(rd.DST)), nil
 }
 
 func (s *resourceService) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error) {
@@ -208,5 +217,8 @@ func (s *resourceService) ListRecursiveDiagram(ctx context.Context, modelUid str
 		return err
 	})
 
-	return rd, eg.Wait()
+	if err := eg.Wait(); err != nil {
+		return domain.ResourceDiagram{}, err
+	}
+	return rd, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/relation/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/relation/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
@@ -14,29 +15,66 @@ import (
 
 type RelationResourceHandler struct {
 	svc service.RelationResourceService
+	capability.IRegistry
 }
 
 func NewRelationResourceHandler(svc service.RelationResourceService) *RelationResourceHandler {
 	return &RelationResourceHandler{
-		svc: svc,
+		svc:       svc,
+		IRegistry: capability.NewRegistry("cmdb", "resource", "资源管理"),
 	}
 }
 
+// PrivateRoute 注册资源关系管理需要中心化登录及权限判定（由 EIAM SDK 统一拦截承载）的私有路由
 func (h *RelationResourceHandler) PrivateRoute(server *gin.Engine) {
 	g := server.Group("/api/resource/relation")
-	// 资源关联关系
-	g.POST("/create", ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation))
 
-	// TODO 暂不使用，没有根据 relationName 进行筛选，会返回所有的结果
-	g.POST("/list/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource))
-	g.POST("/list/dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource))
+	// ==========================================
+	// 1. 资源关联关系基础接口
+	// ==========================================
 
-	// 列表聚合处理、通过聚合处理，为前端友好展示
-	g.POST("/pipeline/src", ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated))
-	g.POST("/pipeline/dst", ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated))
-	g.POST("/pipeline/all", ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated))
+	// 创建资源关联关系
+	g.POST("/create", h.Capability("创建资产关系", "relation_create").
+		Handle(ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation)),
+	)
 
-	g.POST("/delete", ginx.WrapBody[DeleteResourceRelationReq](h.DeleteResourceRelation))
+	// 查询源资产关联关系 (暂不使用，保留注册)
+	g.POST("/list/src", h.Capability("查询源资产关系", "relation_list_src").
+		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource)),
+	)
+
+	// 查询目标资产关联关系 (暂不使用，保留注册)
+	g.POST("/list/dst", h.Capability("查询目标资产关系", "relation_list_dst").
+		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource)),
+	)
+
+	// ==========================================
+	// 2. 资源关联关系聚合/Pipeline 接口
+	// ==========================================
+
+	// 源资产关系聚合查询
+	g.POST("/pipeline/src", h.Capability("源资产关系聚合查询", "relation_pipeline_src").
+		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated)),
+	)
+
+	// 目标资产关系聚合查询
+	g.POST("/pipeline/dst", h.Capability("目标资产关系聚合查询", "relation_pipeline_dst").
+		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated)),
+	)
+
+	// 所有资产关系聚合查询
+	g.POST("/pipeline/all", h.Capability("所有资产关系聚合查询", "relation_pipeline_all").
+		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated)),
+	)
+
+	// ==========================================
+	// 3. 资源关联关系删除接口
+	// ==========================================
+
+	// 删除资产关系
+	g.POST("/delete", h.Capability("删除资产关系", "relation_delete").
+		Handle(ginx.WrapBody[DeleteResourceRelationReq](h.DeleteResourceRelation)),
+	)
 }
 
 func (h *RelationResourceHandler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {

@@ -4,6 +4,11 @@ web:
   host: "0.0.0.0"
   port: 8000
 
+policy:
+  auth_url: http://127.0.0.1:9000
+  discovery_url: http://127.0.0.1:9000
+
+
 # 数据加密，根据模块划分
 encryption:
   user:

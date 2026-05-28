@@ -20,7 +20,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/permission"
-	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
 	"github.com/Duke1616/ecmdb/internal/resource"
@@ -86,7 +85,7 @@ func InitApp() (*App, error) {
 		task.InitModule,
 		wire.FieldsOf(new(*task.Module), "Hdl", "StartTaskJob", "PassProcessTaskJob", "TaskExecutionSyncJob", "TaskRecoveryJob"),
 		policy.InitModule,
-		wire.FieldsOf(new(*policy.Module), "Hdl", "Svc", "RpcServer"),
+		wire.FieldsOf(new(*policy.Module), "Hdl", "RpcServer"),
 		menu.InitModule,
 		wire.FieldsOf(new(*menu.Module), "Hdl"),
 		endpoint.InitModule,
@@ -108,8 +107,9 @@ func InitApp() (*App, error) {
 		InitTASKGrpcClient,
 		InitTaskServiceClient,
 		InitTaskExecutionServiceClient,
-		middleware.NewCheckPolicyMiddlewareBuilder,
-		middleware.NewCheckLoginMiddlewareBuilder,
+		InitPolicySDK,
+		InitPermSyncer,
+		InitProviders,
 		initCronJobs,
 		InitWebServer,
 		InitListener,

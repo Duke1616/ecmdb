@@ -10,6 +10,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/resource/internal/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
@@ -18,43 +19,103 @@ type Handler struct {
 	svc     service.EncryptedSvc
 	attrSvc attribute.Service
 	RRSvc   relation.RRSvc
+	capability.IRegistry
 }
 
 func NewHandler(service service.EncryptedSvc, attributeSvc attribute.Service, RRSvc relation.RRSvc) *Handler {
 	return &Handler{
-		svc:     service,
-		attrSvc: attributeSvc,
-		RRSvc:   RRSvc,
+		svc:       service,
+		attrSvc:   attributeSvc,
+		RRSvc:     RRSvc,
+		IRegistry: capability.NewRegistry("cmdb", "resource", "资源管理"),
 	}
 }
 
+// PrivateRoutes 注册资源管理模块需要中心化登录及权限判定（由 EIAM SDK 统一拦截承载）的私有路由
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/resource")
-	// 资源操作
-	g.POST("/create", ginx.WrapBody[CreateResourceReq](h.CreateResource))
-	// 根据 ID 查询资源列表
-	g.POST("/detail", ginx.WrapBody[DetailResourceReq](h.DetailResource))
-	// 根据模型 UID 查询资源列表
-	g.POST("/list", ginx.WrapBody[ListResourceReq](h.ListResource))
-	g.POST("/delete", ginx.WrapBody[DeleteResourceReq](h.DeleteResource))
+
+	// ==========================================
+	// 1. 资产基础操作接口
+	// ==========================================
+
+	// 创建资产
+	g.POST("/create", h.Capability("创建资产", "add").
+		Handle(ginx.WrapBody[CreateResourceReq](h.CreateResource)),
+	)
+
+	// 查询资产详情
+	g.POST("/detail", h.Capability("查询资产详情", "get").
+		Handle(ginx.WrapBody[DetailResourceReq](h.DetailResource)),
+	)
+
+	// 根据模型 UID 查询资产列表
+	g.POST("/list", h.Capability("查询资产列表", "view").
+		Handle(ginx.WrapBody[ListResourceReq](h.ListResource)),
+	)
+
+	// 删除资产
+	g.POST("/delete", h.Capability("删除资产", "delete").
+		Handle(ginx.WrapBody[DeleteResourceReq](h.DeleteResource)),
+	)
 
 	// 修改资产信息
-	g.POST("/update", ginx.WrapBody[UpdateResourceReq](h.UpdateResource))
-	g.POST("/set_custom_field", ginx.WrapBody[SetCustomFieldReq](h.SetCustomField))
-	// 资源关联关系
-	g.POST("/relation/can_be_related", ginx.WrapBody[ListCanBeRelatedReqByModel](h.ListCanBeFilterRelated))
-	g.POST("/relation/diagram", ginx.WrapBody[ListDiagramReq](h.FindDiagram))
-	g.POST("/relation/graph", ginx.WrapBody[ListDiagramReq](h.FindAllGraph))
-	g.POST("/relation/graph/add/left", ginx.WrapBody[ListDiagramReq](h.FindLeftGraph))
-	g.POST("/relation/graph/add/right", ginx.WrapBody[ListDiagramReq](h.FindRightGraph))
+	g.POST("/update", h.Capability("修改资产信息", "edit").
+		Handle(ginx.WrapBody[UpdateResourceReq](h.UpdateResource)),
+	)
 
-	// 根据模型 UID 查询资源列表
-	g.POST("/list/ids", ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds))
-	// 全文检索
-	g.POST("/search", ginx.WrapBody[SearchReq](h.Search))
-	// 查询加密字段信息
-	g.POST("/secure", ginx.WrapBody[FindSecureReq](h.FindSecureData))
+	// 设置自定义属性
+	g.POST("/set_custom_field", h.Capability("设置自定义属性", "edit_custom_field").
+		Handle(ginx.WrapBody[SetCustomFieldReq](h.SetCustomField)),
+	)
 
+	// ==========================================
+	// 2. 资产关联拓扑接口
+	// ==========================================
+
+	// 查询可关联的资产列表
+	g.POST("/relation/can_be_related", h.Capability("查询可关联的资产列表", "relation_view_can_be_related").
+		Handle(ginx.WrapBody[ListCanBeRelatedReqByModel](h.ListCanBeFilterRelated)),
+	)
+
+	// 查询资产拓扑关系图谱
+	g.POST("/relation/diagram", h.Capability("查询资产关系图谱", "relation_view_diagram").
+		Handle(ginx.WrapBody[ListDiagramReq](h.FindDiagram)),
+	)
+
+	// 查询资产关联拓扑图
+	g.POST("/relation/graph", h.Capability("查询资产关联拓扑图", "relation_view_graph").
+		Handle(ginx.WrapBody[ListDiagramReq](h.FindAllGraph)),
+	)
+
+	// 拓扑图向左拓展
+	g.POST("/relation/graph/add/left", h.Capability("拓扑图向左拓展", "relation_add_left").
+		Handle(ginx.WrapBody[ListDiagramReq](h.FindLeftGraph)),
+	)
+
+	// 拓扑图向右拓展
+	g.POST("/relation/graph/add/right", h.Capability("拓扑图向右拓展", "relation_add_right").
+		Handle(ginx.WrapBody[ListDiagramReq](h.FindRightGraph)),
+	)
+
+	// ==========================================
+	// 3. 资产检索与安全字段接口
+	// ==========================================
+
+	// 批量查询资产
+	g.POST("/list/ids", h.Capability("批量查询资产", "view_by_ids").
+		Handle(ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds)),
+	)
+
+	// 全文检索资产
+	g.POST("/search", h.Capability("全文检索资产", "search").
+		Handle(ginx.WrapBody[SearchReq](h.Search)),
+	)
+
+	// 查询加密字段数据
+	g.POST("/secure", h.Capability("查询加密字段", "get_secure").
+		Handle(ginx.WrapBody[FindSecureReq](h.FindSecureData)),
+	)
 }
 
 func (h *Handler) CreateResource(ctx *gin.Context, req CreateResourceReq) (ginx.Result, error) {

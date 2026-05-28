@@ -22,7 +22,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/model"
 	"github.com/Duke1616/ecmdb/internal/order"
 	"github.com/Duke1616/ecmdb/internal/permission"
-	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
 	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
 	"github.com/Duke1616/ecmdb/internal/policy"
 	"github.com/Duke1616/ecmdb/internal/relation"
@@ -54,50 +53,50 @@ import (
 // Injectors from wire.go:
 
 func InitApp() (*App, error) {
-	cmdable := InitRedis()
-	provider := InitSession(cmdable)
-	db := InitMySQLDB()
-	syncedEnforcer := InitCasbin(db)
-	module, err := policy.InitModule(syncedEnforcer, provider)
-	if err != nil {
-		return nil, err
-	}
-	v := module.Svc
-	checkPolicyMiddlewareBuilder := middleware.NewCheckPolicyMiddlewareBuilder(v, provider)
-	v2 := InitGinMiddlewares()
+	v := InitGinMiddlewares()
+	sdk := InitPolicySDK()
+	syncer := InitPermSyncer()
+	v2 := InitProviders()
 	mongo := InitMongoDB()
-	mongoxDB := InitMongoDBV2(mongo)
-	relationModule, err := relation.InitModule(mongoxDB)
+	db := InitMongoDBV2(mongo)
+	module, err := relation.InitModule(db)
 	if err != nil {
 		return nil, err
 	}
 	mq := InitMQ()
-	attributeModule, err := attribute.InitModule(mongoxDB, mq)
+	attributeModule, err := attribute.InitModule(db, mq)
 	if err != nil {
 		return nil, err
 	}
 	cryptoRegistry := InitModuleCrypto()
-	resourceModule, err := resource.InitModule(mongoxDB, attributeModule, relationModule, mq, cryptoRegistry)
+	resourceModule, err := resource.InitModule(db, attributeModule, module, mq, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(mongoxDB, relationModule, attributeModule, resourceModule)
+	modelModule, err := model.InitModule(db, module, attributeModule, resourceModule)
 	if err != nil {
 		return nil, err
 	}
 	v3 := modelModule.Hdl
 	v4 := attributeModule.Hdl
 	v5 := resourceModule.Hdl
-	v6 := relationModule.RMHdl
-	v7 := relationModule.RRHdl
-	v8 := relationModule.RTHdl
+	v6 := module.RMHdl
+	v7 := module.RRHdl
+	v8 := module.RTHdl
 	client := InitRedisSearch()
 	config := InitLdapConfig()
+	gormDB := InitMySQLDB()
+	syncedEnforcer := InitCasbin(gormDB)
+	provider := InitSession()
+	policyModule, err := policy.InitModule(syncedEnforcer, provider)
+	if err != nil {
+		return nil, err
+	}
 	departmentModule, err := department.InitModule(mongo)
 	if err != nil {
 		return nil, err
 	}
-	userModule, err := user.InitModule(mongo, client, config, module, departmentModule, provider, cryptoRegistry)
+	userModule, err := user.InitModule(mongo, client, config, policyModule, departmentModule, provider, cryptoRegistry)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +117,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v12 := codebookModule.Hdl
-	engineModule, err := engine.InitModule(db)
+	engineModule, err := engine.InitModule(gormDB)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +164,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v19 := taskModule.Hdl
-	v20 := module.Hdl
+	v20 := policyModule.Hdl
 	menuModule, err := menu.InitModule(mq, mongo)
 	if err != nil {
 		return nil, err
@@ -181,7 +180,7 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v23 := roleModule.Hdl
-	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, module)
+	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, policyModule)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +192,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	v27, err := terminal.InitModule(relationModule, resourceModule, attributeModule)
+	v27, err := terminal.InitModule(module, resourceModule, attributeModule)
 	if err != nil {
 		return nil, err
 	}
@@ -208,17 +207,16 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	v30 := dataioModule.Hdl
-	checkLoginMiddlewareBuilder := middleware.NewCheckLoginMiddlewareBuilder(provider)
 	listener := InitListener()
-	component := InitWebServer(provider, checkPolicyMiddlewareBuilder, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, checkLoginMiddlewareBuilder, listener)
+	component := InitWebServer(v, sdk, syncer, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, listener)
 	v31 := orderModule.RpcServer
-	v32 := module.RpcServer
+	v32 := policyModule.RpcServer
 	v33 := endpointModule.RpcServer
 	v34 := userModule.RpcServer
 	v35 := rotaModule.RpcServer
 	server := InitGrpcServer(registry, v31, v32, v33, v34, v35)
 	teamServiceClient := InitTeamServiceClient(clientConnInterface)
-	eventModule, err := event.InitModule(mq, db, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, notificationSender, departmentModule, rotaModule, larkClient, notificationServiceClient, teamServiceClient)
+	eventModule, err := event.InitModule(mq, gormDB, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, notificationSender, departmentModule, rotaModule, larkClient, notificationServiceClient, teamServiceClient)
 	if err != nil {
 		return nil, err
 	}

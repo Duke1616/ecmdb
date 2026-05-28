@@ -104,3 +104,25 @@ func buildProjection(fields []string) map[string]int {
 	projection["utime"] = 1
 	return projection
 }
+
+// buildFilterConditions 解析并组合多组 FilterGroup 过滤规则为 BSON AND/OR 条件树，消灭多处冗余的 Bson 循环组装
+func buildFilterConditions(filterGroups []domain.FilterGroup) []bson.M {
+	return lo.FilterMap(filterGroups, func(group domain.FilterGroup, _ int) (bson.M, bool) {
+		if len(group.Filters) == 0 {
+			return nil, false
+		}
+
+		andConditions := lo.FilterMap(group.Filters, func(f domain.FilterCondition, _ int) (bson.M, bool) {
+			cond := buildBsonCondition(f)
+			return cond, cond != nil
+		})
+
+		if len(andConditions) == 0 {
+			return nil, false
+		}
+		if len(andConditions) == 1 {
+			return andConditions[0], true
+		}
+		return bson.M{"$and": andConditions}, true
+	})
+}

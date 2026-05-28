@@ -203,6 +203,7 @@ func (dao *modelDAO) UpdateModelRelation(ctx context.Context, mr ModelRelation) 
 }
 
 type ModelRelation struct {
+	TenantID        int64  `bson:"tenant_id"`
 	Id              int64  `bson:"id"`
 	SourceModelUid  string `bson:"source_model_uid"`
 	TargetModelUid  string `bson:"target_model_uid"`

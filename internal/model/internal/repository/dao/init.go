@@ -23,32 +23,34 @@ func InitIndexes(db *mongox.DB) error {
 
 func InitModelIndexes(db *mongox.DB) error {
 	col := db.Database().Collection(ModelCollection)
-
-	indexes := []mongo.IndexModel{
-		{
-			Keys:    bson.M{"uid": -1},
-			Options: options.Index().SetUnique(true),
-		},
-	}
-
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
-
-	return err
-}
-
-func initModelGroupIndex(db *mongox.DB) error {
-	col := db.Database().Collection(ModelGroupCollection)
+	ctx := context.Background()
 
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				{"name", -1},
+				{Key: "tenant_id", Value: 1},
+				{Key: "uid", Value: -1},
 			},
 			Options: options.Index().SetUnique(true),
 		},
 	}
 
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
+	return mongox.SyncIndexes(ctx, col, indexes)
+}
 
-	return err
+func initModelGroupIndex(db *mongox.DB) error {
+	col := db.Database().Collection(ModelGroupCollection)
+	ctx := context.Background()
+
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "name", Value: -1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+
+	return mongox.SyncIndexes(ctx, col, indexes)
 }

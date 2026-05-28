@@ -7,6 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/resource/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -118,7 +119,7 @@ func (dao *resourceDAO) BatchUpdateResources(ctx context.Context, resources []Re
 			SetUpsert(false)
 	})
 
-	result, err := dao.coll.Native().BulkWrite(ctx, models)
+	result, err := dao.coll.BulkWrite(ctx, models)
 	if err != nil {
 		return 0, fmt.Errorf("批量更新文档操作: %w", err)
 	}
@@ -230,13 +231,7 @@ func (dao *resourceDAO) CountByModelUid(ctx context.Context, modelUid string) (i
 
 func (dao *resourceDAO) ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]Resource, error) {
 	filter := bson.M{"id": bson.M{"$in": ids}}
-	projection := lo.Associate(fields, func(f string) (string, int) {
-		return f, 1
-	})
-	projection["_id"] = 0
-	projection["id"] = 1
-	projection["name"] = 1
-	projection["model_uid"] = 1
+	projection := buildProjection(fields)
 	opts := &options.FindOptions{
 		Projection: projection,
 	}
@@ -268,7 +263,7 @@ func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string
 		}}},
 	}
 
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -299,6 +294,7 @@ func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string
 
 func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResource, error) {
 	filter := bson.M{"$text": bson.M{"$search": text}}
+
 	groupStage := bson.D{
 		{Key: "$group", Value: bson.D{
 			{Key: "_id", Value: "$model_uid"},
@@ -309,11 +305,12 @@ func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResour
 
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: filter}},
+		{{Key: "$limit", Value: 1000}}, // NOTE: 极限防御：限制匹配上限，阻断全文检索匹配数万文档触发 16MB 崩溃与内存溢出灾难
 		groupStage,
 		{{Key: "$sort", Value: bson.D{{Key: "total", Value: -1}}}},
 	}
 
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -361,34 +358,77 @@ func (dao *resourceDAO) BatchCreateOrUpdate(ctx context.Context, resources []Res
 	}
 
 	now := time.Now().UnixMilli()
+	tenantID := ctxutil.GetTenantID(ctx).Int64()
 
-	startID, err := dao.db.GetBatchIdGenerator(ResourceCollection, len(resources))
-	if err != nil {
-		return fmt.Errorf("获取批量 ID 失败: %w", err)
+	// NOTE: 提取唯一键生成逻辑，消除多处重复的 fmt.Sprintf 格式化散落
+	resourceKey := func(modelUID string, data mongox.MapStr) string {
+		name, _ := data["name"].(string)
+		return modelUID + "_" + name
 	}
 
-	// NOTE: 使用 lo.Map 高效装配批量写入模型，消除手写循环与切片长度预设
-	models := lo.Map(resources, func(r Resource, i int) mongo.WriteModel {
-		filter := bson.M{
+	// 1. 构建 Index-Covered 覆盖索引批量查询条件（框架层 Find 会自动追加 tenant_id 过滤）
+	filters := lo.Map(resources, func(r Resource, _ int) interface{} {
+		return bson.M{
 			"model_uid": r.ModelUID,
 			"data.name": r.Data["name"],
 		}
+	})
 
-		update := bson.M{
-			"$set": dao.buildUpdateDoc(r.Data, now),
-			"$setOnInsert": bson.M{
-				"id":    startID + int64(i),
-				"ctime": now,
-			},
+	existingDocs, err := dao.coll.Find(ctx, bson.M{"$or": filters}, &options.FindOptions{
+		Projection: bson.M{"model_uid": 1, "data.name": 1, "_id": 0},
+	})
+	if err != nil {
+		return fmt.Errorf("批量查询已存在资产失败: %w", err)
+	}
+
+	// 2. 构建已存在资产的唯一键集合
+	existingMap := lo.Associate(existingDocs, func(doc Resource) (string, struct{}) {
+		return resourceKey(doc.ModelUID, doc.Data), struct{}{}
+	})
+
+	// 3. 精准统计真正需要执行 Insert 的新资产数量
+	needInsertCount := lo.CountBy(resources, func(r Resource) bool {
+		_, exists := existingMap[resourceKey(r.ModelUID, r.Data)]
+		return !exists
+	})
+
+	// 4. 按需、精准申请自增 ID，消灭序列号空洞与原子锁冲突
+	var startID int64
+	if needInsertCount > 0 {
+		startID, err = dao.db.GetBatchIdGenerator(ResourceCollection, needInsertCount)
+		if err != nil {
+			return fmt.Errorf("获取批量 ID 失败: %w", err)
+		}
+	}
+
+	// 5. 动态分配 ID 并组装 BulkWrite 写入模型（框架层 BulkWrite 会自动为 Filter 追加 tenant_id 过滤拦截）
+	var insertIndex int64
+	models := lo.Map(resources, func(r Resource, _ int) mongo.WriteModel {
+		key := resourceKey(r.ModelUID, r.Data)
+
+		var docID int64
+		if _, exists := existingMap[key]; !exists {
+			docID = startID + insertIndex
+			insertIndex++
 		}
 
 		return mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update).
+			SetFilter(bson.M{
+				"model_uid": r.ModelUID,
+				"data.name": r.Data["name"],
+			}).
+			SetUpdate(bson.M{
+				"$set": dao.buildUpdateDoc(r.Data, now),
+				"$setOnInsert": bson.M{
+					"id":        docID,
+					"tenant_id": tenantID, // 为防范 MongoDB Upsert 复合条件提取失效，此处仍显式保留 tenant_id 写入以确保新文档物理归属
+					"ctime":     now,
+				},
+			}).
 			SetUpsert(true)
 	})
 
-	_, err = dao.coll.Native().BulkWrite(ctx, models)
+	_, err = dao.coll.BulkWrite(ctx, models)
 	if err != nil {
 		return fmt.Errorf("批量创建或更新操作失败: %w", err)
 	}
@@ -413,25 +453,8 @@ func (dao *resourceDAO) ListResourcesWithFilters(ctx context.Context, fields []s
 		return dao.coll.Find(ctx, baseFilter, opts)
 	}
 
-	orConditions := lo.FilterMap(filterGroups, func(group domain.FilterGroup, _ int) (bson.M, bool) {
-		if len(group.Filters) == 0 {
-			return nil, false
-		}
-
-		andConditions := lo.FilterMap(group.Filters, func(f domain.FilterCondition, _ int) (bson.M, bool) {
-			cond := buildBsonCondition(f)
-			return cond, cond != nil
-		})
-
-		if len(andConditions) == 0 {
-			return nil, false
-		}
-		if len(andConditions) == 1 {
-			return andConditions[0], true
-		}
-		return bson.M{"$and": andConditions}, true
-	})
-
+	// NOTE: 统一调用内部提炼的 buildFilterConditions 辅助拼装器，消灭 18 行冗余 Duplicate 条件树生成逻辑
+	orConditions := buildFilterConditions(filterGroups)
 	finalFilter := dao.combineFilters(baseFilter, orConditions)
 
 	projection := buildProjection(fields)
@@ -455,25 +478,8 @@ func (dao *resourceDAO) TotalResourcesWithFilters(ctx context.Context, modelUid 
 		return dao.coll.CountDocuments(ctx, baseFilter)
 	}
 
-	orConditions := lo.FilterMap(filterGroups, func(group domain.FilterGroup, _ int) (bson.M, bool) {
-		if len(group.Filters) == 0 {
-			return nil, false
-		}
-
-		andConditions := lo.FilterMap(group.Filters, func(f domain.FilterCondition, _ int) (bson.M, bool) {
-			cond := buildBsonCondition(f)
-			return cond, cond != nil
-		})
-
-		if len(andConditions) == 0 {
-			return nil, false
-		}
-		if len(andConditions) == 1 {
-			return andConditions[0], true
-		}
-		return bson.M{"$and": andConditions}, true
-	})
-
+	// NOTE: 统一调用内部提炼的 buildFilterConditions 辅助拼装器，消灭 18 行冗余 Duplicate 条件树生成逻辑
+	orConditions := buildFilterConditions(filterGroups)
 	finalFilter := dao.combineFilters(baseFilter, orConditions)
 
 	count, err := dao.coll.CountDocuments(ctx, finalFilter)

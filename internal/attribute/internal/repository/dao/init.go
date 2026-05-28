@@ -24,10 +24,12 @@ func InitIndexes(db *mongox.DB) error {
 func initAttrIndex(db *mongox.DB) error {
 	// 使用 Collection[Attribute].Native() 拿到底层原始驱动连接以安全操作 Index
 	col := mongox.NewCollection[Attribute](db, AttributeCollection)
+	ctx := context.Background()
 
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
 				{Key: "field_uid", Value: -1},
 				{Key: "model_uid", Value: -1},
 			},
@@ -47,18 +49,18 @@ func initAttrIndex(db *mongox.DB) error {
 		},
 	}
 
-	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
-
-	return err
+	return mongox.SyncIndexes(ctx, col.Native(), indexes)
 }
 
 func initAttrGroupIndex(db *mongox.DB) error {
 	// 使用 Collection[AttributeGroup].Native() 拿到底层原始驱动连接以安全操作 Index
 	col := mongox.NewCollection[AttributeGroup](db, AttributeGroupCollection)
+	ctx := context.Background()
 
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
 				{Key: "model_uid", Value: -1},
 				{Key: "name", Value: -1},
 			},
@@ -66,7 +68,5 @@ func initAttrGroupIndex(db *mongox.DB) error {
 		},
 	}
 
-	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
-
-	return err
+	return mongox.SyncIndexes(ctx, col.Native(), indexes)
 }

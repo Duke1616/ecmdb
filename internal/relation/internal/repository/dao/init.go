@@ -24,31 +24,35 @@ func InitIndexes(db *mongox.DB) error {
 func initRTIndex(db *mongox.DB) error {
 	// 使用 Collection[RelationType].Native() 拿到底层原始驱动连接以安全操作 Index
 	col := mongox.NewCollection[RelationType](db, RelationTypeCollection)
+	ctx := context.Background()
 
 	indexes := []mongo.IndexModel{
 		{
-			Keys:    bson.M{"uid": -1},
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "uid", Value: -1},
+			},
 			Options: options.Index().SetUnique(true),
 		},
 	}
 
-	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
-
-	return err
+	return mongox.SyncIndexes(ctx, col.Native(), indexes)
 }
 
 func initRMIndex(db *mongox.DB) error {
 	// 使用 Collection[ModelRelation].Native() 拿到底层原始驱动连接以安全操作 Index
 	col := mongox.NewCollection[ModelRelation](db, ModelRelationCollection)
+	ctx := context.Background()
 
 	indexes := []mongo.IndexModel{
 		{
-			Keys:    bson.M{"relation_name": -1},
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "relation_name", Value: -1},
+			},
 			Options: options.Index().SetUnique(true),
 		},
 	}
 
-	_, err := col.Native().Indexes().CreateMany(context.Background(), indexes)
-
-	return err
+	return mongox.SyncIndexes(ctx, col.Native(), indexes)
 }

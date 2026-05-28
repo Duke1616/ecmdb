@@ -162,6 +162,7 @@ func (dao *relationDAO) GetByID(ctx context.Context, id int64) (RelationType, er
 }
 
 type RelationType struct {
+	TenantID       int64  `bson:"tenant_id"`
 	Id             int64  `bson:"id"`
 	Name           string `bson:"name"`
 	UID            string `bson:"uid"`

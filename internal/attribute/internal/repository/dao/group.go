@@ -195,7 +195,7 @@ func (dao *attributeGroupDAO) BatchUpdateSort(ctx context.Context, items []Attri
 			}})
 	})
 
-	_, err := dao.coll.Native().BulkWrite(ctx, models)
+	_, err := dao.coll.BulkWrite(ctx, models)
 	if err != nil {
 		return fmt.Errorf("批量更新排序错误: %w", err)
 	}

@@ -203,7 +203,7 @@ func (dao *attributeDAO) UpdateFieldIndex(ctx context.Context, modelUid string, 
 		}
 	})
 
-	result, err := dao.coll.Native().BulkWrite(ctx, updates)
+	result, err := dao.coll.BulkWrite(ctx, updates)
 	if err != nil {
 		return 0, fmt.Errorf("BulkWrite 修改错误, %w", err)
 	}
@@ -264,7 +264,7 @@ func (dao *attributeDAO) ListAttributePipeline(ctx context.Context, modelUid str
 		}}},
 	}
 
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -393,7 +393,7 @@ func (dao *attributeDAO) BatchUpdateSortKey(ctx context.Context, items []Attribu
 			}})
 	})
 
-	_, err := dao.coll.Native().BulkWrite(ctx, models)
+	_, err := dao.coll.BulkWrite(ctx, models)
 	if err != nil {
 		return fmt.Errorf("批量更新 SortKey 错误: %w", err)
 	}

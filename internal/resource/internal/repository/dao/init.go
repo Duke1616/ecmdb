@@ -11,12 +11,14 @@ import (
 
 func InitIndexes(db *mongox.DB) error {
 	col := db.Database().Collection(ResourceCollection)
+	ctx := context.Background()
 
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				{"name", -1},
-				{"model_uid", -1},
+				{Key: "tenant_id", Value: 1},
+				{Key: "name", Value: -1},
+				{Key: "model_uid", Value: -1},
 			},
 			Options: options.Index().SetUnique(true),
 		},
@@ -27,7 +29,5 @@ func InitIndexes(db *mongox.DB) error {
 		},
 	}
 
-	_, err := col.Indexes().CreateMany(context.Background(), indexes)
-
-	return err
+	return mongox.SyncIndexes(ctx, col, indexes)
 }

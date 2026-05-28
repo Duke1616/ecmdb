@@ -58,7 +58,7 @@ var backupMongoCmd = &cobra.Command{
 		fmt.Printf("✅ MongoDB 集合备份完成!\n")
 		fmt.Printf("📋 备份ID: %s\n", result.BackupID)
 		fmt.Printf("📊 记录数: %d\n", result.TotalRecords)
-		fmt.Printf("📅 备份时间: %s\n", result.BackupTime)
+		fmt.Printf("📅 备份时间: %d\n", result.BackupTime)
 	},
 }
 
@@ -100,7 +100,7 @@ var backupMySQLCmd = &cobra.Command{
 		fmt.Printf("✅ MySQL 表备份完成!\n")
 		fmt.Printf("📋 备份ID: %s\n", result.BackupID)
 		fmt.Printf("📊 记录数: %d\n", result.TotalRecords)
-		fmt.Printf("📅 备份时间: %s\n", result.BackupTime)
+		fmt.Printf("📅 备份时间: %d\n", result.BackupTime)
 	},
 }
 

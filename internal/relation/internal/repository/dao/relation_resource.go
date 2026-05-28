@@ -137,7 +137,7 @@ func (dao *resourceDAO) ListSrcAggregated(ctx context.Context, modelUid string, 
 		}}},
 	}
 
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -170,7 +170,7 @@ func (dao *resourceDAO) ListDstAggregated(ctx context.Context, modelUid string, 
 		}}},
 	}
 
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("查询错误, %w", err)
 	}
@@ -320,7 +320,7 @@ func (dao *resourceDAO) ListRecursiveSrc(ctx context.Context, modelUid string, i
 	}
 
 	// NOTE: 回归大一统逻辑字段隔离设计，直接在公共集合 Native() 上运行原生聚合，配合 matchFilter 里的租户字段安全过滤
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("递归下游关系聚合查询失败: %w", err)
 	}
@@ -369,7 +369,7 @@ func (dao *resourceDAO) ListRecursiveDst(ctx context.Context, modelUid string, i
 	}
 
 	// NOTE: 回归大一统逻辑字段隔离设计，直接在公共集合 Native() 上运行原生聚合，配合 matchFilter 里的租户字段安全过滤
-	cursor, err := dao.coll.Native().Aggregate(ctx, pipeline)
+	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, fmt.Errorf("递归上游关系聚合查询失败: %w", err)
 	}

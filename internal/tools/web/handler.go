@@ -8,6 +8,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/tools/service"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,22 +16,38 @@ const DefaultBucket = "ecmdb"
 
 type Handler struct {
 	svc service.Service
+	capability.IRegistry
 }
 
 func NewHandler(svc service.Service) *Handler {
 	return &Handler{
-		svc: svc,
+		svc:       svc,
+		IRegistry: capability.NewRegistry("cmdb", "tools", "资产仓库/文件管理"),
 	}
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g := server.Group("/api/tools")
-	g.POST("/upload", h.Upload)
-	g.GET("/download/:filename", h.Download)
+	g.POST("/upload", h.Capability("文件上传", "upload").
+		Needs("cmdb:tools:put_presigned_url").
+		Handle(h.Upload),
+	)
+	g.GET("/download/:filename", h.Capability("文件下载", "download").
+		Needs("cmdb:tools:get_presigned_url").
+		Handle(h.Download),
+	)
 
-	g.POST("/minio/get_presigned_url", ginx.WrapBody[GetPresignedUrl](h.GetPresignedUrl))
-	g.POST("/minio/put_presigned_url", ginx.WrapBody[PutPresignedUrl](h.PutPresignedUrl))
-	g.POST("/minio/object/remove", ginx.WrapBody[RemoveObjectReq](h.RemoveObject))
+	g.POST("/minio/get_presigned_url", h.Capability("获取下载预签名", "get_presigned_url").
+		NoSync().
+		Handle(ginx.WrapBody[GetPresignedUrl](h.GetPresignedUrl)),
+	)
+	g.POST("/minio/put_presigned_url", h.Capability("获取上传预签名", "put_presigned_url").
+		NoSync().
+		Handle(ginx.WrapBody[PutPresignedUrl](h.PutPresignedUrl)),
+	)
+	g.POST("/minio/object/remove", h.Capability("删除对象", "remove").
+		Handle(ginx.WrapBody[RemoveObjectReq](h.RemoveObject)),
+	)
 }
 
 func (h *Handler) Upload(ctx *gin.Context) {

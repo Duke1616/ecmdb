@@ -19,7 +19,7 @@ type RelationModelHandler struct {
 func NewRelationModelHandler(svc service.RelationModelService) *RelationModelHandler {
 	return &RelationModelHandler{
 		svc:       svc,
-		IRegistry: capability.NewRegistry("cmdb", "model", "模型管理"),
+		IRegistry: capability.NewRegistry("cmdb", "model-relation", "模型管理/关联关系"),
 	}
 }
 
@@ -32,22 +32,22 @@ func (h *RelationModelHandler) PrivateRoute(server *gin.Engine) {
 	// ==========================================
 
 	// 创建模型关联关系
-	g.POST("/relation/create", h.Capability("创建模型关联关系", "relation_create").
+	g.POST("/relation/create", h.Capability("创建模型关联关系", "add").
 		Handle(ginx.WrapBody[CreateModelRelationReq](h.CreateModelRelation)),
 	)
 
 	// 查询模型拥有的所有关联信息
-	g.POST("/relation/list", h.Capability("查询模型关联列表", "relation_list").
+	g.POST("/relation/list", h.Capability("模型关联列表", "view").
 		Handle(ginx.WrapBody[ListModelRelationReq](h.ListModelUIDRelation)),
 	)
 
 	// 删除模型关联关系
-	g.POST("/relation/delete", h.Capability("删除模型关联关系", "relation_delete").
+	g.POST("/relation/delete", h.Capability("删除模型关联关系", "delete").
 		Handle(ginx.WrapBody[DeleteModelRelationReq](h.DeleteModelRelation)),
 	)
 
 	// 更新模型关联关系
-	g.POST("/relation/update", h.Capability("更新模型关联关系", "relation_update").
+	g.POST("/relation/update", h.Capability("更新模型关联关系", "edit").
 		Handle(ginx.WrapBody[UpdateModelRelationReq](h.UpdateModelRelation)),
 	)
 }

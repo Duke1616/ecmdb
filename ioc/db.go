@@ -39,6 +39,7 @@ func InitMongoDB() *mongox.Mongo {
 	dsn := strings.Split(cfg.DSN, "//")
 	uri := fmt.Sprintf("%s//%s:%s@%s", dsn[0], cfg.Username, cfg.Password, dsn[1])
 
+	fmt.Println("Connecting to MongoDB...", uri)
 	opts := options.Client().
 		ApplyURI(uri).
 		SetMonitor(monitor)

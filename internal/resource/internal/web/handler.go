@@ -27,7 +27,7 @@ func NewHandler(service service.EncryptedSvc, attributeSvc attribute.Service, RR
 		svc:       service,
 		attrSvc:   attributeSvc,
 		RRSvc:     RRSvc,
-		IRegistry: capability.NewRegistry("cmdb", "resource", "资源管理"),
+		IRegistry: capability.NewRegistry("cmdb", "resource", "资产仓库"),
 	}
 }
 
@@ -45,12 +45,13 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 
 	// 查询资产详情
-	g.POST("/detail", h.Capability("查询资产详情", "get").
+	g.POST("/detail", h.Capability("资产详情", "get").
 		Handle(ginx.WrapBody[DetailResourceReq](h.DetailResource)),
 	)
 
 	// 根据模型 UID 查询资产列表
-	g.POST("/list", h.Capability("查询资产列表", "view").
+	g.POST("/list", h.Capability("资产列表", "view").
+		Needs("cmdb:model:view", "cmdb:attribute:view").
 		Handle(ginx.WrapBody[ListResourceReq](h.ListResource)),
 	)
 
@@ -60,7 +61,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 
 	// 修改资产信息
-	g.POST("/update", h.Capability("修改资产信息", "edit").
+	g.POST("/update", h.Capability("修改资产", "edit").
 		Handle(ginx.WrapBody[UpdateResourceReq](h.UpdateResource)),
 	)
 
@@ -74,27 +75,33 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// ==========================================
 
 	// 查询可关联的资产列表
-	g.POST("/relation/can_be_related", h.Capability("查询可关联的资产列表", "relation_view_can_be_related").
+	g.POST("/relation/can_be_related", h.Capability("查询可关联的资产列表", "view_can_be_related").
+		NoSync().
 		Handle(ginx.WrapBody[ListCanBeRelatedReqByModel](h.ListCanBeFilterRelated)),
 	)
 
 	// 查询资产拓扑关系图谱
-	g.POST("/relation/diagram", h.Capability("查询资产关系图谱", "relation_view_diagram").
-		Handle(ginx.WrapBody[ListDiagramReq](h.FindDiagram)),
-	)
+	//g.POST("/relation/diagram", h.Capability("查询资产关系图谱", "relation_view_diagram").
+	//	Handle(ginx.WrapBody[ListDiagramReq](h.FindDiagram)),
+	//)
 
 	// 查询资产关联拓扑图
-	g.POST("/relation/graph", h.Capability("查询资产关联拓扑图", "relation_view_graph").
+	g.POST("/relation/graph", h.Capability("资产关联拓扑图", "view_relation_graph").
+		Module("relation-resource").
+		Group("资产仓库/关联关系").
+		Needs("cmdb:resource:add_relation_left", "cmdb:resource:add_relation_right").
 		Handle(ginx.WrapBody[ListDiagramReq](h.FindAllGraph)),
 	)
 
 	// 拓扑图向左拓展
-	g.POST("/relation/graph/add/left", h.Capability("拓扑图向左拓展", "relation_add_left").
+	g.POST("/relation/graph/add/left", h.Capability("拓扑图向左拓展", "add_relation_left").
+		NoSync().
 		Handle(ginx.WrapBody[ListDiagramReq](h.FindLeftGraph)),
 	)
 
 	// 拓扑图向右拓展
-	g.POST("/relation/graph/add/right", h.Capability("拓扑图向右拓展", "relation_add_right").
+	g.POST("/relation/graph/add/right", h.Capability("拓扑图向右拓展", "add_relation_right").
+		NoSync().
 		Handle(ginx.WrapBody[ListDiagramReq](h.FindRightGraph)),
 	)
 
@@ -104,11 +111,13 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 批量查询资产
 	g.POST("/list/ids", h.Capability("批量查询资产", "view_by_ids").
+		NoSync().
 		Handle(ginx.WrapBody[ListResourceByIdsReq](h.ListResourceByIds)),
 	)
 
 	// 全文检索资产
 	g.POST("/search", h.Capability("全文检索资产", "search").
+		Group("资产仓库/全局搜索").
 		Handle(ginx.WrapBody[SearchReq](h.Search)),
 	)
 

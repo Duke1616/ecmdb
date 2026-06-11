@@ -200,8 +200,8 @@ func (c *Collection[T]) Aggregate(ctx context.Context, pipeline mongo.Pipeline, 
 	}
 	ignoreTenant, _ := ctx.Value("mongox:ignore_tenant").(bool)
 
-	// 只要没有显式开启受控豁免，在管道最前端织入当前租户空间的限制过滤条件
-	if !ignoreTenant {
+	// 只要没有显式开启受控豁免，在管道中织入当前租户空间的限制过滤条件
+	if !ignoreTenant && !c.tryMergeTenantID(pipeline, tenantID) {
 		tenantMatch := bson.D{{
 			Key: "$match",
 			Value: bson.M{
@@ -212,6 +212,34 @@ func (c *Collection[T]) Aggregate(ctx context.Context, pipeline mongo.Pipeline, 
 	}
 
 	return c.coll.Aggregate(ctx, pipeline, opts...)
+}
+
+// tryMergeTenantID 尝试将 tenant_id 合并到聚合管道的第一个 $match 阶段
+func (c *Collection[T]) tryMergeTenantID(pipeline mongo.Pipeline, tenantID int64) bool {
+	if len(pipeline) == 0 {
+		return false
+	}
+
+	stage := pipeline[0]
+	if len(stage) == 0 || stage[0].Key != "$match" {
+		return false
+	}
+
+	switch val := stage[0].Value.(type) {
+	case bson.M:
+		val["tenant_id"] = tenantID
+		return true
+	case bson.D:
+		for _, elem := range val {
+			if elem.Key == "tenant_id" {
+				return true
+			}
+		}
+		stage[0].Value = append(val, bson.E{Key: "tenant_id", Value: tenantID})
+		return true
+	}
+
+	return false
 }
 
 // BulkWrite 批量写入/更新/删除操作，自动为每个子操作应用多租户插件

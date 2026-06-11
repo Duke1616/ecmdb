@@ -19,7 +19,7 @@ type RelationTypeHandler struct {
 func NewRelationTypeHandler(svc service.RelationTypeService) *RelationTypeHandler {
 	return &RelationTypeHandler{
 		svc:       svc,
-		IRegistry: capability.NewRegistry("cmdb", "relation", "关系管理"),
+		IRegistry: capability.NewRegistry("cmdb", "relation", "关联类型"),
 	}
 }
 
@@ -32,22 +32,22 @@ func (h *RelationTypeHandler) PrivateRoute(server *gin.Engine) {
 	// ==========================================
 
 	// 创建关联类型
-	g.POST("/create", h.Capability("创建关联类型", "type_create").
+	g.POST("/create", h.Capability("创建关联类型", "add").
 		Handle(ginx.WrapBody[CreateRelationTypeReq](h.Create)),
 	)
 
 	// 查询关联类型列表
-	g.POST("/list", h.Capability("查询关联类型列表", "type_list").
+	g.POST("/list", h.Capability("关联类型列表", "view").
 		Handle(ginx.WrapBody[Page](h.List)),
 	)
 
 	// 更新关联类型
-	g.POST("/update", h.Capability("更新关联类型", "type_update").
+	g.POST("/update", h.Capability("更新关联类型", "edit").
 		Handle(ginx.WrapBody[UpdateRelationTypeReq](h.Update)),
 	)
 
 	// 删除关联类型
-	g.POST("/delete", h.Capability("删除关联类型", "type_delete").
+	g.POST("/delete", h.Capability("删除关联类型", "delete").
 		Handle(ginx.WrapBody[DeleteRelationTypeReq](h.Delete)),
 	)
 }

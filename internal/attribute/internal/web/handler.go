@@ -18,7 +18,7 @@ type Handler struct {
 func NewHandler(svc service.Service) *Handler {
 	return &Handler{
 		svc:       svc,
-		IRegistry: capability.NewRegistry("cmdb", "attribute", "属性管理"),
+		IRegistry: capability.NewRegistry("cmdb", "attribute", "模型管理/属性管理"),
 	}
 }
 
@@ -29,30 +29,35 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// ==========================================
 	// 1. 属性分组管理接口
 	// ==========================================
-
 	// 创建属性分组
-	g.POST("/group/create", h.Capability("创建属性分组", "group_add").
+	g.POST("/group/create", h.Capability("创建分组", "group_add").
 		Handle(ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup)),
 	)
 
 	// 查询属性分组列表
-	g.POST("/group/list", h.Capability("查询属性分组列表", "group_list").
+	g.POST("/group/list", h.Capability("分组列表", "group_list").
 		Handle(ginx.WrapBody[ListAttributeGroupReq](h.ListAttributeGroup)),
 	)
 
 	// 根据 ID 批量查询属性分组
-	g.POST("/group/ids", h.Capability("批量查询属性分组", "group_view_by_ids").
+	g.POST("/group/ids", h.Capability("批量查询分组", "group_view_by_ids").
+		NoSync().
 		Handle(ginx.WrapBody[ListAttributeGroupByIdsReq](h.ListAttributeGroupByIds)),
 	)
 
 	// 删除属性分组
-	g.POST("/group/delete", h.Capability("删除属性分组", "group_delete").
+	g.POST("/group/delete", h.Capability("删除分组", "group_delete").
 		Handle(ginx.WrapBody[DeleteAttributeGroupReq](h.DeleteAttributeGroup)),
 	)
 
 	// 重命名属性分组
-	g.POST("/group/rename", h.Capability("重命名属性分组", "group_rename").
+	g.POST("/group/rename", h.Capability("重命名分组", "group_rename").
 		Handle(ginx.WrapBody[RenameAttributeGroupReq](h.RenameAttributeGroup)),
+	)
+
+	// 属性分组排序
+	g.POST("/group/sort", h.Capability("分组排序", "group_sort").
+		Handle(ginx.WrapBody[SortAttributeGroupReq](h.SortAttributeGroup)),
 	)
 
 	// ==========================================
@@ -60,47 +65,38 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// ==========================================
 
 	// 创建属性字段
-	g.POST("/create", h.Capability("创建属性字段", "add").
+	g.POST("/create", h.Capability("创建属性", "add").
 		Handle(ginx.WrapBody[CreateAttributeReq](h.CreateAttribute)),
 	)
 
 	// 查询属性列表
-	g.POST("/list", h.Capability("查询属性列表", "view").
+	g.POST("/list", h.Capability("属性列表", "view").
 		Handle(ginx.WrapBody[ListAttributeReq](h.ListAttributes)),
 	)
 
 	// 查询属性字段列表
-	g.POST("/list/field", h.Capability("查询属性字段列表", "view_fields").
+	g.POST("/list/field", h.Capability("属性字段", "view_fields").
 		Handle(ginx.WrapBody[ListAttributeReq](h.ListAttributeField)),
 	)
 
 	// 自定义属性列展示
-	g.POST("/custom/field", h.Capability("自定义属性列展示", "view_custom_fields").
+	g.POST("/custom/field", h.Capability("自定义列展示", "view_custom_fields").
 		Handle(ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns)),
 	)
 
 	// 删除属性字段
-	g.POST("/delete", h.Capability("删除属性字段", "delete").
+	g.POST("/delete", h.Capability("删除属性", "delete").
 		Handle(ginx.WrapBody[DeleteAttributeReq](h.DeleteAttribute)),
 	)
 
 	// 更新属性字段
-	g.POST("/update", h.Capability("更新属性字段", "edit").
+	g.POST("/update", h.Capability("更新属性", "edit").
 		Handle(ginx.WrapBody[UpdateAttributeReq](h.UpdateAttribute)),
 	)
 
-	// ==========================================
-	// 3. 属性排序接口
-	// ==========================================
-
 	// 属性字段排序
-	g.POST("/sort", h.Capability("属性拖拽排序", "sort").
+	g.POST("/sort", h.Capability("属性排序", "sort").
 		Handle(ginx.WrapBody[SortAttributeReq](h.Sort)),
-	)
-
-	// 属性分组排序
-	g.POST("/group/sort", h.Capability("属性分组拖拽排序", "group_sort").
-		Handle(ginx.WrapBody[SortAttributeGroupReq](h.SortAttributeGroup)),
 	)
 }
 

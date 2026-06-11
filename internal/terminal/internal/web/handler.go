@@ -15,6 +15,8 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/term"
 	"github.com/Duke1616/ecmdb/pkg/term/guacx"
 	"github.com/Duke1616/ecmdb/pkg/term/sshx"
+	"github.com/Duke1616/eiam/pkg/web/capability"
+	finderGinx "github.com/Duke1616/vuefinder-go/pkg/ginx"
 	sftpFinder "github.com/Duke1616/vuefinder-go/pkg/provider/sftp"
 	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
 	"github.com/gin-gonic/gin"
@@ -30,6 +32,7 @@ type Handler struct {
 	session      *term.SessionPool
 	timeout      time.Duration
 	finderWeb    *finderWeb.Handler
+	capability.IRegistry
 }
 
 func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.EncryptedSvc, attributeSvc attribute.Service) *Handler {
@@ -40,6 +43,7 @@ func NewHandler(RRSvc relation.RRSvc, resourceSvc resource.EncryptedSvc, attribu
 		session:      term.NewSessionPool(),
 		timeout:      5 * time.Second,
 		finderWeb:    finderWeb.NewHandler(),
+		IRegistry:    capability.NewRegistry("cmdb", "terminal", "资产仓库/在线终端"),
 	}
 }
 
@@ -54,17 +58,65 @@ var UpGrader = websocket.Upgrader{
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/term")
-	g.GET("/guac/tunnel", ginx.Wrap(h.ConnectGuacTunnel))
+	g.GET("/guac/tunnel", h.Capability("远程连接", "guac_tunnel").
+		Handle(ginx.Wrap(h.ConnectGuacTunnel)),
+	)
 
 	// SSH 连接服务器，支持多层网关跳转
-	g.GET("/ssh/session", ginx.Ws(h.SshSessionTunnel))
+	g.GET("/ssh/session", h.Capability("终端会话", "ssh_session").
+		Handle(ginx.Ws(h.SshSessionTunnel)),
+	)
 
 	// 主要用于连接管理成功后，存储到Session中，不需要重复建立连接
-	g.POST("/connect", ginx.WrapBody(h.Connect))
+	g.POST("/connect", h.Capability("终端连接验证", "connect").
+		Handle(ginx.WrapBody(h.Connect)),
+	)
 
-	// 注册 FinderWeb 路由，实现 SFTP 能力
-	h.finderWeb.RegisterRoutes(server)
-	h.finderWeb.RegisterUploadRoute(server)
+	// 自行接管 FinderWeb (SFTP) 路由注册并注入权限控制cat mig
+	gFinder := server.Group("/api/finder")
+
+	gFinder.GET("/files", h.Capability("查看文件", "sftp_files").
+		Handle(finderGinx.Wrap(h.finderWeb.Index)),
+	)
+	gFinder.GET("/download", h.Capability("下载文件", "sftp_download").
+		Handle(h.finderWeb.DownloadStream),
+	)
+	gFinder.GET("/search", h.Capability("搜索文件", "sftp_search").
+		Handle(finderGinx.Wrap(h.finderWeb.Search)),
+	)
+	gFinder.GET("/preview", h.Capability("预览文件", "sftp_preview").
+		Handle(finderGinx.WrapBuff(h.finderWeb.Preview)),
+	)
+	gFinder.POST("/new_folder", h.Capability("创建目录", "sftp_new_folder").
+		Handle(finderGinx.WrapBody(h.finderWeb.NewFolder)),
+	)
+	gFinder.POST("/new_file", h.Capability("创建文件", "sftp_new_file").
+		Handle(finderGinx.WrapBody(h.finderWeb.NewFile)),
+	)
+	gFinder.POST("/rename", h.Capability("重命名文件", "sftp_rename").
+		Handle(finderGinx.WrapBody(h.finderWeb.Rename)),
+	)
+	gFinder.POST("/move", h.Capability("移动文件", "sftp_move").
+		Handle(finderGinx.WrapBody(h.finderWeb.Move)),
+	)
+	gFinder.POST("/archive", h.Capability("压缩文件", "sftp_archive").
+		Handle(finderGinx.WrapBody(h.finderWeb.Archive)),
+	)
+	gFinder.POST("/unarchive", h.Capability("解压文件", "sftp_unarchive").
+		Handle(finderGinx.WrapBody(h.finderWeb.Unarchive)),
+	)
+	gFinder.POST("/save", h.Capability("保存文件内容", "sftp_save").
+		Handle(finderGinx.WrapBuffBody(h.finderWeb.Save)),
+	)
+	gFinder.POST("/delete", h.Capability("删除文件", "sftp_delete").
+		Handle(finderGinx.WrapBody(h.finderWeb.Delete)),
+	)
+	// WebSocket 上传路由
+	gFinder.GET("/upload/ws", h.Capability("上传文件", "sftp_upload_ws").
+		Handle(func(ctx *gin.Context) {
+			finderWeb.UploadHandler(h.finderWeb)(ctx.Writer, ctx.Request)
+		}),
+	)
 }
 
 func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error) {

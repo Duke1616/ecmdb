@@ -5,6 +5,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/storage"
+	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 )
@@ -12,23 +13,31 @@ import (
 type Handler struct {
 	svc     service.IDataIOService
 	storage *storage.S3Storage
+	capability.IRegistry
 }
 
 func NewHandler(svc service.IDataIOService, storage *storage.S3Storage) *Handler {
 	return &Handler{
-		svc:     svc,
-		storage: storage,
+		svc:       svc,
+		storage:   storage,
+		IRegistry: capability.NewRegistry("cmdb", "dataio", "资产仓库/导入导出"),
 	}
 }
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/dataio")
 	// 导出模板
-	g.GET("/template/export/:model_uid", ginx.Wrap(h.ExportTemplate))
+	g.GET("/template/export/:model_uid", h.Capability("模板导出", "export_template").
+		Handle(ginx.Wrap(h.ExportTemplate)),
+	)
 	// 导入数据 (S3 模式)
-	g.POST("/import", ginx.WrapBody[ImportReq](h.Import))
+	g.POST("/import", h.Capability("数据导入", "import").
+		Handle(ginx.WrapBody[ImportReq](h.Import)),
+	)
 	// 导出数据
-	g.POST("/export", ginx.WrapBody[ExportReq](h.Export))
+	g.POST("/export", h.Capability("数据导出", "export").
+		Handle(ginx.WrapBody[ExportReq](h.Export)),
+	)
 }
 
 // Export 导出数据

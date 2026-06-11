@@ -56,8 +56,10 @@ func (u *UserServer) ToRetrieveUsers(src domain.User) *userv1.User {
 	return &userv1.User{
 		Id:           src.Id,
 		Username:     src.Username,
+		DisplayName:  src.DisplayName,
 		Email:        src.Email,
 		LarkUserId:   src.FeishuInfo.UserId,
 		WechatUserId: src.WechatInfo.UserId,
+		DepartmentId: src.DepartmentId,
 	}
 }

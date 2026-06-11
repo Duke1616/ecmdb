@@ -20,7 +20,7 @@ type RelationResourceHandler struct {
 func NewRelationResourceHandler(svc service.RelationResourceService) *RelationResourceHandler {
 	return &RelationResourceHandler{
 		svc:       svc,
-		IRegistry: capability.NewRegistry("cmdb", "resource", "资源管理"),
+		IRegistry: capability.NewRegistry("cmdb", "relation-resource", "资产仓库/关联关系"),
 	}
 }
 
@@ -33,36 +33,39 @@ func (h *RelationResourceHandler) PrivateRoute(server *gin.Engine) {
 	// ==========================================
 
 	// 创建资源关联关系
-	g.POST("/create", h.Capability("创建资产关系", "relation_create").
+	g.POST("/create", h.Capability("创建资产关系", "add").
+		Needs("cmdb:resource:view_can_be_related").
 		Handle(ginx.WrapBody[CreateResourceRelationReq](h.CreateResourceRelation)),
 	)
 
 	// 查询源资产关联关系 (暂不使用，保留注册)
-	g.POST("/list/src", h.Capability("查询源资产关系", "relation_list_src").
-		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource)),
-	)
-
-	// 查询目标资产关联关系 (暂不使用，保留注册)
-	g.POST("/list/dst", h.Capability("查询目标资产关系", "relation_list_dst").
-		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource)),
-	)
+	//g.POST("/list/src", h.Capability("查询源资产关系", "relation_list_src").
+	//	Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListSrcResource)),
+	//)
+	//
+	//// 查询目标资产关联关系 (暂不使用，保留注册)
+	//g.POST("/list/dst", h.Capability("查询目标资产关系", "relation_list_dst").
+	//	Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListDstResource)),
+	//)
 
 	// ==========================================
 	// 2. 资源关联关系聚合/Pipeline 接口
 	// ==========================================
 
 	// 源资产关系聚合查询
-	g.POST("/pipeline/src", h.Capability("源资产关系聚合查询", "relation_pipeline_src").
-		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated)),
-	)
-
-	// 目标资产关系聚合查询
-	g.POST("/pipeline/dst", h.Capability("目标资产关系聚合查询", "relation_pipeline_dst").
-		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated)),
-	)
+	//g.POST("/pipeline/src", h.Capability("源资产关系聚合查询", "relation_pipeline_src").
+	//	Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListSrcAggregated)),
+	//)
+	//
+	//// 目标资产关系聚合查询
+	//g.POST("/pipeline/dst", h.Capability("目标资产关系聚合查询", "relation_pipeline_dst").
+	//	Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListDstAggregated)),
+	//)
 
 	// 所有资产关系聚合查询
 	g.POST("/pipeline/all", h.Capability("所有资产关系聚合查询", "relation_pipeline_all").
+		Needs("cmdb:relation:view", "cmdb:model-relation:view", "cmdb:model:view_by_uids",
+			"cmdb:attribute:view_fields", "cmdb:resource:view_by_ids").
 		Handle(ginx.WrapBody[ListResourceDiagramReq](h.ListAllAggregated)),
 	)
 
@@ -71,7 +74,7 @@ func (h *RelationResourceHandler) PrivateRoute(server *gin.Engine) {
 	// ==========================================
 
 	// 删除资产关系
-	g.POST("/delete", h.Capability("删除资产关系", "relation_delete").
+	g.POST("/delete", h.Capability("删除资产关系", "delete").
 		Handle(ginx.WrapBody[DeleteResourceRelationReq](h.DeleteResourceRelation)),
 	)
 }

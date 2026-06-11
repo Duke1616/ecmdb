@@ -10,7 +10,7 @@ message User {
   int64 id = 1;
   // 用户名
   string username  = 2;
-  // 用户名
+  // 显示名称
   string display_name  = 3;
   // 飞书用户ID
   string lark_user_id = 4;
@@ -20,6 +20,8 @@ message User {
   string email = 6;
   // 用户手机号
   string phone = 7;
+  // 部门ID
+  int64 department_id = 8;
 }
 
 // 查找用户请求

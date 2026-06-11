@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/Bunny3th/easy-workflow v1.0.0
-	github.com/Duke1616/eiam v0.0.9
+	github.com/Duke1616/eiam v0.0.10
 	github.com/Duke1616/enotify v0.1.25-0.20260311115016-f762700e83e9
 	github.com/Duke1616/etask v0.0.7
 	github.com/Duke1616/vuefinder-go v1.1.0

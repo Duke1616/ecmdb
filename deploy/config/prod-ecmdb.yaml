@@ -87,17 +87,10 @@ minio:
   secret_access_key: "minio123"
   use_ssl: false
 
-# 数据加密配置：针对不同模块的敏感字段进行 AES 加密存储
+# 数据加密配置：针对敏感字段进行 AES 加密存储
 encryption:
-  user:
-    version: "V1" # 加密算法版本
-    key: "1234567890" # 16/24/32位密钥
-  resource:
-    version: "V1"
-    key: "1234567890"
-  runner:
-    version: "V1"
-    key: "1234567890"
+  version: "V1" # 加密算法版本
+  key: "1234567890" # 16/24/32位密钥
 
 # 企业微信 API 配置：用于同步人员信息或接收回调
 wechat:

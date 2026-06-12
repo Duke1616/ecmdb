@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Duke1616/ecmdb/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/Duke1616/ecmdb/pkg/mongox/plugin"
 	"github.com/spf13/viper"
@@ -63,6 +64,10 @@ func InitMongoDBV2(db *mongox.Mongo) *mongox.DB {
 
 	dbV2.Use(plugin.NewAutoIDPlugin(dbV2.Database()))
 	dbV2.Use(plugin.NewTenantPlugin())
+
+	if err := dao.InitIndexes(dbV2); err != nil {
+		panic(err)
+	}
 
 	return dbV2
 }

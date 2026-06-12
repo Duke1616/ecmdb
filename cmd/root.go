@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/cmd/backup"
-	"github.com/Duke1616/ecmdb/cmd/endpoint"
 	"github.com/Duke1616/ecmdb/cmd/initial"
 	"github.com/Duke1616/ecmdb/cmd/repair"
 	"github.com/Duke1616/ecmdb/cmd/start"
@@ -69,7 +68,6 @@ func Execute(version string) {
 	rootCmd.AddCommand(start.Cmd)
 	rootCmd.AddCommand(initial.Cmd)
 	rootCmd.AddCommand(backup.Cmd)
-	rootCmd.AddCommand(endpoint.Cmd)
 	rootCmd.AddCommand(repair.Cmd)
 	err := rootCmd.Execute()
 	cobra.CheckErr(err)

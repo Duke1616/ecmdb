@@ -7,12 +7,13 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/model"
-	"github.com/Duke1616/ecmdb/internal/relation"
-	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/service/attribute"
+	service4 "github.com/Duke1616/ecmdb/internal/service/model"
+	service3 "github.com/Duke1616/ecmdb/internal/service/relation"
+	service2 "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/Duke1616/ecmdb/ioc"
-	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
@@ -20,35 +21,37 @@ import (
 func InitApp() (*App, error) {
 	mongo := ioc.InitMongoDB()
 	db := ioc.InitMongoDBV2(mongo)
-	module, err := relation.InitModule(db)
-	if err != nil {
-		return nil, err
-	}
+	modelDAO := dao.NewModelDAO(db)
+	modelRepository := repository.NewModelRepository(modelDAO)
+	resourceDAO := dao.NewResourceDAO(db)
+	resourceRepository := repository.NewResourceRepository(resourceDAO)
+	attributeDAO := dao.NewAttributeDAO(db)
+	attributeRepository := repository.NewAttributeRepository(attributeDAO)
+	attributeGroupDAO := dao.NewAttributeGroupDAO(db)
+	attributeGroupRepository := repository.NewAttributeGroupRepository(attributeGroupDAO)
 	mq := ioc.InitMQ()
-	attributeModule, err := attribute.InitModule(db, mq)
+	fieldSecureAttrChangeEventProducer, err := ioc.InitFieldSecureAttrChangeEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	cryptoRegistry := ioc.InitModuleCrypto()
-	resourceModule, err := resource.InitModule(db, attributeModule, module, mq, cryptoRegistry)
+	iFieldDeleteEventProducer, err := ioc.InitFieldDeleteEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(db, module, attributeModule, resourceModule)
-	if err != nil {
-		return nil, err
-	}
-	v := modelModule.Svc
-	v2 := attributeModule.Svc
-	v3 := resourceModule.EncryptedSvc
+	serviceService := service.NewService(attributeRepository, attributeGroupRepository, fieldSecureAttrChangeEventProducer, iFieldDeleteEventProducer)
+	crypto := ioc.InitCrypto()
+	service5 := service2.NewService(resourceRepository, serviceService, crypto)
+	relationModelDAO := dao.NewRelationModelDAO(db)
+	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
+	relationResourceDAO := dao.NewRelationResourceDAO(db)
+	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
+	relationModelService := service3.NewRelationModelService(relationModelRepository, relationResourceRepository)
+	v := ioc.InitDeleteModelDependencyCheckers(service5, relationModelService)
+	service6 := service4.NewModelService(modelRepository, v, serviceService)
 	app := &App{
-		ModelSvc:    v,
-		AttrSvc:     v2,
-		ResourceSvc: v3,
+		ModelSvc:    service6,
+		AttrSvc:     serviceService,
+		ResourceSvc: service5,
 	}
 	return app, nil
 }
-
-// wire.go:
-
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMongoDBV2, ioc.InitMQ, ioc.InitModuleCrypto)

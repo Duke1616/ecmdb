@@ -6,22 +6,19 @@ import (
 	"github.com/Duke1616/ecmdb/cmd/initial/backup"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
-	"github.com/Duke1616/ecmdb/cmd/initial/menu"
 	"github.com/gotomicro/ego/core/elog"
 	"gorm.io/gorm"
 )
 
 type incrV192 struct {
-	App        *ioc.App
-	ChangeSync *menu.ChangeSync
-	logger     elog.Component
+	App    *ioc.App
+	logger elog.Component
 }
 
 func NewIncrV192(app *ioc.App) incr.InitialIncr {
 	return &incrV192{
-		App:        app,
-		ChangeSync: menu.NewChange(app),
-		logger:     *elog.DefaultLogger,
+		App:    app,
+		logger: *elog.DefaultLogger,
 	}
 }
 
@@ -41,11 +38,6 @@ func (i *incrV192) Commit(ctx context.Context) error {
 
 	// 处理 casbin_rule 表
 	if err := i.updateCasbinRule(ctx); err != nil {
-		return err
-	}
-
-	// 处理菜单变更
-	if err := i.ChangeSync.UpdateMenu(ctx); err != nil {
 		return err
 	}
 

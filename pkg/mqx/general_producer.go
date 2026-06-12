@@ -30,7 +30,12 @@ func (p *GeneralProducer[T]) Produce(ctx context.Context, evt T) error {
 	if err != nil {
 		return fmt.Errorf("序列化失败: %w", err)
 	}
-	_, err = p.producer.Produce(ctx, &mq.Message{Value: data})
+
+	msg := &mq.Message{
+		Value: data,
+	}
+
+	_, err = ProduceMessage(ctx, p.producer, msg)
 	if err != nil {
 		return fmt.Errorf("向topic=%s发送event=%#v失败: %w", p.topic, evt, err)
 	}

@@ -1,16 +1,11 @@
 package start
 
 import (
-	"fmt"
-
-	"github.com/Bunny3th/easy-workflow/workflow/engine"
 	"github.com/Duke1616/ecmdb/ioc"
 	"github.com/gotomicro/ego"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server"
-	"github.com/gotomicro/ego/task/ecron"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var Cmd = &cobra.Command{
@@ -22,45 +17,22 @@ var Cmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		initCronjob(app.Jobs)
-		engine.RegisterEvents(app.Event)
 
 		// 创建 ego 应用实例
 		egoApp := ego.New(ego.WithDisableBanner(true))
+
+		// 启动后台任务
+		app.StartBackgroundTasks(cmd.Context())
 
 		// 启动服务
 		if err := egoApp.Serve(
 			func() server.Server {
 				return app.Web
 			}(),
-			func() server.Server {
-				return app.Server
-			}(),
-		).Cron().
-			Run(); err != nil {
+		).Run(); err != nil {
 			elog.Panic("startup", elog.FieldErr(err))
 		}
 
 		return nil
 	},
-}
-
-// 注册定时任务
-func initCronjob(jobs []*ecron.Component) {
-	type Config struct {
-		Enabled bool `mapstructure:"enabled"`
-	}
-
-	var cfg Config
-	if err := viper.UnmarshalKey("cronjob", &cfg); err != nil {
-		panic(fmt.Errorf("unable to decode into structure: %v", err))
-	}
-
-	if !cfg.Enabled {
-		return
-	}
-
-	for _, job := range jobs {
-		go job.Start()
-	}
 }

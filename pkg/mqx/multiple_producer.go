@@ -16,11 +16,11 @@ type MultipleProducer[T any] struct {
 }
 
 // NewMultipleProducer 创建一个新的 ProducerManager
-func NewMultipleProducer[T any](mq mq.MQ) (*MultipleProducer[T], error) {
+func NewMultipleProducer[T any](mq mq.MQ) *MultipleProducer[T] {
 	return &MultipleProducer[T]{
 		producers: make(map[string]*GeneralProducer[T]),
 		mq:        mq,
-	}, nil
+	}
 }
 
 // AddProducer 添加一个新的 producer 监听指定的 topic
@@ -38,19 +38,6 @@ func (pm *MultipleProducer[T]) AddProducer(topic string) error {
 	}
 
 	pm.producers[topic] = producer
-	return nil
-}
-
-// DelProducer 删除 producer 监听指定的 topic
-func (pm *MultipleProducer[T]) DelProducer(topic string) error {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	if _, exists := pm.producers[topic]; !exists {
-		return fmt.Errorf("topic %s 不存在", topic)
-	}
-
-	delete(pm.producers, topic)
 	return nil
 }
 

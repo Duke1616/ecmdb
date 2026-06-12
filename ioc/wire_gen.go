@@ -7,43 +7,22 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/notification/v1"
-	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/team"
-	"github.com/Duke1616/ecmdb/api/proto/gen/ealert/template/v1"
-	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/codebook"
-	"github.com/Duke1616/ecmdb/internal/dataio"
-	"github.com/Duke1616/ecmdb/internal/department"
-	"github.com/Duke1616/ecmdb/internal/discovery"
-	"github.com/Duke1616/ecmdb/internal/endpoint"
-	"github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/event"
-	"github.com/Duke1616/ecmdb/internal/menu"
-	"github.com/Duke1616/ecmdb/internal/model"
-	"github.com/Duke1616/ecmdb/internal/order"
-	"github.com/Duke1616/ecmdb/internal/permission"
-	"github.com/Duke1616/ecmdb/internal/pkg/notification/sender"
-	"github.com/Duke1616/ecmdb/internal/policy"
-	"github.com/Duke1616/ecmdb/internal/relation"
-	"github.com/Duke1616/ecmdb/internal/resource"
-	"github.com/Duke1616/ecmdb/internal/role"
-	"github.com/Duke1616/ecmdb/internal/rota"
-	"github.com/Duke1616/ecmdb/internal/runner"
-	"github.com/Duke1616/ecmdb/internal/strategy"
-	"github.com/Duke1616/ecmdb/internal/task"
-	"github.com/Duke1616/ecmdb/internal/template"
-	"github.com/Duke1616/ecmdb/internal/terminal"
-	"github.com/Duke1616/ecmdb/internal/tools"
-	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/ecmdb/internal/worker"
-	"github.com/Duke1616/ecmdb/internal/workflow"
+	"github.com/Duke1616/ecmdb/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/repository/dao"
+	"github.com/Duke1616/ecmdb/internal/service/attribute"
+	service6 "github.com/Duke1616/ecmdb/internal/service/dataio"
+	service4 "github.com/Duke1616/ecmdb/internal/service/model"
+	service3 "github.com/Duke1616/ecmdb/internal/service/relation"
+	service2 "github.com/Duke1616/ecmdb/internal/service/resource"
+	service5 "github.com/Duke1616/ecmdb/internal/service/tools"
+	web2 "github.com/Duke1616/ecmdb/internal/web/attribute"
+	web7 "github.com/Duke1616/ecmdb/internal/web/dataio"
+	"github.com/Duke1616/ecmdb/internal/web/model"
+	web4 "github.com/Duke1616/ecmdb/internal/web/relation"
+	web3 "github.com/Duke1616/ecmdb/internal/web/resource"
+	web6 "github.com/Duke1616/ecmdb/internal/web/terminal"
+	web5 "github.com/Duke1616/ecmdb/internal/web/tools"
 	"github.com/Duke1616/ecmdb/pkg/storage"
-	grpc2 "github.com/Duke1616/etask/pkg/grpc"
-	"github.com/Duke1616/etask/pkg/grpc/registry"
-	"github.com/google/wire"
-	"github.com/spf13/viper"
-	"google.golang.org/grpc"
-	"time"
 )
 
 import (
@@ -52,6 +31,7 @@ import (
 
 // Injectors from wire.go:
 
+// InitApp 初始化完整应用
 func InitApp() (*App, error) {
 	v := InitGinMiddlewares()
 	sdk := InitPolicySDK()
@@ -59,219 +39,65 @@ func InitApp() (*App, error) {
 	v2 := InitProviders()
 	mongo := InitMongoDB()
 	db := InitMongoDBV2(mongo)
-	module, err := relation.InitModule(db)
-	if err != nil {
-		return nil, err
-	}
+	modelDAO := dao.NewModelDAO(db)
+	modelRepository := repository.NewModelRepository(modelDAO)
+	resourceDAO := dao.NewResourceDAO(db)
+	resourceRepository := repository.NewResourceRepository(resourceDAO)
+	attributeDAO := dao.NewAttributeDAO(db)
+	attributeRepository := repository.NewAttributeRepository(attributeDAO)
+	attributeGroupDAO := dao.NewAttributeGroupDAO(db)
+	attributeGroupRepository := repository.NewAttributeGroupRepository(attributeGroupDAO)
 	mq := InitMQ()
-	attributeModule, err := attribute.InitModule(db, mq)
+	fieldSecureAttrChangeEventProducer, err := InitFieldSecureAttrChangeEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	cryptoRegistry := InitModuleCrypto()
-	resourceModule, err := resource.InitModule(db, attributeModule, module, mq, cryptoRegistry)
+	iFieldDeleteEventProducer, err := InitFieldDeleteEventProducer(mq)
 	if err != nil {
 		return nil, err
 	}
-	modelModule, err := model.InitModule(db, module, attributeModule, resourceModule)
-	if err != nil {
-		return nil, err
-	}
-	handler := modelModule.Hdl
-	webHandler := attributeModule.Hdl
-	handler2 := resourceModule.Hdl
-	relationModelHandler := module.RMHdl
-	relationResourceHandler := module.RRHdl
-	relationTypeHandler := module.RTHdl
-	client := InitRedisSearch()
-	config := InitLdapConfig()
-	gormDB := InitMySQLDB()
-	syncedEnforcer := InitCasbin(gormDB)
-	provider := InitSession()
-	policyModule, err := policy.InitModule(syncedEnforcer, provider)
-	if err != nil {
-		return nil, err
-	}
-	departmentModule, err := department.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
-	userModule, err := user.InitModule(mongo, client, config, policyModule, departmentModule, provider, cryptoRegistry)
-	if err != nil {
-		return nil, err
-	}
-	handler3 := userModule.Hdl
-	workwxApp := InitWorkWx()
-	templateModule, err := template.InitModule(mq, mongo, workwxApp)
-	if err != nil {
-		return nil, err
-	}
-	handler4 := templateModule.Hdl
-	strategyModule, err := strategy.InitModule(templateModule)
-	if err != nil {
-		return nil, err
-	}
-	handler5 := strategyModule.Hdl
-	codebookModule, err := codebook.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
-	handler6 := codebookModule.Hdl
-	engineModule, err := engine.InitModule(gormDB)
-	if err != nil {
-		return nil, err
-	}
-	workflowModule, err := workflow.InitModule(mongo, engineModule)
-	if err != nil {
-		return nil, err
-	}
-	runnerModule, err := runner.InitModule(mongo, workflowModule, codebookModule, cryptoRegistry)
-	if err != nil {
-		return nil, err
-	}
-	handler7 := runnerModule.Hdl
-	larkClient := InitLarkClient()
-	clientv3Client := InitEtcdClient()
-	registry := InitRegistry(clientv3Client)
-	clientConnInterface := InitEALERTGrpcClient(registry)
-	notificationServiceClient := InitNotificationServiceClient(clientConnInterface)
-	service := workflowModule.Svc
-	cardSelectorBuilder := newCardSelectorBuilder(larkClient, notificationServiceClient, service)
-	textSelectorBuilder := newTextSelectorBuilder(larkClient)
-	channel := newChannel(cardSelectorBuilder, textSelectorBuilder)
-	notificationSender := sender.NewSender(channel)
-	orderModule, err := order.InitModule(mq, mongo, workflowModule, engineModule, templateModule, userModule, larkClient, notificationSender)
-	if err != nil {
-		return nil, err
-	}
-	handler8 := orderModule.Hdl
-	handler9 := workflowModule.Hdl
-	groupHandler := templateModule.GroupHdl
-	handler10 := engineModule.Hdl
-	workerModule, err := worker.InitModule(mq, clientv3Client)
-	if err != nil {
-		return nil, err
-	}
-	discoveryModule, err := discovery.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
-	taskClientConn := InitTASKGrpcClient(registry)
-	taskServiceClient := InitTaskServiceClient(taskClientConn)
-	taskExecutionServiceClient := InitTaskExecutionServiceClient(taskClientConn)
-	taskModule, err := task.InitModule(mq, mongo, orderModule, workflowModule, engineModule, codebookModule, workerModule, runnerModule, userModule, discoveryModule, larkClient, cryptoRegistry, notificationSender, taskServiceClient, taskExecutionServiceClient)
-	if err != nil {
-		return nil, err
-	}
-	handler11 := taskModule.Hdl
-	handler12 := policyModule.Hdl
-	menuModule, err := menu.InitModule(mq, mongo)
-	if err != nil {
-		return nil, err
-	}
-	handler13 := menuModule.Hdl
-	endpointModule, err := endpoint.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
-	handler14 := endpointModule.Hdl
-	roleModule, err := role.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
-	handler15 := roleModule.Hdl
-	permissionModule, err := permission.InitModule(mongo, mq, roleModule, menuModule, policyModule)
-	if err != nil {
-		return nil, err
-	}
-	handler16 := permissionModule.Hdl
-	handler17 := departmentModule.Hdl
-	minioClient := InitMinioClient()
-	s3Storage := storage.NewS3Storage(minioClient)
-	handler18, err := tools.InitModule(s3Storage)
-	if err != nil {
-		return nil, err
-	}
-	handler19, err := terminal.InitModule(module, resourceModule, attributeModule)
-	if err != nil {
-		return nil, err
-	}
-	rotaModule, err := rota.InitModule(mongo)
-	if err != nil {
-		return nil, err
-	}
-	handler20 := rotaModule.Hdl
-	handler21 := discoveryModule.Hdl
-	dataioModule, err := dataio.InitModule(attributeModule, resourceModule, s3Storage, modelModule)
-	if err != nil {
-		return nil, err
-	}
-	handler22 := dataioModule.Hdl
+	serviceService := service.NewService(attributeRepository, attributeGroupRepository, fieldSecureAttrChangeEventProducer, iFieldDeleteEventProducer)
+	crypto := InitCrypto()
+	service7 := service2.NewService(resourceRepository, serviceService, crypto)
+	relationModelDAO := dao.NewRelationModelDAO(db)
+	relationModelRepository := repository.NewRelationModelRepository(relationModelDAO)
+	relationResourceDAO := dao.NewRelationResourceDAO(db)
+	relationResourceRepository := repository.NewRelationResourceRepository(relationResourceDAO)
+	relationModelService := service3.NewRelationModelService(relationModelRepository, relationResourceRepository)
+	v3 := InitDeleteModelDependencyCheckers(service7, relationModelService)
+	service8 := service4.NewModelService(modelRepository, v3, serviceService)
+	modelGroupDAO := dao.NewModelGroupDAO(db)
+	mgRepository := repository.NewModelGroupRepository(modelGroupDAO)
+	mgService := service4.NewMGService(mgRepository, modelRepository)
+	handler := web.NewHandler(service8, mgService, relationModelService, service7)
+	webHandler := web2.NewHandler(serviceService)
+	relationResourceService := service3.NewRelationResourceService(relationResourceRepository, relationModelRepository)
+	handler2 := web3.NewHandler(service7, serviceService, relationResourceService)
+	relationTypeDAO := dao.NewRelationTypeDAO(db)
+	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
+	relationTypeService := service3.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
+	relationTypeHandler := web4.NewRelationTypeHandler(relationTypeService)
+	client := InitMinioClient()
+	s3Storage := storage.NewS3Storage(client)
+	service9 := service5.NewService(s3Storage)
+	handler3 := web5.NewHandler(service9)
+	handler4 := web6.NewHandler(relationResourceService, service7, serviceService)
+	iDataIOService := service6.NewService(serviceService, service7, service8)
+	handler5 := web7.NewHandler(iDataIOService, s3Storage)
 	listener := InitListener()
-	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationModelHandler, relationResourceHandler, relationTypeHandler, handler3, handler4, handler5, handler6, handler7, handler8, handler9, groupHandler, handler10, handler11, handler12, handler13, handler14, handler15, handler16, handler17, handler18, handler19, handler20, handler21, handler22, listener)
-	workOrderServer := orderModule.RpcServer
-	policyServer := policyModule.RpcServer
-	endpointServer := endpointModule.RpcServer
-	userServer := userModule.RpcServer
-	rotaServer := rotaModule.RpcServer
-	server := InitGrpcServer(registry, workOrderServer, policyServer, endpointServer, userServer, rotaServer)
-	teamServiceClient := InitTeamServiceClient(clientConnInterface)
-	eventModule, err := event.InitModule(mq, gormDB, engineModule, taskModule, orderModule, templateModule, userModule, workflowModule, notificationSender, departmentModule, rotaModule, larkClient, notificationServiceClient, teamServiceClient)
+	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationTypeHandler, handler3, handler4, handler5, listener)
+	fieldSecureAttrChangeConsumer, err := InitFieldSecureAttrChangeConsumer(mq, service7, crypto)
 	if err != nil {
 		return nil, err
 	}
-	processEvent := eventModule.Event
-	startTaskJob := taskModule.StartTaskJob
-	passProcessTaskJob := taskModule.PassProcessTaskJob
-	taskExecutionSyncJob := taskModule.TaskExecutionSyncJob
-	taskRecoveryJob := taskModule.TaskRecoveryJob
-	v3 := initCronJobs(startTaskJob, passProcessTaskJob, taskExecutionSyncJob, taskRecoveryJob)
-	serviceService := endpointModule.Svc
+	fieldDeleteConsumer, err := InitFieldDeleteConsumer(mq, service7)
+	if err != nil {
+		return nil, err
+	}
+	v4 := InitTasks(fieldSecureAttrChangeConsumer, fieldDeleteConsumer)
 	app := &App{
-		Web:    component,
-		Server: server,
-		Event:  processEvent,
-		Jobs:   v3,
-		Svc:    serviceService,
+		Web:   component,
+		Tasks: v4,
 	}
 	return app, nil
-}
-
-// wire.go:
-
-var BaseSet = wire.NewSet(InitMongoDB, InitMongoDBV2, InitMySQLDB, InitRedis, InitMinioClient, InitMQ,
-	InitRedisSearch, InitEtcdClient, InitWorkWx, InitLarkClient, InitModuleCrypto, InitRegistry)
-
-// InitEALERTGrpcClient 初始化 EALERT gRPC 客户端
-func InitEALERTGrpcClient(reg registry.Registry) grpc.ClientConnInterface {
-	var cfg grpc2.ClientConfig
-	if err := viper.UnmarshalKey("grpc.client.ealert", &cfg); err != nil {
-		panic(err)
-	}
-
-	cc, err := grpc2.NewClientConn(
-		reg, grpc2.WithServiceName(cfg.Name), grpc2.WithClientJWTAuth(cfg.AuthToken), grpc2.WithDialOption(grpc.WithConnectParams(grpc.ConnectParams{
-			MinConnectTimeout: 3 * time.Second,
-		}), grpc.WithDefaultCallOptions(grpc.WaitForReady(false))),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	return cc
-}
-
-// InitNotificationServiceClient 初始化 notification 服务客户端
-func InitNotificationServiceClient(cc grpc.ClientConnInterface) notificationv1.NotificationServiceClient {
-	return notificationv1.NewNotificationServiceClient(cc)
-}
-
-// InitTeamServiceClient 初始化 team 服务客户端
-func InitTeamServiceClient(cc grpc.ClientConnInterface) teamv1.TeamServiceClient {
-	return teamv1.NewTeamServiceClient(cc)
-}
-
-// InitTemplateServiceClient 初始化 template 服务客户端
-func InitTemplateServiceClient(cc grpc.ClientConnInterface) templatev1.TemplateServiceClient {
-	return templatev1.NewTemplateServiceClient(cc)
 }

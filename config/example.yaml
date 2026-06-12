@@ -9,17 +9,10 @@ policy:
   discovery_url: http://127.0.0.1:9000
 
 
-# 数据加密，根据模块划分
+# 数据加密配置
 encryption:
-  user:
-    version: "V1"
-    key: "1234567890"
-  resource:
-    version: "V1"
-    key: "1234567890"
-  runner:
-    version: "V1"
-    key: "1234567890"
+  version: "V1"
+  key: "1234567890"
 
 ldap:
   url: "ldap://127.0.0.1:389"

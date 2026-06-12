@@ -1,13 +1,13 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/model"
-	"github.com/Duke1616/ecmdb/internal/resource"
+	attrSvc "github.com/Duke1616/ecmdb/internal/service/attribute"
+	modelSvc "github.com/Duke1616/ecmdb/internal/service/model"
+	resourceSvc "github.com/Duke1616/ecmdb/internal/service/resource"
 )
 
 type App struct {
-	ModelSvc    model.Service
-	AttrSvc     attribute.Service
-	ResourceSvc resource.EncryptedSvc
+	ModelSvc    modelSvc.Service
+	AttrSvc     attrSvc.Service
+	ResourceSvc resourceSvc.EncryptedSvc
 }

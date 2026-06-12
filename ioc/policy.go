@@ -3,7 +3,6 @@ package ioc
 import (
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/Duke1616/eiam/pkg/web/sdk"
-	"github.com/ecodeclub/ginx/session"
 )
 
 // InitPolicySDK 初始化 EIAM 鉴权 SDK
@@ -20,9 +19,3 @@ func InitPermSyncer() capability.Syncer {
 func InitProviders() []capability.PermissionProvider {
 	return nil
 }
-
-// InitSession 提供 Dummy session.Provider 解决遗留的 policy/user 模块编译依赖
-func InitSession() session.Provider {
-	return nil
-}
-

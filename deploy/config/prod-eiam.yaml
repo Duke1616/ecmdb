@@ -48,8 +48,6 @@ migration:
     mongo:
       dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb?authSource=admin"
       database: "ecmdb"
-    mysql:
-      dsn: "eiam:123456@tcp(mysql:3306)/eiam?charset=utf8mb4&parseTime=True&loc=Local"
   identity:
     version: "V1"
     key: "1234567890"

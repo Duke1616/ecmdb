@@ -73,7 +73,7 @@ migration:
       dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb?authSource=admin"
       database: "ecmdb"
     mysql:
-      dsn: "eflow:123456@tcp(mysql:3306)/eflow?charset=utf8mb4&parseTime=True&loc=Local"
+      dsn: "ecmdb:123456@tcp(mysql:3306)/ecmdb?charset=utf8mb4&parseTime=True&loc=Local"
   batch_size: 100
   timeout: "10m"
   auto_migrate: true

@@ -9,4 +9,4 @@ FROM alpine:latest as deploy
 ENV EGO_DEBUG=true
 WORKDIR /app
 COPY --from=build /app/dist/ecmdb .
-ENTRYPOINT ["./ecmdb", "start"]
+ENTRYPOINT ["./ecmdb", "server"]

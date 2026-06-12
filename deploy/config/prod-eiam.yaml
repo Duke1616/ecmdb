@@ -28,12 +28,6 @@ redis:
   password: "1234567890"
   db: 1
 
-# 消息队列配置 (Kafka)
-kafka:
-  network: tcp
-  addresses:
-    - kafka:9092
-
 # 注册中心配置 (Etcd)
 etcd:
   endpoints:

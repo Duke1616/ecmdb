@@ -1,5 +1,4 @@
-config/prod.toml
-config/prod.yaml
+config/config.yaml
 logs/
 **/logs/
 *.log

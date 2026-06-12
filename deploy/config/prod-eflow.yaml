@@ -70,7 +70,7 @@ cronjob:
 migration:
   source:
     mongo:
-      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb"
+      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb?authSource=admin"
       database: "ecmdb"
     mysql:
       dsn: "eflow:123456@tcp(mysql:3306)/eflow?charset=utf8mb4&parseTime=True&loc=Local"

@@ -73,3 +73,17 @@ pool:
   maxIdleTime: 5000000000 # 协程空闲回收阈值（纳秒）
   queueSize: 1000         # 等待处理的任务队列长度
   queueBacklogRate: 0.8  # 队列积压比率（负载均衡控制）
+
+migration:
+  source:
+    mongo:
+      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb?authSource=admin"
+      database: "ecmdb"
+    mysql:
+      dsn: "ealert:123456@tcp(mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
+  batch_size: 100
+  timeout: "10m"
+  auto_migrate: true
+  reset_auto_increment: true
+  truncate: false
+  dry_run: false

@@ -3,7 +3,7 @@ log:
 
 web:
   host: "0.0.0.0"
-  port: 9000
+  port: 8000
 
 grpc:
   server:
@@ -46,7 +46,7 @@ casbin:
 migration:
   source:
     mongo:
-      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb"
+      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb?authSource=admin"
       database: "ecmdb"
     mysql:
       dsn: "eiam:123456@tcp(mysql:3306)/eiam?charset=utf8mb4&parseTime=True&loc=Local"

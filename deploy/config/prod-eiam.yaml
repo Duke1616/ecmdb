@@ -13,7 +13,7 @@ grpc:
       auth_token: "1234567890"
 
 mysql:
-  dsn: "eiam:123456@tcp(ecmdb-mysql:3306)/eiam?charset=utf8mb4&parseTime=True&loc=Local"
+  dsn: "eiam:123456@tcp(mysql:3306)/eiam?charset=utf8mb4&parseTime=True&loc=Local"
 
 # 会话与 Cookie 配置
 session:
@@ -24,7 +24,7 @@ session:
 
 # 缓存配置 (Redis)
 redis:
-  addr: "ecmdb-redis:6379"
+  addr: "redis:6379"
   password: "1234567890"
   db: 1
 
@@ -32,12 +32,12 @@ redis:
 kafka:
   network: tcp
   addresses:
-    - ecmdb-kafka:9092
+    - kafka:9092
 
 # 注册中心配置 (Etcd)
 etcd:
   endpoints:
-    - ecmdb-etcd:2379
+    - etcd:2379
 
 # 密码加密
 identity:
@@ -45,17 +45,17 @@ identity:
 
 casbin:
   redis:
-    addr: "ecmdb-redis:6379"
+    addr: "redis:6379"
     password: "1234567890"
     db: 2
 
 migration:
   source:
     mongo:
-      dsn: "mongodb://ecmdb:123456@ecmdb-mongo:27017/ecmdb"
+      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb"
       database: "ecmdb"
     mysql:
-      dsn: "eiam:123456@tcp(ecmdb-mysql:3306)/eiam?charset=utf8mb4&parseTime=True&loc=Local"
+      dsn: "eiam:123456@tcp(mysql:3306)/eiam?charset=utf8mb4&parseTime=True&loc=Local"
   identity:
     version: "V1"
     key: "1234567890"

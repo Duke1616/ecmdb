@@ -28,18 +28,18 @@ grpc:
 
 # MySQL 持久化存储配置
 mysql:
-  dsn: "ealert:123456@tcp(ecmdb-mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci"
+  dsn: "ealert:123456@tcp(mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci"
 
 # Redis 缓存配置
 redis:
-  addr: "ecmdb-redis:6379"
+  addr: "redis:6379"
   password: "1234567890"
   db: 0
 
 # Etcd 注册中心连接地址
 etcd:
   endpoints:
-    - "ecmdb-etcd:2379"
+    - "etcd:2379"
 
 # 飞书消息通知配置 (针对不同业务场景可以配置不同应用)
 lark:

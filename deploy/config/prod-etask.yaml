@@ -64,11 +64,11 @@ executor:
 
 # 数据库配置 (MySQL)
 mysql:
-  dsn: "etask:123456@tcp(ecmdb-mysql:3306)/etask?charset=utf8mb4&parseTime=True&loc=Local"
+  dsn: "etask:123456@tcp(mysql:3306)/etask?charset=utf8mb4&parseTime=True&loc=Local"
 
 # 缓存配置 (Redis)
 redis:
-  addr: "ecmdb-redis:6379"
+  addr: "redis:6379"
   password: "1234567890"
   db: 0
 
@@ -76,12 +76,12 @@ redis:
 kafka:
   network: tcp
   addresses:
-    - ecmdb-kafka:9092
+    - kafka:9092
 
 # 注册中心配置 (Etcd)
 etcd:
   endpoints:
-    - ecmdb-etcd:2379
+    - etcd:2379
 
 # 调度引擎核心参数
 scheduler:

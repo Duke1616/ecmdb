@@ -31,13 +31,13 @@ policy:
 
 # Redis 缓存配置
 redis:
-  addr: "ecmdb-redis:6379"
+  addr: "redis:6379"
   password: "1234567890"
   db: 0
 
 # MongoDB：持久化存储配置
 mongodb:
-  dsn: "mongodb://ecmdb-mongo:27017/ecmdb?authSource=admin"
+  dsn: "mongodb://mongo:27017/ecmdb?authSource=admin"
   db: "ecmdb"
   username: "ecmdb"
   password: "123456"
@@ -46,12 +46,12 @@ mongodb:
 kafka:
   network: "tcp"
   addresses:
-    - "ecmdb-kafka:9092"
+    - "kafka:9092"
 
 # Etcd：服务注册中心与配置分发
 etcd:
   endpoints:
-    - "ecmdb-etcd:2379"
+    - "etcd:2379"
 
 # Minio：对象存储，用于附件、导出文件等非结构化数据
 minio:

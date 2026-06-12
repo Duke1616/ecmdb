@@ -11,18 +11,6 @@ services:
       - MYSQL_DATABASE=ecmdb
       - MYSQL_USER=ecmdb
       - MYSQL_PASSWORD=123456
-      - MYSQL_EALERT_DATABASE=ealert
-      - MYSQL_EALERT_USERNAME=ealert
-      - MYSQL_EALERT_PASSWORD=123456
-      - MYSQL_ETASK_DATABASE=etask
-      - MYSQL_ETASK_USERNAME=etask
-      - MYSQL_ETASK_PASSWORD=123456
-      - MYSQL_EIAM_DATABASE=eiam
-      - MYSQL_EIAM_USERNAME=eiam
-      - MYSQL_EIAM_PASSWORD=123456
-      - MYSQL_EFLOW_DATABASE=eflow
-      - MYSQL_EFLOW_USERNAME=eflow
-      - MYSQL_EFLOW_PASSWORD=123456
     command:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_general_ci
@@ -44,6 +32,12 @@ services:
       - MYSQL_ETASK_DATABASE=etask
       - MYSQL_ETASK_USERNAME=etask
       - MYSQL_ETASK_PASSWORD=123456
+      - MYSQL_EIAM_DATABASE=eiam
+      - MYSQL_EIAM_USERNAME=eiam
+      - MYSQL_EIAM_PASSWORD=123456
+      - MYSQL_EFLOW_DATABASE=eflow
+      - MYSQL_EFLOW_USERNAME=eflow
+      - MYSQL_EFLOW_PASSWORD=123456
     volumes:
       - ./scripts/create_user.sh:/create_user.sh
     command: bash -c "while ! mysqladmin ping -h mysql -uroot -p$$MYSQL_ROOT_PASSWORD --silent; do sleep 1; done; sh /create_user.sh"

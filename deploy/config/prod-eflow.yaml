@@ -1,6 +1,11 @@
 log:
   debug: true
 
+# 数据加密配置：针对敏感字段进行 AES 加密存储
+encryption:
+  version: "V1" # 加密算法版本
+  key: "1234567890"
+
 web:
   host: "0.0.0.0"
   port: 8000

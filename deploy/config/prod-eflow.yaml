@@ -1,0 +1,77 @@
+log:
+  debug: true
+
+web:
+  host: "0.0.0.0"
+  port: 8000
+
+grpc:
+  client:
+    eiam:
+      name: "eiam"
+      auth_token: "1234567890"
+    ecmdb:
+      name: "ecmdb"
+      auth_token: "1234567890"
+    etask:
+      name: "scheduler"
+      auth_token: "1234567890"
+    ealert:
+      name: "ealert"
+      auth_token: "1234567890"
+
+policy:
+  auth_url: http://eiam:8000
+  discovery_url: http://eiam:8000
+
+# 缓存配置 (Redis)
+redis:
+  addr: "ecmdb-redis:6379"
+  password: "1234567890"
+  db: 0
+
+# MySQL 持久化存储配置
+mysql:
+  dsn: "eflow:123456@tcp(ecmdb-mysql:3306)/eflow?charset=utf8mb4&parseTime=True&loc=Local"
+
+# 消息队列配置 (Kafka)
+kafka:
+  network: tcp
+  addresses:
+    - ecmdb-kafka:9092
+
+# 注册中心配置 (Etcd)
+etcd:
+  endpoints:
+    - ecmdb-etcd:2379
+
+wechat:
+  corp_id: ""
+  corp_secret: ""
+  agent_id: 1000002
+
+lark:
+  app_id: ""
+  app_secret: ""
+  encrypt_key: ""
+  verification_token: ""
+  callback:
+    frontend_url: http://ecmdb-web/logicflow-preview
+    debug: false
+
+cronjob:
+  enabled: true
+
+migration:
+  source:
+    mongo:
+      dsn: "mongodb://ecmdb:123456@ecmdb-mongo:27017/ecmdb"
+      database: "ecmdb"
+    mysql:
+      dsn: "eflow:123456@tcp(ecmdb-mysql:3306)/eflow?charset=utf8mb4&parseTime=True&loc=Local"
+  batch_size: 100
+  timeout: "10m"
+  auto_migrate: true
+  reset_auto_increment: true
+  truncate: false
+  dry_run: false

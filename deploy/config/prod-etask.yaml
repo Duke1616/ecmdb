@@ -9,9 +9,10 @@ web:
   host: "0.0.0.0"
   port: 8000
 
-# 策略鉴权：ECMDB 服务地址，用于登录验证与权限鉴权
+# 策略鉴权：IAM服务地址，用于登录验证与权限鉴权
 policy:
-  auth_url: http://ecmdb:8000
+  auth_url: http://eiam:8000
+  discovery_url: http://eiam:8000
 
 # gRPC 服务及客户端配置
 grpc:
@@ -63,7 +64,7 @@ executor:
 
 # 数据库配置 (MySQL)
 mysql:
-  dsn: "etask:123456@tcp(ecmdb-mysql:3306)/etask?charset=utf8mb4&collation=utf8mb4_general_ci&parseTime=True&loc=Local&timeout=1s&readTimeout=3s&writeTimeout=3s&multiStatements=true&interpolateParams=true"
+  dsn: "etask:123456@tcp(ecmdb-mysql:3306)/etask?charset=utf8mb4&parseTime=True&loc=Local"
 
 # 缓存配置 (Redis)
 redis:

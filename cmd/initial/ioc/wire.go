@@ -14,7 +14,6 @@ import (
 var BaseSet = wire.NewSet(
 	ioc.InitMongoDB,
 	ioc.InitMongoDBV2,
-	ioc.InitMySQLDB,
 	ioc.InitRedis,
 	ioc.InitMQ,
 	ioc.InitEtcdClient,

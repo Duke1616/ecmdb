@@ -7,7 +7,6 @@ import (
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/gotomicro/ego/core/elog"
-	"gorm.io/gorm"
 )
 
 type incrV192 struct {
@@ -26,12 +25,7 @@ func (i *incrV192) Version() string {
 	return "v1.9.2"
 }
 
-// 执行更新语句的小工具函数
-func (i *incrV192) update(tx *gorm.DB, column string, value interface{}) error {
-	return tx.Table("casbin_rule").
-		Where("ptype = ?", "p").
-		Update(column, value).Error
-}
+
 
 func (i *incrV192) Commit(ctx context.Context) error {
 	i.logger.Info("开始执行 Commit", elog.String("版本", i.Version()))
@@ -47,33 +41,8 @@ func (i *incrV192) Commit(ctx context.Context) error {
 
 // updateCasbinRule 更新 casbin_rule 表
 func (i *incrV192) updateCasbinRule(ctx context.Context) error {
-	return i.App.GormDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var count int64
-		if err := tx.Table("casbin_rule").
-			Where("ptype = ? AND v4 IS NOT NULL AND v4 != ''", "p").
-			Count(&count).Error; err != nil {
-			i.logger.Error("检查 v4 是否已有数据失败", elog.FieldErr(err))
-			return err
-		}
-		if count > 0 {
-			i.logger.Info("v4 已经有数据，casbin_rule 更新跳过")
-			return nil
-		}
-
-		if err := i.update(tx, "v4", gorm.Expr("v3")); err != nil {
-			i.logger.Error("v3 -> v4 迁移失败", elog.FieldErr(err))
-			return err
-		}
-		i.logger.Info("v3 -> v4 迁移完成")
-
-		if err := i.update(tx, "v3", "CMDB"); err != nil {
-			i.logger.Error("v3 更新为 'CMDB' 失败", elog.FieldErr(err))
-			return err
-		}
-		i.logger.Info("v3 已更新为 'CMDB'")
-
-		return nil
-	})
+	i.logger.Info("系统已不再依赖 MySQL，跳过 casbin_rule 表的增量数据迁移")
+	return nil
 }
 
 func (i *incrV192) Rollback(ctx context.Context) error {
@@ -90,33 +59,8 @@ func (i *incrV192) Rollback(ctx context.Context) error {
 
 // rollbackCasbinRule 回滚 casbin_rule 表
 func (i *incrV192) rollbackCasbinRule(ctx context.Context) error {
-	return i.App.GormDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var count int64
-		if err := tx.Table("casbin_rule").
-			Where("ptype = ? AND v4 IS NOT NULL AND v4 != ''", "p").
-			Count(&count).Error; err != nil {
-			i.logger.Error("检查 v4 是否有数据失败", elog.FieldErr(err))
-			return err
-		}
-		if count == 0 {
-			i.logger.Info("v4 为空，casbin_rule 回滚跳过")
-			return nil
-		}
-
-		if err := i.update(tx, "v3", gorm.Expr("v4")); err != nil {
-			i.logger.Error("v4 -> v3 回滚失败", elog.FieldErr(err))
-			return err
-		}
-		i.logger.Info("v4 -> v3 回滚完成")
-
-		if err := i.update(tx, "v4", ""); err != nil {
-			i.logger.Error("清空 v4 失败", elog.FieldErr(err))
-			return err
-		}
-		i.logger.Info("v4 已清空")
-
-		return nil
-	})
+	i.logger.Info("系统已不再依赖 MySQL，跳过 casbin_rule 表的数据回滚")
+	return nil
 }
 
 func (i *incrV192) Before(ctx context.Context) error {
@@ -135,15 +79,11 @@ func (i *incrV192) Before(ctx context.Context) error {
 		},
 	}
 
-	// 备份 casbin_rule 表
-	_, err := backupManager.BackupMySQLTable(ctx, "casbin_rule", opts)
-	if err != nil {
-		i.logger.Error("备份 casbin_rule 表失败", elog.FieldErr(err))
-		return err
-	}
+	// 跳过备份 MySQL casbin_rule 表
+	i.logger.Info("系统已不再依赖 MySQL，跳过 casbin_rule 表的数据备份")
 
 	// 备份 c_menu 集合
-	_, err = backupManager.BackupMongoCollection(ctx, "c_menu", opts)
+	_, err := backupManager.BackupMongoCollection(ctx, "c_menu", opts)
 	if err != nil {
 		i.logger.Error("备份 c_menu 集合失败", elog.FieldErr(err))
 		return err

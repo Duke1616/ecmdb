@@ -60,11 +60,9 @@ func InitApp() (*App, error) {
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
 	relationTypeService := service3.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
 	loader := service5.NewLoader(service7, mgService, serviceService, relationTypeService, relationModelService)
-	gormDB := ioc.InitMySQLDB()
 	app := &App{
 		VerSvc:       versionService,
 		BootstrapSvc: loader,
-		GormDB:       gormDB,
 		DB:           mongo,
 	}
 	return app, nil
@@ -72,4 +70,4 @@ func InitApp() (*App, error) {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMongoDBV2, ioc.InitMySQLDB, ioc.InitRedis, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitCrypto)
+var BaseSet = wire.NewSet(ioc.InitMongoDB, ioc.InitMongoDBV2, ioc.InitRedis, ioc.InitMQ, ioc.InitEtcdClient, ioc.InitCrypto)

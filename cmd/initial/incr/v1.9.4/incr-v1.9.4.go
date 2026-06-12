@@ -134,22 +134,8 @@ func (i *incrV194) fetchWorkflows(ctx context.Context, offset, limit int64) ([]W
 }
 
 func (i *incrV194) getProcessVersions(ctx context.Context, pids []int) (map[int]int, error) {
-	type ProcDef struct {
-		Id      int `gorm:"column:id"`
-		Version int `gorm:"column:version"`
-	}
-	var procDefs []ProcDef
-
-	if err := i.App.GormDB.WithContext(ctx).Table("proc_def").
-		Select("id, version").
-		Where("id IN ?", pids).
-		Find(&procDefs).Error; err != nil {
-		return nil, fmt.Errorf("批量查询 proc_def 失败: %w", err)
-	}
-
-	return slice.ToMapV(procDefs, func(element ProcDef) (int, int) {
-		return element.Id, element.Version
-	}), nil
+	i.logger.Info("系统已不再依赖 MySQL，跳过从 proc_def 表查询最新版本的过程")
+	return map[int]int{}, nil
 }
 
 func (i *incrV194) createMissingSnapshots(ctx context.Context, candidates []Snapshot) error {

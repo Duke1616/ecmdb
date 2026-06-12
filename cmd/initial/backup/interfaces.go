@@ -38,7 +38,6 @@ func NewBackupManager(app *ioc.App) *BackupManager {
 
 	// 注册各种备份提供者
 	providers["mongo"] = NewMongoBackupProvider(app)
-	providers["mysql"] = NewMySQLBackupProvider(app)
 
 	return &BackupManager{
 		providers: providers,
@@ -57,11 +56,7 @@ func (bm *BackupManager) BackupMongoCollection(ctx context.Context, collectionNa
 
 // BackupMySQLTable 备份 MySQL 表
 func (bm *BackupManager) BackupMySQLTable(ctx context.Context, tableName string, opts Options) (*Result, error) {
-	provider, exists := bm.providers["mysql"]
-	if !exists {
-		return nil, fmt.Errorf("MySQL 备份提供者未注册")
-	}
-	return provider.Backup(ctx, tableName, opts)
+	return nil, fmt.Errorf("系统已不再依赖 MySQL，不支持该操作")
 }
 
 // RestoreMongoCollection 恢复 MongoDB 集合
@@ -75,11 +70,7 @@ func (bm *BackupManager) RestoreMongoCollection(ctx context.Context, collectionN
 
 // RestoreMySQLTable 恢复 MySQL 表
 func (bm *BackupManager) RestoreMySQLTable(ctx context.Context, tableName string, backupID string) error {
-	provider, exists := bm.providers["mysql"]
-	if !exists {
-		return fmt.Errorf("MySQL 备份提供者未注册")
-	}
-	return provider.Restore(ctx, tableName, backupID)
+	return fmt.Errorf("系统已不再依赖 MySQL，不支持该操作")
 }
 
 // ListBackups 列出备份

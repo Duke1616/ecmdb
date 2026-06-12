@@ -9,7 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	"github.com/Duke1616/ecmdb/pkg/sorter"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -162,7 +162,7 @@ func (s *service) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelU
 		return nil, err
 	}
 
-	return slice.Map(attrs, func(idx int, src domain.Attribute) string {
+	return lo.Map(attrs, func(src domain.Attribute, _ int) string {
 		return src.FieldUid
 	}), nil
 }
@@ -210,24 +210,15 @@ func (s *service) ListAttributes(ctx context.Context, modelUid string) ([]domain
 }
 
 func (s *service) CustomAttributeFieldColumns(ctx context.Context, modelUid string, customField []string) (int64, error) {
-	var (
-		total int64
-		eg    errgroup.Group
-	)
-	eg.Go(func() error {
-		var err error
-		total, err = s.repo.CustomAttributeFieldColumns(ctx, modelUid, customField)
-		return err
-	})
-	eg.Go(func() error {
-		var err error
-		total, err = s.repo.CustomAttributeFieldColumnsReverse(ctx, modelUid, customField)
-		return err
-	})
-	if err := eg.Wait(); err != nil {
-		return total, err
+	t1, err := s.repo.CustomAttributeFieldColumns(ctx, modelUid, customField)
+	if err != nil {
+		return 0, err
 	}
-	return total, nil
+	t2, err := s.repo.CustomAttributeFieldColumnsReverse(ctx, modelUid, customField)
+	if err != nil {
+		return 0, err
+	}
+	return t1 + t2, nil
 }
 
 func (s *service) DeleteAttribute(ctx context.Context, id int64) (int64, error) {

@@ -10,7 +10,7 @@ import (
 type Service interface {
 	GetPresignedUrl(ctx context.Context, bucketName string, objectName string) (string, error)
 	PutPresignedUrl(ctx context.Context, bucketName string, prefix string, objectName string) (string, string, error)
-	RemoveObject(ctx context.Context, bucketName string, objetName string) error
+	RemoveObject(ctx context.Context, bucketName string, objectName string) error
 }
 
 type service struct {
@@ -37,6 +37,6 @@ func (s *service) GetPresignedUrl(ctx context.Context, bucketName string, object
 	return s.storage.GenerateDownloadURL(ctx, bucketName, objectName, int(s.expires.Seconds()))
 }
 
-func (s *service) RemoveObject(ctx context.Context, bucketName string, objetName string) error {
-	return s.storage.DeleteFile(ctx, bucketName, objetName)
+func (s *service) RemoveObject(ctx context.Context, bucketName string, objectName string) error {
+	return s.storage.DeleteFile(ctx, bucketName, objectName)
 }

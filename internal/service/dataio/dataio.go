@@ -10,7 +10,7 @@ import (
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	model "github.com/Duke1616/ecmdb/internal/service/model"
 	resource "github.com/Duke1616/ecmdb/internal/service/resource"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/sync/errgroup"
 )
@@ -152,10 +152,8 @@ func (s *dataIOService) Export(ctx context.Context, req ExportParams) ([]byte, e
 
 	// 2. 处理字段过滤: 如果请求指定了字段, 则只保留这些字段
 	if len(req.Fields) > 0 {
-		reqFieldMap := slice.ToMap(req.Fields, func(f string) string { return f })
-		attrs = slice.FilterMap(attrs, func(idx int, src domain.Attribute) (domain.Attribute, bool) {
-			_, ok := reqFieldMap[src.FieldUid]
-			return src, ok
+		attrs = lo.Filter(attrs, func(src domain.Attribute, _ int) bool {
+			return lo.Contains(req.Fields, src.FieldUid)
 		})
 	}
 
@@ -163,7 +161,7 @@ func (s *dataIOService) Export(ctx context.Context, req ExportParams) ([]byte, e
 	sortedAttrs := sortAttributesByPriority(attrs)
 
 	// 4. 提取最终的 FieldUIDs 用于查询
-	dstFields := slice.Map(sortedAttrs, func(idx int, attr domain.Attribute) string {
+	dstFields := lo.Map(sortedAttrs, func(attr domain.Attribute, _ int) string {
 		return attr.FieldUid
 	})
 
@@ -174,7 +172,7 @@ func (s *dataIOService) Export(ctx context.Context, req ExportParams) ([]byte, e
 	for {
 		resources, _, err1 := s.resSvc.ListResourcesWithFilters(ctx, dstFields, req.ModelUID, req.ResourceIDs, offset, limit, req.FilterGroups)
 		if err1 != nil {
-			return nil, fmt.Errorf("获取资源列表失败: %w", err)
+			return nil, fmt.Errorf("获取资源列表失败: %w", err1)
 		}
 		allResources = append(allResources, resources...)
 
@@ -224,14 +222,12 @@ func (s *dataIOService) buildExcel(sheetName string, attrs []domain.Attribute, r
 
 	// 3. 填充数据
 	for _, res := range resources {
-		row := make([]interface{}, len(attrs))
-		for i, attr := range attrs {
+		row := lo.Map(attrs, func(attr domain.Attribute, _ int) interface{} {
 			if val, ok := res.Data[attr.FieldUid]; ok {
-				row[i] = val
-			} else {
-				row[i] = ""
+				return val
 			}
-		}
+			return ""
+		})
 		builder.AddRow(row...)
 	}
 

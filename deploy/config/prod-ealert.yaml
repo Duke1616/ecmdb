@@ -28,7 +28,7 @@ grpc:
 
 # MySQL 持久化存储配置
 mysql:
-  dsn: "ealert:123456@tcp(mysql:3306)/ealert?charset=utf8mb4&collation=utf8mb4_general_ci"
+  dsn: "ealert:123456@tcp(mysql:3306)/ealert?charset=utf8mb4&parseTime=True&loc=Local"
 
 # Redis 缓存配置
 redis:

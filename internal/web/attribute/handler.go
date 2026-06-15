@@ -2,7 +2,7 @@ package web
 
 import (
 	"github.com/Duke1616/ecmdb/internal/domain"
-	"github.com/Duke1616/ecmdb/internal/service/attribute"
+	service "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
@@ -150,6 +150,7 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 			GroupId:   group.ID,
 			GroupName: group.Name,
 			Index:     group.SortKey,
+			SortKey:   group.SortKey,
 			Expanded:  true,
 		}
 
@@ -265,6 +266,7 @@ func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
 		GroupName: src.Name,
 		GroupId:   src.ID,
 		Index:     src.SortKey,
+		SortKey:   src.SortKey,
 	}
 }
 
@@ -277,6 +279,8 @@ func (h *Handler) toDomainUpdate(req UpdateAttributeReq) domain.Attribute {
 		Link:      req.Link,
 		Secure:    req.Secure,
 		Option:    req.Option,
+		Index:     req.Index,
+		SortKey:   req.SortKey,
 	}
 }
 

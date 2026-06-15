@@ -11,7 +11,7 @@ tasks:
   run:
     desc: 启动服务
     cmds:
-      -  EGO_DEBUG=true go run main.go start
+      -  EGO_DEBUG=true go run main.go server
 
   endpoint:
     desc: 注入端点

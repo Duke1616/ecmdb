@@ -13,6 +13,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/ginx/gctx"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 )
 
 type Handler struct {
@@ -47,11 +48,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 		Handle(ginx.WrapBody[CreateModelGroupReq](h.CreateModelGroup)),
 	)
 
-	// 查询模型分组列表
-	g.POST("/group/list", h.Capability("分组列表", "group_view").
-		Handle(ginx.WrapBody[Page](h.ListModelGroups)),
-	)
-
 	// 删除模型分组
 	g.POST("/group/delete", h.Capability("删除分组", "group_delete").
 		Handle(ginx.WrapBody[DeleteModelGroup](h.DeleteModelGroup)),
@@ -83,7 +79,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 
 	// 按分组查询模型列表
-	g.POST("/by_group", h.Capability("模型列表", "view").
+	g.POST("/list", h.Capability("模型列表", "view").
 		Handle(ginx.WrapBody[Page](h.ListModelsByGroup)),
 	)
 
@@ -237,13 +233,22 @@ func (h *Handler) DeleteModelByUid(ctx *gin.Context, req DeleteModelByUidReq) (g
 
 func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, error) {
 	// 1. 先分页获取模型分组列表
-	mgs, _, err := h.mgSvc.List(ctx, req.Offset, req.Limit)
+	mgs, total, err := h.mgSvc.List(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return systemErrorResult, err
 	}
+	if len(mgs) == 0 {
+		return ginx.Result{
+			Data: RetrieveModelGroupedListResp{
+				Total:  total,
+				Groups: []ModelGroupItem{},
+				Models: []ModelSummaryVO{},
+			},
+		}, nil
+	}
 
 	// 2. 根据分组 ID 获取对应的模型列表
-	mgids := slice.Map(mgs, func(idx int, src domain.ModelGroup) int64 {
+	mgids := lo.Map(mgs, func(src domain.ModelGroup, idx int) int64 {
 		return src.ID
 	})
 	models, err := h.svc.ListModelByGroupIds(ctx, mgids)
@@ -252,7 +257,7 @@ func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, er
 	}
 
 	// 3. 提取所有模型 UID，实现精准按需统计
-	modelUids := slice.Map(models, func(idx int, src domain.Model) string {
+	modelUids := lo.Map(models, func(src domain.Model, idx int) string {
 		return src.UID
 	})
 
@@ -269,8 +274,10 @@ func (h *Handler) ListModelsByGroup(ctx *gin.Context, req Page) (ginx.Result, er
 
 	// 前端展示
 	return ginx.Result{
-		Data: RetrieveModelListByGroupId{
-			Mgs: retrieveModelListByGroupId(models, mgs, resourceCount),
+		Data: RetrieveModelGroupedListResp{
+			Total:  total,
+			Groups: retrieveModelGroups(models, mgs),
+			Models: retrieveModelSummaries(models, resourceCount),
 		},
 	}, nil
 }

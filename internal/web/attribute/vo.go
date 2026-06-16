@@ -74,6 +74,7 @@ type SortAttributeGroupReq struct {
 
 type Attribute struct {
 	ID        int64       `json:"id"`
+	GroupId   int64       `json:"group_id"`
 	ModelUid  string      `json:"model_uid"`
 	FieldUid  string      `json:"field_uid"`
 	FieldName string      `json:"field_name"`
@@ -89,11 +90,12 @@ type Attribute struct {
 }
 
 type AttributeGroup struct {
-	GroupName string `json:"group_name"`
-	ModelUid  string `json:"model_uid"`
-	GroupId   int64  `json:"group_id"`
-	Index     int64  `json:"index"`
-	SortKey   int64  `json:"sort_key"`
+	GroupName string   `json:"group_name"`
+	ModelUid  string   `json:"model_uid"`
+	GroupId   int64    `json:"group_id"`
+	Index     int64    `json:"index"`
+	SortKey   int64    `json:"sort_key"`
+	FieldUids []string `json:"field_uids,omitempty"`
 }
 
 // CustomAttributeFieldColumnsReq 排序并展示数据
@@ -121,8 +123,15 @@ type AttributeList struct {
 	Attributes []Attribute `json:"attributes,omitempty"`
 }
 
+type AttributeModel struct {
+	ModelUid string `json:"model_uid"`
+	Name     string `json:"name"`
+}
+
 type RetrieveAttributeList struct {
-	AttributeList []AttributeList `json:"attribute_groups"`
+	Model  AttributeModel   `json:"model"`
+	Groups []AttributeGroup `json:"groups"`
+	Fields []Attribute      `json:"fields"`
 }
 
 type RetrieveAttributeFieldList struct {
@@ -149,6 +158,7 @@ func toDomain(req CreateAttributeReq) domain.Attribute {
 func toAttributeVo(attr domain.Attribute) Attribute {
 	return Attribute{
 		ID:        attr.ID,
+		GroupId:   attr.GroupId,
 		FieldUid:  attr.FieldUid,
 		ModelUid:  attr.ModelUid,
 		FieldName: attr.FieldName,

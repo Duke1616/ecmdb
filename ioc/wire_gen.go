@@ -70,7 +70,7 @@ func InitApp() (*App, error) {
 	mgRepository := repository.NewModelGroupRepository(modelGroupDAO)
 	mgService := service4.NewMGService(mgRepository, modelRepository)
 	handler := web.NewHandler(service8, mgService, relationModelService, service7)
-	webHandler := web2.NewHandler(serviceService)
+	webHandler := web2.NewHandler(serviceService, service8)
 	relationResourceService := service3.NewRelationResourceService(relationResourceRepository, relationModelRepository)
 	handler2 := web3.NewHandler(service7, serviceService, relationResourceService)
 	relationTypeDAO := dao.NewRelationTypeDAO(db)

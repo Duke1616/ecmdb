@@ -1,11 +1,33 @@
 package ginx
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// ErrorCoder 定义了包含错误码和错误消息的错误接口
+type ErrorCoder interface {
+	error
+	GetCode() int
+	GetMsg() string
+}
+
+func handleError(ctx *gin.Context, err error, systemResult Result) {
+	var errCoder ErrorCoder
+	if errors.As(err, &errCoder) {
+		slog.Warn("执行业务逻辑产生业务错误", slog.Any("err", err))
+		ctx.PureJSON(http.StatusOK, Result{
+			Code: errCoder.GetCode(),
+			Msg:  errCoder.GetMsg(),
+		})
+		return
+	}
+	slog.Error("执行业务逻辑失败", slog.Any("err", err))
+	ctx.PureJSON(http.StatusInternalServerError, systemResult)
+}
 
 func WrapBody[Req any](fn func(ctx *gin.Context, req Req) (Result, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -17,8 +39,7 @@ func WrapBody[Req any](fn func(ctx *gin.Context, req Req) (Result, error)) gin.H
 
 		res, err := fn(ctx, req)
 		if err != nil {
-			slog.Error("执行业务逻辑失败", slog.Any("err", err))
-			ctx.PureJSON(http.StatusInternalServerError, res)
+			handleError(ctx, err, res)
 			return
 		}
 
@@ -30,8 +51,7 @@ func Wrap(fn func(ctx *gin.Context) (Result, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		res, err := fn(ctx)
 		if err != nil {
-			slog.Error("执行业务逻辑失败", slog.Any("err", err))
-			ctx.PureJSON(http.StatusInternalServerError, res)
+			handleError(ctx, err, res)
 			return
 		}
 		ctx.PureJSON(http.StatusOK, res)
@@ -42,8 +62,7 @@ func WrapFinder(fn func(ctx *gin.Context) (Result, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		res, err := fn(ctx)
 		if err != nil {
-			slog.Error("执行业务逻辑失败", slog.Any("err", err))
-			ctx.PureJSON(http.StatusInternalServerError, res)
+			handleError(ctx, err, res)
 			return
 		}
 		ctx.PureJSON(http.StatusOK, res.Data)
@@ -60,8 +79,7 @@ func WrapFinderBody[Req any](fn func(ctx *gin.Context, req Req) (Result, error))
 
 		res, err := fn(ctx, req)
 		if err != nil {
-			slog.Error("执行业务逻辑失败", slog.Any("err", err))
-			ctx.PureJSON(http.StatusInternalServerError, res)
+			handleError(ctx, err, res)
 			return
 		}
 		ctx.PureJSON(http.StatusOK, res.Data)

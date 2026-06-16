@@ -1,8 +1,12 @@
 package web
 
 import (
+	"fmt"
+
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	service "github.com/Duke1616/ecmdb/internal/service/attribute"
+	modelservice "github.com/Duke1616/ecmdb/internal/service/model"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
@@ -11,13 +15,15 @@ import (
 )
 
 type Handler struct {
-	svc service.Service
+	svc      service.Service
+	modelSvc modelservice.Service
 	capability.IRegistry
 }
 
-func NewHandler(svc service.Service) *Handler {
+func NewHandler(svc service.Service, modelSvc modelservice.Service) *Handler {
 	return &Handler{
 		svc:       svc,
+		modelSvc:  modelSvc,
 		IRegistry: capability.NewRegistry("cmdb", "attribute", "模型管理/属性管理"),
 	}
 }
@@ -32,11 +38,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// 创建属性分组
 	g.POST("/group/create", h.Capability("创建分组", "group_add").
 		Handle(ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup)),
-	)
-
-	// 查询属性分组列表
-	g.POST("/group/list", h.Capability("分组列表", "group_list").
-		Handle(ginx.WrapBody[ListAttributeGroupReq](h.ListAttributeGroup)),
 	)
 
 	// 根据 ID 批量查询属性分组
@@ -57,6 +58,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 属性分组排序
 	g.POST("/group/sort", h.Capability("分组排序", "group_sort").
+		NoSync().
 		Handle(ginx.WrapBody[SortAttributeGroupReq](h.SortAttributeGroup)),
 	)
 
@@ -71,11 +73,13 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 查询属性列表
 	g.POST("/list", h.Capability("属性列表", "view").
+		NoSync().
 		Handle(ginx.WrapBody[ListAttributeReq](h.ListAttributes)),
 	)
 
 	// 查询属性字段列表
 	g.POST("/list/field", h.Capability("属性字段", "view_fields").
+		NoSync().
 		Handle(ginx.WrapBody[ListAttributeReq](h.ListAttributeField)),
 	)
 
@@ -96,6 +100,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 属性字段排序
 	g.POST("/sort", h.Capability("属性排序", "sort").
+		Needs("cmdb:attribute:group_sort").
 		Handle(ginx.WrapBody[SortAttributeReq](h.Sort)),
 	)
 }
@@ -104,7 +109,7 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	id, err := h.svc.CreateAttribute(ctx.Request.Context(), toDomain(req))
 
 	if mongo.IsDuplicateKeyError(err) {
-		return duplicateErrorResult, err
+		return duplicateErrorResult, fmt.Errorf("%w: %w", errs.ErrUniqueDuplicate, err)
 	}
 
 	if err != nil {
@@ -130,43 +135,45 @@ func (h *Handler) UpdateAttribute(ctx *gin.Context, req UpdateAttributeReq) (gin
 }
 
 func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
+	model, err := h.modelSvc.GetByUid(ctx.Request.Context(), req.ModelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
 	groups, err := h.svc.ListAttributeGroup(ctx, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	pipelines, err := h.svc.ListAttributePipeline(ctx.Request.Context(), req.ModelUid)
+	attrs, _, err := h.svc.ListAttributes(ctx.Request.Context(), req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	pipelineMap := make(map[int64]domain.AttributePipeline, len(pipelines))
-	for _, p := range pipelines {
-		pipelineMap[p.GroupId] = p
+	fieldUIDsByGroup := make(map[int64][]string, len(groups))
+	for _, attr := range attrs {
+		fieldUIDsByGroup[attr.GroupId] = append(fieldUIDsByGroup[attr.GroupId], attr.FieldUid)
 	}
-
-	attributeList := slice.Map(groups, func(idx int, group domain.AttributeGroup) AttributeList {
-		item := AttributeList{
-			GroupId:   group.ID,
-			GroupName: group.Name,
-			Index:     group.SortKey,
-			SortKey:   group.SortKey,
-			Expanded:  true,
-		}
-
-		if p, ok := pipelineMap[group.ID]; ok {
-			item.Total = p.Total
-			item.Attributes = slice.Map(p.Attributes, func(_ int, attr domain.Attribute) Attribute {
-				return toAttributeVo(attr)
-			})
-		}
-
-		return item
-	})
 
 	return ginx.Result{
 		Data: RetrieveAttributeList{
-			AttributeList: attributeList,
+			Model: AttributeModel{
+				ModelUid: model.UID,
+				Name:     model.Name,
+			},
+			Groups: slice.Map(groups, func(idx int, group domain.AttributeGroup) AttributeGroup {
+				return AttributeGroup{
+					GroupName: group.Name,
+					ModelUid:  group.ModelUid,
+					GroupId:   group.ID,
+					Index:     group.SortKey,
+					SortKey:   group.SortKey,
+					FieldUids: fieldUIDsByGroup[group.ID],
+				}
+			}),
+			Fields: slice.Map(attrs, func(idx int, attr domain.Attribute) Attribute {
+				return toAttributeVo(attr)
+			}),
 		},
 	}, nil
 }

@@ -2,51 +2,69 @@ package web
 
 import (
 	"github.com/Duke1616/ecmdb/internal/domain"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
-type ModelListByGroupId struct {
-	GroupId   int64   `json:"group_id"`
-	GroupName string  `json:"group_name"`
-	Models    []Model `json:"models"`
+type RetrieveModelGroupedListResp struct {
+	Total  int64            `json:"total"`
+	Groups []ModelGroupItem `json:"groups"`
+	Models []ModelSummaryVO `json:"models"`
 }
 
-type RetrieveModelListByGroupId struct {
-	Mgs []ModelListByGroupId `json:"mgs"`
+type ModelGroupItem struct {
+	GroupID   int64    `json:"group_id"`
+	GroupName string   `json:"group_name"`
+	ModelUIDs []string `json:"model_uids"`
 }
 
-// 组合前端数据
-func groupModelsByGroupId(models []domain.Model, resourceCount map[string]int) map[int64][]Model {
-	mds := make(map[int64][]Model)
+type ModelSummaryVO struct {
+	ID            int64  `json:"id"`
+	GroupID       int64  `json:"group_id"`
+	Name          string `json:"name"`
+	UID           string `json:"uid"`
+	Icon          string `json:"icon"`
+	ResourceCount int    `json:"resource_count"`
+	Builtin       bool   `json:"builtin"`
+}
 
-	for _, m := range models {
-		// 计算模型资源数量
-		count := resourceCount[m.UID]
+func groupModelUIDsByGroupID(models []domain.Model) map[int64][]string {
+	modelsByGroupID := lo.GroupBy(models, func(src domain.Model) int64 {
+		return src.GroupId
+	})
 
-		// 构建 Model
-		model := Model{
-			Id:    m.ID,
-			Name:  m.Name,
-			Total: count,
-			UID:   m.UID,
-			Icon:  m.Icon,
+	return lo.MapValues(modelsByGroupID, func(items []domain.Model, _ int64) []string {
+		return lo.Map(items, func(src domain.Model, _ int) string {
+			return src.UID
+		})
+	})
+}
+
+func retrieveModelGroups(models []domain.Model, modelGroups []domain.ModelGroup) []ModelGroupItem {
+	mds := groupModelUIDsByGroupID(models)
+	return lo.Map(modelGroups, func(src domain.ModelGroup, idx int) ModelGroupItem {
+		modelUIDs, ok := mds[src.ID]
+		if !ok {
+			modelUIDs = make([]string, 0)
 		}
 
-		// 按 GroupId 分组
-		mds[m.GroupId] = append(mds[m.GroupId], model)
-	}
-
-	return mds
+		return ModelGroupItem{
+			GroupID:   src.ID,
+			GroupName: src.Name,
+			ModelUIDs: modelUIDs,
+		}
+	})
 }
 
-// 前端展示
-func retrieveModelListByGroupId(models []domain.Model, modelGroups []domain.ModelGroup, resourceCount map[string]int) []ModelListByGroupId {
-	mds := groupModelsByGroupId(models, resourceCount)
-	return slice.Map(modelGroups, func(idx int, src domain.ModelGroup) ModelListByGroupId {
-		return ModelListByGroupId{
-			GroupId:   src.ID,
-			GroupName: src.Name,
-			Models:    mds[src.ID],
+func retrieveModelSummaries(models []domain.Model, resourceCount map[string]int) []ModelSummaryVO {
+	return lo.Map(models, func(src domain.Model, idx int) ModelSummaryVO {
+		return ModelSummaryVO{
+			ID:            src.ID,
+			GroupID:       src.GroupId,
+			Name:          src.Name,
+			UID:           src.UID,
+			Icon:          src.Icon,
+			ResourceCount: resourceCount[src.UID],
+			Builtin:       src.Builtin,
 		}
 	})
 }

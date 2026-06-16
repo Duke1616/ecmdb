@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"strings"
+
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/samber/lo"
@@ -28,13 +30,18 @@ func (dao *resourceDAO) buildExcludeAndFilterBson(modelUid string, ids []int64, 
 		}
 	}
 
+	fieldName := strings.TrimSpace(filter.Name)
+	if fieldName == "" {
+		return filters
+	}
+
 	switch filter.Condition {
 	case "not_equal":
-		filters[filter.Name] = bson.M{"$ne": filter.Input}
+		filters[fieldName] = bson.M{"$ne": filter.Input}
 	case "equal":
-		filters[filter.Name] = filter.Input
+		filters[fieldName] = filter.Input
 	case "contains":
-		filters[filter.Name] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
+		filters[fieldName] = bson.M{"$regex": primitive.Regex{Pattern: filter.Input, Options: "i"}}
 	}
 	return filters
 }
@@ -61,7 +68,10 @@ func (dao *resourceDAO) combineFilters(baseFilter bson.M, orConditions []bson.M)
 }
 
 func buildBsonCondition(f domain.FilterCondition) bson.M {
-	key := f.FieldUID
+	key := strings.TrimSpace(f.FieldUID)
+	if key == "" {
+		return nil
+	}
 	val := f.Value
 
 	switch f.Operator {
@@ -94,7 +104,10 @@ func buildBsonCondition(f domain.FilterCondition) bson.M {
 
 func buildProjection(fields []string) map[string]int {
 	// NOTE: 借助 lo.Associate 简化投影初始化，消除显式循环
-	projection := lo.Associate(fields, func(v string) (string, int) {
+	projection := lo.Associate(lo.FilterMap(fields, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	}), func(v string) (string, int) {
 		return v, 1
 	})
 	projection["_id"] = 0

@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -68,6 +69,8 @@ type AttributeDAO interface {
 	BatchUpdateSortKey(ctx context.Context, items []AttributeSortItem) error
 }
 
+var ErrVersionConflict = errors.New("attribute version conflict")
+
 type attributeDAO struct {
 	db   *mongox.DB
 	coll *mongox.Collection[Attribute]
@@ -95,6 +98,22 @@ func (dao *attributeDAO) DetailAttribute(ctx context.Context, id int64) (Attribu
 }
 
 func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (int64, error) {
+	now := time.Now().UnixMilli()
+	filter := bson.M{
+		"id": attr.Id,
+	}
+
+	// 新数据走 CAS
+	if attr.Version > 0 {
+		filter["version"] = attr.Version
+	} else {
+		// 兼容历史数据
+		filter["$or"] = []bson.M{
+			{"version": bson.M{"$exists": false}},
+			{"version": 0},
+		}
+	}
+
 	updateDoc := bson.M{
 		"$set": bson.M{
 			"field_name": attr.FieldName,
@@ -103,16 +122,23 @@ func (dao *attributeDAO) UpdateAttribute(ctx context.Context, attr Attribute) (i
 			"secure":     attr.Secure,
 			"link":       attr.Link,
 			"option":     attr.Option,
-			"utime":      time.Now().UnixMilli(),
+			"utime":      now,
+		},
+		"$inc": bson.M{
+			"version": 1,
 		},
 	}
-	filter := bson.M{"id": attr.Id}
-	count, err := dao.coll.UpdateOne(ctx, filter, updateDoc)
+
+	res, err := dao.coll.UpdateOne(ctx, filter, updateDoc)
 	if err != nil {
-		return 0, fmt.Errorf("修改文档操作: %w", err)
+		return 0, fmt.Errorf("修改文档操作失败: %w", err)
 	}
 
-	return count.ModifiedCount, nil
+	if res.MatchedCount == 0 {
+		return 0, ErrVersionConflict
+	}
+
+	return res.ModifiedCount, nil
 }
 
 func (dao *attributeDAO) CreateAttribute(ctx context.Context, attr Attribute) (int64, error) {
@@ -138,20 +164,13 @@ func (dao *attributeDAO) BatchCreateAttribute(ctx context.Context, attrs []Attri
 
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID
-	startID, err := dao.db.GetBatchIdGenerator(AttributeCollection, len(attrs))
-	if err != nil {
-		return fmt.Errorf("获取批量 ID 错误: %w", err)
-	}
-
 	docs := make([]*Attribute, len(attrs))
 	for i := range attrs {
-		attrs[i].Id = startID + int64(i)
 		attrs[i].Ctime, attrs[i].Utime = now, now
 		docs[i] = &attrs[i]
 	}
 
-	_, err = dao.coll.InsertMany(ctx, docs)
+	_, err := dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return fmt.Errorf("批量插入模型属性: %w", errs.ErrUniqueDuplicate)
@@ -309,6 +328,7 @@ type Attribute struct {
 	Secure    bool        `bson:"secure"`     // 是否字段安全、脱敏、加密
 	Link      bool        `bson:"link"`       // 是否外链
 	Builtin   bool        `bson:"builtin"`    // 是否内置属性
+	Version   int64       `bson:"version"`    // CAS 操作
 	Option    interface{} `bson:"option"`     // TODO: 为了后续扩展，不同类型的 option 可能不同
 	Ctime     int64       `bson:"ctime"`
 	Utime     int64       `bson:"utime"`
@@ -382,7 +402,7 @@ func (dao *attributeDAO) BatchUpdateSortKey(ctx context.Context, items []Attribu
 		return nil
 	}
 
-	// NOTE: 借助 lo.Map 优雅构造 BulkWrite 序列化模型
+	// 借助 lo.Map 优雅构造 BulkWrite 序列化模型
 	models := lo.Map(items, func(item AttributeSortItem, _ int) mongo.WriteModel {
 		return mongo.NewUpdateOneModel().
 			SetFilter(bson.M{"id": item.ID}).

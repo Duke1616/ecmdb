@@ -25,10 +25,6 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/storage"
 )
 
-import (
-	_ "github.com/go-sql-driver/mysql"
-)
-
 // Injectors from wire.go:
 
 // InitApp 初始化完整应用
@@ -72,7 +68,7 @@ func InitApp() (*App, error) {
 	handler := web.NewHandler(service8, mgService, relationModelService, service7)
 	webHandler := web2.NewHandler(serviceService, service8)
 	relationResourceService := service3.NewRelationResourceService(relationResourceRepository, relationModelRepository)
-	handler2 := web3.NewHandler(service7, serviceService, relationResourceService)
+	handler2 := web3.NewHandler(service7, serviceService, service8, relationResourceService)
 	relationTypeDAO := dao.NewRelationTypeDAO(db)
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
 	relationTypeService := service3.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
@@ -86,15 +82,15 @@ func InitApp() (*App, error) {
 	handler5 := web7.NewHandler(iDataIOService, s3Storage)
 	listener := InitListener()
 	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationTypeHandler, handler3, handler4, handler5, listener)
-	fieldSecureAttrChangeConsumer, err := InitFieldSecureAttrChangeConsumer(mq, service7, crypto)
-	if err != nil {
-		return nil, err
-	}
 	fieldDeleteConsumer, err := InitFieldDeleteConsumer(mq, service7)
 	if err != nil {
 		return nil, err
 	}
-	v4 := InitTasks(fieldSecureAttrChangeConsumer, fieldDeleteConsumer)
+	fieldSecureAttrChangeConsumer, err := InitFieldSecureAttrChangeConsumer(mq, service7, crypto)
+	if err != nil {
+		return nil, err
+	}
+	v4 := InitTasks(fieldDeleteConsumer, fieldSecureAttrChangeConsumer)
 	app := &App{
 		Web:   component,
 		Tasks: v4,

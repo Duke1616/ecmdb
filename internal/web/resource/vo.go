@@ -93,9 +93,16 @@ type RetrieveDiagram struct {
 }
 
 type RetrieveGraph struct {
-	RootId string `json:"rootId"`
-	Nodes  []Node `json:"nodes"`
-	Lines  []Line `json:"lines"`
+	RootId string       `json:"rootId"`
+	Nodes  []Node       `json:"nodes"`
+	Lines  []Line       `json:"lines"`
+	Models []GraphModel `json:"models,omitempty"`
+}
+
+type GraphModel struct {
+	ModelUID  string `json:"model_uid"`
+	ModelName string `json:"model_name"`
+	Icon      string `json:"icon,omitempty"`
 }
 
 type Node struct {

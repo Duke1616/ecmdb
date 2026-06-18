@@ -162,6 +162,7 @@ func (repo *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
 		Index:     req.Index,
 		SortKey:   req.SortKey,
 		Option:    req.Option,
+		Version:   req.Version,
 		Display:   req.Display,
 	}
 }
@@ -180,6 +181,7 @@ func (repo *attributeRepository) toDomain(attr dao.Attribute) domain.Attribute {
 		Option:    attr.Option,
 		Display:   attr.Display,
 		Index:     attr.Index,
+		Version:   attr.Version,
 		SortKey:   attr.SortKey,
 		GroupId:   attr.GroupId,
 	}
@@ -211,7 +213,6 @@ func (repo *attributeRepository) UpdateSort(ctx context.Context, id, groupId, so
 }
 
 func (repo *attributeRepository) BatchUpdateSortKey(ctx context.Context, items []domain.AttributeSortItem) error {
-	// NOTE: Repository 层负责 Domain → DAO 类型转换
 	daoItems := slice.Map(items, func(idx int, src domain.AttributeSortItem) dao.AttributeSortItem {
 		return dao.AttributeSortItem{
 			ID:      src.ID,

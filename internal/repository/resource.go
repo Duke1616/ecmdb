@@ -185,10 +185,7 @@ func (repo *resourceRepository) toEntity(req domain.Resource) dao.Resource {
 }
 
 func (repo *resourceRepository) toDomain(src dao.Resource) domain.Resource {
-	name := "undefined"
-	if val, ok := src.Data["name"]; ok {
-		name = val.(string)
-	}
+	name, _ := src.Data["name"].(string)
 
 	return domain.Resource{
 		ID:       src.ID,

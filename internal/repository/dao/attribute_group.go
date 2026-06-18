@@ -79,27 +79,23 @@ func (dao *attributeGroupDAO) BatchCreateAttributeGroup(ctx context.Context, ags
 
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID
-	startID, err := dao.db.GetBatchIdGenerator(AttributeGroupCollection, len(ags))
-	if err != nil {
-		return nil, fmt.Errorf("获取批量 ID 错误: %w", err)
-	}
-
-	result := make([]AttributeGroup, len(ags))
 	docs := make([]*AttributeGroup, len(ags))
 	for i := range ags {
-		result[i] = ags[i]
-		result[i].Id = startID + int64(i)
-		result[i].Ctime, result[i].Utime = now, now
-		docs[i] = &result[i]
+		ags[i].Ctime, ags[i].Utime = now, now
+		docs[i] = &ags[i]
 	}
 
-	_, err = dao.coll.InsertMany(ctx, docs)
+	_, err := dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return nil, fmt.Errorf("批量插入属性组: %w", errs.ErrUniqueDuplicate)
 		}
 		return nil, fmt.Errorf("批量插入数据错误: %w", err)
+	}
+
+	result := make([]AttributeGroup, len(docs))
+	for i, doc := range docs {
+		result[i] = *doc
 	}
 
 	return result, nil

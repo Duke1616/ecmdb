@@ -15,4 +15,9 @@ var (
 		Code: 500001,
 		Msg:  "唯一标识冲突",
 	}
+
+	ErrConcurrentUpdate = ginx.Result{
+		Code: 40901,
+		Msg:  "数据已被其他用户修改，请刷新后重试",
+	}
 )

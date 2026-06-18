@@ -7,7 +7,6 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -358,79 +357,20 @@ func (dao *resourceDAO) BatchCreateOrUpdate(ctx context.Context, resources []Res
 	}
 
 	now := time.Now().UnixMilli()
-	tenantID := ctxutil.GetTenantID(ctx).Int64()
+	keys, resourceByKey := dedupeResourcesByUniqueKey(resources)
 
-	// NOTE: 提取唯一键生成逻辑，消除多处重复的 fmt.Sprintf 格式化散落
-	resourceKey := func(modelUID string, data mongox.MapStr) string {
-		name, _ := data["name"].(string)
-		return modelUID + "_" + name
-	}
-
-	// 1. 构建 Index-Covered 覆盖索引批量查询条件（框架层 Find 会自动追加 tenant_id 过滤）
-	filters := lo.Map(resources, func(r Resource, _ int) interface{} {
-		return bson.M{
-			"model_uid": r.ModelUID,
-			"data.name": r.Data["name"],
-		}
-	})
-
-	existingDocs, err := dao.coll.Find(ctx, bson.M{"$or": filters}, &options.FindOptions{
-		Projection: bson.M{"model_uid": 1, "data.name": 1, "_id": 0},
-	})
+	existingKeys, err := dao.findExistingResourceKeys(ctx, keys)
 	if err != nil {
 		return fmt.Errorf("批量查询已存在资产失败: %w", err)
 	}
 
-	// 2. 构建已存在资产的唯一键集合
-	existingMap := lo.Associate(existingDocs, func(doc Resource) (string, struct{}) {
-		return resourceKey(doc.ModelUID, doc.Data), struct{}{}
-	})
-
-	// 3. 精准统计真正需要执行 Insert 的新资产数量
-	needInsertCount := lo.CountBy(resources, func(r Resource) bool {
-		_, exists := existingMap[resourceKey(r.ModelUID, r.Data)]
-		return !exists
-	})
-
-	// 4. 按需、精准申请自增 ID，消灭序列号空洞与原子锁冲突
-	var startID int64
-	if needInsertCount > 0 {
-		startID, err = dao.db.GetBatchIdGenerator(ResourceCollection, needInsertCount)
-		if err != nil {
-			return fmt.Errorf("获取批量 ID 失败: %w", err)
-		}
+	updateResources, insertDocs := splitResourcesByExistence(keys, resourceByKey, existingKeys, now)
+	if err = dao.updateResourcesByUniqueKey(ctx, updateResources, now); err != nil {
+		return fmt.Errorf("批量更新资产失败: %w", err)
 	}
 
-	// 5. 动态分配 ID 并组装 BulkWrite 写入模型（框架层 BulkWrite 会自动为 Filter 追加 tenant_id 过滤拦截）
-	var insertIndex int64
-	models := lo.Map(resources, func(r Resource, _ int) mongo.WriteModel {
-		key := resourceKey(r.ModelUID, r.Data)
-
-		var docID int64
-		if _, exists := existingMap[key]; !exists {
-			docID = startID + insertIndex
-			insertIndex++
-		}
-
-		return mongo.NewUpdateOneModel().
-			SetFilter(bson.M{
-				"model_uid": r.ModelUID,
-				"data.name": r.Data["name"],
-			}).
-			SetUpdate(bson.M{
-				"$set": dao.buildUpdateDoc(r.Data, now),
-				"$setOnInsert": bson.M{
-					"id":        docID,
-					"tenant_id": tenantID, // 为防范 MongoDB Upsert 复合条件提取失效，此处仍显式保留 tenant_id 写入以确保新文档物理归属
-					"ctime":     now,
-				},
-			}).
-			SetUpsert(true)
-	})
-
-	_, err = dao.coll.BulkWrite(ctx, models)
-	if err != nil {
-		return fmt.Errorf("批量创建或更新操作失败: %w", err)
+	if err = dao.insertResourcesOrUpdateOnConflict(ctx, insertDocs, now); err != nil {
+		return err
 	}
 
 	return nil

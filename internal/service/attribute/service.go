@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/repository"
+	"github.com/Duke1616/ecmdb/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/pkg/sorter"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -100,30 +103,37 @@ func (s *service) BatchCreateAttributeGroup(ctx context.Context, ags []domain.At
 }
 
 func (s *service) UpdateAttribute(ctx context.Context, attribute domain.Attribute) (int64, error) {
-	// 查看当前的数据
-	attr, err := s.repo.DetailAttribute(ctx, attribute.ID)
+	// 查询旧数据
+	oldAttr, err := s.repo.DetailAttribute(ctx, attribute.ID)
 	if err != nil {
 		return 0, err
 	}
 
-	// 更新数据
+	// 带上版本号
+	attribute.Version = oldAttr.Version
+
+	// CAS更新
 	id, err := s.repo.UpdateAttribute(ctx, attribute)
+	if errors.Is(err, dao.ErrVersionConflict) {
+		return 0, errs.ErrConcurrentUpdate
+	}
 	if err != nil {
 		return 0, err
 	}
 
-	// 比对安全属性是否变更
-	if attr.Secure == attribute.Secure {
+	// secure没变化
+	if oldAttr.Secure == attribute.Secure {
 		return id, nil
 	}
 
-	// 如果更新了则推送事件
+	// 推送事件
 	err = s.producer.Produce(ctx, domain.FieldSecureAttrChange{
-		ModelUid:   attr.ModelUid,
-		FieldUid:   attr.FieldUid,
+		ModelUid:   oldAttr.ModelUid,
+		FieldUid:   oldAttr.FieldUid,
 		Secure:     attribute.Secure,
 		TiggerTime: time.Now().UnixMilli(),
 	})
+
 	return id, err
 }
 

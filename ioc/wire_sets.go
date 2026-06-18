@@ -4,7 +4,6 @@ import (
 	"github.com/Duke1616/ecmdb/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
 	attrSvc "github.com/Duke1616/ecmdb/internal/service/attribute"
-	resourceEvent "github.com/Duke1616/ecmdb/internal/event/resource"
 	dataioSvc "github.com/Duke1616/ecmdb/internal/service/dataio"
 	modelSvc "github.com/Duke1616/ecmdb/internal/service/model"
 	relationSvc "github.com/Duke1616/ecmdb/internal/service/relation"
@@ -123,8 +122,4 @@ func InitDeleteModelDependencyCheckers(
 		resourceSvc,
 		relationRMSvc,
 	}
-}
-
-func InitTasks(c1 *resourceEvent.FieldSecureAttrChangeConsumer, c2 *resourceEvent.FieldDeleteConsumer) []Task {
-	return []Task{c1, c2}
 }

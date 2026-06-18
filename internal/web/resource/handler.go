@@ -7,25 +7,29 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	attributeservice "github.com/Duke1616/ecmdb/internal/service/attribute"
+	modelservice "github.com/Duke1616/ecmdb/internal/service/model"
 	relationservice "github.com/Duke1616/ecmdb/internal/service/relation"
 	service "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 )
 
 type Handler struct {
 	svc     service.EncryptedSvc
 	attrSvc attributeservice.Service
+	modelSvc modelservice.Service
 	RRSvc   relationservice.RelationResourceService
 	capability.IRegistry
 }
 
-func NewHandler(svc service.EncryptedSvc, attributeSvc attributeservice.Service, RRSvc relationservice.RelationResourceService) *Handler {
+func NewHandler(svc service.EncryptedSvc, attributeSvc attributeservice.Service, modelSvc modelservice.Service, RRSvc relationservice.RelationResourceService) *Handler {
 	return &Handler{
 		svc:       svc,
 		attrSvc:   attributeSvc,
+		modelSvc:  modelSvc,
 		RRSvc:     RRSvc,
 		IRegistry: capability.NewRegistry("cmdb", "resource", "资产仓库"),
 	}
@@ -298,6 +302,31 @@ func (h *Handler) ListCanBeFilterRelated(ctx *gin.Context, req ListCanBeRelatedR
 	}, nil
 }
 
+func (h *Handler) graphModels(ctx *gin.Context, resources []domain.Resource, rootModelUID string) ([]GraphModel, error) {
+	modelUIDs := lo.Uniq(append(lo.Map(resources, func(src domain.Resource, _ int) string {
+		return src.ModelUID
+	}), rootModelUID))
+	modelUIDs = lo.Filter(modelUIDs, func(uid string, _ int) bool {
+		return uid != ""
+	})
+	if len(modelUIDs) == 0 {
+		return []GraphModel{}, nil
+	}
+
+	models, err := h.modelSvc.GetByUids(ctx.Request.Context(), modelUIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return lo.Map(models, func(src domain.Model, _ int) GraphModel {
+		return GraphModel{
+			ModelUID:  src.UID,
+			ModelName: src.Name,
+			Icon:      src.Icon,
+		}
+	}), nil
+}
+
 func (h *Handler) FindAllGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Result, error) {
 	// 查询资产关联上下级拓扑（支持多级递归，默认递归3层）
 	maxDepth := req.MaxDepth
@@ -332,7 +361,11 @@ func (h *Handler) FindAllGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Resul
 	ids := append(srcId, dstId...)
 
 	// 查询节点信息
-	rs, err := h.svc.ListResourceByIds(ctx, nil, ids)
+	rs, err := h.svc.ListResourceByIds(ctx, []string{"name"}, ids)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	models, err := h.graphModels(ctx, rs, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -376,6 +409,7 @@ func (h *Handler) FindAllGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Resul
 			Lines:  lines,
 			Nodes:  nodes,
 			RootId: strconv.FormatInt(req.ResourceId, 10),
+			Models: models,
 		},
 	}, nil
 }
@@ -403,7 +437,11 @@ func (h *Handler) FindLeftGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Resu
 	})
 
 	// 查询节点信息
-	rs, err := h.svc.ListResourceByIds(ctx, nil, srcIds)
+	rs, err := h.svc.ListResourceByIds(ctx, []string{"name"}, srcIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	models, err := h.graphModels(ctx, rs, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -427,6 +465,7 @@ func (h *Handler) FindLeftGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Resu
 			Lines:  lines,
 			Nodes:  nodes,
 			RootId: strconv.FormatInt(req.ResourceId, 10),
+			Models: models,
 		},
 	}, nil
 }
@@ -454,7 +493,11 @@ func (h *Handler) FindRightGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Res
 	})
 
 	// 查询节点信息
-	rs, err := h.svc.ListResourceByIds(ctx, nil, srcIds)
+	rs, err := h.svc.ListResourceByIds(ctx, []string{"name"}, srcIds)
+	if err != nil {
+		return systemErrorResult, err
+	}
+	models, err := h.graphModels(ctx, rs, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -478,6 +521,7 @@ func (h *Handler) FindRightGraph(ctx *gin.Context, req ListDiagramReq) (ginx.Res
 			Lines:  lines,
 			Nodes:  nodes,
 			RootId: strconv.FormatInt(req.ResourceId, 10),
+			Models: models,
 		},
 	}, nil
 }
@@ -517,7 +561,7 @@ func (h *Handler) FindDiagram(ctx *gin.Context, req ListDiagramReq) (ginx.Result
 	ids := append(srcId, dstId...)
 
 	// 查询节点信息
-	rs, err := h.svc.ListResourceByIds(ctx, nil, ids)
+	rs, err := h.svc.ListResourceByIds(ctx, []string{"name"}, ids)
 	if err != nil {
 		return systemErrorResult, err
 	}

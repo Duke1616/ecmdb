@@ -19,6 +19,7 @@ type Attribute struct {
 	Index     int64
 	SortKey   int64 // 拖拽排序键（稀疏索引）
 	Option    interface{}
+	Version   int64
 	Builtin   bool
 }
 

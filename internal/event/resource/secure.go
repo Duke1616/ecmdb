@@ -11,6 +11,7 @@ import (
 	resourceservice "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
+	mqx "github.com/Duke1616/ecmdb/pkg/mqx"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
@@ -54,7 +55,8 @@ func (c *FieldSecureAttrChangeConsumer) Start(ctx context.Context) {
 }
 
 func (c *FieldSecureAttrChangeConsumer) Consume(ctx context.Context) error {
-	cm, err := c.consumer.Consume(ctx)
+	// 使用 mqx.ConsumeMessage 恢复消息头（如 x-tenant-id）到 ctx
+	ctxWithHeaders, cm, err := mqx.ConsumeMessage(ctx, c.consumer)
 	if err != nil {
 		return fmt.Errorf("获取消息失败: %w", err)
 	}
@@ -64,7 +66,7 @@ func (c *FieldSecureAttrChangeConsumer) Consume(ctx context.Context) error {
 		return fmt.Errorf("解析消息失败: %w", err)
 	}
 
-	return c.Process(ctx, evt)
+	return c.Process(ctxWithHeaders, evt)
 }
 
 func (c *FieldSecureAttrChangeConsumer) Process(ctx context.Context, evt domain.FieldSecureAttrChange) error {

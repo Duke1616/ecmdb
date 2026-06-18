@@ -69,20 +69,13 @@ func (dao *relationDAO) BatchCreate(ctx context.Context, rts []RelationType) err
 
 	now := time.Now().UnixMilli()
 
-	// 批量获取起始 ID
-	startID, err := dao.db.GetBatchIdGenerator(RelationTypeCollection, len(rts))
-	if err != nil {
-		return fmt.Errorf("获取批量 ID 错误: %w", err)
-	}
-
 	docs := make([]*RelationType, len(rts))
 	for i := range rts {
-		rts[i].Id = startID + int64(i)
 		rts[i].Ctime, rts[i].Utime = now, now
 		docs[i] = &rts[i]
 	}
 
-	_, err = dao.coll.InsertMany(ctx, docs)
+	_, err := dao.coll.InsertMany(ctx, docs)
 	if err != nil {
 		if mongox.IsUniqueConstraintError(err) {
 			return fmt.Errorf("批量插入关联类型: %w", errs.ErrUniqueDuplicate)

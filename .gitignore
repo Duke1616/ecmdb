@@ -3,4 +3,5 @@ logs/
 **/logs/
 *.log
 .idea/
+.gocache
 internal/test/config.yaml

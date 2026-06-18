@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
@@ -122,15 +123,17 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 }
 
 func (h *Handler) UpdateAttribute(ctx *gin.Context, req UpdateAttributeReq) (ginx.Result, error) {
-	attr := h.toDomainUpdate(req)
-	t, err := h.svc.UpdateAttribute(ctx, attr)
-
+	id, err := h.svc.UpdateAttribute(ctx, h.toDomainUpdate(req))
 	if err != nil {
+		if errors.Is(err, errs.ErrConcurrentUpdate) {
+			return ErrConcurrentUpdate, nil
+		}
 		return systemErrorResult, err
 	}
 
 	return ginx.Result{
-		Data: t,
+		Data: id,
+		Msg:  "更新模型属性成功",
 	}, nil
 }
 

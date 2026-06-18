@@ -9,6 +9,11 @@ web:
   host: "0.0.0.0"
   port: 8000
 
+# 数据加密配置：针对敏感字段进行 AES 加密存储
+encryption:
+  version: "V1" # 加密算法版本
+  key: "1234567890"
+
 # 策略鉴权：IAM服务地址，用于登录验证与权限鉴权
 policy:
   auth_url: http://eiam:8000
@@ -111,3 +116,14 @@ compensator:
   interrupt:
     batchSize: 100
     minDuration: 1000000000
+
+migration:
+  source:
+    mongo:
+      dsn: "mongodb://ecmdb:123456@mongo:27017/ecmdb?authSource=admin"
+      database: "ecmdb"
+  batch_size: 100
+  timeout: "10m"
+  auto_migrate: true
+  truncate: false
+  dry_run: false

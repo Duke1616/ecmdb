@@ -22,8 +22,8 @@ grpc:
       listen_addr: "0.0.0.0:7867"
       auth_token: "1234567890" # 内部接口安全校验凭证
   client:
-    ecmdb:
-      name: "ecmdb" # 需要通过 RPC 获取 ecmdb 的相关元数据
+    eiam:
+      name: "eiam" # 需要通过 RPC 获取 eiam 的相关元数据
       auth_token: "1234567890"
 
 # MySQL 持久化存储配置

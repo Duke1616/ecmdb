@@ -3,7 +3,7 @@ module github.com/Duke1616/ecmdb
 go 1.25.0
 
 require (
-	github.com/Duke1616/eiam v0.0.12
+	github.com/Duke1616/eiam v0.0.17
 	github.com/Duke1616/etask v0.0.7
 	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/ecodeclub/ekit v0.0.10
@@ -12,7 +12,6 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gin-gonic/gin v1.12.0
-	github.com/go-sql-driver/mysql v1.9.3
 	github.com/google/wire v0.7.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/gotomicro/ego v1.2.6
@@ -40,7 +39,6 @@ require (
 replace github.com/Bunny3th/easy-workflow v1.0.0 => github.com/Duke1616/easy-workflow v1.0.5
 
 require (
-	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/RaMin0/gin-health-check v0.0.0-20180807004848-a677317b3f01 // indirect
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect

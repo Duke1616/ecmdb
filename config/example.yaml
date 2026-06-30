@@ -87,3 +87,13 @@ grpc:
     ealert:
       name: "ealert"
       auth_token: "1234567890"
+    eiam:
+      name: "eiam"
+      auth_token: "1234567890"
+
+# 注册插件
+plugin:
+  builtin:
+    tenant:
+      access_key: ""
+      secret_key: ""

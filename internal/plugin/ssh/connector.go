@@ -1,14 +1,15 @@
-package term
+package ssh
 
 import (
 	"context"
 	"fmt"
 	"net"
 
+	"github.com/Duke1616/ecmdb/pkg/term"
 	"github.com/Duke1616/ecmdb/pkg/term/sshx"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
+	golangssh "golang.org/x/crypto/ssh"
 )
 
 // sshConnector 是基于现有 sshx 多级网关能力的 Connector 实现。
@@ -19,7 +20,7 @@ func (s *sshConnector) Name() string {
 }
 
 // Connect 将 GatewayChain 转换为 sshx 的配置，并返回抽象的 Session。
-func (s *sshConnector) Connect(ctx context.Context, chain GatewayChain, opts ConnectOptions) (Session, error) {
+func (s *sshConnector) Connect(ctx context.Context, chain term.GatewayChain, opts term.ConnectOptions) (term.Session, error) {
 	// 使用 SSHChainBuilder 构建多跳链路对应的 Transport
 	builder := NewSSHChainBuilder()
 	transport, err := builder.Build(chain)
@@ -28,20 +29,20 @@ func (s *sshConnector) Connect(ctx context.Context, chain GatewayChain, opts Con
 	}
 
 	// 通过 Transport 确保链路打通并拿到底层 *ssh.Client
-	sshTransport, ok := transport.(*sshChainTransport)
+	chainTransport, ok := transport.(*sshChainTransport)
 	if !ok {
 		return nil, fmt.Errorf("unexpected transport type for ssh connector")
 	}
-	if err = sshTransport.ensureClient(ctx); err != nil {
+	if err = chainTransport.ensureClient(ctx); err != nil {
 		return nil, err
 	}
 
-	return &sshSession{client: sshTransport.client}, nil
+	return &sshSession{client: chainTransport.client}, nil
 }
 
 // sshSession 是对底层 *ssh.Client 的抽象包装，实现 Session 接口以及能力接口。
 type sshSession struct {
-	client *ssh.Client
+	client *golangssh.Client
 }
 
 func (s *sshSession) Protocol() string {
@@ -56,16 +57,16 @@ func (s *sshSession) Close() error {
 }
 
 // Transport 返回基于当前 SSH Client 的传输实现。
-func (s *sshSession) Transport() Transport {
+func (s *sshSession) Transport() term.Transport {
 	return &sshTransport{client: s.client}
 }
 
 // sshTransport 使用底层 *ssh.Client 作为传输层，根据 Endpoint 建立到目标的 TCP 连接。
 type sshTransport struct {
-	client *ssh.Client
+	client *golangssh.Client
 }
 
-func (t *sshTransport) Dial(ctx context.Context, ep Endpoint) (net.Conn, error) {
+func (t *sshTransport) Dial(ctx context.Context, ep term.Endpoint) (net.Conn, error) {
 	if t.client == nil {
 		return nil, fmt.Errorf("ssh transport client is nil")
 	}
@@ -74,7 +75,7 @@ func (t *sshTransport) Dial(ctx context.Context, ep Endpoint) (net.Conn, error) 
 }
 
 // NewTerminal 实现 ShellCapable 能力，基于现有 sshx.SSHConnect 创建终端会话。
-func (s *sshSession) NewTerminal(ws *websocket.Conn, rows, cols int) (TerminalSession, error) {
+func (s *sshSession) NewTerminal(ws *websocket.Conn, rows, cols int) (term.TerminalSession, error) {
 	sshConn, err := sshx.NewSSHConnect(s.client, ws, rows, cols)
 	if err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func (s *sshSession) NewSFTP() (*sftp.Client, error) {
 // sshTerminalSession 将 sshx.SSHConnect 适配为通用 TerminalSession。
 type sshTerminalSession struct {
 	*sshx.SSHConnect
-	client *ssh.Client
+	client *golangssh.Client
 }
 
 func (t *sshTerminalSession) Start() {
@@ -119,10 +120,10 @@ func (t *sshTerminalSession) Ping() error {
 }
 
 // 确保 sshSession 实现了 Session 以及能力接口。
-var _ Session = (*sshSession)(nil)
-var _ ShellCapable = (*sshSession)(nil)
-var _ FileCapable = (*sshSession)(nil)
+var _ term.Session = (*sshSession)(nil)
+var _ term.ShellCapable = (*sshSession)(nil)
+var _ term.FileCapable = (*sshSession)(nil)
 
 func init() {
-	RegisterConnector(&sshConnector{})
+	term.RegisterConnector(&sshConnector{})
 }

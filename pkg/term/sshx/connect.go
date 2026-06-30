@@ -130,7 +130,7 @@ func NewSSHConnect(client *ssh.Client, conn *websocket.Conn, height, width int) 
 		session:      session,
 		tick:         time.NewTicker(60 * time.Millisecond),
 		ctx:          ctx,
-		conn:         conn,
+		conn:conn,
 		cancel:       cancel,
 		dataChan:     make(chan rune),
 		StdinPipe:    pipe,

@@ -25,7 +25,7 @@ func NewCommand() *cobra.Command {
 			app.StartBackgroundTasks(cmd.Context())
 
 			// 启动服务
-			if err := egoApp.Serve(
+			if err = egoApp.Serve(
 				func() server.Server {
 					return app.Web
 				}(),

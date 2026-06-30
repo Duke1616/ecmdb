@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	MappingOneToOne   = iota + 1 // 一对一关系
-	MappingOneToMany             // 一对多关系
-	MappingManyToMany            // 多对多关系
+	MappingOneToOne   = "one_to_one"   // 一对一关系
+	MappingOneToMany  = "one_to_many"  // 一对多关系
+	MappingManyToMany = "many_to_many" // 多对多关系
 )
 
 type ModelRelation struct {
@@ -27,19 +27,19 @@ func (m *ModelRelation) RM() string {
 }
 
 // IsSource 判定指定的 modelUid 是否为该关系定义的源端
-func (m ModelRelation) IsSource(modelUid string) bool {
+func (m *ModelRelation) IsSource(modelUid string) bool {
 	// NOTE: 在拓扑定义中，SourceModelUID 表示关联关系的源端模型唯一标识
 	return m.SourceModelUID == modelUid
 }
 
 // IsTarget 判定指定的 modelUid 是否为该关系定义的目标端
-func (m ModelRelation) IsTarget(modelUid string) bool {
+func (m *ModelRelation) IsTarget(modelUid string) bool {
 	// NOTE: 在拓扑定义中，TargetModelUID 表示关联关系的目标端模型唯一标识
 	return m.TargetModelUID == modelUid
 }
 
 // BelongsTo 判定指定的 modelUid 是否参与了该关系定义
-func (m ModelRelation) BelongsTo(modelUid string) bool {
+func (m *ModelRelation) BelongsTo(modelUid string) bool {
 	// NOTE: 校验模型是否属于该关联的两端（源端或目标端）
 	return m.SourceModelUID == modelUid || m.TargetModelUID == modelUid
 }
@@ -50,9 +50,21 @@ func (m *ModelRelation) Validate() error {
 	if m.SourceModelUID == "" || m.TargetModelUID == "" || m.RelationTypeUID == "" {
 		return fmt.Errorf("模型关联的源端、目标端或关系类型 UID 不能为空")
 	}
+	if !ValidMapping(m.Mapping) {
+		return fmt.Errorf("不支持的模型关联映射类型: %s", m.Mapping)
+	}
 	// 自动完成 RelationName 的一致性生成与补齐，提供强一致性保障
 	m.RelationName = m.RM()
 	return nil
+}
+
+func ValidMapping(mapping string) bool {
+	switch mapping {
+	case "", MappingOneToOne, MappingOneToMany, MappingManyToMany:
+		return true
+	default:
+		return false
+	}
 }
 
 // ModelDiagram 拓补图模型关联节点信息

@@ -6,12 +6,14 @@ import (
 	attrSvc "github.com/Duke1616/ecmdb/internal/service/attribute"
 	dataioSvc "github.com/Duke1616/ecmdb/internal/service/dataio"
 	modelSvc "github.com/Duke1616/ecmdb/internal/service/model"
+	pluginSvc "github.com/Duke1616/ecmdb/internal/service/plugin"
 	relationSvc "github.com/Duke1616/ecmdb/internal/service/relation"
 	resourceSvc "github.com/Duke1616/ecmdb/internal/service/resource"
 	toolsSvc "github.com/Duke1616/ecmdb/internal/service/tools"
 	attribute "github.com/Duke1616/ecmdb/internal/web/attribute"
 	dataio "github.com/Duke1616/ecmdb/internal/web/dataio"
 	model "github.com/Duke1616/ecmdb/internal/web/model"
+	plugin "github.com/Duke1616/ecmdb/internal/web/plugin"
 	relation "github.com/Duke1616/ecmdb/internal/web/relation"
 	resource "github.com/Duke1616/ecmdb/internal/web/resource"
 	terminal "github.com/Duke1616/ecmdb/internal/web/terminal"
@@ -58,6 +60,13 @@ var (
 		dataioSvc.NewService,
 	)
 
+	PluginSet = wire.NewSet(
+		dao.NewPluginDAO,
+		repository.NewPluginRepository,
+		pluginSvc.NewService,
+		plugin.NewHandler,
+	)
+
 	RelationSet = wire.NewSet(
 		dao.NewRelationTypeDAO,
 		dao.NewRelationModelDAO,
@@ -101,6 +110,7 @@ var (
 		toolsSet,
 		terminalSet,
 		dataIoSet,
+		PluginSet,
 		RelationSet,
 		ModelSet,
 		ResourceSet,

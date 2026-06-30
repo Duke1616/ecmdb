@@ -39,6 +39,11 @@ func InitIndexes(db *mongox.DB) error {
 		return err
 	}
 
+	// Plugin 索引
+	if err := initPluginIndexes(db); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -57,6 +62,53 @@ func InitModelIndexes(db *mongox.DB) error {
 	}
 
 	return mongox.SyncIndexes(ctx, col, indexes)
+}
+
+func initPluginIndexes(db *mongox.DB) error {
+	ctx := context.Background()
+
+	if err := mongox.SyncIndexes(ctx, db.Database().Collection(PluginCollection), []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "id", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "uid", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	}); err != nil {
+		return err
+	}
+
+	return mongox.SyncIndexes(ctx, db.Database().Collection(PluginBindingCollection), []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "id", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "uid", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "model_uid", Value: 1},
+				{Key: "enabled", Value: 1},
+			},
+		},
+	})
 }
 
 func initModelGroupIndex(db *mongox.DB) error {

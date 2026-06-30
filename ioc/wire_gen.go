@@ -12,12 +12,14 @@ import (
 	"github.com/Duke1616/ecmdb/internal/service/attribute"
 	service6 "github.com/Duke1616/ecmdb/internal/service/dataio"
 	service4 "github.com/Duke1616/ecmdb/internal/service/model"
+	"github.com/Duke1616/ecmdb/internal/service/plugin"
 	service3 "github.com/Duke1616/ecmdb/internal/service/relation"
 	service2 "github.com/Duke1616/ecmdb/internal/service/resource"
 	service5 "github.com/Duke1616/ecmdb/internal/service/tools"
 	web2 "github.com/Duke1616/ecmdb/internal/web/attribute"
 	web7 "github.com/Duke1616/ecmdb/internal/web/dataio"
 	"github.com/Duke1616/ecmdb/internal/web/model"
+	web8 "github.com/Duke1616/ecmdb/internal/web/plugin"
 	web4 "github.com/Duke1616/ecmdb/internal/web/relation"
 	web3 "github.com/Duke1616/ecmdb/internal/web/resource"
 	web6 "github.com/Duke1616/ecmdb/internal/web/terminal"
@@ -67,7 +69,7 @@ func InitApp() (*App, error) {
 	mgService := service4.NewMGService(mgRepository, modelRepository)
 	handler := web.NewHandler(service8, mgService, relationModelService, service7)
 	webHandler := web2.NewHandler(serviceService, service8)
-	relationResourceService := service3.NewRelationResourceService(relationResourceRepository, relationModelRepository)
+	relationResourceService := service3.NewRelationResourceService(relationResourceRepository, relationModelRepository, resourceRepository)
 	handler2 := web3.NewHandler(service7, serviceService, service8, relationResourceService)
 	relationTypeDAO := dao.NewRelationTypeDAO(db)
 	relationTypeRepository := repository.NewRelationTypeRepository(relationTypeDAO)
@@ -77,11 +79,15 @@ func InitApp() (*App, error) {
 	s3Storage := storage.NewS3Storage(client)
 	service9 := service5.NewService(s3Storage)
 	handler3 := web5.NewHandler(service9)
-	handler4 := web6.NewHandler(relationResourceService, service7, serviceService)
+	pluginDAO := dao.NewPluginDAO(db)
+	pluginRepository := repository.NewPluginRepository(pluginDAO)
+	pluginService := plugin.NewService(pluginRepository, service7, relationResourceService, service8, mgService, serviceService, relationTypeService, relationModelService)
+	handler4 := web6.NewHandler(pluginService)
 	iDataIOService := service6.NewService(serviceService, service7, service8)
 	handler5 := web7.NewHandler(iDataIOService, s3Storage)
+	handler6 := web8.NewHandler(pluginService)
 	listener := InitListener()
-	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationTypeHandler, handler3, handler4, handler5, listener)
+	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationTypeHandler, handler3, handler4, handler5, handler6, listener)
 	fieldDeleteConsumer, err := InitFieldDeleteConsumer(mq, service7)
 	if err != nil {
 		return nil, err

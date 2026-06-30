@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
@@ -71,7 +72,10 @@ func (s *modelService) GetByRelationNames(ctx context.Context, names []string) (
 
 func (s *modelService) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
 	if err := req.Validate(); err != nil {
-		return 0, err
+		if !domain.ValidMapping(req.Mapping) {
+			return 0, relationMappingError(req.Mapping)
+		}
+		return 0, relationValidationError(err)
 	}
 	return s.repo.CreateModelRelation(ctx, req)
 }
@@ -122,15 +126,19 @@ func (s *modelService) DeleteModelRelation(ctx context.Context, id int64) (int64
 }
 
 func (s *modelService) UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	// NOTE: 入参自身的错误先拦截成业务错误，避免被仓储查询错误掩盖成系统异常。
+	if err := req.Validate(); err != nil {
+		if !domain.ValidMapping(req.Mapping) {
+			return 0, relationMappingError(req.Mapping)
+		}
+		return 0, relationValidationError(err)
+	}
+
 	mr, err := s.repo.GetByID(ctx, req.ID)
 	if err != nil {
 		return 0, err
 	}
 
-	// NOTE: 代理给 Domain 领域对象进行充血式参数自校验与 RelationName 自补齐
-	if err := req.Validate(); err != nil {
-		return 0, err
-	}
 	if mr.RelationName != req.RelationName {
 		count, err := s.resourceRepo.CountByRelationName(ctx, mr.RelationName)
 		if err != nil {
@@ -142,6 +150,14 @@ func (s *modelService) UpdateModelRelation(ctx context.Context, req domain.Model
 	}
 
 	return s.repo.UpdateModelRelation(ctx, req)
+}
+
+func relationMappingError(mapping string) error {
+	return errs.RelationMappingConstraint.WithMsg(fmt.Sprintf("不支持的模型关联映射类型: %s", mapping))
+}
+
+func relationValidationError(err error) error {
+	return errs.ValidationError.WithMsg(err.Error())
 }
 
 func (s *modelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {

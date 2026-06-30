@@ -8,6 +8,7 @@ import (
 	attribute "github.com/Duke1616/ecmdb/internal/web/attribute"
 	dataio "github.com/Duke1616/ecmdb/internal/web/dataio"
 	model "github.com/Duke1616/ecmdb/internal/web/model"
+	plugin "github.com/Duke1616/ecmdb/internal/web/plugin"
 	relation "github.com/Duke1616/ecmdb/internal/web/relation"
 	resource "github.com/Duke1616/ecmdb/internal/web/resource"
 	terminal "github.com/Duke1616/ecmdb/internal/web/terminal"
@@ -24,7 +25,7 @@ func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Synce
 	modelHdl *model.Handler, attributeHdl *attribute.Handler, resourceHdl *resource.Handler,
 	rmHdl *relation.RelationTypeHandler,
 	toolsHdl *tools.Handler, termHdl *terminal.Handler,
-	dataIOHdl *dataio.Handler, listener net.Listener,
+	dataIOHdl *dataio.Handler, pluginHdl *plugin.Handler, listener net.Listener,
 ) *egin.Component {
 
 	server := egin.Load("server.egin").Build(egin.WithListener(listener))
@@ -45,6 +46,7 @@ func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Synce
 	attributeHdl.PrivateRoutes(server.Engine)
 	resourceHdl.PrivateRoutes(server.Engine)
 	rmHdl.PrivateRoute(server.Engine)
+	pluginHdl.PrivateRoutes(server.Engine)
 	termHdl.PrivateRoutes(server.Engine)
 	toolsHdl.PrivateRoutes(server.Engine)
 	dataIOHdl.PrivateRoutes(server.Engine)

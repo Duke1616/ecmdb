@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package eiam.tenant.v1;
+
+option go_package = "github.com/Duke1616/eiam/api/proto/gen/eiam/tenant/v1;tenantv1";
+
+service TenantService {
+  // Verify 校验租户密钥并返回租户ID
+  rpc Verify (VerifyRequest) returns (VerifyResponse);
+}
+
+message VerifyRequest {
+  string access_key = 1;
+  string secret_key = 2;
+}
+
+message VerifyResponse {
+  int64 tenant_id = 1;
+}

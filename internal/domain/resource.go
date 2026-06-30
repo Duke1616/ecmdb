@@ -20,11 +20,6 @@ type Resource struct {
 	Data     mongox.MapStr `json:"data"`
 }
 
-//type ResourceRelation struct {
-//	ModelUid  string
-//	Resources []Resource
-//}
-
 type SearchResource struct {
 	ModelUid string
 	Total    int `json:"total"`

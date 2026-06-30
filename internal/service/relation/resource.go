@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	"golang.org/x/sync/errgroup"
 )
@@ -54,16 +55,23 @@ type RelationResourceService interface {
 }
 
 type resourceService struct {
-	repo      repository.RelationResourceRepository
-	modelRepo repository.RelationModelRepository
+	repo         repository.RelationResourceRepository
+	modelRepo    repository.RelationModelRepository
+	resourceRepo resourceNameRepository
 }
 
 func NewRelationResourceService(repo repository.RelationResourceRepository,
-	modelRepo repository.RelationModelRepository) RelationResourceService {
+	modelRepo repository.RelationModelRepository,
+	resourceRepo repository.ResourceRepository) RelationResourceService {
 	return &resourceService{
-		repo:      repo,
-		modelRepo: modelRepo,
+		repo:         repo,
+		modelRepo:    modelRepo,
+		resourceRepo: resourceRepo,
 	}
+}
+
+type resourceNameRepository interface {
+	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 }
 
 func (s *resourceService) CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error) {
@@ -79,16 +87,77 @@ func (s *resourceService) CreateResourceRelation(ctx context.Context, req domain
 		return 0, fmt.Errorf("拓扑关联校验异常: %w", err)
 	}
 	if len(mrs) == 0 {
-		return 0, fmt.Errorf("拓扑关联校验失败：模型关系定义 %s 未注册", relationName)
+		return 0, relationValidationError(fmt.Errorf("拓扑关联校验失败：模型关系定义 %s 未注册", relationName))
 	}
 
 	// 3. 委派给领域模型进行自我充血式校验与数据补全
 	if err = req.ValidateAndComplete(mrs[0]); err != nil {
+		return 0, relationValidationError(err)
+	}
+
+	if err = s.checkMappingLimit(ctx, req, mrs[0]); err != nil {
 		return 0, err
 	}
 
 	// 4. 流畅落库
 	return s.repo.CreateResourceRelation(ctx, req)
+}
+
+func (s *resourceService) checkMappingLimit(ctx context.Context, req domain.ResourceRelation, mr domain.ModelRelation) error {
+	switch mr.Mapping {
+	case "", domain.MappingManyToMany:
+		return nil
+	case domain.MappingOneToOne:
+		if err := s.checkSourceLimit(ctx, req); err != nil {
+			return err
+		}
+		return s.checkTargetLimit(ctx, req)
+	case domain.MappingOneToMany:
+		return s.checkTargetLimit(ctx, req)
+	default:
+		return errs.RelationMappingConstraint.WithMsg(fmt.Sprintf("不支持的模型关联映射类型: %s", mr.Mapping))
+	}
+}
+
+func (s *resourceService) checkSourceLimit(ctx context.Context, req domain.ResourceRelation) error {
+	ids, err := s.repo.ListSrcRelated(ctx, req.SourceModelUID, req.RelationName, req.SourceResourceID)
+	if err != nil {
+		return fmt.Errorf("查询源端关联失败: %w", err)
+	}
+	if len(ids) > 0 {
+		return errs.RelationMappingConstraint.WithMsg(
+			fmt.Sprintf("关联映射约束冲突：源端资源%s已存在关联，不能重复绑定",
+				s.resourceDisplay(ctx, req.SourceModelUID, req.SourceResourceID)),
+		)
+	}
+	return nil
+}
+
+func (s *resourceService) checkTargetLimit(ctx context.Context, req domain.ResourceRelation) error {
+	ids, err := s.repo.ListDstRelated(ctx, req.TargetModelUID, req.RelationName, req.TargetResourceID)
+	if err != nil {
+		return fmt.Errorf("查询目标端关联失败: %w", err)
+	}
+	if len(ids) > 0 {
+		return errs.RelationMappingConstraint.WithMsg(
+			fmt.Sprintf("关联映射约束冲突：目标端资源%s已存在关联，不能重复绑定",
+				s.resourceDisplay(ctx, req.TargetModelUID, req.TargetResourceID)),
+		)
+	}
+	return nil
+}
+
+func (s *resourceService) resourceDisplay(ctx context.Context, modelUID string, id int64) string {
+	fallback := fmt.Sprintf("（模型：%s，ID：%d）", modelUID, id)
+	if s.resourceRepo == nil {
+		return fallback
+	}
+
+	resource, err := s.resourceRepo.FindResourceById(ctx, []string{"name"}, id)
+	if err != nil || resource.Name == "" {
+		return fallback
+	}
+	return fmt.Sprintf("「%s」（模型：%s，ID：%d）", resource.Name, modelUID, id)
 }
 
 func (s *resourceService) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, int64, error) {

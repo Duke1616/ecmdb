@@ -8,43 +8,35 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/domain"
-	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
-	relation "github.com/Duke1616/ecmdb/internal/service/relation"
-	resource "github.com/Duke1616/ecmdb/internal/service/resource"
+	sshplugin "github.com/Duke1616/ecmdb/internal/plugin/ssh"
+	pluginservice "github.com/Duke1616/ecmdb/internal/service/plugin"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	"github.com/Duke1616/ecmdb/pkg/term"
 	"github.com/Duke1616/ecmdb/pkg/term/guacx"
 	"github.com/Duke1616/ecmdb/pkg/term/sshx"
 	"github.com/Duke1616/eiam/pkg/web/capability"
-	finderGinx "github.com/Duke1616/vuefinder-go/pkg/ginx"
 	sftpFinder "github.com/Duke1616/vuefinder-go/pkg/provider/sftp"
 	finderWeb "github.com/Duke1616/vuefinder-go/pkg/web"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/sftp"
-	"golang.org/x/sync/errgroup"
 )
 
 type Handler struct {
-	RRSvc        relation.RelationResourceService
-	resourceSvc  resource.EncryptedSvc
-	attributeSvc attribute.Service
-	session      *term.SessionPool
-	timeout      time.Duration
-	finderWeb    *finderWeb.Handler
+	pluginSvc pluginservice.Service
+	session   *term.SessionPool
+	timeout   time.Duration
+	finderWeb *finderWeb.Handler
 	capability.IRegistry
 }
 
-func NewHandler(RRSvc relation.RelationResourceService, resourceSvc resource.EncryptedSvc, attributeSvc attribute.Service) *Handler {
+func NewHandler(pluginSvc pluginservice.Service) *Handler {
 	return &Handler{
-		RRSvc:        RRSvc,
-		resourceSvc:  resourceSvc,
-		attributeSvc: attributeSvc,
-		session:      term.NewSessionPool(),
-		timeout:      5 * time.Second,
-		finderWeb:    finderWeb.NewHandler(),
-		IRegistry:    capability.NewRegistry("cmdb", "terminal", "资产仓库/在线终端"),
+		pluginSvc: pluginSvc,
+		session:   term.NewSessionPool(),
+		timeout:   5 * time.Second,
+		finderWeb: finderWeb.NewHandler(),
+		IRegistry: capability.NewRegistry("cmdb", "terminal", "资产仓库/在线终端"),
 	}
 }
 
@@ -77,40 +69,40 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	gFinder := server.Group("/api/finder")
 
 	gFinder.GET("/files", h.Capability("查看文件", "sftp_files").
-		Handle(finderGinx.Wrap(h.finderWeb.Index)),
+		Handle(wrapFinder(h.finderWeb.Index)),
 	)
 	gFinder.GET("/download", h.Capability("下载文件", "sftp_download").
 		Handle(h.finderWeb.DownloadStream),
 	)
 	gFinder.GET("/search", h.Capability("搜索文件", "sftp_search").
-		Handle(finderGinx.Wrap(h.finderWeb.Search)),
+		Handle(wrapFinder(h.finderWeb.Search)),
 	)
 	gFinder.GET("/preview", h.Capability("预览文件", "sftp_preview").
-		Handle(finderGinx.WrapBuff(h.finderWeb.Preview)),
+		Handle(wrapFinderBuff(h.finderWeb.Preview)),
 	)
 	gFinder.POST("/new_folder", h.Capability("创建目录", "sftp_new_folder").
-		Handle(finderGinx.WrapBody(h.finderWeb.NewFolder)),
+		Handle(wrapFinderBody(h.finderWeb.NewFolder)),
 	)
 	gFinder.POST("/new_file", h.Capability("创建文件", "sftp_new_file").
-		Handle(finderGinx.WrapBody(h.finderWeb.NewFile)),
+		Handle(wrapFinderBody(h.finderWeb.NewFile)),
 	)
 	gFinder.POST("/rename", h.Capability("重命名文件", "sftp_rename").
-		Handle(finderGinx.WrapBody(h.finderWeb.Rename)),
+		Handle(wrapFinderBody(h.finderWeb.Rename)),
 	)
 	gFinder.POST("/move", h.Capability("移动文件", "sftp_move").
-		Handle(finderGinx.WrapBody(h.finderWeb.Move)),
+		Handle(wrapFinderBody(h.finderWeb.Move)),
 	)
 	gFinder.POST("/archive", h.Capability("压缩文件", "sftp_archive").
-		Handle(finderGinx.WrapBody(h.finderWeb.Archive)),
+		Handle(wrapFinderBody(h.finderWeb.Archive)),
 	)
 	gFinder.POST("/unarchive", h.Capability("解压文件", "sftp_unarchive").
-		Handle(finderGinx.WrapBody(h.finderWeb.Unarchive)),
+		Handle(wrapFinderBody(h.finderWeb.Unarchive)),
 	)
 	gFinder.POST("/save", h.Capability("保存文件内容", "sftp_save").
-		Handle(finderGinx.WrapBuffBody(h.finderWeb.Save)),
+		Handle(wrapFinderBuffBody(h.finderWeb.Save)),
 	)
 	gFinder.POST("/delete", h.Capability("删除文件", "sftp_delete").
-		Handle(finderGinx.WrapBody(h.finderWeb.Delete)),
+		Handle(wrapFinderBody(h.finderWeb.Delete)),
 	)
 	// WebSocket 上传路由
 	gFinder.GET("/upload/ws", h.Capability("上传文件", "sftp_upload_ws").
@@ -127,12 +119,12 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	case ConnectTypeVNC:
 		return ginx.Result{Msg: "不支持VNC协议"}, fmt.Errorf("暂不支持 VNC 协议")
 	case ConnectTypeSSH:
-		_, err := h.connectSSh(ctx, req.ResourceId)
+		_, err := h.connectSSh(ctx, req.ResourceId, sshplugin.ActionTerminal)
 		if err != nil {
 			return ginx.Result{}, err
 		}
 	case ConnectTypeWebSftp:
-		sess, err := h.connectSSh(ctx, req.ResourceId)
+		sess, err := h.connectSSh(ctx, req.ResourceId, sshplugin.ActionSFTP)
 		if err != nil {
 			return ginx.Result{}, err
 		}
@@ -160,48 +152,25 @@ func (h *Handler) Connect(ctx *gin.Context, req ConnectReq) (ginx.Result, error)
 	}, nil
 }
 
-func (h *Handler) connectSSh(ctx context.Context, resourceId int64) (term.Session, error) {
-	// 获取指定资产关联网关数据
-	hostResource, gatewayRs, err := h.queryResource(ctx, resourceId)
+func (h *Handler) connectSSh(ctx context.Context, resourceId int64, action string) (term.Session, error) {
+	actionCtx, err := h.pluginSvc.ResolveActionContext(ctx, sshplugin.ResolveRequest(action, resourceId))
 	if err != nil {
-		return nil, fmt.Errorf("获取基本连接信息失败")
+		return nil, fmt.Errorf("获取 SSH 插件输入失败: %w", err)
 	}
 
-	// 组合所有网关为通用 GatewayChain
-	var chain term.GatewayChain
-	for _, item := range gatewayRs {
-		endpoint := term.Endpoint{
-			Username:   sshx.GetStringField(item.Data, "username", ""),
-			Host:       sshx.GetStringField(item.Data, "host", ""),
-			PrivateKey: sshx.GetStringField(item.Data, "private_key", ""),
-			Port:       sshx.GetIntField(item.Data, "port", 22),
-			Password:   sshx.GetStringField(item.Data, "password", "default_password"),
-			AuthType:   sshx.GetStringField(item.Data, "auth_type", "passwd"),
-			Passphrase: sshx.GetStringField(item.Data, "password", "default_password"),
-			Sort:       sshx.GetIntField(item.Data, "sort", 0),
-		}
-		chain = append(chain, endpoint)
+	target, err := sshplugin.DecodeTarget(actionCtx)
+	if err != nil {
+		return nil, fmt.Errorf("解析 SSH 插件输入失败: %w", err)
 	}
-
-	// 组合真实的目标节点
-	chain = append(chain, term.Endpoint{
-		AuthType:   sshx.GetStringField(hostResource.Data, "auth_type", ""),
-		Host:       sshx.GetStringField(hostResource.Data, "ip", ""),
-		Port:       sshx.GetIntField(hostResource.Data, "port", 22),
-		Username:   sshx.GetStringField(hostResource.Data, "username", ""),
-		Password:   sshx.GetStringField(hostResource.Data, "password", ""),
-		PrivateKey: sshx.GetStringField(hostResource.Data, "private_key", ""),
-		Passphrase: sshx.GetStringField(hostResource.Data, "password", "passwd"),
-		Sort:       len(chain) + 1,
-	})
+	chain := target.ToGatewayChain()
 
 	// 通过插件连接网关和目标节点
-	connector, ok := term.GetConnector("ssh")
-	if !ok {
-		return nil, fmt.Errorf("ssh connector not registered")
+	connector, err := sshplugin.Connector()
+	if err != nil {
+		return nil, err
 	}
 
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), h.timeout)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
 
 	sess, err := connector.Connect(ctxWithTimeout, chain, nil)
@@ -210,7 +179,7 @@ func (h *Handler) connectSSh(ctx context.Context, resourceId int64) (term.Sessio
 	}
 
 	// 每次连接都重新替换Session
-	h.session.SetSession(resourceId, term.NewSessions(sess))
+	h.session.SetSession(resourceId, sess)
 
 	return sess, nil
 }
@@ -252,13 +221,11 @@ func (h *Handler) wsSShSession(ctx *gin.Context, resourceIdInt int64, colsInt, r
 	defer conn.Close()
 
 	// 获取抽象 Session
-	sessionWrapper, err := h.session.GetSession(resourceIdInt)
+	sess, err := h.session.GetSession(resourceIdInt)
 	if err != nil {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return err
 	}
-
-	sess := sessionWrapper.Session
 	shellCapable, ok := sess.(term.ShellCapable)
 	if !ok {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte("session not support shell"))
@@ -362,51 +329,4 @@ func (h *Handler) ConnectGuacTunnel(ctx *gin.Context) (ginx.Result, error) {
 			return ginx.Result{}, er
 		}
 	}
-}
-
-func (h *Handler) queryResource(ctx context.Context, resourceId int64) (domain.Resource, []domain.Resource, error) {
-	var (
-		eg           errgroup.Group
-		hostResource domain.Resource
-		gatewayRs    []domain.Resource
-	)
-	eg.Go(func() error {
-		ids, err := h.RRSvc.ListDstRelated(ctx, "host", "AuthGateway_default_host", resourceId)
-		if err != nil {
-			return err
-		}
-
-		if len(ids) == 0 {
-			return nil
-		}
-
-		fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "AuthGateway")
-		if err != nil {
-			return err
-		}
-
-		gatewayRs, err = h.resourceSvc.ListResourceByIds(ctx, fields, ids)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	eg.Go(func() error {
-		fields, err := h.attributeSvc.SearchAllAttributeFieldsByModelUid(ctx, "host")
-		if err != nil {
-			return err
-		}
-
-		hostResource, err = h.resourceSvc.FindResourceById(ctx, fields, resourceId)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-	if err := eg.Wait(); err != nil {
-		return domain.Resource{}, nil, err
-	}
-
-	return hostResource, gatewayRs, nil
 }

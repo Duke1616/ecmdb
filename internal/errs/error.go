@@ -24,6 +24,11 @@ func (e ErrorCode) GetMsg() string {
 	return e.Msg
 }
 
+func (e ErrorCode) WithMsg(msg string) ErrorCode {
+	e.Msg = msg
+	return e
+}
+
 func (e ErrorCode) Is(target error) bool {
 	t, ok := target.(ErrorCode)
 	if !ok {

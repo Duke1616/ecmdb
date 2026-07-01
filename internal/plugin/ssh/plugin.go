@@ -93,6 +93,15 @@ func DecodeTarget(actionCtx plugin.ActionContext) (Target, error) {
 	return plugin.InputOne[Target](actionCtx, inputTarget)
 }
 
+// ResolveGatewayChain 直接将插件动作上下文解析为 SSH 连接链路。
+func ResolveGatewayChain(actionCtx plugin.ActionContext) (term.GatewayChain, error) {
+	target, err := DecodeTarget(actionCtx)
+	if err != nil {
+		return nil, err
+	}
+	return target.ToGatewayChain(), nil
+}
+
 // Connector 返回 SSH 终端连接器。
 func Connector() (term.Connector, error) {
 	connector, ok := term.GetConnector(connectorName)

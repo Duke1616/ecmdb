@@ -158,11 +158,10 @@ func (h *Handler) connectSSh(ctx context.Context, resourceId int64, action strin
 		return nil, fmt.Errorf("获取 SSH 插件输入失败: %w", err)
 	}
 
-	target, err := sshplugin.DecodeTarget(actionCtx)
+	chain, err := sshplugin.ResolveGatewayChain(actionCtx)
 	if err != nil {
 		return nil, fmt.Errorf("解析 SSH 插件输入失败: %w", err)
 	}
-	chain := target.ToGatewayChain()
 
 	// 通过插件连接网关和目标节点
 	connector, err := sshplugin.Connector()

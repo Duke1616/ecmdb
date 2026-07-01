@@ -24,6 +24,7 @@ type SSHConnect struct {
 	stdoutReader *bufio.Reader
 	dataChan     chan rune
 	mutex        sync.Mutex
+	stopOnce     sync.Once
 	buf          bytes.Buffer
 }
 
@@ -71,7 +72,11 @@ func (s *SSHConnect) output() {
 				continue
 			}
 
-			s.dataChan <- rn
+			select {
+			case <-s.ctx.Done():
+				return
+			case s.dataChan <- rn:
+			}
 		}
 	}
 }
@@ -130,7 +135,7 @@ func NewSSHConnect(client *ssh.Client, conn *websocket.Conn, height, width int) 
 		session:      session,
 		tick:         time.NewTicker(60 * time.Millisecond),
 		ctx:          ctx,
-		conn:conn,
+		conn:         conn,
 		cancel:       cancel,
 		dataChan:     make(chan rune),
 		StdinPipe:    pipe,
@@ -143,12 +148,13 @@ func (s *SSHConnect) WindowChange(h int, w int) error {
 }
 
 func (s *SSHConnect) Stop() {
-	s.cancel()
-	s.tick.Stop()
-	close(s.dataChan)
+	s.stopOnce.Do(func() {
+		s.cancel()
+		s.tick.Stop()
 
-	// 关闭会话
-	if s.session != nil {
-		_ = s.session.Close()
-	}
+		// 关闭会话会打断 stdout 读取，促使 output goroutine 退出。
+		if s.session != nil {
+			_ = s.session.Close()
+		}
+	})
 }

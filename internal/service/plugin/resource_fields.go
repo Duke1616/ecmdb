@@ -22,9 +22,9 @@ func resolveFields(resource domain.Resource, spec pluginx.ResourceSpec) map[stri
 	})
 }
 
-func requiredFieldsSatisfied(requirements []string, fields map[string]any) bool {
-	return lo.EveryBy(requirements, func(fieldName string) bool {
-		return hasValue(fields[fieldName])
+func missingRequiredFields(requirements []string, fields map[string]any) []string {
+	return lo.Filter(requirements, func(fieldName string, _ int) bool {
+		return !hasValue(fields[fieldName])
 	})
 }
 

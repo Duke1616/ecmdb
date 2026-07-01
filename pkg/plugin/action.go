@@ -40,6 +40,8 @@ type Plugin struct {
 	Enabled bool           `json:"enabled"`
 	Actions []ActionSpec   `json:"actions"`
 	Config  map[string]any `json:"config,omitempty"`
+	Ctime   int64          `json:"ctime,omitempty"`
+	Utime   int64          `json:"utime,omitempty"`
 }
 
 type ActionSpec struct {
@@ -59,6 +61,8 @@ type Binding struct {
 	Enabled  bool           `json:"enabled"`
 	Specs    []ResourceSpec `json:"specs"`
 	Config   map[string]any `json:"config,omitempty"`
+	Ctime    int64          `json:"ctime,omitempty"`
+	Utime    int64          `json:"utime,omitempty"`
 }
 
 type Schema struct {
@@ -141,6 +145,11 @@ type ResourceAction struct {
 	Placement string         `json:"placement"`
 	UI        string         `json:"ui"`
 	Meta      map[string]any `json:"meta,omitempty"`
+}
+
+type ResourceActions struct {
+	ResourceID int64            `json:"resource_id"`
+	Actions    []ResourceAction `json:"actions"`
 }
 
 type ResolvedResource struct {

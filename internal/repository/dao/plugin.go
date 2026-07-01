@@ -9,6 +9,7 @@ import (
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/Duke1616/ecmdb/pkg/plugin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -72,8 +73,32 @@ type PluginDAO interface {
 	// GetBinding 根据 UID 查询插件绑定存储记录。
 	GetBinding(ctx context.Context, uid string) (PluginBinding, error)
 
+	// ListPlugins 查询全部插件记录。
+	ListPlugins(ctx context.Context) ([]Plugin, error)
+
+	// ListBindings 查询全部插件绑定记录。
+	ListBindings(ctx context.Context) ([]PluginBinding, error)
+
+	// ListBindingsByPluginID 查询指定插件的绑定记录。
+	ListBindingsByPluginID(ctx context.Context, pluginID string) ([]PluginBinding, error)
+
+	// ListBindingsByPluginIDs 批量查询指定插件的绑定记录。
+	ListBindingsByPluginIDs(ctx context.Context, pluginIDs []string) ([]PluginBinding, error)
+
 	// ListEnabledBindingsByModelUID 查询指定模型启用中的插件绑定记录。
 	ListEnabledBindingsByModelUID(ctx context.Context, modelUID string) ([]PluginBinding, error)
+
+	// ListEnabledBindingsByModelUIDs 批量查询指定模型启用中的插件绑定记录。
+	ListEnabledBindingsByModelUIDs(ctx context.Context, modelUIDs []string) ([]PluginBinding, error)
+
+	// UpdatePluginEnabled 更新插件启用状态。
+	UpdatePluginEnabled(ctx context.Context, uid string, enabled bool) error
+
+	// DeletePlugin 删除插件记录。
+	DeletePlugin(ctx context.Context, uid string) error
+
+	// DeleteBindingsByPluginID 删除插件下全部绑定。
+	DeleteBindingsByPluginID(ctx context.Context, pluginID string) error
 }
 
 type pluginDAO struct {
@@ -191,6 +216,60 @@ func (dao *pluginDAO) GetBinding(ctx context.Context, uid string) (PluginBinding
 	return *b, nil
 }
 
+func (dao *pluginDAO) ListPlugins(ctx context.Context) ([]Plugin, error) {
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "utime", Value: -1}},
+	}
+
+	plugins, err := dao.pluginColl.Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("插件查询失败: %w", err)
+	}
+	return plugins, nil
+}
+
+func (dao *pluginDAO) ListBindings(ctx context.Context) ([]PluginBinding, error) {
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "utime", Value: -1}},
+	}
+
+	bindings, err := dao.bindingColl.Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
+	}
+	return bindings, nil
+}
+
+func (dao *pluginDAO) ListBindingsByPluginID(ctx context.Context, pluginID string) ([]PluginBinding, error) {
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "utime", Value: -1}},
+	}
+
+	bindings, err := dao.bindingColl.Find(ctx, bson.M{"plugin_id": pluginID}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
+	}
+	return bindings, nil
+}
+
+func (dao *pluginDAO) ListBindingsByPluginIDs(ctx context.Context, pluginIDs []string) ([]PluginBinding, error) {
+	if len(pluginIDs) == 0 {
+		return []PluginBinding{}, nil
+	}
+
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "utime", Value: -1}},
+	}
+
+	bindings, err := dao.bindingColl.Find(ctx, bson.M{
+		"plugin_id": bson.M{"$in": pluginIDs},
+	}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
+	}
+	return bindings, nil
+}
+
 func (dao *pluginDAO) ListEnabledBindingsByModelUID(ctx context.Context, modelUID string) ([]PluginBinding, error) {
 	bindings, err := dao.bindingColl.Find(ctx, bson.M{
 		"model_uid": modelUID,
@@ -200,4 +279,53 @@ func (dao *pluginDAO) ListEnabledBindingsByModelUID(ctx context.Context, modelUI
 		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
 	}
 	return bindings, nil
+}
+
+func (dao *pluginDAO) ListEnabledBindingsByModelUIDs(ctx context.Context, modelUIDs []string) ([]PluginBinding, error) {
+	bindings, err := dao.bindingColl.Find(ctx, bson.M{
+		"model_uid": bson.M{"$in": modelUIDs},
+		"enabled":   true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
+	}
+	return bindings, nil
+}
+
+func (dao *pluginDAO) UpdatePluginEnabled(ctx context.Context, uid string, enabled bool) error {
+	res, err := dao.pluginColl.UpdateOne(ctx,
+		bson.M{"uid": uid},
+		bson.M{
+			"$set": bson.M{
+				"enabled": enabled,
+				"utime":   time.Now().UnixMilli(),
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("更新插件状态失败: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return fmt.Errorf("插件查询: %w", errs.ErrNotFound)
+	}
+	return nil
+}
+
+func (dao *pluginDAO) DeletePlugin(ctx context.Context, uid string) error {
+	res, err := dao.pluginColl.DeleteOne(ctx, bson.M{"uid": uid})
+	if err != nil {
+		return fmt.Errorf("删除插件失败: %w", err)
+	}
+	if res.DeletedCount == 0 {
+		return fmt.Errorf("插件查询: %w", errs.ErrNotFound)
+	}
+	return nil
+}
+
+func (dao *pluginDAO) DeleteBindingsByPluginID(ctx context.Context, pluginID string) error {
+	_, err := dao.bindingColl.DeleteMany(ctx, bson.M{"plugin_id": pluginID})
+	if err != nil {
+		return fmt.Errorf("删除插件绑定失败: %w", err)
+	}
+	return nil
 }

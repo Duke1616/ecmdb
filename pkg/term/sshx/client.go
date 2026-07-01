@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"unsafe"
 
 	"github.com/Duke1616/ecmdb/pkg/term"
 	"golang.org/x/crypto/ssh"
@@ -117,15 +118,15 @@ func Auth(gateway term.Endpoint) (ssh.AuthMethod, error) {
 	case "passwd":
 		return ssh.Password(gateway.Password), nil
 	case "passphrase":
-		privateKeyBytes := []byte(gateway.PrivateKey)
-		passwordBytes := []byte(gateway.Password)
+		privateKeyBytes := stringToBytes(gateway.PrivateKey)
+		passwordBytes := stringToBytes(gateway.Password)
 		signer, err := ssh.ParsePrivateKeyWithPassphrase(privateKeyBytes, passwordBytes)
 		if err != nil {
 			return nil, fmt.Errorf("解析私钥失败: %v", err)
 		}
 		return ssh.PublicKeys(signer), nil
 	case "publickey":
-		privateKeyBytes := []byte(gateway.PrivateKey)
+		privateKeyBytes := stringToBytes(gateway.PrivateKey)
 		signer, err := ssh.ParsePrivateKey(privateKeyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("解析私钥失败: %v", err)
@@ -135,4 +136,11 @@ func Auth(gateway term.Endpoint) (ssh.AuthMethod, error) {
 	}
 
 	return nil, fmt.Errorf("无可匹配认证类型, 请进行绑定")
+}
+
+func stringToBytes(s string) []byte {
+	if s == "" {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }

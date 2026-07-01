@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	model "github.com/Duke1616/ecmdb/internal/service/model"
@@ -28,8 +29,26 @@ type Service interface {
 	// UpsertBinding 创建或更新插件和资源模型之间的输入树。
 	UpsertBinding(ctx context.Context, b pluginx.Binding) error
 
+	// ListPlugins 查询插件目录。
+	ListPlugins(ctx context.Context) ([]PluginListItem, error)
+
+	// GetPluginDetail 查询插件详情。
+	GetPluginDetail(ctx context.Context, uid string) (PluginDetail, error)
+
+	// ListEnums 查询插件管理所需枚举。
+	ListEnums(ctx context.Context) (PluginManagementEnums, error)
+
+	// TogglePlugin 切换插件启用状态。
+	TogglePlugin(ctx context.Context, uid string, enabled bool) error
+
+	// DeletePlugin 删除插件。
+	DeletePlugin(ctx context.Context, uid string) error
+
 	// ListResourceActions 查询指定资源可以使用的插件动作。
 	ListResourceActions(ctx context.Context, resourceID int64) ([]pluginx.ResourceAction, error)
+
+	// ListModelActions 查询指定模型配置的插件动作。
+	ListModelActions(ctx context.Context, modelUID string) ([]pluginx.ResourceAction, error)
 
 	// ResolveAction 解析插件动作需要的 UI 和输入数据。
 	ResolveAction(ctx context.Context, req pluginx.ResolveRequest) (pluginx.ResolveResult, error)
@@ -97,49 +116,6 @@ func (s *service) UpsertBinding(ctx context.Context, b pluginx.Binding) error {
 	return s.repo.UpsertBinding(ctx, b)
 }
 
-func (s *service) ListResourceActions(ctx context.Context, resourceID int64) ([]pluginx.ResourceAction, error) {
-	primary, err := s.resolver.loadResource(ctx, resourceID, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	bindings, err := s.repo.ListEnabledBindingsByModelUID(ctx, primary.ModelUID)
-	if err != nil {
-		return nil, err
-	}
-
-	actions := make([]pluginx.ResourceAction, 0, len(bindings))
-	for _, binding := range bindings {
-		bindingActions, err := s.resourceActionsForBinding(ctx, primary, binding)
-		if err != nil {
-			return nil, err
-		}
-		actions = append(actions, bindingActions...)
-	}
-
-	return actions, nil
-}
-
-func (s *service) resourceActionsForBinding(
-	ctx context.Context,
-	primary domain.Resource,
-	binding domain.PluginBinding,
-) ([]pluginx.ResourceAction, error) {
-	plugin, ok, err := s.loadEnabledPlugin(ctx, binding.PluginID)
-	if err != nil || !ok {
-		return nil, err
-	}
-
-	ok, err = s.resolver.bindingSatisfied(ctx, primary, binding)
-	if err != nil || !ok {
-		return nil, err
-	}
-
-	return lo.Map(plugin.Actions, func(action domain.PluginActionSpec, _ int) pluginx.ResourceAction {
-		return toResourceAction(plugin, action)
-	}), nil
-}
-
 func (s *service) ResolveAction(ctx context.Context, req pluginx.ResolveRequest) (pluginx.ResolveResult, error) {
 	actionCtx, err := s.ResolveActionContext(ctx, req)
 	if err != nil {
@@ -161,7 +137,9 @@ func (s *service) ResolveActionContext(ctx context.Context, req pluginx.ResolveR
 	inputs, err := s.resolver.resolve(ctx, target.resource, target.binding.Specs)
 	if err != nil {
 		if errors.Is(err, errRequiredInputMissing) {
-			return pluginx.ActionContext{}, fmt.Errorf("插件动作缺少必需输入")
+			return pluginx.ActionContext{}, errs.ValidationError.WithMsg(
+				fmt.Sprintf("插件动作缺少必需输入: %s", missingInputMessage(err)),
+			)
 		}
 		return pluginx.ActionContext{}, err
 	}

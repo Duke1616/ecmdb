@@ -9,8 +9,6 @@ import (
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
 )
 
-var errRequiredInputMissing = errors.New("plugin required input missing")
-
 // resourceReader 定义插件输入解析过程中需要读取的资源能力。
 type resourceReader interface {
 	// FindResourceById 查询单个资源，并只加载插件声明需要的字段。
@@ -60,34 +58,33 @@ func (r *inputResolver) resolve(
 	primary domain.Resource,
 	specs []pluginx.ResourceSpec,
 ) (map[string]pluginx.ResolvedInput, error) {
-	inputs, ok, err := r.resolveSpecs(ctx, primary, specs, true)
+	inputs, err := r.resolveSpecsWithPath(ctx, primary, specs, true, "")
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, errRequiredInputMissing
 	}
 	return inputs, nil
 }
 
-func (r *inputResolver) resolveSpecs(
+func (r *inputResolver) resolveSpecsWithPath(
 	ctx context.Context,
 	base domain.Resource,
 	specs []pluginx.ResourceSpec,
 	topLevel bool,
-) (map[string]pluginx.ResolvedInput, bool, error) {
+	parentPath string,
+) (map[string]pluginx.ResolvedInput, error) {
 	resolved := make(map[string]pluginx.ResolvedInput, len(specs))
 	for _, spec := range specs {
-		input, ok, err := r.resolveSpec(ctx, base, spec, topLevel)
+		path := joinSpecPath(parentPath, spec.Name)
+		input, ok, err := r.resolveSpec(ctx, base, spec, topLevel, path)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		if !ok && spec.Required {
-			return nil, false, nil
+			return nil, newMissingInputError(missingSpecReason(path, spec, base))
 		}
 		resolved[spec.Name] = input
 	}
-	return resolved, true, nil
+	return resolved, nil
 }
 
 func (r *inputResolver) resolveSpec(
@@ -95,33 +92,39 @@ func (r *inputResolver) resolveSpec(
 	base domain.Resource,
 	spec pluginx.ResourceSpec,
 	topLevel bool,
+	path string,
 ) (pluginx.ResolvedInput, bool, error) {
 	if topLevel && spec.RelationType == "" {
-		return r.resolveCenterInput(ctx, base, spec)
+		return r.resolveCenterInput(ctx, base, spec, path)
 	}
 
 	resources, err := r.loadRelatedResources(ctx, base, spec)
 	if err != nil {
 		return emptyInput(spec), false, err
 	}
-	return r.resolveResourceList(ctx, spec, resources)
+	return r.resolveResourceList(ctx, spec, resources, path)
 }
 
 func (r *inputResolver) resolveCenterInput(
 	ctx context.Context,
 	base domain.Resource,
 	spec pluginx.ResourceSpec,
+	path string,
 ) (pluginx.ResolvedInput, bool, error) {
 	if spec.ModelUID == "" {
 		return emptyInput(spec), !spec.Required, nil
 	}
 
-	var resource domain.Resource
-	var err error
-	if base.ModelUID == spec.ModelUID {
+	fields := specFields(spec)
+
+	var (
+		resource domain.Resource
+		err      error
+	)
+	if base.ModelUID == spec.ModelUID && resourceHasFields(base, fields) {
 		resource = base
 	} else {
-		resource, err = r.loadResource(ctx, base.ID, specFields(spec))
+		resource, err = r.loadResource(ctx, base.ID, fields)
 		if err != nil {
 			return emptyInput(spec), false, err
 		}
@@ -130,7 +133,7 @@ func (r *inputResolver) resolveCenterInput(
 		return emptyInput(spec), !spec.Required, nil
 	}
 
-	item, ok, err := r.resolveResource(ctx, resource, spec)
+	item, ok, err := r.resolveResource(ctx, resource, spec, path)
 	if err != nil || !ok {
 		return emptyInput(spec), ok, err
 	}
@@ -143,6 +146,7 @@ func (r *inputResolver) resolveResourceList(
 	ctx context.Context,
 	spec pluginx.ResourceSpec,
 	resources []domain.Resource,
+	path string,
 ) (pluginx.ResolvedInput, bool, error) {
 	resolved := emptyInput(spec)
 	if len(resources) == 0 {
@@ -150,7 +154,7 @@ func (r *inputResolver) resolveResourceList(
 	}
 
 	for _, resource := range resources {
-		item, ok, err := r.resolveResource(ctx, resource, spec)
+		item, ok, err := r.resolveResource(ctx, resource, spec, path)
 		if err != nil {
 			return resolved, false, err
 		}
@@ -166,10 +170,12 @@ func (r *inputResolver) resolveResource(
 	ctx context.Context,
 	resource domain.Resource,
 	spec pluginx.ResourceSpec,
+	path string,
 ) (pluginx.ResolvedResource, bool, error) {
 	fields := resolveFields(resource, spec)
-	if !requiredFieldsSatisfied(spec.RequiredFields, fields) {
-		return pluginx.ResolvedResource{}, false, nil
+	missingFields := missingRequiredFields(spec.RequiredFields, fields)
+	if len(missingFields) > 0 {
+		return pluginx.ResolvedResource{}, false, newMissingInputError(missingFieldReasons(path, missingFields)...)
 	}
 
 	resolved := pluginx.ResolvedResource{
@@ -178,9 +184,9 @@ func (r *inputResolver) resolveResource(
 		Fields:     fields,
 	}
 
-	children, ok, err := r.resolveSpecs(ctx, resource, spec.Children, false)
-	if err != nil || !ok {
-		return pluginx.ResolvedResource{}, ok, err
+	children, err := r.resolveSpecsWithPath(ctx, resource, spec.Children, false, path)
+	if err != nil {
+		return pluginx.ResolvedResource{}, false, err
 	}
 	if len(children) > 0 {
 		resolved.Children = children
@@ -252,4 +258,13 @@ func (r *inputResolver) relatedIDs(
 	default:
 		return nil, fmt.Errorf("插件关联方向不能为空: %s.%s", base.ModelUID, spec.Name)
 	}
+}
+
+func resourceHasFields(resource domain.Resource, fields []string) bool {
+	for _, field := range fields {
+		if _, ok := resource.Data[field]; !ok {
+			return false
+		}
+	}
+	return true
 }

@@ -95,5 +95,5 @@ grpc:
 plugin:
   builtin:
     tenant:
-      access_key: ""
-      secret_key: ""
+      access_key: "AK6b8b0e8cda13a37bfa2b39dc"
+      secret_key: "f8d55a305e9ea2be9f39dfec1a7e44ba1f0340b0800e28ea"

@@ -104,6 +104,14 @@ func initPluginIndexes(db *mongox.DB) error {
 		{
 			Keys: bson.D{
 				{Key: "tenant_id", Value: 1},
+				{Key: "plugin_id", Value: 1},
+				{Key: "model_uid", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
 				{Key: "model_uid", Value: 1},
 				{Key: "enabled", Value: 1},
 			},

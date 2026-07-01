@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"strings"
 
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
 )
@@ -39,8 +40,20 @@ func validateResolveRequest(req pluginx.ResolveRequest) error {
 	if req.Action == "" {
 		return fmt.Errorf("action 不能为空")
 	}
-	if req.ResourceID <= 0 {
+	return validateResourceID(req.ResourceID)
+}
+
+func validateResourceID(resourceID int64) error {
+	if resourceID <= 0 {
 		return fmt.Errorf("resource_id 参数错误")
 	}
 	return nil
+}
+
+func normalizeModelUID(modelUID string) (string, error) {
+	modelUID = strings.TrimSpace(modelUID)
+	if modelUID == "" {
+		return "", fmt.Errorf("model_uid 不能为空")
+	}
+	return modelUID, nil
 }

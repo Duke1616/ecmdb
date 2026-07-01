@@ -42,9 +42,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/binding/upsert", h.Capability("保存插件绑定", "binding_upsert").
 		Handle(ginx.WrapBody[pluginx.Binding](h.UpsertBinding)),
 	)
-	g.POST("/toggle", h.Capability("切换插件状态", "toggle").
-		Handle(ginx.WrapBody[TogglePluginReq](h.TogglePlugin)),
-	)
 	g.POST("/delete", h.Capability("删除插件", "delete").
 		Handle(ginx.WrapBody[DeletePluginReq](h.DeletePlugin)),
 	)
@@ -56,6 +53,9 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 	g.POST("/action/resolve", h.Capability("解析插件动作", "action_resolve").
 		Handle(ginx.WrapBody[pluginx.ResolveRequest](h.ResolveAction)),
+	)
+	g.POST("/sync-default-schema", h.Capability("同步默认模型", "sync_default_schema").
+		Handle(ginx.WrapBody[SyncDefaultSchemaReq](h.SyncDefaultSchema)),
 	)
 }
 
@@ -120,13 +120,6 @@ func (h *Handler) UpsertBinding(ctx *gin.Context, req pluginx.Binding) (ginx.Res
 	return ginx.Result{Msg: "保存插件绑定成功"}, nil
 }
 
-func (h *Handler) TogglePlugin(ctx *gin.Context, req TogglePluginReq) (ginx.Result, error) {
-	if err := h.svc.TogglePlugin(ctx.Request.Context(), req.UID, req.Enabled); err != nil {
-		return ginx.Result{Msg: "切换插件状态失败"}, err
-	}
-	return ginx.Result{Msg: "切换插件状态成功"}, nil
-}
-
 func (h *Handler) DeletePlugin(ctx *gin.Context, req DeletePluginReq) (ginx.Result, error) {
 	if err := h.svc.DeletePlugin(ctx.Request.Context(), req.UID); err != nil {
 		return ginx.Result{Msg: "删除插件失败"}, err
@@ -175,4 +168,15 @@ func (h *Handler) ResolveAction(ctx *gin.Context, req pluginx.ResolveRequest) (g
 		Msg:  "解析插件动作成功",
 		Data: result,
 	}, nil
+}
+
+func (h *Handler) SyncDefaultSchema(ctx *gin.Context, req SyncDefaultSchemaReq) (ginx.Result, error) {
+	if err := h.svc.SyncDefaultSchema(ctx.Request.Context(), req.PluginID); err != nil {
+		return ginx.Result{Msg: "同步默认模型失败"}, err
+	}
+	return ginx.Result{Msg: "同步默认模型成功"}, nil
+}
+
+type SyncDefaultSchemaReq struct {
+	PluginID string `json:"plugin_id" binding:"required"`
 }

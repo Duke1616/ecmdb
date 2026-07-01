@@ -55,9 +55,8 @@ func TestResolveReturnsFriendlyMissingInputMessage(t *testing.T) {
 	svc := &service{
 		repo: &stubPluginRepo{
 			plugin: domain.Plugin{
-				UID:     "builtin.ssh",
-				Name:    "SSH",
-				Enabled: true,
+				UID:  "builtin.ssh",
+				Name: "SSH",
 				Actions: []domain.PluginActionSpec{
 					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal},
 				},
@@ -128,9 +127,8 @@ func TestResolveActionContextReloadsTopLevelFields(t *testing.T) {
 	svc := &service{
 		repo: &stubPluginRepo{
 			plugin: domain.Plugin{
-				UID:     "builtin.ssh",
-				Name:    "SSH",
-				Enabled: true,
+				UID:  "builtin.ssh",
+				Name: "SSH",
 				Actions: []domain.PluginActionSpec{
 					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal},
 				},

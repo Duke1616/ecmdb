@@ -17,8 +17,11 @@ import (
 )
 
 type Service interface {
-	// SyncBuiltinDefinitions 导入系统内置插件定义包。
-	SyncBuiltinDefinitions(ctx context.Context) error
+	// RegisterBuiltinPlugins 仅注册引导注册系统内置插件元数据（包含 input_specs 元数据约束表）。
+	RegisterBuiltinPlugins(ctx context.Context) error
+
+	// SyncDefaultSchema 供租户在前端按需一键同步激活内置模型的 Model 和默认 Binding。
+	SyncDefaultSchema(ctx context.Context, pluginID string) error
 
 	// RegisterDefinition 保存 SDK 注册出来的插件定义包。
 	RegisterDefinition(ctx context.Context, def pluginx.Definition) error
@@ -37,9 +40,6 @@ type Service interface {
 
 	// ListEnums 查询插件管理所需枚举。
 	ListEnums(ctx context.Context) (PluginManagementEnums, error)
-
-	// TogglePlugin 切换插件启用状态。
-	TogglePlugin(ctx context.Context, uid string, enabled bool) error
 
 	// DeletePlugin 删除插件。
 	DeletePlugin(ctx context.Context, uid string) error
@@ -169,9 +169,6 @@ func (s *service) loadActionTarget(ctx context.Context, req pluginx.ResolveReque
 	if err != nil {
 		return actionTarget{}, err
 	}
-	if !plugin.Enabled {
-		return actionTarget{}, fmt.Errorf("插件已禁用")
-	}
 
 	action, ok := findAction(plugin.Actions, req.Action)
 	if !ok {
@@ -186,12 +183,8 @@ func (s *service) loadActionTarget(ctx context.Context, req pluginx.ResolveReque
 	}, nil
 }
 
-func (s *service) loadEnabledPlugin(ctx context.Context, pluginID string) (domain.Plugin, bool, error) {
-	plugin, err := s.repo.GetPlugin(ctx, pluginID)
-	if err != nil {
-		return domain.Plugin{}, false, err
-	}
-	return plugin, plugin.Enabled, nil
+func (s *service) loadPlugin(ctx context.Context, pluginID string) (domain.Plugin, error) {
+	return s.repo.GetPlugin(ctx, pluginID)
 }
 
 func (s *service) findBinding(ctx context.Context, modelUID string, pluginID string) (domain.PluginBinding, error) {

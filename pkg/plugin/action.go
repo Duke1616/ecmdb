@@ -32,16 +32,15 @@ func ValidRelationType(relationType string) bool {
 }
 
 type Plugin struct {
-	ID      int64          `json:"id"`
-	UID     string         `json:"uid"`
-	Name    string         `json:"name"`
-	Type    string         `json:"type"`
-	Version string         `json:"version"`
-	Enabled bool           `json:"enabled"`
-	Actions []ActionSpec   `json:"actions"`
-	Config  map[string]any `json:"config,omitempty"`
-	Ctime   int64          `json:"ctime,omitempty"`
-	Utime   int64          `json:"utime,omitempty"`
+	ID         int64          `json:"id"`
+	UID        string         `json:"uid"`
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
+	Version    string         `json:"version"`
+	Actions    []ActionSpec   `json:"actions"`
+	InputSpecs []ResourceSpec `json:"input_specs,omitempty"`
+	Ctime      int64          `json:"ctime,omitempty"`
+	Utime      int64          `json:"utime,omitempty"`
 }
 
 type ActionSpec struct {
@@ -60,7 +59,6 @@ type Binding struct {
 	ModelUID string         `json:"model_uid"`
 	Enabled  bool           `json:"enabled"`
 	Specs    []ResourceSpec `json:"specs"`
-	Config   map[string]any `json:"config,omitempty"`
 	Ctime    int64          `json:"ctime,omitempty"`
 	Utime    int64          `json:"utime,omitempty"`
 }

@@ -3,18 +3,46 @@ package plugin
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/errs"
 	sshplugin "github.com/Duke1616/ecmdb/internal/plugin/ssh"
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
 )
 
-func (s *service) SyncBuiltinDefinitions(ctx context.Context) error {
+func (s *service) RegisterBuiltinPlugins(ctx context.Context) error {
 	for _, def := range builtinDefinitions() {
-		if err := s.importDefinition(ctx, def); err != nil {
+		if err := s.syncBuiltinPlugin(ctx, def.Plugin); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *service) SyncDefaultSchema(ctx context.Context, pluginID string) error {
+	var targetDef *pluginx.Definition
+	for _, def := range builtinDefinitions() {
+		if def.Plugin.UID == pluginID {
+			targetDef = &def
+			break
+		}
+	}
+	if targetDef == nil {
+		return fmt.Errorf("未找到对应的内置插件定义: %s", pluginID)
+	}
+
+	// 按需导入内置的模型、属性组、以及模型关联类型关系
+	if err := s.importSchema(ctx, targetDef.Schema); err != nil {
+		return err
+	}
+
+	// 同步生成对应的内置默认 Binding 记录
+	for _, binding := range targetDef.Bindings {
+		if err := s.syncBuiltinBinding(ctx, binding); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -45,8 +73,6 @@ func (s *service) keepPluginRuntimeState(ctx context.Context, next pluginx.Plugi
 	switch {
 	case err == nil:
 		next.ID = existing.ID
-		next.Enabled = existing.Enabled
-		next.Config = existing.Config
 		return next, nil
 	case errors.Is(err, errs.ErrNotFound):
 		return next, nil
@@ -61,7 +87,6 @@ func (s *service) keepBindingRuntimeState(ctx context.Context, next pluginx.Bind
 	case err == nil:
 		next.ID = existing.ID
 		next.Enabled = existing.Enabled
-		next.Config = existing.Config
 		return next, nil
 	case errors.Is(err, errs.ErrNotFound):
 		return next, nil

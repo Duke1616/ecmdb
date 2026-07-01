@@ -80,12 +80,9 @@ func (s *service) listActionsByBindings(
 
 	actions := make([]pluginx.ResourceAction, 0, len(bindings))
 	for _, binding := range bindings {
-		plugin, enabled, err := s.loadCachedEnabledPlugin(ctx, binding.PluginID, pluginCache)
+		plugin, err := s.loadCachedPlugin(ctx, binding.PluginID, pluginCache)
 		if err != nil {
 			return nil, err
-		}
-		if !enabled {
-			continue
 		}
 
 		ok, err := match(binding, plugin)
@@ -107,19 +104,19 @@ func pluginActions(plugin domain.Plugin) []pluginx.ResourceAction {
 	})
 }
 
-func (s *service) loadCachedEnabledPlugin(
+func (s *service) loadCachedPlugin(
 	ctx context.Context,
 	pluginID string,
 	pluginCache map[string]domain.Plugin,
-) (domain.Plugin, bool, error) {
+) (domain.Plugin, error) {
 	if plugin, ok := pluginCache[pluginID]; ok {
-		return plugin, plugin.Enabled, nil
+		return plugin, nil
 	}
 
-	plugin, enabled, err := s.loadEnabledPlugin(ctx, pluginID)
+	plugin, err := s.loadPlugin(ctx, pluginID)
 	if err != nil {
-		return domain.Plugin{}, false, err
+		return domain.Plugin{}, err
 	}
 	pluginCache[pluginID] = plugin
-	return plugin, enabled, nil
+	return plugin, nil
 }

@@ -19,7 +19,6 @@ type PluginListItem struct {
 	Name         string               `json:"name"`
 	Type         string               `json:"type"`
 	Version      string               `json:"version"`
-	Enabled      bool                 `json:"enabled"`
 	ActionCount  int                  `json:"action_count"`
 	BindingCount int                  `json:"binding_count"`
 	BoundModels  []PluginBoundModel   `json:"bound_models"`
@@ -45,7 +44,6 @@ type PluginBindingDetail struct {
 	ModelIcon string                 `json:"model_icon,omitempty"`
 	Enabled   bool                   `json:"enabled"`
 	Specs     []pluginx.ResourceSpec `json:"specs"`
-	Config    map[string]any         `json:"config,omitempty"`
 }
 
 type PluginDetail struct {
@@ -114,7 +112,6 @@ func (s *service) ListPlugins(ctx context.Context) ([]PluginListItem, error) {
 			Name:         item.Name,
 			Type:         item.Type,
 			Version:      item.Version,
-			Enabled:      item.Enabled,
 			ActionCount:  len(item.Actions),
 			BindingCount: len(pluginBindings),
 			BoundModels:  buildBoundModels(pluginBindings, modelMeta),
@@ -161,7 +158,6 @@ func (s *service) GetPluginDetail(ctx context.Context, uid string) (PluginDetail
 			ModelIcon: meta.Icon,
 			Enabled:   binding.Enabled,
 			Specs:     binding.Specs,
-			Config:    binding.Config,
 		})
 	}
 
@@ -230,13 +226,7 @@ func (s *service) ListEnums(ctx context.Context) (PluginManagementEnums, error) 
 	}, nil
 }
 
-func (s *service) TogglePlugin(ctx context.Context, uid string, enabled bool) error {
-	uid = strings.TrimSpace(uid)
-	if uid == "" {
-		return fmt.Errorf("plugin uid 不能为空")
-	}
-	return s.repo.UpdatePluginEnabled(ctx, uid, enabled)
-}
+
 
 func (s *service) DeletePlugin(ctx context.Context, uid string) error {
 	uid = strings.TrimSpace(uid)

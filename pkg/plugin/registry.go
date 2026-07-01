@@ -42,7 +42,6 @@ func NewRegistry(uid string, name string, opts ...Option) *Registry {
 			Name:    name,
 			Type:    "custom",
 			Version: "1.0.0",
-			Enabled: true,
 		},
 	}
 	for _, opt := range opts {
@@ -99,6 +98,14 @@ func (r *Registry) Definition() (Definition, error) {
 	if r.plugin.Name == "" {
 		return Definition{}, fmt.Errorf("plugin name is required")
 	}
+
+	// 动态填充 InputSpecs，确保即使没有任何 bindings 记录，约束定义也常驻在插件主数据里
+	var inputSpecs []ResourceSpec
+	for _, binding := range r.bindings {
+		inputSpecs = append(inputSpecs, binding.Specs...)
+	}
+	r.plugin.InputSpecs = inputSpecs
+
 	return Definition{
 		Plugin:   r.plugin,
 		Schema:   r.schema,
@@ -130,7 +137,7 @@ func Version(value string) Option {
 
 func Enabled(value bool) Option {
 	return func(p *Plugin) {
-		p.Enabled = value
+		// 已废弃，无动作，插件状态已完全收口至 Binding 层的 Enabled
 	}
 }
 

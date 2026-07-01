@@ -39,9 +39,6 @@ type PluginRepository interface {
 	// ListEnabledBindingsByModelUIDs 批量查询指定模型启用中的插件绑定。
 	ListEnabledBindingsByModelUIDs(ctx context.Context, modelUIDs []string) ([]domain.PluginBinding, error)
 
-	// UpdatePluginEnabled 更新插件启用状态。
-	UpdatePluginEnabled(ctx context.Context, uid string, enabled bool) error
-
 	// DeletePlugin 删除插件及其绑定。
 	DeletePlugin(ctx context.Context, uid string) error
 }
@@ -56,14 +53,13 @@ func NewPluginRepository(dao dao.PluginDAO) PluginRepository {
 
 func (repo *pluginRepository) UpsertPlugin(ctx context.Context, p domain.Plugin) error {
 	return repo.dao.UpsertPlugin(ctx, dao.Plugin{
-		Id:      p.ID,
-		UID:     p.UID,
-		Name:    p.Name,
-		Type:    p.Type,
-		Version: p.Version,
-		Enabled: p.Enabled,
-		Actions: p.Actions,
-		Config:  p.Config,
+		Id:         p.ID,
+		UID:        p.UID,
+		Name:       p.Name,
+		Type:       p.Type,
+		Version:    p.Version,
+		Actions:    p.Actions,
+		InputSpecs: p.InputSpecs,
 	})
 }
 
@@ -75,7 +71,6 @@ func (repo *pluginRepository) UpsertBinding(ctx context.Context, b domain.Plugin
 		ModelUID: b.ModelUID,
 		Enabled:  b.Enabled,
 		Specs:    b.Specs,
-		Config:   b.Config,
 	})
 }
 
@@ -85,16 +80,15 @@ func (repo *pluginRepository) GetPlugin(ctx context.Context, uid string) (domain
 		return domain.Plugin{}, err
 	}
 	return domain.Plugin{
-		ID:      p.Id,
-		UID:     p.UID,
-		Name:    p.Name,
-		Type:    p.Type,
-		Version: p.Version,
-		Enabled: p.Enabled,
-		Actions: p.Actions,
-		Config:  p.Config,
-		Ctime:   time.UnixMilli(p.Ctime).UnixMilli(),
-		Utime:   time.UnixMilli(p.Utime).UnixMilli(),
+		ID:         p.Id,
+		UID:        p.UID,
+		Name:       p.Name,
+		Type:       p.Type,
+		Version:    p.Version,
+		Actions:    p.Actions,
+		InputSpecs: p.InputSpecs,
+		Ctime:      time.UnixMilli(p.Ctime).UnixMilli(),
+		Utime:      time.UnixMilli(p.Utime).UnixMilli(),
 	}, nil
 }
 
@@ -110,7 +104,6 @@ func (repo *pluginRepository) GetBinding(ctx context.Context, uid string) (domai
 		ModelUID: b.ModelUID,
 		Enabled:  b.Enabled,
 		Specs:    b.Specs,
-		Config:   b.Config,
 		Ctime:    time.UnixMilli(b.Ctime).UnixMilli(),
 		Utime:    time.UnixMilli(b.Utime).UnixMilli(),
 	}, nil
@@ -125,16 +118,15 @@ func (repo *pluginRepository) ListPlugins(ctx context.Context) ([]domain.Plugin,
 	res := make([]domain.Plugin, 0, len(plugins))
 	for _, plugin := range plugins {
 		res = append(res, domain.Plugin{
-			ID:      plugin.Id,
-			UID:     plugin.UID,
-			Name:    plugin.Name,
-			Type:    plugin.Type,
-			Version: plugin.Version,
-			Enabled: plugin.Enabled,
-			Actions: plugin.Actions,
-			Config:  plugin.Config,
-			Ctime:   time.UnixMilli(plugin.Ctime).UnixMilli(),
-			Utime:   time.UnixMilli(plugin.Utime).UnixMilli(),
+			ID:         plugin.Id,
+			UID:        plugin.UID,
+			Name:       plugin.Name,
+			Type:       plugin.Type,
+			Version:    plugin.Version,
+			Actions:    plugin.Actions,
+			InputSpecs: plugin.InputSpecs,
+			Ctime:      time.UnixMilli(plugin.Ctime).UnixMilli(),
+			Utime:      time.UnixMilli(plugin.Utime).UnixMilli(),
 		})
 	}
 	return res, nil
@@ -180,10 +172,6 @@ func (repo *pluginRepository) ListEnabledBindingsByModelUIDs(ctx context.Context
 	return toPluginBindings(bindings), nil
 }
 
-func (repo *pluginRepository) UpdatePluginEnabled(ctx context.Context, uid string, enabled bool) error {
-	return repo.dao.UpdatePluginEnabled(ctx, uid, enabled)
-}
-
 func (repo *pluginRepository) DeletePlugin(ctx context.Context, uid string) error {
 	if err := repo.dao.DeleteBindingsByPluginID(ctx, uid); err != nil {
 		return err
@@ -201,7 +189,6 @@ func toPluginBindings(bindings []dao.PluginBinding) []domain.PluginBinding {
 			ModelUID: binding.ModelUID,
 			Enabled:  binding.Enabled,
 			Specs:    binding.Specs,
-			Config:   binding.Config,
 			Ctime:    time.UnixMilli(binding.Ctime).UnixMilli(),
 			Utime:    time.UnixMilli(binding.Utime).UnixMilli(),
 		})

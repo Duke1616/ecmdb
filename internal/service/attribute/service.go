@@ -178,6 +178,10 @@ func (s *service) SearchAllAttributeFieldsByModelUid(ctx context.Context, modelU
 }
 
 func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error) {
+	if err := s.validateAttributeForCreate(ctx, req); err != nil {
+		return 0, err
+	}
+
 	// NOTE: 分配稀疏索引，防止频繁更新
 	if req.SortKey == 0 {
 		maxSortKey, err := s.repo.GetMaxSortKeyByGroupID(ctx, req.GroupId)
@@ -190,7 +194,72 @@ func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (in
 }
 
 func (s *service) BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error {
+	if err := s.validateAttributesForBatchCreate(ctx, attrs); err != nil {
+		return err
+	}
 	return s.repo.BatchCreateAttribute(ctx, attrs)
+}
+
+func (s *service) validateAttributeForCreate(ctx context.Context, attr domain.Attribute) error {
+	if err := attr.ValidateForCreate(); err != nil {
+		return err
+	}
+	return s.ensureAttributeGroupBelongsToModel(ctx, attr.GroupId, attr.ModelUid)
+}
+
+func (s *service) validateAttributesForBatchCreate(ctx context.Context, attrs []domain.Attribute) error {
+	if len(attrs) == 0 {
+		return nil
+	}
+
+	groupIDs := make([]int64, 0, len(attrs))
+	for _, attr := range attrs {
+		if err := attr.ValidateForCreate(); err != nil {
+			return err
+		}
+		groupIDs = append(groupIDs, attr.GroupId)
+	}
+
+	groups, err := s.groupRepo.ListAttributeGroupByIds(ctx, lo.Uniq(groupIDs))
+	if err != nil {
+		return err
+	}
+	groupByID := lo.SliceToMap(groups, func(group domain.AttributeGroup) (int64, domain.AttributeGroup) {
+		return group.ID, group
+	})
+
+	for _, attr := range attrs {
+		group, ok := groupByID[attr.GroupId]
+		if !ok {
+			return fmt.Errorf("属性分组不存在: %d", attr.GroupId)
+		}
+		if group.ModelUid != attr.ModelUid {
+			return fmt.Errorf(
+				"属性分组不属于当前模型: group_id=%d, model_uid=%s, group_model_uid=%s",
+				attr.GroupId, attr.ModelUid, group.ModelUid,
+			)
+		}
+	}
+	return nil
+}
+
+func (s *service) ensureAttributeGroupBelongsToModel(ctx context.Context, groupID int64, modelUID string) error {
+	groups, err := s.groupRepo.ListAttributeGroupByIds(ctx, []int64{groupID})
+	if err != nil {
+		return err
+	}
+	if len(groups) == 0 {
+		return fmt.Errorf("属性分组不存在: %d", groupID)
+	}
+
+	group := groups[0]
+	if group.ModelUid != modelUID {
+		return fmt.Errorf(
+			"属性分组不属于当前模型: group_id=%d, model_uid=%s, group_model_uid=%s",
+			groupID, modelUID, group.ModelUid,
+		)
+	}
+	return nil
 }
 
 func (s *service) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {

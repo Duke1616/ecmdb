@@ -19,6 +19,12 @@ type PluginRepository interface {
 	// UpdateBindingEnabled 更新绑定启停状态。
 	UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error
 
+	// DeleteBinding 删除插件绑定。
+	DeleteBinding(ctx context.Context, uid string) error
+
+	// GetBinding 根据绑定 UID 查询插件绑定。
+	GetBinding(ctx context.Context, uid string) (domain.PluginBinding, error)
+
 	// GetPlugin 根据插件 UID 查询插件定义。
 	GetPlugin(ctx context.Context, uid string) (domain.Plugin, error)
 
@@ -70,6 +76,18 @@ func (repo *pluginRepository) UpsertBinding(ctx context.Context, b domain.Plugin
 
 func (repo *pluginRepository) UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error {
 	return repo.dao.UpdateBindingEnabled(ctx, uid, enabled)
+}
+
+func (repo *pluginRepository) DeleteBinding(ctx context.Context, uid string) error {
+	return repo.dao.DeleteBinding(ctx, uid)
+}
+
+func (repo *pluginRepository) GetBinding(ctx context.Context, uid string) (domain.PluginBinding, error) {
+	binding, err := repo.dao.GetBinding(ctx, uid)
+	if err != nil {
+		return domain.PluginBinding{}, err
+	}
+	return toPluginBindings([]dao.PluginBinding{binding})[0], nil
 }
 
 func (repo *pluginRepository) GetPlugin(ctx context.Context, uid string) (domain.Plugin, error) {

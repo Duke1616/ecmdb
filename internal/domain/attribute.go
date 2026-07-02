@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type Attribute struct {
@@ -21,6 +22,29 @@ type Attribute struct {
 	Option    interface{}
 	Version   int64
 	Builtin   bool
+}
+
+func (a Attribute) ValidateForCreate() error {
+	var problems []string
+	if a.GroupId <= 0 {
+		problems = append(problems, "group_id 不能为空")
+	}
+	if strings.TrimSpace(a.ModelUid) == "" {
+		problems = append(problems, "model_uid 不能为空")
+	}
+	if strings.TrimSpace(a.FieldUid) == "" {
+		problems = append(problems, "field_uid 不能为空")
+	}
+	if strings.TrimSpace(a.FieldName) == "" {
+		problems = append(problems, "field_name 不能为空")
+	}
+	if strings.TrimSpace(a.FieldType) == "" {
+		problems = append(problems, "field_type 不能为空")
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%s", strings.Join(problems, "; "))
 }
 
 // GetID 实现 Sortable 接口

@@ -68,6 +68,12 @@ type PluginDAO interface {
 	// UpdateBindingEnabled 更新指定绑定的启停状态。
 	UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error
 
+	// DeleteBinding 删除指定绑定记录。
+	DeleteBinding(ctx context.Context, uid string) error
+
+	// GetBinding 根据 UID 查询绑定记录。
+	GetBinding(ctx context.Context, uid string) (PluginBinding, error)
+
 	// GetPlugin 根据 UID 查询插件存储记录。
 	GetPlugin(ctx context.Context, uid string) (Plugin, error)
 
@@ -200,6 +206,28 @@ func (dao *pluginDAO) UpdateBindingEnabled(ctx context.Context, uid string, enab
 		return fmt.Errorf("插件绑定查询: %w", errs.ErrNotFound)
 	}
 	return nil
+}
+
+func (dao *pluginDAO) DeleteBinding(ctx context.Context, uid string) error {
+	res, err := dao.bindingColl.DeleteOne(ctx, bson.M{"uid": uid})
+	if err != nil {
+		return fmt.Errorf("删除插件绑定失败: %w", err)
+	}
+	if res.DeletedCount == 0 {
+		return fmt.Errorf("插件绑定删除: %w", errs.ErrNotFound)
+	}
+	return nil
+}
+
+func (dao *pluginDAO) GetBinding(ctx context.Context, uid string) (PluginBinding, error) {
+	binding, err := dao.bindingColl.FindOne(ctx, bson.M{"uid": uid})
+	if err != nil {
+		if mongox.IsNotFoundError(err) {
+			return PluginBinding{}, fmt.Errorf("插件绑定查询: %w", errs.ErrNotFound)
+		}
+		return PluginBinding{}, fmt.Errorf("插件绑定查询失败: %w", err)
+	}
+	return *binding, nil
 }
 
 func (dao *pluginDAO) GetPlugin(ctx context.Context, uid string) (Plugin, error) {

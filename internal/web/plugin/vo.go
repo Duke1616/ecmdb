@@ -1,6 +1,5 @@
 package web
 
-type UpdateBindingEnabledReq struct {
-	UID     string `json:"uid" binding:"required"`
-	Enabled bool   `json:"enabled"`
+type ListResourceActionsBatchReq struct {
+	ResourceIDs []int64 `json:"resource_ids" binding:"required"`
 }

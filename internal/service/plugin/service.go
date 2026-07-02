@@ -29,8 +29,11 @@ type Service interface {
 	// SaveBindings 保存某个插件的绑定图；若绑定模型命中内置默认定义，则自动导入对应 Schema。
 	SaveBindings(ctx context.Context, req domain.SavePluginBindings) error
 
-	// UpdateBindingEnabled 更新单个绑定的启停状态。
-	UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error
+	// ToggleBindingStatus 切换单个绑定的启停状态，并返回切换后的状态。
+	ToggleBindingStatus(ctx context.Context, uid string) (bool, error)
+
+	// DeleteBinding 删除单个插件绑定。
+	DeleteBinding(ctx context.Context, uid string) error
 
 	// ListPlugins 查询插件目录。
 	ListPlugins(ctx context.Context) ([]domain.PluginListItem, error)
@@ -41,11 +44,8 @@ type Service interface {
 	// ListEnums 查询插件管理所需枚举。
 	ListEnums(ctx context.Context) (domain.PluginManagementEnums, error)
 
-	// ListResourceActions 查询指定资源可以使用的插件动作。
-	ListResourceActions(ctx context.Context, resourceID int64) ([]pluginx.ResourceAction, error)
-
-	// ListModelActions 查询指定模型配置的插件动作。
-	ListModelActions(ctx context.Context, modelUID string) ([]pluginx.ResourceAction, error)
+	// ListResourceActionsBatch 批量查询多个资源可以使用的插件动作。
+	ListResourceActionsBatch(ctx context.Context, resourceIDs []int64) ([]pluginx.ResourceActions, error)
 
 	// ResolveAction 解析插件动作需要的 UI 和输入数据。
 	ResolveAction(ctx context.Context, req pluginx.ResolveRequest) (pluginx.ResolveResult, error)
@@ -144,13 +144,31 @@ func (s *service) SaveBindings(ctx context.Context, req domain.SavePluginBinding
 	return s.savePreparedBindings(ctx, plan.bindings)
 }
 
-func (s *service) UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error {
+func (s *service) ToggleBindingStatus(ctx context.Context, uid string) (bool, error) {
+	uid = strings.TrimSpace(uid)
+	if uid == "" {
+		return false, fmt.Errorf("binding uid 不能为空")
+	}
+
+	binding, err := s.repo.GetBinding(ctx, uid)
+	if err != nil {
+		return false, err
+	}
+
+	nextEnabled := !binding.Enabled
+	if err = s.repo.UpdateBindingEnabled(ctx, uid, nextEnabled); err != nil {
+		return false, err
+	}
+	return nextEnabled, nil
+}
+
+func (s *service) DeleteBinding(ctx context.Context, uid string) error {
 	uid = strings.TrimSpace(uid)
 	if uid == "" {
 		return fmt.Errorf("binding uid 不能为空")
 	}
 
-	return s.repo.UpdateBindingEnabled(ctx, uid, enabled)
+	return s.repo.DeleteBinding(ctx, uid)
 }
 
 func (s *service) ListPlugins(ctx context.Context) ([]domain.PluginListItem, error) {
@@ -308,37 +326,60 @@ func (s *service) ListEnums(ctx context.Context) (domain.PluginManagementEnums, 
 	}, nil
 }
 
-func (s *service) ListResourceActions(ctx context.Context, resourceID int64) ([]pluginx.ResourceAction, error) {
-	if err := pluginx.ValidateResourceID(resourceID); err != nil {
-		return nil, err
+func (s *service) ListResourceActionsBatch(ctx context.Context, resourceIDs []int64) ([]pluginx.ResourceActions, error) {
+	if len(resourceIDs) == 0 {
+		return []pluginx.ResourceActions{}, nil
 	}
 
-	primary, err := s.resolver.loadResource(ctx, resourceID, nil)
+	normalizedIDs := make([]int64, 0, len(resourceIDs))
+	for _, resourceID := range resourceIDs {
+		if err := pluginx.ValidateResourceID(resourceID); err != nil {
+			return nil, err
+		}
+		normalizedIDs = append(normalizedIDs, resourceID)
+	}
+
+	resources, err := s.resolver.resources.ListResourceByIds(ctx, []string{}, lo.Uniq(normalizedIDs))
 	if err != nil {
 		return nil, err
 	}
 
-	return s.listActionsForResource(ctx, primary)
-}
+	resourceMap := lo.SliceToMap(resources, func(item domain.Resource) (int64, domain.Resource) {
+		return item.ID, item
+	})
+	bindingCache := make(map[string][]domain.PluginBinding)
+	pluginCache := make(map[string]domain.Plugin)
 
-func (s *service) ListModelActions(ctx context.Context, modelUID string) ([]pluginx.ResourceAction, error) {
-	uid, err := pluginx.NormalizeModelUID(modelUID)
-	if err != nil {
-		return nil, err
+	results := make([]pluginx.ResourceActions, 0, len(normalizedIDs))
+	for _, resourceID := range normalizedIDs {
+		resource, ok := resourceMap[resourceID]
+		if !ok {
+			return nil, fmt.Errorf("资源不存在: %d", resourceID)
+		}
+
+		bindings, ok := bindingCache[resource.ModelUID]
+		if !ok {
+			bindings, err = s.repo.ListEnabledBindingsByModelUID(ctx, resource.ModelUID)
+			if err != nil {
+				return nil, err
+			}
+			bindingCache[resource.ModelUID] = bindings
+		}
+
+		actions, err := s.listActionsByBindingsWithCache(ctx, bindings, func(binding domain.PluginBinding) (bool, error) {
+			return s.resolver.bindingSatisfied(ctx, resource, binding)
+		}, pluginCache)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, pluginx.ResourceActions{
+			ResourceID: resourceID,
+			Actions:    actions,
+		})
 	}
 
-	bindings, err := s.repo.ListEnabledBindingsByModelUID(ctx, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.listActionsByBindings(
-		ctx,
-		bindings,
-		func(binding domain.PluginBinding) (bool, error) {
-			return true, nil
-		},
-	)
+	return results, nil
 }
 
 func (s *service) ResolveAction(ctx context.Context, req pluginx.ResolveRequest) (pluginx.ResolveResult, error) {
@@ -471,13 +512,12 @@ func (s *service) listActionsForResource(ctx context.Context, primary domain.Res
 	)
 }
 
-func (s *service) listActionsByBindings(
+func (s *service) listActionsByBindingsWithCache(
 	ctx context.Context,
 	bindings []domain.PluginBinding,
 	match func(binding domain.PluginBinding) (bool, error),
+	pluginCache map[string]domain.Plugin,
 ) ([]pluginx.ResourceAction, error) {
-	pluginCache := make(map[string]domain.Plugin, len(bindings))
-
 	actions := make([]pluginx.ResourceAction, 0, len(bindings))
 	for _, binding := range bindings {
 		ok, err := match(binding)
@@ -496,6 +536,14 @@ func (s *service) listActionsByBindings(
 		actions = append(actions, plugin.ResourceActions()...)
 	}
 	return actions, nil
+}
+
+func (s *service) listActionsByBindings(
+	ctx context.Context,
+	bindings []domain.PluginBinding,
+	match func(binding domain.PluginBinding) (bool, error),
+) ([]pluginx.ResourceAction, error) {
+	return s.listActionsByBindingsWithCache(ctx, bindings, match, make(map[string]domain.Plugin, len(bindings)))
 }
 
 func (s *service) loadCachedPlugin(

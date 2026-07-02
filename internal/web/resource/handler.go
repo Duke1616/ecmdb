@@ -18,10 +18,10 @@ import (
 )
 
 type Handler struct {
-	svc     service.EncryptedSvc
-	attrSvc attributeservice.Service
+	svc      service.EncryptedSvc
+	attrSvc  attributeservice.Service
 	modelSvc modelservice.Service
-	RRSvc   relationservice.RelationResourceService
+	RRSvc    relationservice.RelationResourceService
 	capability.IRegistry
 }
 
@@ -55,7 +55,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 根据模型 UID 查询资产列表
 	g.POST("/list", h.Capability("资产列表", "view").
-		Needs("cmdb:model:view", "cmdb:attribute:view").
+		Needs("cmdb:model:view", "cmdb:attribute:view", "cmdb:plugin:actions").
 		Handle(ginx.WrapBody[ListResourceReq](h.ListResource)),
 	)
 

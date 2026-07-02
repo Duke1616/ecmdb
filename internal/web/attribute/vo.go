@@ -5,11 +5,11 @@ import (
 )
 
 type CreateAttributeReq struct {
-	GroupId   int64       `json:"group_id"`
-	FieldUid  string      `json:"field_uid"`
-	ModelUid  string      `json:"model_uid"`
-	FieldName string      `json:"field_name"`
-	FieldType string      `json:"field_type"`
+	GroupId   int64       `json:"group_id" binding:"required,gt=0"`
+	FieldUid  string      `json:"field_uid" binding:"required"`
+	ModelUid  string      `json:"model_uid" binding:"required"`
+	FieldName string      `json:"field_name" binding:"required"`
+	FieldType string      `json:"field_type" binding:"required"`
 	Secure    bool        `json:"secure"`
 	Required  bool        `json:"required"`
 	Link      bool        `json:"link"`

@@ -1,8 +1,6 @@
 package web
 
 import (
-	"strconv"
-
 	"github.com/Duke1616/ecmdb/internal/domain"
 	pluginservice "github.com/Duke1616/ecmdb/internal/service/plugin"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
@@ -31,25 +29,29 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.GET("/detail", h.Capability("插件详情", "get").
 		Handle(ginx.Wrap(h.GetPluginDetail)),
 	)
-	g.GET("/enums", h.Capability("插件枚举", "view").
+	g.GET("/enums", h.Capability("插件枚举", "enums").
+		NoSync().
 		Handle(ginx.Wrap(h.ListEnums)),
 	)
-	g.GET("/definition/default", h.Capability("查询默认插件定义", "binding_upsert").
+	g.GET("/definition/default", h.Capability("查询默认插件定义", "default").
+		NoSync().
 		Handle(ginx.Wrap(h.GetDefaultDefinition)),
 	)
-	g.POST("/bindings/save", h.Capability("保存插件绑定", "binding_upsert").
+	g.POST("/bindings/save", h.Capability("保存插件绑定", "create").
+		Needs("cmdb:plugin:default", "cmdb:attribute:view", "cmdb:model:list").
 		Handle(ginx.WrapBody[SaveBindingsReq](h.SaveBindings)),
 	)
-	g.POST("/binding/enabled", h.Capability("切换插件绑定状态", "binding_upsert").
-		Handle(ginx.WrapBody[UpdateBindingEnabledReq](h.UpdateBindingEnabled)),
+	g.PATCH("/binding/switch/:uid", h.Capability("切换插件绑定状态", "switch").
+		Handle(ginx.Wrap(h.SwitchBindingStatus)),
 	)
-	g.GET("/resource/actions", h.Capability("查询资源插件动作", "resource_actions").
-		Handle(ginx.Wrap(h.ListResourceActions)),
+	g.DELETE("/binding/delete/:uid", h.Capability("删除插件绑定", "delete").
+		Handle(ginx.Wrap(h.DeleteBinding)),
 	)
-	g.GET("/model/actions", h.Capability("查询模型插件动作", "model_actions").
-		Handle(ginx.Wrap(h.ListModelActions)),
+	g.POST("/resource/actions/batch", h.Capability("批量查询资源插件动作", "actions").
+		NoSync().
+		Handle(ginx.WrapBody[ListResourceActionsBatchReq](h.ListResourceActionsBatch)),
 	)
-	g.POST("/action/resolve", h.Capability("解析插件动作", "action_resolve").
+	g.POST("/action/resolve", h.Capability("解析插件动作", "resolve").
 		Handle(ginx.WrapBody[pluginx.ResolveRequest](h.ResolveAction)),
 	)
 }
@@ -117,40 +119,33 @@ func (h *Handler) SaveBindings(ctx *gin.Context, req SaveBindingsReq) (ginx.Resu
 	return ginx.Result{Msg: "保存插件绑定成功"}, nil
 }
 
-func (h *Handler) UpdateBindingEnabled(ctx *gin.Context, req UpdateBindingEnabledReq) (ginx.Result, error) {
-	if err := h.svc.UpdateBindingEnabled(ctx.Request.Context(), req.UID, req.Enabled); err != nil {
+func (h *Handler) SwitchBindingStatus(ctx *gin.Context) (ginx.Result, error) {
+	enabled, err := h.svc.ToggleBindingStatus(ctx.Request.Context(), ctx.Param("uid"))
+	if err != nil {
 		return ginx.Result{Msg: "更新插件绑定状态失败"}, err
 	}
-	return ginx.Result{Msg: "更新插件绑定状态成功"}, nil
-}
-
-func (h *Handler) ListResourceActions(ctx *gin.Context) (ginx.Result, error) {
-	resourceID, err := strconv.ParseInt(ctx.Query("resource_id"), 10, 64)
-	if err != nil {
-		return ginx.Result{Msg: "resource_id 参数错误"}, err
-	}
-
-	actions, err := h.svc.ListResourceActions(ctx.Request.Context(), resourceID)
-	if err != nil {
-		return ginx.Result{Msg: "查询插件动作失败"}, err
-	}
-
 	return ginx.Result{
-		Msg:  "查询插件动作成功",
-		Data: actions,
+		Msg:  "更新插件绑定状态成功",
+		Data: map[string]any{"enabled": enabled},
 	}, nil
 }
 
-func (h *Handler) ListModelActions(ctx *gin.Context) (ginx.Result, error) {
-	modelUID := ctx.Query("model_uid")
+func (h *Handler) DeleteBinding(ctx *gin.Context) (ginx.Result, error) {
+	uid := ctx.Param("uid")
+	if err := h.svc.DeleteBinding(ctx.Request.Context(), uid); err != nil {
+		return ginx.Result{Msg: "删除插件绑定失败"}, err
+	}
+	return ginx.Result{Msg: "删除插件绑定成功"}, nil
+}
 
-	actions, err := h.svc.ListModelActions(ctx.Request.Context(), modelUID)
+func (h *Handler) ListResourceActionsBatch(ctx *gin.Context, req ListResourceActionsBatchReq) (ginx.Result, error) {
+	actions, err := h.svc.ListResourceActionsBatch(ctx.Request.Context(), req.ResourceIDs)
 	if err != nil {
-		return ginx.Result{Msg: "查询模型插件动作失败"}, err
+		return ginx.Result{Msg: "批量查询插件动作失败"}, err
 	}
 
 	return ginx.Result{
-		Msg:  "查询模型插件动作成功",
+		Msg:  "批量查询插件动作成功",
 		Data: actions,
 	}, nil
 }

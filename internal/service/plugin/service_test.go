@@ -174,11 +174,11 @@ func (s *stubPluginRepo) UpsertPlugin(ctx context.Context, p domain.Plugin) erro
 func (s *stubPluginRepo) UpsertBinding(ctx context.Context, b domain.PluginBinding) error {
 	return nil
 }
-func (s *stubPluginRepo) GetPlugin(ctx context.Context, uid string) (domain.Plugin, error) {
-	return s.plugin, nil
-}
 func (s *stubPluginRepo) GetBinding(ctx context.Context, uid string) (domain.PluginBinding, error) {
 	return domain.PluginBinding{}, nil
+}
+func (s *stubPluginRepo) GetPlugin(ctx context.Context, uid string) (domain.Plugin, error) {
+	return s.plugin, nil
 }
 func (s *stubPluginRepo) ListPlugins(ctx context.Context) ([]domain.Plugin, error) { return nil, nil }
 func (s *stubPluginRepo) ListBindings(ctx context.Context) ([]domain.PluginBinding, error) {
@@ -203,7 +203,8 @@ func (s *stubPluginRepo) ListEnabledBindingsByModelUIDs(ctx context.Context, mod
 func (s *stubPluginRepo) UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error {
 	return nil
 }
-func (s *stubPluginRepo) DeletePlugin(ctx context.Context, uid string) error { return nil }
+func (s *stubPluginRepo) DeleteBinding(ctx context.Context, uid string) error { return nil }
+func (s *stubPluginRepo) DeletePlugin(ctx context.Context, uid string) error  { return nil }
 
 type stubResourceReader struct {
 	findByID       map[int64]domain.Resource

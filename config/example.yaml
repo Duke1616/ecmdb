@@ -76,24 +76,3 @@ wechat:
 # 如果工单需要自动化任务必须开启
 cronjob:
   enabled: true
-
-grpc:
-  server:
-    ecmdb:
-      name: "ecmdb"
-      listen_addr: "0.0.0.0:8097"
-      auth_token: "1234567890"
-  client:
-    ealert:
-      name: "ealert"
-      auth_token: "1234567890"
-    eiam:
-      name: "eiam"
-      auth_token: "1234567890"
-
-# 注册插件
-plugin:
-  builtin:
-    tenant:
-      access_key: "AK6b8b0e8cda13a37bfa2b39dc"
-      secret_key: "f8d55a305e9ea2be9f39dfec1a7e44ba1f0340b0800e28ea"

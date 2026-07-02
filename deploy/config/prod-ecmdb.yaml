@@ -14,25 +14,6 @@ encryption:
   version: "V1" # 加密算法版本
   key: "1234567890"
 
-# gRPC 通信配置
-grpc:
-  client:
-    ealert:
-      name: "ealert"
-      auth_token: "1234567890"
-    eiam:
-      name: "eiam"
-      auth_token: "1234567890"
-    etask:
-      name: "scheduler" # 指向任务调度服务
-      auth_token: "1234567890"
-
-plugin:
-  builtin:
-    tenant:
-      access_key: ""
-      secret_key: ""
-
 # 策略鉴权：IAM服务地址，用于登录验证与权限鉴权
 policy:
   auth_url: http://eiam:8000

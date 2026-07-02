@@ -882,15 +882,34 @@ func (s *service) importModelRelations(ctx context.Context, relations []pluginx.
 	if err != nil {
 		return err
 	}
-	existingNames := lo.SliceToMap(existing, func(relation domain.ModelRelation) (string, struct{}) {
-		return relation.RelationName, struct{}{}
+	existingByName := lo.SliceToMap(existing, func(relation domain.ModelRelation) (string, domain.ModelRelation) {
+		return relation.RelationName, relation
 	})
 
-	missing := lo.Filter(modelRelations, func(relation domain.ModelRelation, _ int) bool {
-		_, ok := existingNames[relation.RelationName]
-		return !ok
-	})
+	missing := make([]domain.ModelRelation, 0)
+	for _, relation := range modelRelations {
+		existingRelation, ok := existingByName[relation.RelationName]
+		if !ok {
+			missing = append(missing, relation)
+			continue
+		}
+		if !modelRelationChanged(existingRelation, relation) {
+			continue
+		}
+
+		relation.ID = existingRelation.ID
+		if _, err = s.modelRelations.UpdateModelRelation(ctx, relation); err != nil {
+			return err
+		}
+	}
 	return s.modelRelations.BatchCreate(ctx, missing)
+}
+
+func modelRelationChanged(current domain.ModelRelation, next domain.ModelRelation) bool {
+	return current.SourceModelUID != next.SourceModelUID ||
+		current.TargetModelUID != next.TargetModelUID ||
+		current.RelationTypeUID != next.RelationTypeUID ||
+		current.Mapping != next.Mapping
 }
 
 func buildBoundModels(bindings []domain.PluginBinding, modelMeta map[string]modelMeta) []domain.PluginBoundModel {

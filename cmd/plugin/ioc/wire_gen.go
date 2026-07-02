@@ -53,22 +53,8 @@ func InitApp() (*App, error) {
 	relationTypeService := service3.NewRelationTypeService(relationTypeRepository, relationModelRepository, relationResourceRepository)
 	relationModelService := service3.NewRelationModelService(relationModelRepository, relationResourceRepository)
 	pluginService := plugin.NewService(pluginRepository, service5, relationResourceService, service6, mgService, serviceService, relationTypeService, relationModelService)
-	builtinTenantConfig, err := ProvideBuiltinTenantConfig()
-	if err != nil {
-		return nil, err
-	}
-	client := ioc.InitEtcdClient()
-	registry, err := InitRegistry(client)
-	if err != nil {
-		return nil, err
-	}
-	builtinTenantProvider, err := NewBuiltinTenantProvider(builtinTenantConfig, registry)
-	if err != nil {
-		return nil, err
-	}
 	app := &App{
-		PluginSvc:      pluginService,
-		TenantProvider: builtinTenantProvider,
+		PluginSvc: pluginService,
 	}
 	return app, nil
 }

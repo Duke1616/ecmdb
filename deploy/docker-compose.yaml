@@ -170,7 +170,7 @@ services:
     restart: always
     container_name: eiam
     image: registry.cn-qingdao.aliyuncs.com/duke1616/eiam:main
-    command: ./flow server
+    command: ./eiam server
     environment:
       - TZ=Asia/Shanghai
     volumes:

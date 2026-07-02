@@ -165,6 +165,89 @@ func TestResolveActionContextReloadsTopLevelFields(t *testing.T) {
 	}
 }
 
+func TestImportModelRelationsUpdatesChangedExistingRelation(t *testing.T) {
+	modelRelations := &stubRelationModelService{
+		existing: []domain.ModelRelation{
+			{
+				ID:              42,
+				SourceModelUID:  "AuthGateway",
+				TargetModelUID:  "host",
+				RelationTypeUID: pluginx.RelationTypeDefault,
+				RelationName:    "AuthGateway_default_host",
+				Mapping:         pluginx.MappingOneToMany,
+			},
+		},
+	}
+	svc := &service{
+		modelRelations: modelRelations,
+	}
+
+	err := svc.importModelRelations(context.Background(), []pluginx.ModelRelation{
+		{
+			SourceModelUID:  "AuthGateway",
+			TargetModelUID:  "host",
+			RelationTypeUID: pluginx.RelationTypeDefault,
+			Mapping:         pluginx.MappingManyToMany,
+		},
+	})
+	if err != nil {
+		t.Fatalf("importModelRelations() error = %v", err)
+	}
+
+	if len(modelRelations.created) != 0 {
+		t.Fatalf("expected no created relations, got %+v", modelRelations.created)
+	}
+	if len(modelRelations.updated) != 1 {
+		t.Fatalf("expected 1 updated relation, got %+v", modelRelations.updated)
+	}
+	updated := modelRelations.updated[0]
+	if updated.ID != 42 {
+		t.Fatalf("expected existing relation ID to be preserved, got %+v", updated)
+	}
+	if updated.RelationName != "AuthGateway_default_host" {
+		t.Fatalf("expected relation name completed, got %+v", updated)
+	}
+	if updated.Mapping != pluginx.MappingManyToMany {
+		t.Fatalf("expected mapping updated to many_to_many, got %+v", updated)
+	}
+}
+
+func TestImportModelRelationsSkipsUnchangedExistingRelation(t *testing.T) {
+	modelRelations := &stubRelationModelService{
+		existing: []domain.ModelRelation{
+			{
+				ID:              42,
+				SourceModelUID:  "AuthGateway",
+				TargetModelUID:  "host",
+				RelationTypeUID: pluginx.RelationTypeDefault,
+				RelationName:    "AuthGateway_default_host",
+				Mapping:         pluginx.MappingManyToMany,
+			},
+		},
+	}
+	svc := &service{
+		modelRelations: modelRelations,
+	}
+
+	err := svc.importModelRelations(context.Background(), []pluginx.ModelRelation{
+		{
+			SourceModelUID:  "AuthGateway",
+			TargetModelUID:  "host",
+			RelationTypeUID: pluginx.RelationTypeDefault,
+			Mapping:         pluginx.MappingManyToMany,
+		},
+	})
+	if err != nil {
+		t.Fatalf("importModelRelations() error = %v", err)
+	}
+	if len(modelRelations.updated) != 0 {
+		t.Fatalf("expected no updated relations, got %+v", modelRelations.updated)
+	}
+	if len(modelRelations.created) != 0 {
+		t.Fatalf("expected no created relations, got %+v", modelRelations.created)
+	}
+}
+
 type stubPluginRepo struct {
 	plugin             domain.Plugin
 	bindingsByModelUID map[string][]domain.PluginBinding
@@ -244,6 +327,65 @@ func (s *stubResourceReader) ListResourcesWithFilters(
 	filterGroups []domain.FilterGroup,
 ) ([]domain.Resource, int64, error) {
 	return nil, 0, nil
+}
+
+type stubRelationModelService struct {
+	existing []domain.ModelRelation
+	created  []domain.ModelRelation
+	updated  []domain.ModelRelation
+}
+
+func (s *stubRelationModelService) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	return 0, nil
+}
+
+func (s *stubRelationModelService) BatchCreate(ctx context.Context, relations []domain.ModelRelation) error {
+	s.created = append(s.created, relations...)
+	return nil
+}
+
+func (s *stubRelationModelService) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
+	return 0, nil
+}
+
+func (s *stubRelationModelService) GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error) {
+	nameSet := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		nameSet[name] = struct{}{}
+	}
+
+	res := make([]domain.ModelRelation, 0, len(s.existing))
+	for _, relation := range s.existing {
+		if _, ok := nameSet[relation.RelationName]; ok {
+			res = append(res, relation)
+		}
+	}
+	return res, nil
+}
+
+func (s *stubRelationModelService) ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *stubRelationModelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	return 0, nil
+}
+
+func (s *stubRelationModelService) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
+	return nil, nil
+}
+
+func (s *stubRelationModelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
+	return 0, nil
+}
+
+func (s *stubRelationModelService) UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
+	s.updated = append(s.updated, req)
+	return 1, nil
+}
+
+func (s *stubRelationModelService) CheckBeforeDelete(ctx context.Context, modelUid string) error {
+	return nil
 }
 
 func containsAll(fields []string, want ...string) bool {

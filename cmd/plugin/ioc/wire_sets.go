@@ -19,9 +19,7 @@ var (
 	commandBaseSet = wire.NewSet(
 		rootioc.InitMongoDB,
 		rootioc.InitMongoDBV2,
-		rootioc.InitEtcdClient,
 		rootioc.InitCrypto,
-		InitRegistry,
 	)
 
 	commandAttributeSet = wire.NewSet(
@@ -69,11 +67,6 @@ var (
 		pluginSvc.NewService,
 	)
 
-	commandTenantSet = wire.NewSet(
-		ProvideBuiltinTenantConfig,
-		NewBuiltinTenantProvider,
-	)
-
 	PluginCommandSet = wire.NewSet(
 		commandBaseSet,
 		commandAttributeSet,
@@ -81,7 +74,6 @@ var (
 		commandModelSet,
 		commandRelationSet,
 		commandPluginSet,
-		commandTenantSet,
 	)
 )
 

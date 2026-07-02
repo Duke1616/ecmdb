@@ -22,6 +22,9 @@ type MGService interface {
 	// GetByNames 根据名称查询模型组
 	GetByNames(ctx context.Context, names []string) ([]domain.ModelGroup, error)
 
+	// GetByIDs 根据 ID 查询模型组
+	GetByIDs(ctx context.Context, ids []int64) ([]domain.ModelGroup, error)
+
 	// GetByName 根据名称获取模型
 	GetByName(ctx context.Context, name string) (domain.ModelGroup, error)
 
@@ -57,6 +60,10 @@ func (s *groupService) BatchCreate(ctx context.Context, req []domain.ModelGroup)
 
 func (s *groupService) GetByNames(ctx context.Context, names []string) ([]domain.ModelGroup, error) {
 	return s.repo.GetByNames(ctx, names)
+}
+
+func (s *groupService) GetByIDs(ctx context.Context, ids []int64) ([]domain.ModelGroup, error) {
+	return s.repo.GetByIDs(ctx, ids)
 }
 
 func (s *groupService) List(ctx context.Context, offset, limit int64) ([]domain.ModelGroup, int64, error) {

@@ -16,8 +16,12 @@ const (
 const (
 	pluginUID     = "builtin.ssh"
 	connectorName = "ssh"
-	inputTarget   = "target"
+	inputEndpoint = "endpoint"
 )
+
+func init() {
+	plugin.MustRegisterBuiltin(plugin.StaticBuiltin(Definition()))
+}
 
 // Endpoint 描述 SSH 连接需要从资源属性中解析出的字段。
 type Endpoint struct {
@@ -41,8 +45,8 @@ type Gateway struct {
 	Sort       int    `plugin:"sort"`
 }
 
-// Target 描述以内置 host 模型为中心的 SSH 输入树。
-type Target struct {
+// ConnectionTarget 描述 SSH 连接需要的主资源和可选网关链路。
+type ConnectionTarget struct {
 	Endpoint
 	Gateways []Gateway `plugin:"gateways,model=AuthGateway,in=default"`
 }
@@ -73,9 +77,9 @@ func Definition() plugin.Definition {
 			plugin.RelationTypes(plugin.BasicRelationTypes()...),
 			hostModel(),
 			gatewayModel(),
-			plugin.Relation("AuthGateway", plugin.RelationTypeDefault, "host").OneToMany(),
+			plugin.Relation("AuthGateway", plugin.RelationTypeDefault, "host").ManyToMany(),
 		).
-		Bind(plugin.Center[Target]("host")).
+		Bind(plugin.CenterNamed[ConnectionTarget](inputEndpoint, "host")).
 		MustDefinition()
 }
 
@@ -88,9 +92,9 @@ func ResolveRequest(action string, resourceID int64) plugin.ResolveRequest {
 	}
 }
 
-// DecodeTarget 从插件动作上下文中读取 SSH 目标输入。
-func DecodeTarget(actionCtx plugin.ActionContext) (Target, error) {
-	return plugin.InputOne[Target](actionCtx, inputTarget)
+// DecodeTarget 从插件动作上下文中读取 SSH 根输入。
+func DecodeTarget(actionCtx plugin.ActionContext) (ConnectionTarget, error) {
+	return plugin.InputRootOne[ConnectionTarget](actionCtx)
 }
 
 // ResolveGatewayChain 直接将插件动作上下文解析为 SSH 连接链路。
@@ -112,7 +116,7 @@ func Connector() (term.Connector, error) {
 }
 
 // ToGatewayChain 将插件解析出的强类型输入转换为终端连接层可消费的网关链路。
-func (t Target) ToGatewayChain() term.GatewayChain {
+func (t ConnectionTarget) ToGatewayChain() term.GatewayChain {
 	sort.SliceStable(t.Gateways, func(i, j int) bool {
 		return t.Gateways[i].Sort < t.Gateways[j].Sort
 	})

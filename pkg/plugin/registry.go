@@ -99,13 +99,6 @@ func (r *Registry) Definition() (Definition, error) {
 		return Definition{}, fmt.Errorf("plugin name is required")
 	}
 
-	// 动态填充 InputSpecs，确保即使没有任何 bindings 记录，约束定义也常驻在插件主数据里
-	var inputSpecs []ResourceSpec
-	for _, binding := range r.bindings {
-		inputSpecs = append(inputSpecs, binding.Specs...)
-	}
-	r.plugin.InputSpecs = inputSpecs
-
 	return Definition{
 		Plugin:   r.plugin,
 		Schema:   r.schema,
@@ -182,37 +175,55 @@ func BindingEnabled(value bool) BindingOption {
 
 func Spec(path string, fn func(*ResourceSpec)) BindingOption {
 	return func(b *Binding) {
-		b.Specs = Configure(b.Specs).ForPath(path, fn).Build()
+		if b.Graph == nil {
+			return
+		}
+		specs, err := CompileBindingGraph(b.Graph)
+		if err != nil {
+			panic(err)
+		}
+		specs = Configure(specs).ForPath(path, fn).Build()
+		graph, err := GraphFromBindingSpecs(b.ModelUID, specs)
+		if err != nil {
+			panic(err)
+		}
+		b.Graph = graph
 	}
 }
 
 func At(path string, opts ...SpecOption) BindingOption {
-	return Spec(path, func(spec *ResourceSpec) {
+	return Node(path, func(node *BindingGraphNode, edge *BindingGraphEdge) {
 		for _, opt := range opts {
-			opt(spec)
+			opt(node, edge)
 		}
 	})
 }
 
-type SpecOption func(*ResourceSpec)
+type SpecOption func(*BindingGraphNode, *BindingGraphEdge)
 
 func In(relationType string) SpecOption {
-	return func(spec *ResourceSpec) {
-		spec.Direction = DirectionToSource
-		spec.RelationType = relationType
+	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
+		if edge == nil {
+			return
+		}
+		edge.Direction = DirectionToSource
+		edge.RelationType = relationType
 	}
 }
 
 func Out(relationType string) SpecOption {
-	return func(spec *ResourceSpec) {
-		spec.Direction = DirectionToTarget
-		spec.RelationType = relationType
+	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
+		if edge == nil {
+			return
+		}
+		edge.Direction = DirectionToTarget
+		edge.RelationType = relationType
 	}
 }
 
 func Where(field string, operator string, value any) SpecOption {
-	return func(spec *ResourceSpec) {
-		spec.Filters = append(spec.Filters, Filter{
+	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
+		node.Filters = append(node.Filters, Filter{
 			Field:    field,
 			Operator: operator,
 			Value:    value,
@@ -221,20 +232,24 @@ func Where(field string, operator string, value any) SpecOption {
 }
 
 func Required(value bool) SpecOption {
-	return func(spec *ResourceSpec) {
-		spec.Required = value
+	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
+		node.Required = value
 	}
 }
 
 func Center[T any](modelUID string, opts ...BindingOption) BindingFactory {
+	return CenterNamed[T]("target", modelUID, opts...)
+}
+
+func CenterNamed[T any](name string, modelUID string, opts ...BindingOption) BindingFactory {
 	return func(pluginUID string) (Binding, error) {
 		uid := fmt.Sprintf("%s.%s", pluginUID, modelUID)
-		return bindingForCenter[T](uid, modelUID, opts...)
+		return bindingForCenter[T](uid, name, modelUID, opts...)
 	}
 }
 
-func bindingForCenter[T any](uid string, modelUID string, opts ...BindingOption) (Binding, error) {
-	spec, err := BuildCenterSpec[T]("target", modelUID)
+func bindingForCenter[T any](uid string, name string, modelUID string, opts ...BindingOption) (Binding, error) {
+	graph, err := BuildCenterGraph[T](name, modelUID)
 	if err != nil {
 		return Binding{}, err
 	}
@@ -243,25 +258,22 @@ func bindingForCenter[T any](uid string, modelUID string, opts ...BindingOption)
 		UID:      uid,
 		ModelUID: modelUID,
 		Enabled:  true,
-		Specs:    []ResourceSpec{spec},
+		Graph:    graph,
 	}
 	for _, opt := range opts {
 		opt(&binding)
 	}
-	if err = validateResourceSpecs(binding.Specs); err != nil {
+	if _, err = CompileBindingGraph(binding.Graph); err != nil {
 		return Binding{}, err
 	}
 	return binding, nil
 }
 
-func validateResourceSpecs(specs []ResourceSpec) error {
-	for _, spec := range specs {
-		if spec.RelationType != "" && !ValidRelationType(spec.RelationType) {
-			return fmt.Errorf("unsupported relation type %s on %s", spec.RelationType, spec.Name)
+func Node(path string, fn func(node *BindingGraphNode, edge *BindingGraphEdge)) BindingOption {
+	return func(b *Binding) {
+		if b.Graph == nil {
+			return
 		}
-		if err := validateResourceSpecs(spec.Children); err != nil {
-			return err
-		}
+		MutateBindingGraphPath(b.Graph, path, fn)
 	}
-	return nil
 }

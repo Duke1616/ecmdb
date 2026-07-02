@@ -3,6 +3,7 @@ package web
 import (
 	"strconv"
 
+	"github.com/Duke1616/ecmdb/internal/domain"
 	pluginservice "github.com/Duke1616/ecmdb/internal/service/plugin"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
@@ -33,17 +34,14 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.GET("/enums", h.Capability("插件枚举", "view").
 		Handle(ginx.Wrap(h.ListEnums)),
 	)
-	g.POST("/definition/register", h.Capability("注册插件定义", "definition_register").
-		Handle(ginx.WrapBody[pluginx.Definition](h.RegisterDefinition)),
+	g.GET("/definition/default", h.Capability("查询默认插件定义", "binding_upsert").
+		Handle(ginx.Wrap(h.GetDefaultDefinition)),
 	)
-	g.POST("/definition/upsert", h.Capability("保存插件定义", "definition_upsert").
-		Handle(ginx.WrapBody[pluginx.Plugin](h.UpsertPlugin)),
+	g.POST("/bindings/save", h.Capability("保存插件绑定", "binding_upsert").
+		Handle(ginx.WrapBody[SaveBindingsReq](h.SaveBindings)),
 	)
-	g.POST("/binding/upsert", h.Capability("保存插件绑定", "binding_upsert").
-		Handle(ginx.WrapBody[pluginx.Binding](h.UpsertBinding)),
-	)
-	g.POST("/delete", h.Capability("删除插件", "delete").
-		Handle(ginx.WrapBody[DeletePluginReq](h.DeletePlugin)),
+	g.POST("/binding/enabled", h.Capability("切换插件绑定状态", "binding_upsert").
+		Handle(ginx.WrapBody[UpdateBindingEnabledReq](h.UpdateBindingEnabled)),
 	)
 	g.GET("/resource/actions", h.Capability("查询资源插件动作", "resource_actions").
 		Handle(ginx.Wrap(h.ListResourceActions)),
@@ -53,9 +51,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 	g.POST("/action/resolve", h.Capability("解析插件动作", "action_resolve").
 		Handle(ginx.WrapBody[pluginx.ResolveRequest](h.ResolveAction)),
-	)
-	g.POST("/sync-default-schema", h.Capability("同步默认模型", "sync_default_schema").
-		Handle(ginx.WrapBody[SyncDefaultSchemaReq](h.SyncDefaultSchema)),
 	)
 }
 
@@ -99,32 +94,34 @@ func (h *Handler) ListEnums(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) RegisterDefinition(ctx *gin.Context, req pluginx.Definition) (ginx.Result, error) {
-	if err := h.svc.RegisterDefinition(ctx.Request.Context(), req); err != nil {
-		return ginx.Result{Msg: "注册插件定义失败"}, err
+func (h *Handler) GetDefaultDefinition(ctx *gin.Context) (ginx.Result, error) {
+	pluginID := ctx.Query("plugin_id")
+	def, err := h.svc.GetDefaultDefinition(ctx.Request.Context(), pluginID)
+	if err != nil {
+		return ginx.Result{Msg: "查询默认插件定义失败"}, err
 	}
-	return ginx.Result{Msg: "注册插件定义成功"}, nil
+
+	return ginx.Result{
+		Msg:  "查询默认插件定义成功",
+		Data: def,
+	}, nil
 }
 
-func (h *Handler) UpsertPlugin(ctx *gin.Context, req pluginx.Plugin) (ginx.Result, error) {
-	if err := h.svc.UpsertPlugin(ctx.Request.Context(), req); err != nil {
-		return ginx.Result{Msg: "保存插件定义失败"}, err
-	}
-	return ginx.Result{Msg: "保存插件定义成功"}, nil
-}
-
-func (h *Handler) UpsertBinding(ctx *gin.Context, req pluginx.Binding) (ginx.Result, error) {
-	if err := h.svc.UpsertBinding(ctx.Request.Context(), req); err != nil {
+func (h *Handler) SaveBindings(ctx *gin.Context, req SaveBindingsReq) (ginx.Result, error) {
+	if err := h.svc.SaveBindings(ctx.Request.Context(), domain.SavePluginBindings{
+		PluginID: req.PluginID,
+		Bindings: req.Bindings,
+	}); err != nil {
 		return ginx.Result{Msg: "保存插件绑定失败"}, err
 	}
 	return ginx.Result{Msg: "保存插件绑定成功"}, nil
 }
 
-func (h *Handler) DeletePlugin(ctx *gin.Context, req DeletePluginReq) (ginx.Result, error) {
-	if err := h.svc.DeletePlugin(ctx.Request.Context(), req.UID); err != nil {
-		return ginx.Result{Msg: "删除插件失败"}, err
+func (h *Handler) UpdateBindingEnabled(ctx *gin.Context, req UpdateBindingEnabledReq) (ginx.Result, error) {
+	if err := h.svc.UpdateBindingEnabled(ctx.Request.Context(), req.UID, req.Enabled); err != nil {
+		return ginx.Result{Msg: "更新插件绑定状态失败"}, err
 	}
-	return ginx.Result{Msg: "删除插件成功"}, nil
+	return ginx.Result{Msg: "更新插件绑定状态成功"}, nil
 }
 
 func (h *Handler) ListResourceActions(ctx *gin.Context) (ginx.Result, error) {
@@ -170,13 +167,7 @@ func (h *Handler) ResolveAction(ctx *gin.Context, req pluginx.ResolveRequest) (g
 	}, nil
 }
 
-func (h *Handler) SyncDefaultSchema(ctx *gin.Context, req SyncDefaultSchemaReq) (ginx.Result, error) {
-	if err := h.svc.SyncDefaultSchema(ctx.Request.Context(), req.PluginID); err != nil {
-		return ginx.Result{Msg: "同步默认模型失败"}, err
-	}
-	return ginx.Result{Msg: "同步默认模型成功"}, nil
-}
-
-type SyncDefaultSchemaReq struct {
-	PluginID string `json:"plugin_id" binding:"required"`
+type SaveBindingsReq struct {
+	PluginID string            `json:"plugin_id" binding:"required"`
+	Bindings []pluginx.Binding `json:"bindings" binding:"required"`
 }

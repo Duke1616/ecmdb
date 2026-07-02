@@ -42,6 +42,9 @@ type ModelGroupDAO interface {
 	// GetByNames 根据名称查询模型组
 	GetByNames(ctx context.Context, names []string) ([]ModelGroup, error)
 
+	// GetByIDs 根据 ID 查询模型组
+	GetByIDs(ctx context.Context, ids []int64) ([]ModelGroup, error)
+
 	// GetByName 根据名称查询模型组
 	GetByName(ctx context.Context, name string) (ModelGroup, error)
 
@@ -116,6 +119,11 @@ func (dao *groupDAO) BatchCreate(ctx context.Context, mgs []ModelGroup) ([]Model
 
 func (dao *groupDAO) GetByNames(ctx context.Context, names []string) ([]ModelGroup, error) {
 	filter := bson.M{"name": bson.M{"$in": names}}
+	return dao.coll.Find(ctx, filter)
+}
+
+func (dao *groupDAO) GetByIDs(ctx context.Context, ids []int64) ([]ModelGroup, error) {
+	filter := bson.M{"id": bson.M{"$in": ids}}
 	return dao.coll.Find(ctx, filter)
 }
 

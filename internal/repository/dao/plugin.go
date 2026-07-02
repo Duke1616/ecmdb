@@ -18,28 +18,28 @@ const (
 )
 
 type Plugin struct {
-	TenantID   int64                 `bson:"tenant_id" eiam:"shared:type=builtin"`
-	Id         int64                 `bson:"id"`
-	UID        string                `bson:"uid"`
-	Name       string                `bson:"name"`
-	Type       string                `bson:"type"`
-	Version    string                `bson:"version"`
-	Actions    []plugin.ActionSpec   `bson:"actions"`
-	InputSpecs []plugin.ResourceSpec `bson:"input_specs,omitempty"`
-	Ctime      int64                 `bson:"ctime"`
-	Utime      int64                 `bson:"utime"`
+	TenantID int64               `bson:"tenant_id" eiam:"shared:type=builtin"`
+	Id       int64               `bson:"id"`
+	UID      string              `bson:"uid"`
+	Name     string              `bson:"name"`
+	Type     string              `bson:"type"`
+	Version  string              `bson:"version"`
+	Actions  []plugin.ActionSpec `bson:"actions"`
+	Ctime    int64               `bson:"ctime"`
+	Utime    int64               `bson:"utime"`
 }
 
 type PluginBinding struct {
-	TenantID int64                 `bson:"tenant_id" eiam:"private"`
-	Id       int64                 `bson:"id"`
-	UID      string                `bson:"uid"`
-	PluginID string                `bson:"plugin_id"`
-	ModelUID string                `bson:"model_uid"`
-	Enabled  bool                  `bson:"enabled"`
-	Specs    []plugin.ResourceSpec `bson:"specs"`
-	Ctime    int64                 `bson:"ctime"`
-	Utime    int64                 `bson:"utime"`
+	TenantID    int64                 `bson:"tenant_id" eiam:"private"`
+	Id          int64                 `bson:"id"`
+	UID         string                `bson:"uid"`
+	PluginID    string                `bson:"plugin_id"`
+	ModelUID    string                `bson:"model_uid"`
+	Enabled     bool                  `bson:"enabled"`
+	Graph       *plugin.BindingGraph  `bson:"graph,omitempty"`
+	LegacySpecs []plugin.ResourceSpec `bson:"specs,omitempty"`
+	Ctime       int64                 `bson:"ctime"`
+	Utime       int64                 `bson:"utime"`
 }
 
 func (p *Plugin) SetID(id int64) {
@@ -65,17 +65,14 @@ type PluginDAO interface {
 	// UpsertBinding 按 UID 创建或更新插件绑定存储记录。
 	UpsertBinding(ctx context.Context, b PluginBinding) error
 
+	// UpdateBindingEnabled 更新指定绑定的启停状态。
+	UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error
+
 	// GetPlugin 根据 UID 查询插件存储记录。
 	GetPlugin(ctx context.Context, uid string) (Plugin, error)
 
-	// GetBinding 根据 UID 查询插件绑定存储记录。
-	GetBinding(ctx context.Context, uid string) (PluginBinding, error)
-
 	// ListPlugins 查询全部插件记录。
 	ListPlugins(ctx context.Context) ([]Plugin, error)
-
-	// ListBindings 查询全部插件绑定记录。
-	ListBindings(ctx context.Context) ([]PluginBinding, error)
 
 	// ListBindingsByPluginID 查询指定插件的绑定记录。
 	ListBindingsByPluginID(ctx context.Context, pluginID string) ([]PluginBinding, error)
@@ -88,12 +85,6 @@ type PluginDAO interface {
 
 	// ListEnabledBindingsByModelUIDs 批量查询指定模型启用中的插件绑定记录。
 	ListEnabledBindingsByModelUIDs(ctx context.Context, modelUIDs []string) ([]PluginBinding, error)
-
-	// DeletePlugin 删除插件记录。
-	DeletePlugin(ctx context.Context, uid string) error
-
-	// DeleteBindingsByPluginID 删除插件下全部绑定。
-	DeleteBindingsByPluginID(ctx context.Context, pluginID string) error
 }
 
 type pluginDAO struct {
@@ -132,13 +123,15 @@ func (dao *pluginDAO) UpsertPlugin(ctx context.Context, p Plugin) error {
 		bson.M{"uid": p.UID},
 		bson.M{
 			"$set": bson.M{
-				"id":          p.Id,
-				"name":        p.Name,
-				"type":        p.Type,
-				"version":     p.Version,
-				"actions":     p.Actions,
-				"input_specs": p.InputSpecs,
-				"utime":       p.Utime,
+				"id":      p.Id,
+				"name":    p.Name,
+				"type":    p.Type,
+				"version": p.Version,
+				"actions": p.Actions,
+				"utime":   p.Utime,
+			},
+			"$unset": bson.M{
+				"input_specs": "",
 			},
 		},
 	)
@@ -176,13 +169,35 @@ func (dao *pluginDAO) UpsertBinding(ctx context.Context, b PluginBinding) error 
 				"plugin_id": b.PluginID,
 				"model_uid": b.ModelUID,
 				"enabled":   b.Enabled,
-				"specs":     b.Specs,
+				"graph":     b.Graph,
 				"utime":     b.Utime,
+			},
+			"$unset": bson.M{
+				"specs": "",
 			},
 		},
 	)
 	if err != nil {
 		return fmt.Errorf("upsert plugin binding: %w", err)
+	}
+	return nil
+}
+
+func (dao *pluginDAO) UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error {
+	res, err := dao.bindingColl.UpdateOne(ctx,
+		bson.M{"uid": uid},
+		bson.M{
+			"$set": bson.M{
+				"enabled": enabled,
+				"utime":   time.Now().UnixMilli(),
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("更新插件绑定启停状态失败: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return fmt.Errorf("插件绑定查询: %w", errs.ErrNotFound)
 	}
 	return nil
 }
@@ -198,17 +213,6 @@ func (dao *pluginDAO) GetPlugin(ctx context.Context, uid string) (Plugin, error)
 	return *p, nil
 }
 
-func (dao *pluginDAO) GetBinding(ctx context.Context, uid string) (PluginBinding, error) {
-	b, err := dao.bindingColl.FindOne(ctx, bson.M{"uid": uid})
-	if err != nil {
-		if mongox.IsNotFoundError(err) {
-			return PluginBinding{}, fmt.Errorf("插件绑定查询: %w", errs.ErrNotFound)
-		}
-		return PluginBinding{}, fmt.Errorf("插件绑定查询失败: %w", err)
-	}
-	return *b, nil
-}
-
 func (dao *pluginDAO) ListPlugins(ctx context.Context) ([]Plugin, error) {
 	opts := &options.FindOptions{
 		Sort: bson.D{{Key: "utime", Value: -1}},
@@ -219,18 +223,6 @@ func (dao *pluginDAO) ListPlugins(ctx context.Context) ([]Plugin, error) {
 		return nil, fmt.Errorf("插件查询失败: %w", err)
 	}
 	return plugins, nil
-}
-
-func (dao *pluginDAO) ListBindings(ctx context.Context) ([]PluginBinding, error) {
-	opts := &options.FindOptions{
-		Sort: bson.D{{Key: "utime", Value: -1}},
-	}
-
-	bindings, err := dao.bindingColl.Find(ctx, bson.M{}, opts)
-	if err != nil {
-		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
-	}
-	return bindings, nil
 }
 
 func (dao *pluginDAO) ListBindingsByPluginID(ctx context.Context, pluginID string) ([]PluginBinding, error) {
@@ -283,23 +275,4 @@ func (dao *pluginDAO) ListEnabledBindingsByModelUIDs(ctx context.Context, modelU
 		return nil, fmt.Errorf("插件绑定查询失败: %w", err)
 	}
 	return bindings, nil
-}
-
-func (dao *pluginDAO) DeletePlugin(ctx context.Context, uid string) error {
-	res, err := dao.pluginColl.DeleteOne(ctx, bson.M{"uid": uid})
-	if err != nil {
-		return fmt.Errorf("删除插件失败: %w", err)
-	}
-	if res.DeletedCount == 0 {
-		return fmt.Errorf("插件查询: %w", errs.ErrNotFound)
-	}
-	return nil
-}
-
-func (dao *pluginDAO) DeleteBindingsByPluginID(ctx context.Context, pluginID string) error {
-	_, err := dao.bindingColl.DeleteMany(ctx, bson.M{"plugin_id": pluginID})
-	if err != nil {
-		return fmt.Errorf("删除插件绑定失败: %w", err)
-	}
-	return nil
 }

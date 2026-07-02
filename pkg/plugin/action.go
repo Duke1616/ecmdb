@@ -32,15 +32,14 @@ func ValidRelationType(relationType string) bool {
 }
 
 type Plugin struct {
-	ID         int64          `json:"id"`
-	UID        string         `json:"uid"`
-	Name       string         `json:"name"`
-	Type       string         `json:"type"`
-	Version    string         `json:"version"`
-	Actions    []ActionSpec   `json:"actions"`
-	InputSpecs []ResourceSpec `json:"input_specs,omitempty"`
-	Ctime      int64          `json:"ctime,omitempty"`
-	Utime      int64          `json:"utime,omitempty"`
+	ID      int64        `json:"id"`
+	UID     string       `json:"uid"`
+	Name    string       `json:"name"`
+	Type    string       `json:"type"`
+	Version string       `json:"version"`
+	Actions []ActionSpec `json:"actions"`
+	Ctime   int64        `json:"ctime,omitempty"`
+	Utime   int64        `json:"utime,omitempty"`
 }
 
 type ActionSpec struct {
@@ -53,14 +52,44 @@ type ActionSpec struct {
 }
 
 type Binding struct {
-	ID       int64          `json:"id"`
-	UID      string         `json:"uid"`
-	PluginID string         `json:"plugin_id"`
-	ModelUID string         `json:"model_uid"`
-	Enabled  bool           `json:"enabled"`
-	Specs    []ResourceSpec `json:"specs"`
-	Ctime    int64          `json:"ctime,omitempty"`
-	Utime    int64          `json:"utime,omitempty"`
+	ID       int64         `json:"id"`
+	UID      string        `json:"uid"`
+	PluginID string        `json:"plugin_id"`
+	ModelUID string        `json:"model_uid"`
+	Enabled  bool          `json:"enabled"`
+	Graph    *BindingGraph `json:"graph,omitempty"`
+	Ctime    int64         `json:"ctime,omitempty"`
+	Utime    int64         `json:"utime,omitempty"`
+}
+
+type BindingGraph struct {
+	EntryNodeID string             `json:"entry_node_id"`
+	Nodes       []BindingGraphNode `json:"nodes"`
+	Edges       []BindingGraphEdge `json:"edges,omitempty"`
+}
+
+type BindingGraphNode struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Kind          string         `json:"kind,omitempty"`
+	ModelUID      string         `json:"model_uid"`
+	Cardinality   string         `json:"cardinality"`
+	Required      bool           `json:"required"`
+	FieldMappings []FieldMapping `json:"field_mappings,omitempty"`
+	Filters       []Filter       `json:"filters,omitempty"`
+}
+
+type FieldMapping struct {
+	Input         string `json:"input"`
+	ResourceField string `json:"resource_field"`
+	Required      bool   `json:"required,omitempty"`
+}
+
+type BindingGraphEdge struct {
+	From         string `json:"from"`
+	To           string `json:"to"`
+	RelationType string `json:"relation_type,omitempty"`
+	Direction    string `json:"direction,omitempty"`
 }
 
 type Schema struct {

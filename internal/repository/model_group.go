@@ -18,6 +18,9 @@ type MGRepository interface {
 	// GetByNames 根据名称查询模型组
 	GetByNames(ctx context.Context, names []string) ([]domain.ModelGroup, error)
 
+	// GetByIDs 根据 ID 查询模型组
+	GetByIDs(ctx context.Context, ids []int64) ([]domain.ModelGroup, error)
+
 	// GetByName 根据名称查询模型组
 	GetByName(ctx context.Context, name string) (domain.ModelGroup, error)
 
@@ -63,6 +66,13 @@ func (repo *groupRepository) BatchCreate(ctx context.Context, mgs []domain.Model
 
 func (repo *groupRepository) GetByNames(ctx context.Context, names []string) ([]domain.ModelGroup, error) {
 	mgs, err := repo.dao.GetByNames(ctx, names)
+	return slice.Map(mgs, func(idx int, src dao.ModelGroup) domain.ModelGroup {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *groupRepository) GetByIDs(ctx context.Context, ids []int64) ([]domain.ModelGroup, error) {
+	mgs, err := repo.dao.GetByIDs(ctx, ids)
 	return slice.Map(mgs, func(idx int, src dao.ModelGroup) domain.ModelGroup {
 		return repo.toDomain(src)
 	}), err

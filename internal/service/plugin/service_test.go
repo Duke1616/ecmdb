@@ -67,16 +67,7 @@ func TestResolveReturnsFriendlyMissingInputMessage(t *testing.T) {
 						PluginID: "builtin.ssh",
 						ModelUID: "host",
 						Enabled:  true,
-						Specs: []pluginx.ResourceSpec{
-							{
-								Name:           "target",
-								ModelUID:       "host",
-								Cardinality:    pluginx.CardinalityOne,
-								Required:       true,
-								Fields:         map[string]string{"ip": "ip", "username": "username"},
-								RequiredFields: []string{"ip", "username"},
-							},
-						},
+						Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip", "username": "username"}, []string{"ip", "username"}),
 					},
 				},
 			},
@@ -139,16 +130,7 @@ func TestResolveActionContextReloadsTopLevelFields(t *testing.T) {
 						PluginID: "builtin.ssh",
 						ModelUID: "host",
 						Enabled:  true,
-						Specs: []pluginx.ResourceSpec{
-							{
-								Name:           "target",
-								ModelUID:       "host",
-								Cardinality:    pluginx.CardinalityOne,
-								Required:       true,
-								Fields:         map[string]string{"ip": "ip", "username": "username"},
-								RequiredFields: []string{"ip", "username"},
-							},
-						},
+						Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip", "username": "username"}, []string{"ip", "username"}),
 					},
 				},
 			},
@@ -218,7 +200,7 @@ func (s *stubPluginRepo) ListEnabledBindingsByModelUIDs(ctx context.Context, mod
 	}
 	return res, nil
 }
-func (s *stubPluginRepo) UpdatePluginEnabled(ctx context.Context, uid string, enabled bool) error {
+func (s *stubPluginRepo) UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error {
 	return nil
 }
 func (s *stubPluginRepo) DeletePlugin(ctx context.Context, uid string) error { return nil }
@@ -274,4 +256,29 @@ func containsAll(fields []string, want ...string) bool {
 		}
 	}
 	return true
+}
+
+func mustCenterGraph(
+	t *testing.T,
+	name string,
+	modelUID string,
+	fields map[string]string,
+	required []string,
+) *pluginx.BindingGraph {
+	t.Helper()
+
+	graph, err := pluginx.GraphFromBindingSpecs(modelUID, []pluginx.ResourceSpec{
+		{
+			Name:           name,
+			ModelUID:       modelUID,
+			Cardinality:    pluginx.CardinalityOne,
+			Required:       true,
+			Fields:         fields,
+			RequiredFields: required,
+		},
+	})
+	if err != nil {
+		t.Fatalf("GraphFromBindingSpecs() error = %v", err)
+	}
+	return graph
 }

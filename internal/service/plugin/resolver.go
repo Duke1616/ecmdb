@@ -7,6 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/samber/lo"
 )
 
 // resourceReader 定义插件输入解析过程中需要读取的资源能力。
@@ -46,7 +47,7 @@ func newInputResolver(
 }
 
 func (r *inputResolver) bindingSatisfied(ctx context.Context, primary domain.Resource, binding domain.PluginBinding) (bool, error) {
-	_, err := r.resolve(ctx, primary, binding.Specs)
+	_, err := r.resolve(ctx, primary, binding.Graph)
 	if errors.Is(err, errRequiredInputMissing) {
 		return false, nil
 	}
@@ -56,8 +57,12 @@ func (r *inputResolver) bindingSatisfied(ctx context.Context, primary domain.Res
 func (r *inputResolver) resolve(
 	ctx context.Context,
 	primary domain.Resource,
-	specs []pluginx.ResourceSpec,
+	graph *pluginx.BindingGraph,
 ) (map[string]pluginx.ResolvedInput, error) {
+	specs, err := pluginx.CompileBindingGraph(graph)
+	if err != nil {
+		return nil, err
+	}
 	inputs, err := r.resolveSpecsWithPath(ctx, primary, specs, true, "")
 	if err != nil {
 		return nil, err
@@ -267,4 +272,59 @@ func resourceHasFields(resource domain.Resource, fields []string) bool {
 		}
 	}
 	return true
+}
+
+
+func buildRelationName(baseModelUID string, spec pluginx.ResourceSpec) (string, error) {
+	if spec.RelationType == "" {
+		return "", fmt.Errorf("插件关联类型不能为空: %s.%s", baseModelUID, spec.Name)
+	}
+	if !pluginx.ValidRelationType(spec.RelationType) {
+		return "", fmt.Errorf("插件关联类型不支持: %s", spec.RelationType)
+	}
+	if spec.ModelUID == "" {
+		return "", fmt.Errorf("插件关联模型不能为空: %s.%s", baseModelUID, spec.Name)
+	}
+
+	switch spec.Direction {
+	case pluginx.DirectionToTarget:
+		return fmt.Sprintf("%s_%s_%s", baseModelUID, spec.RelationType, spec.ModelUID), nil
+	case pluginx.DirectionToSource:
+		return fmt.Sprintf("%s_%s_%s", spec.ModelUID, spec.RelationType, baseModelUID), nil
+	default:
+		return "", fmt.Errorf("插件关联方向不支持: %s", spec.Direction)
+	}
+}
+
+func specFields(spec pluginx.ResourceSpec) []string {
+	fields := lo.Values(spec.Fields)
+	fields = append(fields, lo.Map(spec.Filters, func(filter pluginx.Filter, _ int) string {
+		return filter.Field
+	})...)
+	return lo.Uniq(lo.Filter(fields, func(field string, _ int) bool {
+		return field != ""
+	}))
+}
+
+func resolveFields(resource domain.Resource, spec pluginx.ResourceSpec) map[string]any {
+	return lo.MapValues(spec.Fields, func(field string, _ string) any {
+		return resource.Data[field]
+	})
+}
+
+func missingRequiredFields(requirements []string, fields map[string]any) []string {
+	return lo.Filter(requirements, func(fieldName string, _ int) bool {
+		return !hasValue(fields[fieldName])
+	})
+}
+
+func hasValue(value any) bool {
+	switch v := value.(type) {
+	case nil:
+		return false
+	case string:
+		return v != ""
+	default:
+		return true
+	}
 }

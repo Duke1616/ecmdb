@@ -25,11 +25,18 @@ func TestRegistryDefinition(t *testing.T) {
 	if binding.PluginID != "builtin.test" || binding.ModelUID != "host" {
 		t.Fatalf("binding = %#v", binding)
 	}
-	if binding.Specs[0].ModelUID != "host" {
-		t.Fatalf("top spec model = %s", binding.Specs[0].ModelUID)
+	if binding.Graph == nil {
+		t.Fatalf("binding graph is nil")
 	}
-	if binding.Specs[0].Children[0].RelationType != RelationTypeDefault {
-		t.Fatalf("child relation type = %s", binding.Specs[0].Children[0].RelationType)
+	specs, err := CompileBindingGraph(binding.Graph)
+	if err != nil {
+		t.Fatalf("CompileBindingGraph() error = %v", err)
+	}
+	if specs[0].ModelUID != "host" {
+		t.Fatalf("top spec model = %s", specs[0].ModelUID)
+	}
+	if specs[0].Children[0].RelationType != RelationTypeDefault {
+		t.Fatalf("child relation type = %s", specs[0].Children[0].RelationType)
 	}
 }
 
@@ -41,10 +48,14 @@ func TestRegistryDefinitionWithCenter(t *testing.T) {
 	if len(def.Bindings) != 1 {
 		t.Fatalf("bindings = %#v", def.Bindings)
 	}
-	spec := def.Bindings[0].Specs[0]
 	if def.Bindings[0].UID != "builtin.center.host" {
 		t.Fatalf("binding uid = %s", def.Bindings[0].UID)
 	}
+	specs, err := CompileBindingGraph(def.Bindings[0].Graph)
+	if err != nil {
+		t.Fatalf("CompileBindingGraph() error = %v", err)
+	}
+	spec := specs[0]
 	if spec.Name != "target" || spec.ModelUID != "host" {
 		t.Fatalf("spec = %#v", spec)
 	}

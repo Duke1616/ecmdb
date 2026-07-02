@@ -34,6 +34,27 @@ func InputMany[T any](actionCtx ActionContext, name string) ([]T, error) {
 	return res, nil
 }
 
+func RootInputName(actionCtx ActionContext) (string, error) {
+	if entry, ok := GraphEntryNode(actionCtx.Binding.Graph); ok && entry.Name != "" {
+		return entry.Name, nil
+	}
+	if len(actionCtx.Inputs) == 1 {
+		for name := range actionCtx.Inputs {
+			return name, nil
+		}
+	}
+	return "", fmt.Errorf("plugin root input is ambiguous")
+}
+
+func InputRootOne[T any](actionCtx ActionContext) (T, error) {
+	name, err := RootInputName(actionCtx)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return InputOne[T](actionCtx, name)
+}
+
 // DecodeResource 将已解析资源按照 `plugin` tag 解码成强类型结构 T。
 func DecodeResource[T any](resource ResolvedResource) (T, error) {
 	var out T

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Duke1616/ecmdb/cmd/initial/full"
 	"github.com/Duke1616/ecmdb/cmd/initial/incr/register"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
 	"github.com/spf13/cobra"
@@ -73,32 +72,7 @@ var Cmd = &cobra.Command{
 }
 
 func complete(app *ioc.App) {
-	fmt.Printf("🚀 开始全量初始化系统数据...\n")
-	fmt.Printf("==================================================\n")
-
-	// 初始化Init
-	init := full.NewInitial(app)
-
-	// 初始化菜单
-	fmt.Printf("📋 步骤 1/4: 初始化菜单数据\n")
-	err := init.InitMenu()
-	cobra.CheckErr(err)
-
-	// 初始化用户
-	fmt.Printf("👤 步骤 2/4: 初始化用户数据\n")
-	userId, err := init.InitUser()
-	cobra.CheckErr(err)
-
-	// 初始化角色
-	fmt.Printf("🔐 步骤 3/4: 初始化角色数据\n")
-	err = init.InitRole()
-	cobra.CheckErr(err)
-
-	// 初始化权限
-	fmt.Printf("🔑 步骤 4/4: 初始化权限数据\n")
-	err = init.InitPermission(userId)
-	cobra.CheckErr(err)
-
+	fmt.Printf("🚀 开始全量初始化系统数据（已简化为空实现）...\n")
 	fmt.Printf("==================================================\n")
 	fmt.Printf("🎉 全量初始化完成! 系统已准备就绪\n")
 }

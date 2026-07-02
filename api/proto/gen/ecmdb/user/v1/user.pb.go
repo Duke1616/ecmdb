@@ -28,7 +28,7 @@ type User struct {
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// 用户名
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	// 用户名
+	// 显示名称
 	DisplayName string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	// 飞书用户ID
 	LarkUserId string `protobuf:"bytes,4,opt,name=lark_user_id,json=larkUserId,proto3" json:"lark_user_id,omitempty"`
@@ -37,7 +37,9 @@ type User struct {
 	// 用户邮箱
 	Email string `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
 	// 用户手机号
-	Phone         string `protobuf:"bytes,7,opt,name=phone,proto3" json:"phone,omitempty"`
+	Phone string `protobuf:"bytes,7,opt,name=phone,proto3" json:"phone,omitempty"`
+	// 部门ID
+	DepartmentId  int64 `protobuf:"varint,8,opt,name=department_id,json=departmentId,proto3" json:"department_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,6 +121,13 @@ func (x *User) GetPhone() string {
 		return x.Phone
 	}
 	return ""
+}
+
+func (x *User) GetDepartmentId() int64 {
+	if x != nil {
+		return x.DepartmentId
+	}
+	return 0
 }
 
 // 查找用户请求
@@ -349,7 +358,7 @@ var File_ecmdb_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_ecmdb_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x18ecmdb/user/v1/user.proto\x12\recmdb.user.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc9\x01\n" +
+	"\x18ecmdb/user/v1/user.proto\x12\recmdb.user.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xee\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12!\n" +
@@ -358,7 +367,8 @@ const file_ecmdb_user_v1_user_proto_rawDesc = "" +
 	"larkUserId\x12$\n" +
 	"\x0ewechat_user_id\x18\x05 \x01(\tR\fwechatUserId\x12\x14\n" +
 	"\x05email\x18\x06 \x01(\tR\x05email\x12\x14\n" +
-	"\x05phone\x18\a \x01(\tR\x05phone\"2\n" +
+	"\x05phone\x18\a \x01(\tR\x05phone\x12#\n" +
+	"\rdepartment_id\x18\b \x01(\x03R\fdepartmentId\"2\n" +
 	"\x12FindByUsernamesReq\x12\x1c\n" +
 	"\tusernames\x18\x01 \x03(\tR\tusernames\"<\n" +
 	"\x15FindByDepartmentIdReq\x12#\n" +

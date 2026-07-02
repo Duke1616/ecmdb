@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/cmd/repair/ioc"
-	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/model"
-	"github.com/Duke1616/ecmdb/internal/resource"
+	"github.com/Duke1616/ecmdb/internal/domain"
+	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
+	model "github.com/Duke1616/ecmdb/internal/service/model"
+	resource "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/spf13/cobra"
 )
@@ -127,7 +128,7 @@ func (r *FieldEncryptionRepairer) getModelsWithSecureFields(ctx context.Context)
 	}
 
 	// 获取模型UID列表
-	modelUIds := slice.Map(models, func(idx int, src model.Model) string {
+	modelUIds := slice.Map(models, func(idx int, src domain.Model) string {
 		return src.UID
 	})
 
@@ -227,7 +228,7 @@ func (p *FieldProcessor) ProcessResources(
 // processBatch 处理一批资源
 func (p *FieldProcessor) processBatch(
 	ctx context.Context,
-	resources []resource.Resource,
+	resources []domain.Resource,
 ) *StatsRepair {
 	stats := &StatsRepair{}
 

@@ -1,17 +1,24 @@
 package ioc
 
 import (
-	"github.com/Duke1616/ecmdb/internal/endpoint"
-	"github.com/Duke1616/ecmdb/internal/event/service/easyflow"
-	grpcpkg "github.com/Duke1616/etask/pkg/grpc"
+	"context"
+
 	"github.com/gotomicro/ego/server/egin"
-	"github.com/gotomicro/ego/task/ecron"
 )
 
+type Task interface {
+	Start(ctx context.Context)
+}
+
 type App struct {
-	Web    *egin.Component
-	Server *grpcpkg.Server
-	Event  *easyflow.ProcessEvent
-	Jobs   []*ecron.Component
-	Svc    endpoint.Service
+	Web   *egin.Component
+	Tasks []Task
+}
+
+func (a *App) StartBackgroundTasks(ctx context.Context) {
+	for _, t := range a.Tasks {
+		go func(t Task) {
+			t.Start(ctx)
+		}(t)
+	}
 }

@@ -1,162 +1,76 @@
 package ioc
 
 import (
+	"context"
 	"net"
 	"time"
 
-	"github.com/Duke1616/ecmdb/internal/attribute"
-	"github.com/Duke1616/ecmdb/internal/codebook"
-	"github.com/Duke1616/ecmdb/internal/dataio"
-	"github.com/Duke1616/ecmdb/internal/department"
-	"github.com/Duke1616/ecmdb/internal/discovery"
-	"github.com/Duke1616/ecmdb/internal/endpoint"
-	"github.com/Duke1616/ecmdb/internal/engine"
-	"github.com/Duke1616/ecmdb/internal/menu"
-	"github.com/Duke1616/ecmdb/internal/model"
-	"github.com/Duke1616/ecmdb/internal/order"
-	"github.com/Duke1616/ecmdb/internal/permission"
-	"github.com/Duke1616/ecmdb/internal/pkg/middleware"
-	"github.com/Duke1616/ecmdb/internal/policy"
-	"github.com/Duke1616/ecmdb/internal/relation"
-	"github.com/Duke1616/ecmdb/internal/resource"
-	"github.com/Duke1616/ecmdb/internal/role"
-	"github.com/Duke1616/ecmdb/internal/rota"
-	"github.com/Duke1616/ecmdb/internal/runner"
-	"github.com/Duke1616/ecmdb/internal/strategy"
-	"github.com/Duke1616/ecmdb/internal/task"
-	"github.com/Duke1616/ecmdb/internal/template"
-	"github.com/Duke1616/ecmdb/internal/terminal"
-	"github.com/Duke1616/ecmdb/internal/tools"
-	"github.com/Duke1616/ecmdb/internal/user"
-	"github.com/Duke1616/ecmdb/internal/workflow"
-	"github.com/gotomicro/ego/core/econf"
-
-	"github.com/ecodeclub/ginx/session"
-	"github.com/gin-contrib/cors"
+	attribute "github.com/Duke1616/ecmdb/internal/web/attribute"
+	dataio "github.com/Duke1616/ecmdb/internal/web/dataio"
+	model "github.com/Duke1616/ecmdb/internal/web/model"
+	plugin "github.com/Duke1616/ecmdb/internal/web/plugin"
+	relation "github.com/Duke1616/ecmdb/internal/web/relation"
+	resource "github.com/Duke1616/ecmdb/internal/web/resource"
+	terminal "github.com/Duke1616/ecmdb/internal/web/terminal"
+	tools "github.com/Duke1616/ecmdb/internal/web/tools"
+	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/middleware"
+	"github.com/Duke1616/eiam/pkg/web/sdk"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 )
 
-func InitWebServer(sp session.Provider, checkPolicyMiddleware *middleware.CheckPolicyMiddlewareBuilder,
-	mdls []gin.HandlerFunc, modelHdl *model.Handler, attributeHdl *attribute.Handler,
-	resourceHdl *resource.Handler, rmHdl *relation.RMHandler, rrHdl *relation.RRHandler,
-	rtHdl *relation.RTHandler, userHdl *user.Handler, templateHdl *template.Handler, strategyHdl *strategy.Handler,
-	codebookHdl *codebook.Handler, runnerHdl *runner.Handler, orderHdl *order.Handler, workflowHdl *workflow.Handler,
-	templateGroupHdl *template.GroupHdl, engineHdl *engine.Handler, taskHdl *task.Handler, policyHdl *policy.Handler,
-	menuHdl *menu.Handler, endpointHdl *endpoint.Handler, roleHdl *role.Handler, permissionHdl *permission.Handler,
-	departmentHdl *department.Handler, toolsHdl *tools.Handler, termHdl *terminal.Handler, rotaHdl *rota.Handler,
-	discoveryHdl *discovery.Handler, dataIOHdl *dataio.Handler, checkLoginMiddleware *middleware.CheckLoginMiddlewareBuilder,
-	listener net.Listener,
+func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Syncer, providers []capability.PermissionProvider,
+	modelHdl *model.Handler, attributeHdl *attribute.Handler, resourceHdl *resource.Handler,
+	rmHdl *relation.RelationTypeHandler,
+	toolsHdl *tools.Handler, termHdl *terminal.Handler,
+	dataIOHdl *dataio.Handler, pluginHdl *plugin.Handler, listener net.Listener,
 ) *egin.Component {
-	session.SetDefaultProvider(sp)
 
 	server := egin.Load("server.egin").Build(egin.WithListener(listener))
+	// 开启 ContextWithFallback：使 ctx.Context.Value() 自动 fallback 到 ctx.Request.Context().Value()
+	server.Engine.ContextWithFallback = true
 	server.Use(mdls...)
 
 	// 不需要登录认证鉴权的路由
-	userHdl.PublicRoutes(server.Engine)
-	strategyHdl.PublicRoutes(server.Engine)
-	toolsHdl.PublicRoutes(server.Engine)
-	orderHdl.PublicRoute(server.Engine)
-	policyHdl.PublicRoutes(server.Engine)
 
-	// 验证是否登录
-	server.Use(session.CheckLoginMiddleware())
+	// 登录检查
+	server.Use(sdk.CheckLogin())
 
-	// 查看用户拥有权限
-	permissionHdl.PublicRoutes(server.Engine)
-
-	// 检查权限策略
-	server.Use(checkPolicyMiddleware.Build())
+	// 权限策略检查
+	server.Use(sdk.CheckPolicy())
 
 	// CMDB 相关接口
 	modelHdl.PrivateRoutes(server.Engine)
 	attributeHdl.PrivateRoutes(server.Engine)
 	resourceHdl.PrivateRoutes(server.Engine)
 	rmHdl.PrivateRoute(server.Engine)
-	rrHdl.PrivateRoute(server.Engine)
-	rtHdl.PrivateRoute(server.Engine)
+	pluginHdl.PrivateRoutes(server.Engine)
 	termHdl.PrivateRoutes(server.Engine)
+	toolsHdl.PrivateRoutes(server.Engine)
 	dataIOHdl.PrivateRoutes(server.Engine)
 
-	// 工单流程相关接口
-	workflowHdl.PrivateRoutes(server.Engine)
-	templateGroupHdl.PrivateRoutes(server.Engine)
-	discoveryHdl.PrivateRoutes(server.Engine)
-	engineHdl.PrivateRoutes(server.Engine)
-	orderHdl.PrivateRoutes(server.Engine)
-	taskHdl.PrivateRoutes(server.Engine)
-	templateHdl.PrivateRoutes(server.Engine)
-	codebookHdl.PrivateRoutes(server.Engine)
-	runnerHdl.PrivateRoutes(server.Engine)
+	// 异步启动 EIAM 资产注册控制器
+	go func() {
+		// 延迟执行，确保路由完全就绪
+		time.Sleep(time.Second)
 
-	// 排班系统相关接口
-	rotaHdl.PrivateRoutes(server.Engine)
-
-	// 用户权限相关接口
-	userHdl.PrivateRoutes(server.Engine)
-	permissionHdl.PrivateRoutes(server.Engine)
-	policyHdl.PrivateRoutes(server.Engine)
-	menuHdl.PrivateRoutes(server.Engine)
-	endpointHdl.PrivateRoutes(server.Engine)
-	departmentHdl.PrivateRoutes(server.Engine)
-	roleHdl.PrivateRoutes(server.Engine)
+		// 新版本 SDK 内部会启动后台协程维持租约，需传入长生命周期的 Context
+		if err := syncer.WithOption(
+			capability.WithPermissions(providers...),
+			capability.WithRouter(server.Engine),
+		).Sync(context.Background()); err != nil {
+			elog.Error("EIAM 资产注册控制器启动失败", elog.FieldErr(err))
+		}
+	}()
 
 	return server
 }
 
 func InitGinMiddlewares() []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		corsHdl(),
-		accessLogger(),
-		func(ctx *gin.Context) {
-		},
-	}
-}
-
-func corsHdl() gin.HandlerFunc {
-	return cors.New(cors.Config{
-		AllowOrigins:  []string{"*"},
-		AllowMethods:  []string{"POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowHeaders:  []string{"Content-Type", "Authorization", "X-Finder-Id", "X-Finder-ID"},
-		ExposeHeaders: []string{"X-Access-Token"},
-		// 是否允许你带 cookie 之类的东西
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	})
-}
-
-// accessLogger 自定义 access 日志中间件
-// NOTE: SDK 鉴权专用路由使用 Debug 级别避免日志污染，其他路由使用 Info
-func accessLogger() gin.HandlerFunc {
-	// 关闭默认的日志输出
-	econf.Set("server.egin.enableAccessInterceptor", false)
-
-	// SDK 鉴权路由精确匹配，降级为 Debug 避免日志污染
-	sdkPaths := map[string]struct{}{
-		"/api/policy/check_login":  {},
-		"/api/policy/check_policy": {},
-	}
-
-	// NOTE: ego DefaultLogger 针对框架内部做了 caller skip 校准，直接从用户代码调用需减一层
-	logger := elog.DefaultLogger.With(elog.FieldComponentName("access")).WithCallerSkip(-1)
-	return func(ctx *gin.Context) {
-		beg := time.Now()
-		ctx.Next()
-		cost := time.Since(beg)
-
-		fields := []elog.Field{
-			elog.FieldMethod(ctx.Request.Method + "." + ctx.FullPath()),
-			elog.FieldAddr(ctx.Request.URL.RequestURI()),
-			elog.FieldCost(cost),
-			elog.FieldCode(int32(ctx.Writer.Status())),
-		}
-
-		if _, ok := sdkPaths[ctx.Request.URL.Path]; ok {
-			logger.Debug("access", fields...)
-		} else {
-			logger.Info("access", fields...)
-		}
+		middleware.AccessLogger(),
+		middleware.NewCorsBuilder().Build(),
 	}
 }

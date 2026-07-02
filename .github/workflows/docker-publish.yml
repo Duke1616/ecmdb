@@ -3,10 +3,10 @@ on:
   schedule:
     - cron: '32 20 * * *'
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
 env:
   REGISTRY: registry.cn-qingdao.aliyuncs.com
   TAGS: duke1616/ecmdb
@@ -41,6 +41,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.TAGS }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
 
       - name: Login into registry
         if: github.event_name != 'pull_request'

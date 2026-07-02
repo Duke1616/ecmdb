@@ -4,17 +4,15 @@ web:
   host: "0.0.0.0"
   port: 8000
 
-# 数据加密，根据模块划分
+policy:
+  auth_url: http://127.0.0.1:9000
+  discovery_url: http://127.0.0.1:9000
+
+
+# 数据加密配置
 encryption:
-  user:
-    version: "V1"
-    key: "1234567890"
-  resource:
-    version: "V1"
-    key: "1234567890"
-  runner:
-    version: "V1"
-    key: "1234567890"
+  version: "V1"
+  key: "1234567890"
 
 ldap:
   url: "ldap://127.0.0.1:389"
@@ -89,3 +87,13 @@ grpc:
     ealert:
       name: "ealert"
       auth_token: "1234567890"
+    eiam:
+      name: "eiam"
+      auth_token: "1234567890"
+
+# 注册插件
+plugin:
+  builtin:
+    tenant:
+      access_key: "AK6b8b0e8cda13a37bfa2b39dc"
+      secret_key: "f8d55a305e9ea2be9f39dfec1a7e44ba1f0340b0800e28ea"

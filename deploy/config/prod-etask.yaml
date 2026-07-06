@@ -125,5 +125,6 @@ migration:
   batch_size: 100
   timeout: "10m"
   auto_migrate: true
+  reset_auto_increment: true
   truncate: false
   dry_run: false

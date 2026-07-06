@@ -67,11 +67,11 @@ go run main.go init ticket-notify-template
 | ![首页导航](docs/img/navigation.png) | ![CMDB](docs/img/cmdb.png) |
 |:--------------------------:|:------------------------------:|
 | **首页导航** | **CMDB 资产管理** |
-| ![菜单管理](docs/img/menu.png) | ![排班管理](docs/img/scheduling.png) |
+| ![策略创建](docs/img/policy.png) | ![排班管理](docs/img/scheduling.png) |
 | **菜单管理** | **排班管理** |
-| ![工单列表](docs/img/order/start.png) | ![流程控制](docs/img/order/workflow.png) |
+| ![工单列表](docs/img/order/start.png) | ![流程定义](docs/img/order/workflow.png) |
 | **工单列表** | **流程控制** |
-| ![模版管理](docs/img/order/form.png) | ![自动化代码库](docs/img/order/codebook.png) |
+| ![工单模版](docs/img/order/form.png) | ![脚本引擎](docs/img/order/codebook.png) |
 | **模版管理** | **自动化代码库** |
 
 ### ⚙️ 自动化任务控制流转图

@@ -1,38 +1,46 @@
 log:
   debug: true
 
+# HTTP 服务监听地址
 web:
   host: "0.0.0.0"
   port: 8000
 
+# EIAM 登录校验与资源同步地址
 policy:
   auth_url: http://127.0.0.1:9000
   discovery_url: http://127.0.0.1:9000
 
+# 敏感字段加密配置
 encryption:
   version: "V1"
   key: "1234567890"
 
+# Redis 连接配置
 redis:
   addr: "127.0.0.1:6379"
   password: "1234567890"
   db: 0
 
+# MongoDB 用于存储 CMDB 模型、资产和关系数据
 mongodb:
   dsn: mongodb://127.0.0.1:27017/ecmdb
   db: ecmdb
   username: ecmdb
   password: "123456"
 
+# Kafka 事件消息配置
 kafka:
   network: tcp
   addresses:
     - 127.0.0.1:9092
 
+# Etcd 服务发现与注册配置
 etcd:
   endpoints:
     - 127.0.0.1:2379
 
+# MinIO 用于文件导入导出和对象存储
 minio:
   endpoint: 127.0.0.1:9000
   access_key_id: minio

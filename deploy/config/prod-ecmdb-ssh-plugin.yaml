@@ -10,7 +10,7 @@ policy:
 # 插件基础服务配置
 ssh:
   addr: ":8000"
-  upstream: "http://ecmdb-ssh-plugin:8000"
+  upstream: "http://ecmdb-plugin-ssh:8000"
   timeout_seconds: 5
 
 # etcd 注册中心配置 (全插件服务发现依赖基础)

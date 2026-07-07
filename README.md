@@ -106,7 +106,6 @@ go run main.go server
 go run main.go init
 
 # 导入系统内置插件定义
-go run main.go plugin import-builtin
 
 # 修复历史数据中的加密字段
 go run main.go repair

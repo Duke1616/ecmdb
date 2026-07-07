@@ -11,7 +11,6 @@ import (
 	plugin "github.com/Duke1616/ecmdb/internal/web/plugin"
 	relation "github.com/Duke1616/ecmdb/internal/web/relation"
 	resource "github.com/Duke1616/ecmdb/internal/web/resource"
-	terminal "github.com/Duke1616/ecmdb/internal/web/terminal"
 	tools "github.com/Duke1616/ecmdb/internal/web/tools"
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/Duke1616/eiam/pkg/web/middleware"
@@ -24,7 +23,7 @@ import (
 func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Syncer, providers []capability.PermissionProvider,
 	modelHdl *model.Handler, attributeHdl *attribute.Handler, resourceHdl *resource.Handler,
 	rmHdl *relation.RelationTypeHandler,
-	toolsHdl *tools.Handler, termHdl *terminal.Handler,
+	toolsHdl *tools.Handler,
 	dataIOHdl *dataio.Handler, pluginHdl *plugin.Handler, listener net.Listener,
 ) *egin.Component {
 
@@ -34,6 +33,7 @@ func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Synce
 	server.Use(mdls...)
 
 	// 不需要登录认证鉴权的路由
+	pluginHdl.PublicRoutes(server.Engine)
 
 	// 登录检查
 	server.Use(sdk.CheckLogin())
@@ -47,7 +47,6 @@ func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Synce
 	resourceHdl.PrivateRoutes(server.Engine)
 	rmHdl.PrivateRoute(server.Engine)
 	pluginHdl.PrivateRoutes(server.Engine)
-	termHdl.PrivateRoutes(server.Engine)
 	toolsHdl.PrivateRoutes(server.Engine)
 	dataIOHdl.PrivateRoutes(server.Engine)
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/Duke1616/ecmdb/cmd/backup"
 	"github.com/Duke1616/ecmdb/cmd/initial"
-	plugincmd "github.com/Duke1616/ecmdb/cmd/plugin"
 	"github.com/Duke1616/ecmdb/cmd/repair"
 	"github.com/Duke1616/ecmdb/cmd/server"
 	"github.com/fatih/color"
@@ -62,7 +61,6 @@ func main() {
 	rootCmd.AddCommand(initial.Cmd)
 	rootCmd.AddCommand(backup.Cmd)
 	rootCmd.AddCommand(repair.Cmd)
-	rootCmd.AddCommand(plugincmd.Cmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

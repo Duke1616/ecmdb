@@ -58,12 +58,13 @@ func TestResolveReturnsFriendlyMissingInputMessage(t *testing.T) {
 				UID:  "builtin.ssh",
 				Name: "SSH",
 				Actions: []domain.PluginActionSpec{
-					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal},
+					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal, BindingUID: "builtin.ssh.host"},
 				},
 			},
 			bindingsByModelUID: map[string][]domain.PluginBinding{
 				"host": {
 					{
+						UID:      "builtin.ssh.host",
 						PluginID: "builtin.ssh",
 						ModelUID: "host",
 						Enabled:  true,
@@ -121,12 +122,13 @@ func TestResolveActionContextReloadsTopLevelFields(t *testing.T) {
 				UID:  "builtin.ssh",
 				Name: "SSH",
 				Actions: []domain.PluginActionSpec{
-					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal},
+					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal, BindingUID: "builtin.ssh.host"},
 				},
 			},
 			bindingsByModelUID: map[string][]domain.PluginBinding{
 				"host": {
 					{
+						UID:      "builtin.ssh.host",
 						PluginID: "builtin.ssh",
 						ModelUID: "host",
 						Enabled:  true,
@@ -248,12 +250,122 @@ func TestImportModelRelationsSkipsUnchangedExistingRelation(t *testing.T) {
 	}
 }
 
+func TestResolveResultIncludesBindingModelUID(t *testing.T) {
+	runtime := &pluginx.ActionRuntimeSpec{
+		Title: "SSH 终端",
+	}
+	result := resolveResult(pluginx.ActionContext{
+		Plugin: pluginx.Plugin{UID: "builtin.ssh", Name: "SSH"},
+		Binding: pluginx.Binding{
+			UID:      "builtin.ssh.host",
+			ModelUID: "host",
+		},
+		Action: pluginx.ActionSpec{
+			Action:     "terminal",
+			UI:         pluginx.UIBuiltinTerminal,
+			BindingUID: "builtin.ssh.host",
+			Runtime:    runtime,
+			Meta: map[string]any{
+				"title": "SSH 终端",
+			},
+		},
+		ResourceID: 42,
+	})
+
+	if result.ModelUID != "host" {
+		t.Fatalf("unexpected model_uid: %s", result.ModelUID)
+	}
+	if result.BindingUID != "builtin.ssh.host" {
+		t.Fatalf("unexpected binding_uid: %s", result.BindingUID)
+	}
+	if result.Runtime != runtime {
+		t.Fatal("expected runtime config to be passed through")
+	}
+	if got := result.Meta["title"]; got != "SSH 终端" {
+		t.Fatalf("unexpected title meta: %v", got)
+	}
+}
+
+func TestGetDefaultDefinitionReadsStoredSnapshot(t *testing.T) {
+	plugin := pluginx.Plugin{
+		UID:  "builtin.ssh",
+		Name: "SSH",
+	}
+	plugin.SetSchema(pluginx.Schema{
+		Models: []pluginx.ModelSpec{{UID: "host", Name: "主机"}},
+	})
+	plugin.SetDefaultBindings([]pluginx.Binding{
+		{
+			UID:      "builtin.ssh.host",
+			PluginID: "builtin.ssh",
+			ModelUID: "host",
+			Enabled:  true,
+			Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip"}, []string{"ip"}),
+		},
+	})
+
+	svc := &service{
+		repo: &stubPluginRepo{
+			plugin: plugin,
+		},
+	}
+
+	def, err := svc.GetDefaultDefinition(context.Background(), "builtin.ssh")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(def.Schema.Models) != 1 || def.Schema.Models[0].UID != "host" {
+		t.Fatalf("unexpected schema: %#v", def.Schema)
+	}
+	if len(def.Bindings) != 1 || def.Bindings[0].UID != "builtin.ssh.host" {
+		t.Fatalf("unexpected bindings: %#v", def.Bindings)
+	}
+}
+
+func TestImportDefinitionPersistsDefinitionSnapshot(t *testing.T) {
+	repo := &stubPluginRepo{}
+	svc := &service{repo: repo}
+
+	err := svc.ImportDefinition(context.Background(), pluginx.Definition{
+		Plugin: pluginx.Plugin{
+			UID:  "builtin.ssh",
+			Name: "SSH",
+		},
+		Bindings: []pluginx.Binding{
+			{
+				UID:      "builtin.ssh.host",
+				ModelUID: "host",
+				Enabled:  true,
+				Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip"}, []string{"ip"}),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+
+	gotSchema, ok := repo.plugin.Schema()
+	if !ok || len(gotSchema.Models) != 0 {
+		t.Fatalf("unexpected stored schema: %#v", gotSchema)
+	}
+
+	gotBindings, ok := repo.plugin.DefaultBindings()
+	if !ok || len(gotBindings) != 1 || gotBindings[0].PluginID != "builtin.ssh" {
+		t.Fatalf("unexpected stored bindings: %#v", gotBindings)
+	}
+}
+
 type stubPluginRepo struct {
 	plugin             domain.Plugin
+	upsertedPlugins    []domain.Plugin
 	bindingsByModelUID map[string][]domain.PluginBinding
 }
 
-func (s *stubPluginRepo) UpsertPlugin(ctx context.Context, p domain.Plugin) error { return nil }
+func (s *stubPluginRepo) UpsertPlugin(ctx context.Context, p domain.Plugin) error {
+	s.plugin = p
+	s.upsertedPlugins = append(s.upsertedPlugins, p)
+	return nil
+}
 func (s *stubPluginRepo) UpsertBinding(ctx context.Context, b domain.PluginBinding) error {
 	return nil
 }

@@ -128,12 +128,6 @@ func Version(value string) Option {
 	}
 }
 
-func Enabled(value bool) Option {
-	return func(p *Plugin) {
-		// 已废弃，无动作，插件状态已完全收口至 Binding 层的 Enabled
-	}
-}
-
 type ActionOption func(*ActionSpec)
 
 func Icon(value string) ActionOption {
@@ -151,6 +145,19 @@ func UI(value string) ActionOption {
 func Placement(value string) ActionOption {
 	return func(a *ActionSpec) {
 		a.Placement = value
+	}
+}
+
+func UseBinding(uid string) ActionOption {
+	return func(a *ActionSpec) {
+		a.BindingUID = uid
+	}
+}
+
+func ActionRuntime(value ActionRuntimeSpec) ActionOption {
+	return func(a *ActionSpec) {
+		runtime := value
+		a.Runtime = &runtime
 	}
 }
 
@@ -243,9 +250,13 @@ func Center[T any](modelUID string, opts ...BindingOption) BindingFactory {
 
 func CenterNamed[T any](name string, modelUID string, opts ...BindingOption) BindingFactory {
 	return func(pluginUID string) (Binding, error) {
-		uid := fmt.Sprintf("%s.%s", pluginUID, modelUID)
+		uid := CenterBindingUID(pluginUID, modelUID)
 		return bindingForCenter[T](uid, name, modelUID, opts...)
 	}
+}
+
+func CenterBindingUID(pluginUID string, modelUID string) string {
+	return fmt.Sprintf("%s.%s", pluginUID, modelUID)
 }
 
 func bindingForCenter[T any](uid string, name string, modelUID string, opts ...BindingOption) (Binding, error) {

@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	plugin2 "github.com/Duke1616/ecmdb/internal/grpc/plugin"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
 	"github.com/Duke1616/ecmdb/internal/service/attribute"
@@ -22,7 +23,6 @@ import (
 	web8 "github.com/Duke1616/ecmdb/internal/web/plugin"
 	web4 "github.com/Duke1616/ecmdb/internal/web/relation"
 	web3 "github.com/Duke1616/ecmdb/internal/web/resource"
-	web6 "github.com/Duke1616/ecmdb/internal/web/terminal"
 	web5 "github.com/Duke1616/ecmdb/internal/web/tools"
 	"github.com/Duke1616/ecmdb/pkg/storage"
 )
@@ -82,12 +82,15 @@ func InitApp() (*App, error) {
 	pluginDAO := dao.NewPluginDAO(db)
 	pluginRepository := repository.NewPluginRepository(pluginDAO)
 	pluginService := plugin.NewService(pluginRepository, service7, relationResourceService, service8, mgService, serviceService, relationTypeService, relationModelService)
-	handler4 := web6.NewHandler(pluginService)
 	iDataIOService := service6.NewService(serviceService, service7, service8)
-	handler5 := web7.NewHandler(iDataIOService, s3Storage)
-	handler6 := web8.NewHandler(pluginService)
+	handler4 := web7.NewHandler(iDataIOService, s3Storage)
+	handler5 := web8.NewHandler(pluginService)
 	listener := InitListener()
-	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationTypeHandler, handler3, handler4, handler5, handler6, listener)
+	component := InitWebServer(v, sdk, syncer, v2, handler, webHandler, handler2, relationTypeHandler, handler3, handler4, handler5, listener)
+	clientv3Client := InitEtcdClient()
+	registry := InitRegistry(clientv3Client)
+	server := plugin2.NewServer(pluginService)
+	grpcServer := InitGrpcServer(registry, server)
 	fieldDeleteConsumer, err := InitFieldDeleteConsumer(mq, service7)
 	if err != nil {
 		return nil, err
@@ -98,8 +101,9 @@ func InitApp() (*App, error) {
 	}
 	v4 := InitTasks(fieldDeleteConsumer, fieldSecureAttrChangeConsumer)
 	app := &App{
-		Web:   component,
-		Tasks: v4,
+		Web:        component,
+		GrpcServer: grpcServer,
+		Tasks:      v4,
 	}
 	return app, nil
 }

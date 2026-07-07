@@ -29,6 +29,9 @@ func NewCommand() *cobra.Command {
 				func() server.Server {
 					return app.Web
 				}(),
+				func() server.Server {
+					return app.GrpcServer
+				}(),
 			).Run(); err != nil {
 				elog.Panic("startup", elog.FieldErr(err))
 			}

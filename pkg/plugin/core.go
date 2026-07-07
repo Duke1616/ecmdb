@@ -80,13 +80,15 @@ func (p Plugin) FindAction(name string) (ActionSpec, bool) {
 func (p Plugin) ResourceActions() []ResourceAction {
 	return lo.Map(p.Actions, func(action ActionSpec, _ int) ResourceAction {
 		return ResourceAction{
-			PluginID:  p.UID,
-			Action:    action.Action,
-			Name:      action.Name,
-			Icon:      action.Icon,
-			Placement: action.Placement,
-			UI:        action.UI,
-			Meta:      action.Meta,
+			PluginID:   p.UID,
+			Action:     action.Action,
+			Name:       action.Name,
+			Icon:       action.Icon,
+			Placement:  action.Placement,
+			UI:         action.UI,
+			BindingUID: action.BindingUID,
+			Runtime:    action.Runtime,
+			Meta:       action.Meta,
 		}
 	})
 }

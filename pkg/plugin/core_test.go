@@ -47,10 +47,13 @@ func TestPluginFindAction(t *testing.T) {
 }
 
 func TestPluginResourceActions(t *testing.T) {
+	runtime := &ActionRuntimeSpec{
+		Title: "SSH 终端",
+	}
 	plugin := Plugin{
 		UID: "builtin.ssh",
 		Actions: []ActionSpec{
-			{Action: "terminal", Name: "SSH", UI: UIBuiltinTerminal},
+			{Action: "terminal", Name: "SSH", UI: UIBuiltinTerminal, BindingUID: "builtin.ssh.host", Runtime: runtime},
 		},
 	}
 
@@ -60,5 +63,11 @@ func TestPluginResourceActions(t *testing.T) {
 	}
 	if actions[0].PluginID != "builtin.ssh" {
 		t.Fatalf("expected plugin id builtin.ssh, got %s", actions[0].PluginID)
+	}
+	if actions[0].BindingUID != "builtin.ssh.host" {
+		t.Fatalf("expected binding uid builtin.ssh.host, got %s", actions[0].BindingUID)
+	}
+	if actions[0].Runtime != runtime {
+		t.Fatal("expected runtime config to be preserved")
 	}
 }

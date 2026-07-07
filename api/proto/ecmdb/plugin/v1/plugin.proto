@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package ecmdb.plugin.v1;
+
+option go_package = "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/plugin/v1;pluginv1";
+
+message ResolveActionContextRequest {
+  string plugin_id = 1;
+  string action = 2;
+  int64 resource_id = 3;
+  bytes params_json = 4;
+}
+
+message ResolveActionContextResponse {
+  bytes action_context_json = 1;
+}
+
+// 插件向主站发起主动注册请求
+message RegisterPluginRequest {
+  string plugin_id = 1;
+  string upstream = 2; // 插件的外网/内网可被主站访问的 HTTP 服务地址，例如 http://ssh-plugin:18080
+}
+
+// 插件主动注册响应
+message RegisterPluginResponse {
+  bool success = 1;
+}
+
+service PluginRuntimeService {
+  rpc ResolveActionContext(ResolveActionContextRequest) returns (ResolveActionContextResponse);
+
+  // 插件服务动态握手注册
+  rpc RegisterPlugin(RegisterPluginRequest) returns (RegisterPluginResponse);
+}

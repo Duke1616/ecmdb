@@ -6,7 +6,6 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
 )
 
 type PluginRepository interface {
@@ -60,6 +59,7 @@ func (repo *pluginRepository) UpsertPlugin(ctx context.Context, p domain.Plugin)
 		Type:    p.Type,
 		Version: p.Version,
 		Actions: p.Actions,
+		Meta:    p.Meta,
 	})
 }
 
@@ -102,6 +102,7 @@ func (repo *pluginRepository) GetPlugin(ctx context.Context, uid string) (domain
 		Type:    p.Type,
 		Version: p.Version,
 		Actions: p.Actions,
+		Meta:    p.Meta,
 		Ctime:   time.UnixMilli(p.Ctime).UnixMilli(),
 		Utime:   time.UnixMilli(p.Utime).UnixMilli(),
 	}, nil
@@ -122,6 +123,7 @@ func (repo *pluginRepository) ListPlugins(ctx context.Context) ([]domain.Plugin,
 			Type:    plugin.Type,
 			Version: plugin.Version,
 			Actions: plugin.Actions,
+			Meta:    plugin.Meta,
 			Ctime:   time.UnixMilli(plugin.Ctime).UnixMilli(),
 			Utime:   time.UnixMilli(plugin.Utime).UnixMilli(),
 		})
@@ -170,25 +172,10 @@ func toPluginBindings(bindings []dao.PluginBinding) []domain.PluginBinding {
 			PluginID: binding.PluginID,
 			ModelUID: binding.ModelUID,
 			Enabled:  binding.Enabled,
-			Graph:    bindingGraph(binding),
+			Graph:    binding.Graph,
 			Ctime:    time.UnixMilli(binding.Ctime).UnixMilli(),
 			Utime:    time.UnixMilli(binding.Utime).UnixMilli(),
 		})
 	}
 	return res
-}
-
-func bindingGraph(binding dao.PluginBinding) *pluginx.BindingGraph {
-	if binding.Graph != nil {
-		return binding.Graph
-	}
-	if len(binding.LegacySpecs) == 0 {
-		return nil
-	}
-
-	graph, err := pluginx.GraphFromBindingSpecs(binding.ModelUID, binding.LegacySpecs)
-	if err != nil {
-		return nil
-	}
-	return graph
 }

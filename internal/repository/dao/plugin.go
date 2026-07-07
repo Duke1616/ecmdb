@@ -25,21 +25,21 @@ type Plugin struct {
 	Type     string              `bson:"type"`
 	Version  string              `bson:"version"`
 	Actions  []plugin.ActionSpec `bson:"actions"`
+	Meta     map[string]any      `bson:"meta,omitempty"`
 	Ctime    int64               `bson:"ctime"`
 	Utime    int64               `bson:"utime"`
 }
 
 type PluginBinding struct {
-	TenantID    int64                 `bson:"tenant_id" eiam:"private"`
-	Id          int64                 `bson:"id"`
-	UID         string                `bson:"uid"`
-	PluginID    string                `bson:"plugin_id"`
-	ModelUID    string                `bson:"model_uid"`
-	Enabled     bool                  `bson:"enabled"`
-	Graph       *plugin.BindingGraph  `bson:"graph,omitempty"`
-	LegacySpecs []plugin.ResourceSpec `bson:"specs,omitempty"`
-	Ctime       int64                 `bson:"ctime"`
-	Utime       int64                 `bson:"utime"`
+	TenantID int64                `bson:"tenant_id" eiam:"private"`
+	Id       int64                `bson:"id"`
+	UID      string               `bson:"uid"`
+	PluginID string               `bson:"plugin_id"`
+	ModelUID string               `bson:"model_uid"`
+	Enabled  bool                 `bson:"enabled"`
+	Graph    *plugin.BindingGraph `bson:"graph,omitempty"`
+	Ctime    int64                `bson:"ctime"`
+	Utime    int64                `bson:"utime"`
 }
 
 func (p *Plugin) SetID(id int64) {
@@ -134,10 +134,8 @@ func (dao *pluginDAO) UpsertPlugin(ctx context.Context, p Plugin) error {
 				"type":    p.Type,
 				"version": p.Version,
 				"actions": p.Actions,
+				"meta":    p.Meta,
 				"utime":   p.Utime,
-			},
-			"$unset": bson.M{
-				"input_specs": "",
 			},
 		},
 	)
@@ -177,9 +175,6 @@ func (dao *pluginDAO) UpsertBinding(ctx context.Context, b PluginBinding) error 
 				"enabled":   b.Enabled,
 				"graph":     b.Graph,
 				"utime":     b.Utime,
-			},
-			"$unset": bson.M{
-				"specs": "",
 			},
 		},
 	)

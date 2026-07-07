@@ -32,23 +32,51 @@ func ValidRelationType(relationType string) bool {
 }
 
 type Plugin struct {
-	ID      int64        `json:"id"`
-	UID     string       `json:"uid"`
-	Name    string       `json:"name"`
-	Type    string       `json:"type"`
-	Version string       `json:"version"`
-	Actions []ActionSpec `json:"actions"`
-	Ctime   int64        `json:"ctime,omitempty"`
-	Utime   int64        `json:"utime,omitempty"`
+	ID      int64          `json:"id"`
+	UID     string         `json:"uid"`
+	Name    string         `json:"name"`
+	Type    string         `json:"type"`
+	Version string         `json:"version"`
+	Actions []ActionSpec   `json:"actions"`
+	Meta    map[string]any `json:"meta,omitempty"`
+	Ctime   int64          `json:"ctime,omitempty"`
+	Utime   int64          `json:"utime,omitempty"`
 }
 
 type ActionSpec struct {
-	Action    string         `json:"action"`
-	Name      string         `json:"name"`
-	Icon      string         `json:"icon"`
-	Placement string         `json:"placement"`
-	UI        string         `json:"ui"`
-	Meta      map[string]any `json:"meta,omitempty"`
+	Action     string             `json:"action"`
+	Name       string             `json:"name"`
+	Icon       string             `json:"icon"`
+	Placement  string             `json:"placement"`
+	UI         string             `json:"ui"`
+	BindingUID string             `json:"binding_uid,omitempty"`
+	Runtime    *ActionRuntimeSpec `json:"runtime,omitempty"`
+	Meta       map[string]any     `json:"meta,omitempty"`
+}
+
+type ActionRuntimeSpec struct {
+	Layout  string              `json:"layout,omitempty"`
+	Title   string              `json:"title,omitempty"`
+	Props   map[string]any      `json:"props,omitempty"`
+	Sidebar *RuntimeSidebarSpec `json:"sidebar,omitempty"`
+}
+
+type RuntimeSidebarSpec struct {
+	Enabled           *bool                       `json:"enabled,omitempty"`
+	Mode              string                      `json:"mode,omitempty"`
+	Title             string                      `json:"title,omitempty"`
+	SearchPlaceholder string                      `json:"search_placeholder,omitempty"`
+	EmptyText         string                      `json:"empty_text,omitempty"`
+	Collapsible       *bool                       `json:"collapsible,omitempty"`
+	Resource          *RuntimeSidebarResourceSpec `json:"resource,omitempty"`
+}
+
+type RuntimeSidebarResourceSpec struct {
+	ModelUID      string   `json:"model_uid,omitempty"`
+	TitleField    string   `json:"title_field,omitempty"`
+	SubtitleField string   `json:"subtitle_field,omitempty"`
+	SearchFields  []string `json:"search_fields,omitempty"`
+	Limit         int      `json:"limit,omitempty"`
 }
 
 type Binding struct {
@@ -165,13 +193,15 @@ type Filter struct {
 }
 
 type ResourceAction struct {
-	PluginID  string         `json:"plugin_id"`
-	Action    string         `json:"action"`
-	Name      string         `json:"name"`
-	Icon      string         `json:"icon"`
-	Placement string         `json:"placement"`
-	UI        string         `json:"ui"`
-	Meta      map[string]any `json:"meta,omitempty"`
+	PluginID   string             `json:"plugin_id"`
+	Action     string             `json:"action"`
+	Name       string             `json:"name"`
+	Icon       string             `json:"icon"`
+	Placement  string             `json:"placement"`
+	UI         string             `json:"ui"`
+	BindingUID string             `json:"binding_uid,omitempty"`
+	Runtime    *ActionRuntimeSpec `json:"runtime,omitempty"`
+	Meta       map[string]any     `json:"meta,omitempty"`
 }
 
 type ResourceActions struct {
@@ -204,9 +234,12 @@ type ResolveResult struct {
 	PluginID   string                   `json:"plugin_id"`
 	PluginName string                   `json:"plugin_name"`
 	Action     string                   `json:"action"`
+	BindingUID string                   `json:"binding_uid,omitempty"`
+	ModelUID   string                   `json:"model_uid,omitempty"`
 	ResourceID int64                    `json:"resource_id"`
 	Inputs     map[string]ResolvedInput `json:"inputs"`
 	Params     map[string]any           `json:"params,omitempty"`
+	Runtime    *ActionRuntimeSpec       `json:"runtime,omitempty"`
 	Meta       map[string]any           `json:"meta,omitempty"`
 }
 

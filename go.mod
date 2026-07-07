@@ -5,7 +5,6 @@ go 1.25.0
 require (
 	github.com/Duke1616/eiam v0.0.17
 	github.com/Duke1616/etask v0.0.7
-	github.com/Duke1616/vuefinder-go v1.1.0
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
@@ -37,6 +36,8 @@ require (
 )
 
 replace github.com/Bunny3th/easy-workflow v1.0.0 => github.com/Duke1616/easy-workflow v1.0.5
+
+replace github.com/Duke1616/eiam => ../eiam
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect

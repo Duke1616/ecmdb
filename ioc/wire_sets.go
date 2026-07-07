@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	pluginserver "github.com/Duke1616/ecmdb/internal/grpc/plugin"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
 	attrSvc "github.com/Duke1616/ecmdb/internal/service/attribute"
@@ -16,7 +17,6 @@ import (
 	plugin "github.com/Duke1616/ecmdb/internal/web/plugin"
 	relation "github.com/Duke1616/ecmdb/internal/web/relation"
 	resource "github.com/Duke1616/ecmdb/internal/web/resource"
-	terminal "github.com/Duke1616/ecmdb/internal/web/terminal"
 	tools "github.com/Duke1616/ecmdb/internal/web/tools"
 	"github.com/Duke1616/ecmdb/pkg/storage"
 	"github.com/google/wire"
@@ -49,10 +49,6 @@ var (
 	toolsSet = wire.NewSet(
 		toolsSvc.NewService,
 		tools.NewHandler,
-	)
-
-	terminalSet = wire.NewSet(
-		terminal.NewHandler,
 	)
 
 	dataIoSet = wire.NewSet(
@@ -104,11 +100,13 @@ var (
 		InitProviders,
 		InitGinMiddlewares,
 		InitWebServer,
+		InitGrpcServer,
+		InitRegistry,
+		pluginserver.NewServer,
 
 		BaseSet,
 		AttributeSet,
 		toolsSet,
-		terminalSet,
 		dataIoSet,
 		PluginSet,
 		RelationSet,

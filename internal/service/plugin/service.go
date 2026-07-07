@@ -9,7 +9,6 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/errs"
-	_ "github.com/Duke1616/ecmdb/internal/plugin/builtin"
 	"github.com/Duke1616/ecmdb/internal/repository"
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	model "github.com/Duke1616/ecmdb/internal/service/model"
@@ -20,8 +19,8 @@ import (
 )
 
 type Service interface {
-	// RegisterBuiltinPlugins 仅注册引导注册系统内置插件元数据。
-	RegisterBuiltinPlugins(ctx context.Context) error
+	// ImportDefinition 导入外部插件定义。
+	ImportDefinition(ctx context.Context, def pluginx.Definition) error
 
 	// GetDefaultDefinition 返回插件默认定义草稿，供前端创建内置默认绑定时使用。
 	GetDefaultDefinition(ctx context.Context, pluginID string) (pluginx.Definition, error)
@@ -107,28 +106,49 @@ func NewService(
 	}
 }
 
-func (s *service) RegisterBuiltinPlugins(ctx context.Context) error {
-	for _, builtin := range pluginx.Builtins() {
-		def := builtin.Definition()
-		if err := s.syncBuiltinPlugin(ctx, def.Plugin); err != nil {
-			return err
-		}
+func (s *service) ImportDefinition(ctx context.Context, def pluginx.Definition) error {
+	preparedBindings, err := prepareDefinitionBindings(def.Plugin.UID, def.Bindings)
+	if err != nil {
+		return err
 	}
-	return nil
+
+	def.Plugin.SetSchema(def.Schema)
+	def.Plugin.SetDefaultBindings(preparedBindings)
+
+	if err := s.upsertPlugin(ctx, def.Plugin); err != nil {
+		return err
+	}
+	if err := s.importSchema(ctx, def.Schema); err != nil {
+		return err
+	}
+	if len(preparedBindings) == 0 {
+		return nil
+	}
+	return s.savePreparedBindings(ctx, preparedBindings)
 }
 
 func (s *service) GetDefaultDefinition(ctx context.Context, pluginID string) (pluginx.Definition, error) {
-	_ = ctx
 	pluginID = strings.TrimSpace(pluginID)
 	if pluginID == "" {
 		return pluginx.Definition{}, fmt.Errorf("plugin_id 不能为空")
 	}
 
-	builtin, ok := pluginx.FindBuiltin(pluginID)
-	if !ok {
-		return pluginx.Definition{}, fmt.Errorf("未找到对应的内置插件定义: %s", pluginID)
+	plugin, err := s.loadPlugin(ctx, pluginID)
+	if err != nil {
+		return pluginx.Definition{}, err
 	}
-	return builtin.Definition(), nil
+
+	schema, _ := plugin.Schema()
+	bindings, _ := plugin.DefaultBindings()
+	if isEmptySchema(schema) && len(bindings) == 0 {
+		return pluginx.Definition{}, fmt.Errorf("插件未提供默认定义: %s", pluginID)
+	}
+
+	return pluginx.Definition{
+		Plugin:   plugin,
+		Schema:   schema,
+		Bindings: bindings,
+	}, nil
 }
 
 func (s *service) SaveBindings(ctx context.Context, req domain.SavePluginBindings) error {
@@ -137,7 +157,7 @@ func (s *service) SaveBindings(ctx context.Context, req domain.SavePluginBinding
 		return err
 	}
 
-	if err = s.importBindingSchema(ctx, plan.pluginID, plan.bindings); err != nil {
+	if err = s.importPluginSchemaSnapshot(ctx, plan.pluginID); err != nil {
 		return err
 	}
 
@@ -430,27 +450,6 @@ func (s *service) loadPlugin(ctx context.Context, pluginID string) (domain.Plugi
 	return s.repo.GetPlugin(ctx, pluginID)
 }
 
-func (s *service) syncBuiltinPlugin(ctx context.Context, next pluginx.Plugin) error {
-	plugin, err := s.keepPluginRuntimeState(ctx, next)
-	if err != nil {
-		return err
-	}
-	return s.upsertPlugin(ctx, plugin)
-}
-
-func (s *service) keepPluginRuntimeState(ctx context.Context, next pluginx.Plugin) (pluginx.Plugin, error) {
-	existing, err := s.repo.GetPlugin(ctx, next.UID)
-	switch {
-	case err == nil:
-		next.ID = existing.ID
-		return next, nil
-	case errors.Is(err, errs.ErrNotFound):
-		return next, nil
-	default:
-		return pluginx.Plugin{}, err
-	}
-}
-
 func (s *service) buildBindingSavePlan(ctx context.Context, req domain.SavePluginBindings) (bindingSavePlan, error) {
 	pluginID := strings.TrimSpace(req.PluginID)
 	if pluginID == "" {
@@ -481,20 +480,24 @@ func (s *service) savePreparedBindings(ctx context.Context, bindings []pluginx.B
 	return nil
 }
 
-func (s *service) importBindingSchema(ctx context.Context, pluginID string, bindings []pluginx.Binding) error {
-	builtin, ok := pluginx.FindBuiltin(pluginID)
-	if !ok {
-		return nil
-	}
-
-	schema, err := builtin.SchemaForBindings(bindings)
+func (s *service) importPluginSchemaSnapshot(ctx context.Context, pluginID string) error {
+	plugin, err := s.loadPlugin(ctx, pluginID)
 	if err != nil {
 		return err
 	}
-	if isEmptySchema(schema) {
+
+	schema, ok := plugin.Schema()
+	if !ok || isEmptySchema(schema) {
 		return nil
 	}
 	return s.importSchema(ctx, schema)
+}
+
+func prepareDefinitionBindings(pluginID string, bindings []pluginx.Binding) ([]pluginx.Binding, error) {
+	if len(bindings) == 0 {
+		return []pluginx.Binding{}, nil
+	}
+	return pluginx.PrepareBindings(pluginID, bindings)
 }
 
 func (s *service) listActionsForResource(ctx context.Context, primary domain.Resource) ([]pluginx.ResourceAction, error) {
@@ -573,12 +576,7 @@ func (s *service) resolveActionTarget(ctx context.Context, req pluginx.ResolveRe
 		return actionTarget{}, err
 	}
 
-	binding, err := s.findBinding(ctx, resource.ModelUID, req.PluginID)
-	if err != nil {
-		return actionTarget{}, err
-	}
-
-	plugin, err := s.loadPlugin(ctx, binding.PluginID)
+	plugin, err := s.loadPlugin(ctx, req.PluginID)
 	if err != nil {
 		return actionTarget{}, err
 	}
@@ -586,6 +584,14 @@ func (s *service) resolveActionTarget(ctx context.Context, req pluginx.ResolveRe
 	action, ok := plugin.FindAction(req.Action)
 	if !ok {
 		return actionTarget{}, fmt.Errorf("插件动作不存在: %s", req.Action)
+	}
+	if strings.TrimSpace(action.BindingUID) == "" {
+		return actionTarget{}, fmt.Errorf("插件动作未声明 binding_uid: %s", req.Action)
+	}
+
+	binding, err := s.findBinding(ctx, resource.ModelUID, req.PluginID, action.BindingUID)
+	if err != nil {
+		return actionTarget{}, err
 	}
 
 	return actionTarget{
@@ -612,17 +618,17 @@ func (s *service) resolveActionInputs(
 	)
 }
 
-func (s *service) findBinding(ctx context.Context, modelUID string, pluginID string) (domain.PluginBinding, error) {
+func (s *service) findBinding(ctx context.Context, modelUID string, pluginID string, bindingUID string) (domain.PluginBinding, error) {
 	bindings, err := s.repo.ListEnabledBindingsByModelUID(ctx, modelUID)
 	if err != nil {
 		return domain.PluginBinding{}, err
 	}
 
 	binding, ok := lo.Find(bindings, func(binding domain.PluginBinding) bool {
-		return binding.PluginID == pluginID
+		return binding.PluginID == pluginID && binding.UID == bindingUID
 	})
 	if !ok {
-		return domain.PluginBinding{}, fmt.Errorf("插件绑定不存在")
+		return domain.PluginBinding{}, fmt.Errorf("插件绑定不存在: %s", bindingUID)
 	}
 	return binding, nil
 }
@@ -633,9 +639,12 @@ func resolveResult(actionCtx pluginx.ActionContext) pluginx.ResolveResult {
 		PluginID:   actionCtx.Plugin.UID,
 		PluginName: actionCtx.Plugin.Name,
 		Action:     actionCtx.Action.Action,
+		BindingUID: actionCtx.Binding.UID,
+		ModelUID:   actionCtx.Binding.ModelUID,
 		ResourceID: actionCtx.ResourceID,
 		Inputs:     actionCtx.Inputs,
 		Params:     actionCtx.Params,
+		Runtime:    actionCtx.Action.Runtime,
 		Meta:       actionCtx.Action.Meta,
 	}
 }

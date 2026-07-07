@@ -3,7 +3,7 @@ module github.com/Duke1616/ecmdb
 go 1.25.0
 
 require (
-	github.com/Duke1616/eiam v0.0.17
+	github.com/Duke1616/eiam v0.0.20
 	github.com/Duke1616/etask v0.0.7
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450
@@ -36,8 +36,6 @@ require (
 )
 
 replace github.com/Bunny3th/easy-workflow v1.0.0 => github.com/Duke1616/easy-workflow v1.0.5
-
-replace github.com/Duke1616/eiam => ../eiam
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect

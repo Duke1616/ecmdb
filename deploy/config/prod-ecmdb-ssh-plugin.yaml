@@ -1,0 +1,26 @@
+# 全局日志管理
+log:
+  debug: true
+
+# EIAM 权限中心配置 (用于 CheckLogin 与权限同步)
+policy:
+  auth_url: http://eiam:8000
+  discovery_url: http://eiam:8000
+
+# 插件基础服务配置
+ssh:
+  addr: ":8000"
+  upstream: "http://ecmdb-ssh-plugin:8000"
+  timeout_seconds: 5
+
+# etcd 注册中心配置 (全插件服务发现依赖基础)
+etcd:
+  endpoints:
+    - "etcd:2379"
+
+# gRPC 微服务客户端配置
+grpc:
+  client:
+    ecmdb:
+      name: "ecmdb"
+      auth_token: "1234567890"

@@ -112,9 +112,6 @@ func (s *service) ImportDefinition(ctx context.Context, def pluginx.Definition) 
 		return err
 	}
 
-	def.Plugin.SetSchema(def.Schema)
-	def.Plugin.SetDefaultBindings(preparedBindings)
-
 	if err := s.upsertPlugin(ctx, def.Plugin); err != nil {
 		return err
 	}
@@ -138,17 +135,33 @@ func (s *service) GetDefaultDefinition(ctx context.Context, pluginID string) (pl
 		return pluginx.Definition{}, err
 	}
 
-	schema, _ := plugin.Schema()
-	bindings, _ := plugin.DefaultBindings()
-	if isEmptySchema(schema) && len(bindings) == 0 {
-		return pluginx.Definition{}, fmt.Errorf("插件未提供默认定义: %s", pluginID)
+	if def, err := loadRuntimeDefaultDefinition(ctx, plugin); err == nil {
+		return def, nil
+	} else {
+		return pluginx.Definition{}, fmt.Errorf("插件默认定义获取失败，请确认插件运行时可访问: %s: %w", pluginID, err)
+	}
+}
+
+func loadRuntimeDefaultDefinition(ctx context.Context, plugin domain.Plugin) (pluginx.Definition, error) {
+	runtime, ok := plugin.Runtime()
+	if !ok || strings.TrimSpace(runtime.Upstream) == "" {
+		return pluginx.Definition{}, fmt.Errorf("插件 runtime upstream 为空: %s", plugin.UID)
 	}
 
-	return pluginx.Definition{
-		Plugin:   plugin,
-		Schema:   schema,
-		Bindings: bindings,
-	}, nil
+	def, err := pluginx.FetchDefinition(ctx, runtime.Upstream)
+	if err != nil {
+		return pluginx.Definition{}, err
+	}
+	if strings.TrimSpace(def.Plugin.UID) != strings.TrimSpace(plugin.UID) {
+		return pluginx.Definition{}, fmt.Errorf("插件自描述 UID 不匹配: got %s, want %s", def.Plugin.UID, plugin.UID)
+	}
+
+	bindings, err := prepareDefinitionBindings(def.Plugin.UID, def.Bindings)
+	if err != nil {
+		return pluginx.Definition{}, err
+	}
+	def.Bindings = bindings
+	return def, nil
 }
 
 func (s *service) SaveBindings(ctx context.Context, req domain.SavePluginBindings) error {
@@ -157,7 +170,7 @@ func (s *service) SaveBindings(ctx context.Context, req domain.SavePluginBinding
 		return err
 	}
 
-	if err = s.importPluginSchemaSnapshot(ctx, plan.pluginID); err != nil {
+	if err = s.importRuntimePluginSchema(ctx, plan.pluginID); err != nil {
 		return err
 	}
 
@@ -480,17 +493,20 @@ func (s *service) savePreparedBindings(ctx context.Context, bindings []pluginx.B
 	return nil
 }
 
-func (s *service) importPluginSchemaSnapshot(ctx context.Context, pluginID string) error {
+func (s *service) importRuntimePluginSchema(ctx context.Context, pluginID string) error {
 	plugin, err := s.loadPlugin(ctx, pluginID)
 	if err != nil {
 		return err
 	}
 
-	schema, ok := plugin.Schema()
-	if !ok || isEmptySchema(schema) {
+	def, err := loadRuntimeDefaultDefinition(ctx, plugin)
+	if err != nil {
+		return fmt.Errorf("插件 schema 获取失败，请确认插件运行时可访问: %s: %w", pluginID, err)
+	}
+	if isEmptySchema(def.Schema) {
 		return nil
 	}
-	return s.importSchema(ctx, schema)
+	return s.importSchema(ctx, def.Schema)
 }
 
 func prepareDefinitionBindings(pluginID string, bindings []pluginx.Binding) ([]pluginx.Binding, error) {

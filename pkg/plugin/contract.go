@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -14,12 +15,12 @@ const (
 
 	MetaDescription = "description"
 	MetaRuntime     = "runtime"
-	MetaSchema      = "schema"
-	MetaBindings    = "bindings"
 
 	HeaderPluginID = "X-ECMDB-Plugin-ID"
 
 	WellKnownPath = "/.well-known/ecmdb-plugin"
+
+	DefinitionFetchTimeout = 3 * time.Second
 )
 
 // Provider 是插件实现方需要提供的最小契约。
@@ -130,56 +131,43 @@ func runtimeFromMap(src map[string]any) (RuntimeSpec, bool) {
 	return spec, spec.Mode != "" || spec.Upstream != "" || spec.HealthPath != ""
 }
 
-func (p *Plugin) SetSchema(schema Schema) {
-	if p.Meta == nil {
-		p.Meta = make(map[string]any)
+func DefinitionURL(upstream string) (string, error) {
+	upstream = strings.TrimRight(strings.TrimSpace(upstream), "/")
+	if upstream == "" {
+		return "", fmt.Errorf("upstream 地址不能为空")
 	}
-	p.Meta[MetaSchema] = schema
+	return upstream + WellKnownPath, nil
 }
 
-func (p Plugin) Schema() (Schema, bool) {
-	return decodeMetaValue[Schema](p.Meta, MetaSchema)
-}
-
-func (p *Plugin) SetDefaultBindings(bindings []Binding) {
-	if p.Meta == nil {
-		p.Meta = make(map[string]any)
-	}
-	if bindings == nil {
-		bindings = []Binding{}
-	}
-	p.Meta[MetaBindings] = bindings
-}
-
-func (p Plugin) DefaultBindings() ([]Binding, bool) {
-	return decodeMetaValue[[]Binding](p.Meta, MetaBindings)
-}
-
-func decodeMetaValue[T any](meta map[string]any, key string) (T, bool) {
-	var zero T
-	if len(meta) == 0 {
-		return zero, false
-	}
-
-	value, ok := meta[key]
-	if !ok || value == nil {
-		return zero, false
-	}
-
-	if typed, ok := value.(T); ok {
-		return typed, true
-	}
-
-	data, err := json.Marshal(value)
+func FetchDefinition(ctx context.Context, upstream string) (Definition, error) {
+	endpoint, err := DefinitionURL(upstream)
 	if err != nil {
-		return zero, false
+		return Definition{}, err
 	}
 
-	var decoded T
-	if err = json.Unmarshal(data, &decoded); err != nil {
-		return zero, false
+	ctx, cancel := context.WithTimeout(ctx, DefinitionFetchTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return Definition{}, err
 	}
-	return decoded, true
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return Definition{}, fmt.Errorf("读取插件自描述失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return Definition{}, fmt.Errorf("读取插件自描述返回非 200 状态码: %d", resp.StatusCode)
+	}
+
+	var def Definition
+	if err = json.NewDecoder(resp.Body).Decode(&def); err != nil {
+		return Definition{}, fmt.Errorf("解析插件自描述失败: %w", err)
+	}
+	return def, nil
 }
 
 func stringFromMap(src map[string]any, key string) string {

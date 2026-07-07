@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	pluginv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/plugin/v1"
 	"github.com/Duke1616/ecmdb/internal/service/plugin"
@@ -51,23 +50,9 @@ func (s *Server) RegisterPlugin(ctx context.Context, req *pluginv1.RegisterPlugi
 		return nil, fmt.Errorf("upstream 地址不能为空")
 	}
 
-	// 1. 拼接自描述拉取地址
-	wellKnownURL := fmt.Sprintf("%s%s", req.Upstream, pluginx.WellKnownPath)
-
-	// 2. 发起 HTTP 请求拉取 Definition
-	resp, err := http.Get(wellKnownURL)
+	def, err := pluginx.FetchDefinition(ctx, req.Upstream)
 	if err != nil {
-		return nil, fmt.Errorf("向插件发送反向自描述读取请求失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("反向自描述读取请求返回了非200状态码: %d", resp.StatusCode)
-	}
-
-	var def pluginx.Definition
-	if err = json.NewDecoder(resp.Body).Decode(&def); err != nil {
-		return nil, fmt.Errorf("解析插件自描述 Definition JSON 失败: %w", err)
+		return nil, fmt.Errorf("读取插件自描述 Definition 失败: %w", err)
 	}
 
 	// 保证落库的 upstream 地址采用插件注册时传入的地址

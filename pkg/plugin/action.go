@@ -99,7 +99,6 @@ type BindingGraph struct {
 type BindingGraphNode struct {
 	ID            string         `json:"id"`
 	Name          string         `json:"name"`
-	Kind          string         `json:"kind,omitempty"`
 	ModelUID      string         `json:"model_uid"`
 	Cardinality   string         `json:"cardinality"`
 	Required      bool           `json:"required"`

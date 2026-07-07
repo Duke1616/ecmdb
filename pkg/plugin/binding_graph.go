@@ -8,11 +8,6 @@ import (
 	"github.com/samber/lo"
 )
 
-const (
-	BindingGraphNodeKindCenter   = "center"
-	BindingGraphNodeKindResource = "resource"
-)
-
 type mutableBindingGraphIndex struct {
 	nodesByID    map[string]*BindingGraphNode
 	childrenByID map[string][]*BindingGraphEdge
@@ -293,7 +288,6 @@ func appendSpecToGraph(graph *BindingGraph, spec ResourceSpec, nodeID string) {
 	graph.Nodes = append(graph.Nodes, BindingGraphNode{
 		ID:            nodeID,
 		Name:          spec.Name,
-		Kind:          graphNodeKind(nodeID, graph.EntryNodeID),
 		ModelUID:      spec.ModelUID,
 		Cardinality:   defaultCardinality(spec.Cardinality),
 		Required:      spec.Required,
@@ -311,13 +305,6 @@ func appendSpecToGraph(graph *BindingGraph, spec ResourceSpec, nodeID string) {
 		})
 		appendSpecToGraph(graph, child, childID)
 	}
-}
-
-func graphNodeKind(nodeID string, entryNodeID string) string {
-	if nodeID == entryNodeID {
-		return BindingGraphNodeKindCenter
-	}
-	return BindingGraphNodeKindResource
 }
 
 func defaultCardinality(value string) string {

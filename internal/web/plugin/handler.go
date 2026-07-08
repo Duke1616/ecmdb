@@ -32,9 +32,11 @@ func NewHandler(svc pluginservice.Service) *Handler {
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/plugin")
 	g.GET("/list", h.Capability("插件目录", "view").
+		Needs("cmdb:plugin:enums", "cmdb:plugin:get").
 		Handle(ginx.Wrap(h.ListPlugins)),
 	)
 	g.GET("/detail", h.Capability("插件详情", "get").
+		NoSync().
 		Handle(ginx.Wrap(h.GetPluginDetail)),
 	)
 	g.GET("/enums", h.Capability("插件枚举", "enums").
@@ -55,12 +57,18 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.DELETE("/binding/delete/:uid", h.Capability("删除插件绑定", "delete").
 		Handle(ginx.Wrap(h.DeleteBinding)),
 	)
-	g.POST("/resource/actions/batch", ginx.WrapBody[ListResourceActionsBatchReq](h.ListResourceActionsBatch))
+	g.POST("/resource/actions/batch", h.Capability("查询资源插件动作", "actions").
+		NoSync().
+		Handle(ginx.WrapBody[ListResourceActionsBatchReq](h.ListResourceActionsBatch)),
+	)
 	g.POST("/action/resolve", h.Capability("解析插件动作", "resolve").
+		NoSync().
 		Handle(ginx.WrapBody[pluginx.ResolveRequest](h.ResolveAction)),
 	)
-	g.GET("/runtime/view", ginx.Wrap(h.GetRuntimeView))
-
+	g.GET("/runtime/view", h.Capability("插件运行时视图", "runtime_view").
+		Needs("cmdb:plugin:resolve").
+		Handle(ginx.Wrap(h.GetRuntimeView)),
+	)
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {

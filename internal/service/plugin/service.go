@@ -318,10 +318,6 @@ func (s *service) ListEnums(ctx context.Context) (domain.PluginManagementEnums, 
 		Placements: []domain.EnumOption{
 			{Label: "资源详情动作区", Value: pluginx.PlacementResourceDetailActions},
 		},
-		UIs: []domain.EnumOption{
-			{Label: "在线终端", Value: pluginx.UIBuiltinTerminal},
-			{Label: "文件管理", Value: pluginx.UIBuiltinSFTP},
-		},
 		Directions: []domain.EnumOption{
 			{Label: "源端", Value: pluginx.DirectionToSource},
 			{Label: "目标端", Value: pluginx.DirectionToTarget},
@@ -644,6 +640,7 @@ func resolveResult(actionCtx pluginx.ActionContext) pluginx.ResolveResult {
 		UI:         actionCtx.Action.UI,
 		PluginID:   actionCtx.Plugin.UID,
 		PluginName: actionCtx.Plugin.Name,
+		ActionName: actionCtx.Action.Name,
 		Action:     actionCtx.Action.Action,
 		BindingUID: actionCtx.Binding.UID,
 		ModelUID:   actionCtx.Binding.ModelUID,

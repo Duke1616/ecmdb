@@ -58,15 +58,16 @@ func TestBuildRuntimeViewUsesTypedActionRuntime(t *testing.T) {
 	}
 }
 
-func TestBuildRuntimeViewDefaultsToPluginName(t *testing.T) {
+func TestBuildRuntimeViewDefaultsToActionName(t *testing.T) {
 	view := buildRuntimeView(pluginx.ResolveResult{
 		PluginID:   "builtin.ssh",
 		PluginName: "SSH",
+		ActionName: "SSH 终端",
 		Action:     "terminal",
 		ResourceID: 42,
 	})
 
-	if view.Presentation.Title != "SSH" {
+	if view.Presentation.Title != "SSH 终端" {
 		t.Fatalf("unexpected presentation title: %s", view.Presentation.Title)
 	}
 	if _, ok := view.Runtime.Props["title"]; ok {

@@ -32,51 +32,51 @@ func ValidRelationType(relationType string) bool {
 }
 
 type Plugin struct {
-	ID      int64          `json:"id"`
-	UID     string         `json:"uid"`
-	Name    string         `json:"name"`
-	Type    string         `json:"type"`
-	Version string         `json:"version"`
-	Actions []ActionSpec   `json:"actions"`
-	Meta    map[string]any `json:"meta,omitempty"`
-	Ctime   int64          `json:"ctime,omitempty"`
-	Utime   int64          `json:"utime,omitempty"`
+	ID      int64          `json:"id" bson:"id"`
+	UID     string         `json:"uid" bson:"uid"`
+	Name    string         `json:"name" bson:"name"`
+	Type    string         `json:"type" bson:"type"`
+	Version string         `json:"version" bson:"version"`
+	Actions []ActionSpec   `json:"actions" bson:"actions"`
+	Meta    map[string]any `json:"meta,omitempty" bson:"meta,omitempty"`
+	Ctime   int64          `json:"ctime,omitempty" bson:"ctime,omitempty"`
+	Utime   int64          `json:"utime,omitempty" bson:"utime,omitempty"`
 }
 
 type ActionSpec struct {
-	Action     string             `json:"action"`
-	Name       string             `json:"name"`
-	Icon       string             `json:"icon"`
-	Placement  string             `json:"placement"`
-	UI         string             `json:"ui"`
-	BindingUID string             `json:"binding_uid,omitempty"`
-	Runtime    *ActionRuntimeSpec `json:"runtime,omitempty"`
-	Meta       map[string]any     `json:"meta,omitempty"`
+	Action     string             `json:"action" bson:"action"`
+	Name       string             `json:"name" bson:"name"`
+	Icon       string             `json:"icon" bson:"icon"`
+	Placement  string             `json:"placement" bson:"placement"`
+	UI         string             `json:"ui" bson:"ui"`
+	BindingUID string             `json:"binding_uid,omitempty" bson:"binding_uid,omitempty"`
+	Runtime    *ActionRuntimeSpec `json:"runtime,omitempty" bson:"runtime,omitempty"`
+	Meta       map[string]any     `json:"meta,omitempty" bson:"meta,omitempty"`
 }
 
 type ActionRuntimeSpec struct {
-	Layout  string              `json:"layout,omitempty"`
-	Title   string              `json:"title,omitempty"`
-	Props   map[string]any      `json:"props,omitempty"`
-	Sidebar *RuntimeSidebarSpec `json:"sidebar,omitempty"`
+	Layout  string              `json:"layout,omitempty" bson:"layout,omitempty"`
+	Title   string              `json:"title,omitempty" bson:"title,omitempty"`
+	Props   map[string]any      `json:"props,omitempty" bson:"props,omitempty"`
+	Sidebar *RuntimeSidebarSpec `json:"sidebar,omitempty" bson:"sidebar,omitempty"`
 }
 
 type RuntimeSidebarSpec struct {
-	Enabled           *bool                       `json:"enabled,omitempty"`
-	Mode              string                      `json:"mode,omitempty"`
-	Title             string                      `json:"title,omitempty"`
-	SearchPlaceholder string                      `json:"search_placeholder,omitempty"`
-	EmptyText         string                      `json:"empty_text,omitempty"`
-	Collapsible       *bool                       `json:"collapsible,omitempty"`
-	Resource          *RuntimeSidebarResourceSpec `json:"resource,omitempty"`
+	Enabled           *bool                       `json:"enabled,omitempty" bson:"enabled,omitempty"`
+	Mode              string                      `json:"mode,omitempty" bson:"mode,omitempty"`
+	Title             string                      `json:"title,omitempty" bson:"title,omitempty"`
+	SearchPlaceholder string                      `json:"search_placeholder,omitempty" bson:"search_placeholder,omitempty"`
+	EmptyText         string                      `json:"empty_text,omitempty" bson:"empty_text,omitempty"`
+	Collapsible       *bool                       `json:"collapsible,omitempty" bson:"collapsible,omitempty"`
+	Resource          *RuntimeSidebarResourceSpec `json:"resource,omitempty" bson:"resource,omitempty"`
 }
 
 type RuntimeSidebarResourceSpec struct {
-	ModelUID      string   `json:"model_uid,omitempty"`
-	TitleField    string   `json:"title_field,omitempty"`
-	SubtitleField string   `json:"subtitle_field,omitempty"`
-	SearchFields  []string `json:"search_fields,omitempty"`
-	Limit         int      `json:"limit,omitempty"`
+	ModelUID      string   `json:"model_uid,omitempty" bson:"model_uid,omitempty"`
+	TitleField    string   `json:"title_field,omitempty" bson:"title_field,omitempty"`
+	SubtitleField string   `json:"subtitle_field,omitempty" bson:"subtitle_field,omitempty"`
+	SearchFields  []string `json:"search_fields,omitempty" bson:"search_fields,omitempty"`
+	Limit         int      `json:"limit,omitempty" bson:"limit,omitempty"`
 }
 
 type Binding struct {
@@ -232,6 +232,7 @@ type ResolveResult struct {
 	UI         string                   `json:"ui,omitempty"`
 	PluginID   string                   `json:"plugin_id"`
 	PluginName string                   `json:"plugin_name"`
+	ActionName string                   `json:"action_name"`
 	Action     string                   `json:"action"`
 	BindingUID string                   `json:"binding_uid,omitempty"`
 	ModelUID   string                   `json:"model_uid,omitempty"`

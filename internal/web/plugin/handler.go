@@ -11,8 +11,8 @@ import (
 	"github.com/Duke1616/ecmdb/internal/errs"
 	pluginservice "github.com/Duke1616/ecmdb/internal/service/plugin"
 	"github.com/Duke1616/ecmdb/pkg/ginx"
-	mongoxplugin "github.com/Duke1616/ecmdb/pkg/mongox/plugin"
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/gin-gonic/gin"
 )
@@ -233,7 +233,7 @@ func buildRuntimeView(result pluginx.ResolveResult) runtimeView {
 	}
 
 	presentation := runtimePresentation{
-		Title: result.PluginName,
+		Title: result.ActionName,
 	}
 
 	applyActionRuntime(result.Runtime, props, &presentation)
@@ -306,9 +306,8 @@ func (h *Handler) ProxyToPlugin(ctx *gin.Context) {
 	pluginID := ctx.Param("plugin_id")
 	anyPath := ctx.Param("any")
 
-	// NOTE: 公共路由没有登录态，无租户上下文。内置插件是全局共享数据（tenant_id=0），
-	// 需要忽略租户过滤才能正确命中，否则会返回 404
-	detail, err := h.svc.GetPluginDetail(mongoxplugin.IgnoreTenantContext(ctx.Request.Context()), pluginID)
+	// 公共路由没有登录态，内置插件固定从系统租户空间读取。
+	detail, err := h.svc.GetPluginDetail(ctxutil.WithTenantID(ctx.Request.Context(), ctxutil.SystemTenantID), pluginID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"msg": "未找到对应的插件定义"})
 		return

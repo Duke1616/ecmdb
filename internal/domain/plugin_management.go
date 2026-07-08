@@ -43,7 +43,6 @@ type PluginDetail struct {
 type PluginManagementEnums struct {
 	Types         []string        `json:"types"`
 	Placements    []EnumOption    `json:"placements"`
-	UIs           []EnumOption    `json:"uis"`
 	Directions    []EnumOption    `json:"directions"`
 	RelationTypes []EnumOption    `json:"relation_types"`
 	Cardinalities []EnumOption    `json:"cardinalities"`

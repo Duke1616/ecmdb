@@ -7,8 +7,8 @@ import (
 
 	pluginv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/plugin/v1"
 	"github.com/Duke1616/ecmdb/internal/service/plugin"
-	mongoxplugin "github.com/Duke1616/ecmdb/pkg/mongox/plugin"
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/Duke1616/eiam/pkg/ctxutil"
 )
 
 type Server struct {
@@ -65,9 +65,8 @@ func (s *Server) RegisterPlugin(ctx context.Context, req *pluginv1.RegisterPlugi
 	spec.Upstream = req.Upstream
 	def.Plugin.SetRuntime(spec)
 
-	// 内置插件属于全局共享数据（tenant_id=0），仅此注册场景需要绑过租户隔离，
-	// 确保 Upsert 时能命中已有记录走 Update 而非 Insert（否则会触发主键冲突）
-	registerCtx := mongoxplugin.IgnoreTenantContext(ctx)
+	// 内置插件统一归属系统租户，作为共享数据暴露给其他租户使用。
+	registerCtx := ctxutil.WithTenantID(ctx, ctxutil.SystemTenantID)
 
 	// 3. 调用主站内置服务直接进行注册落库
 	if err = s.svc.ImportDefinition(registerCtx, def); err != nil {

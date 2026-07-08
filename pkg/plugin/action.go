@@ -229,18 +229,19 @@ type ResolveRequest struct {
 }
 
 type ResolveResult struct {
-	UI         string                   `json:"ui,omitempty"`
-	PluginID   string                   `json:"plugin_id"`
-	PluginName string                   `json:"plugin_name"`
-	ActionName string                   `json:"action_name"`
-	Action     string                   `json:"action"`
-	BindingUID string                   `json:"binding_uid,omitempty"`
-	ModelUID   string                   `json:"model_uid,omitempty"`
-	ResourceID int64                    `json:"resource_id"`
-	Inputs     map[string]ResolvedInput `json:"inputs"`
-	Params     map[string]any           `json:"params,omitempty"`
-	Runtime    *ActionRuntimeSpec       `json:"runtime,omitempty"`
-	Meta       map[string]any           `json:"meta,omitempty"`
+	UI            string                   `json:"ui,omitempty"`
+	PluginID      string                   `json:"plugin_id"`
+	PluginName    string                   `json:"plugin_name"`
+	PluginVersion string                   `json:"plugin_version,omitempty"`
+	ActionName    string                   `json:"action_name"`
+	Action        string                   `json:"action"`
+	BindingUID    string                   `json:"binding_uid,omitempty"`
+	ModelUID      string                   `json:"model_uid,omitempty"`
+	ResourceID    int64                    `json:"resource_id"`
+	Inputs        map[string]ResolvedInput `json:"inputs"`
+	Params        map[string]any           `json:"params,omitempty"`
+	Runtime       *ActionRuntimeSpec       `json:"runtime,omitempty"`
+	Meta          map[string]any           `json:"meta,omitempty"`
 }
 
 type ActionContext struct {

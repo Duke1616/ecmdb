@@ -243,8 +243,8 @@ func buildRuntimeView(result pluginx.ResolveResult) runtimeView {
 		Action:   result.Action,
 		Entry: runtimeEntry{
 			Format:        "umd",
-			JSURL:         "/api/cmdb/plugin-runtime/" + result.PluginID + "/static/index.umd.js",
-			CSSURL:        "/api/cmdb/plugin-runtime/" + result.PluginID + "/static/index.css",
+			JSURL:         staticAssetURL(result.PluginID, "index.umd.js", result.PluginVersion),
+			CSSURL:        staticAssetURL(result.PluginID, "index.css", result.PluginVersion),
 			GlobalName:    pluginGlobalName(result.PluginID),
 			ComponentName: "Index",
 		},
@@ -254,6 +254,15 @@ func buildRuntimeView(result pluginx.ResolveResult) runtimeView {
 		},
 		Presentation: presentation,
 	}
+}
+
+func staticAssetURL(pluginID string, filename string, version string) string {
+	base := "/api/cmdb/plugin-runtime/" + pluginID + "/static/" + filename
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return base
+	}
+	return base + "?v=" + url.QueryEscape(version)
 }
 
 func applyActionRuntime(spec *pluginx.ActionRuntimeSpec, props map[string]any, presentation *runtimePresentation) {

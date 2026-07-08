@@ -637,18 +637,19 @@ func (s *service) findBinding(ctx context.Context, modelUID string, pluginID str
 
 func resolveResult(actionCtx pluginx.ActionContext) pluginx.ResolveResult {
 	return pluginx.ResolveResult{
-		UI:         actionCtx.Action.UI,
-		PluginID:   actionCtx.Plugin.UID,
-		PluginName: actionCtx.Plugin.Name,
-		ActionName: actionCtx.Action.Name,
-		Action:     actionCtx.Action.Action,
-		BindingUID: actionCtx.Binding.UID,
-		ModelUID:   actionCtx.Binding.ModelUID,
-		ResourceID: actionCtx.ResourceID,
-		Inputs:     actionCtx.Inputs,
-		Params:     actionCtx.Params,
-		Runtime:    actionCtx.Action.Runtime,
-		Meta:       actionCtx.Action.Meta,
+		UI:            actionCtx.Action.UI,
+		PluginID:      actionCtx.Plugin.UID,
+		PluginName:    actionCtx.Plugin.Name,
+		PluginVersion: actionCtx.Plugin.Version,
+		ActionName:    actionCtx.Action.Name,
+		Action:        actionCtx.Action.Action,
+		BindingUID:    actionCtx.Binding.UID,
+		ModelUID:      actionCtx.Binding.ModelUID,
+		ResourceID:    actionCtx.ResourceID,
+		Inputs:        actionCtx.Inputs,
+		Params:        actionCtx.Params,
+		Runtime:       actionCtx.Action.Runtime,
+		Meta:          actionCtx.Action.Meta,
 	}
 }
 

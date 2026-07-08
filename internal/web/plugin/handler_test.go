@@ -8,10 +8,11 @@ import (
 
 func TestBuildRuntimeViewUsesTypedActionRuntime(t *testing.T) {
 	view := buildRuntimeView(pluginx.ResolveResult{
-		PluginID:   "builtin.ssh",
-		PluginName: "SSH",
-		Action:     "terminal",
-		ResourceID: 42,
+		PluginID:      "builtin.ssh",
+		PluginName:    "SSH",
+		PluginVersion: "1.0.0",
+		Action:        "terminal",
+		ResourceID:    42,
 		Runtime: &pluginx.ActionRuntimeSpec{
 			Layout: "workspace",
 			Title:  "SSH 终端",
@@ -55,6 +56,12 @@ func TestBuildRuntimeViewUsesTypedActionRuntime(t *testing.T) {
 	}
 	if got := view.Runtime.Props["title"]; got != "SSH 终端" {
 		t.Fatalf("unexpected title prop: %v", got)
+	}
+	if view.Entry.JSURL != "/api/cmdb/plugin-runtime/builtin.ssh/static/index.umd.js?v=1.0.0" {
+		t.Fatalf("unexpected js url: %s", view.Entry.JSURL)
+	}
+	if view.Entry.CSSURL != "/api/cmdb/plugin-runtime/builtin.ssh/static/index.css?v=1.0.0" {
+		t.Fatalf("unexpected css url: %s", view.Entry.CSSURL)
 	}
 }
 

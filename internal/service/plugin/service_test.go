@@ -318,7 +318,7 @@ func TestGetDefaultDefinitionDoesNotFallbackToStoredSnapshot(t *testing.T) {
 	}
 }
 
-func TestImportDefinitionDoesNotPersistDefinitionSnapshot(t *testing.T) {
+func TestImportDefinitionOnlyPersistsPluginInfo(t *testing.T) {
 	repo := &stubPluginRepo{}
 	svc := &service{repo: repo}
 
@@ -346,8 +346,8 @@ func TestImportDefinitionDoesNotPersistDefinitionSnapshot(t *testing.T) {
 	if _, ok := repo.plugin.Meta["bindings"]; ok {
 		t.Fatalf("bindings should not be stored in plugin meta: %#v", repo.plugin.Meta)
 	}
-	if len(repo.upsertedBindings) != 1 || repo.upsertedBindings[0].PluginID != "builtin.ssh" {
-		t.Fatalf("unexpected persisted bindings: %#v", repo.upsertedBindings)
+	if len(repo.upsertedBindings) != 0 {
+		t.Fatalf("definition bindings should not be persisted on registration: %#v", repo.upsertedBindings)
 	}
 }
 

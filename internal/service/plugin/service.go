@@ -107,21 +107,7 @@ func NewService(
 }
 
 func (s *service) ImportDefinition(ctx context.Context, def pluginx.Definition) error {
-	preparedBindings, err := prepareDefinitionBindings(def.Plugin.UID, def.Bindings)
-	if err != nil {
-		return err
-	}
-
-	if err := s.upsertPlugin(ctx, def.Plugin); err != nil {
-		return err
-	}
-	if err := s.importSchema(ctx, def.Schema); err != nil {
-		return err
-	}
-	if len(preparedBindings) == 0 {
-		return nil
-	}
-	return s.savePreparedBindings(ctx, preparedBindings)
+	return s.upsertPlugin(ctx, def.Plugin)
 }
 
 func (s *service) GetDefaultDefinition(ctx context.Context, pluginID string) (pluginx.Definition, error) {
@@ -170,7 +156,7 @@ func (s *service) SaveBindings(ctx context.Context, req domain.SavePluginBinding
 		return err
 	}
 
-	if err = s.importRuntimePluginSchema(ctx, plan.pluginID); err != nil {
+	if err = s.importRuntimePluginSchema(ctx, plan.pluginID, plan.bindings); err != nil {
 		return err
 	}
 
@@ -493,7 +479,7 @@ func (s *service) savePreparedBindings(ctx context.Context, bindings []pluginx.B
 	return nil
 }
 
-func (s *service) importRuntimePluginSchema(ctx context.Context, pluginID string) error {
+func (s *service) importRuntimePluginSchema(ctx context.Context, pluginID string, bindings []pluginx.Binding) error {
 	plugin, err := s.loadPlugin(ctx, pluginID)
 	if err != nil {
 		return err
@@ -503,10 +489,14 @@ func (s *service) importRuntimePluginSchema(ctx context.Context, pluginID string
 	if err != nil {
 		return fmt.Errorf("插件 schema 获取失败，请确认插件运行时可访问: %s: %w", pluginID, err)
 	}
-	if isEmptySchema(def.Schema) {
+	schema, err := pluginx.StaticBuiltin(def).SchemaForBindings(bindings)
+	if err != nil {
+		return err
+	}
+	if isEmptySchema(schema) {
 		return nil
 	}
-	return s.importSchema(ctx, def.Schema)
+	return s.importSchema(ctx, schema)
 }
 
 func prepareDefinitionBindings(pluginID string, bindings []pluginx.Binding) ([]pluginx.Binding, error) {

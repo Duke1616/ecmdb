@@ -143,7 +143,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 
 	// 所有资产关系聚合查询
-	g.POST("/relation/pipeline/all", h.Capability("所有资产关系聚合查询", "relation_pipeline_all").
+	g.POST("/relation/pipeline/all", h.Capability("所有资产关系聚合查询", "view_relation_all").
 		Group("资产仓库/关联关系").
 		Needs("cmdb:relation:view", "cmdb:model-relation:view", "cmdb:model:view_by_uids",
 			"cmdb:attribute:view_fields", "cmdb:resource:view_by_ids").

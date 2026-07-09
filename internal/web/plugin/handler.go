@@ -359,6 +359,14 @@ func (h *Handler) ProxyToPlugin(ctx *gin.Context) {
 		req.Header.Set(pluginx.HeaderPluginID, pluginID)
 	}
 
+	// 强力禁止浏览器对插件静态资源的任何缓存，防止开发和更新时加载到旧版 UMD 文件
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		resp.Header.Set("Pragma", "no-cache")
+		resp.Header.Set("Expires", "0")
+		return nil
+	}
+
 	// 4. 执行反向代理
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }

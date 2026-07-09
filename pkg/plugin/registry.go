@@ -136,15 +136,15 @@ func Icon(value string) ActionOption {
 	}
 }
 
-func UI(value string) ActionOption {
-	return func(a *ActionSpec) {
-		a.UI = value
-	}
-}
-
 func Placement(value string) ActionOption {
 	return func(a *ActionSpec) {
 		a.Placement = value
+	}
+}
+
+func Permission(value string) ActionOption {
+	return func(a *ActionSpec) {
+		a.Permission = value
 	}
 }
 

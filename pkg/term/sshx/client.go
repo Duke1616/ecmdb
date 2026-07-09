@@ -78,7 +78,11 @@ func newSshConfig(username string, authMethod ssh.AuthMethod) *ssh.ClientConfig 
 func dialWithContext(ctx context.Context, host string, port int, config *ssh.ClientConfig) (*ssh.Client, error) {
 	// 连接第一个网关
 	address := fmt.Sprintf("%s:%d", host, port)
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", address)
+
+	// TCP 层 KeepAlive，防止 NAT/防火墙在终端空闲时静默清除连接
+	conn, err := (&net.Dialer{
+		KeepAlive: 30 * time.Second,
+	}).DialContext(ctx, "tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("连接失败: %v", err)
 	}

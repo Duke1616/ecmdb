@@ -17,9 +17,6 @@ const (
 
 	CardinalityOne  = "one"
 	CardinalityMany = "many"
-
-	UIBuiltinTerminal = "builtin:terminal"
-	UIBuiltinSFTP     = "builtin:sftp"
 )
 
 func ValidRelationType(relationType string) bool {
@@ -48,7 +45,7 @@ type ActionSpec struct {
 	Name       string             `json:"name" bson:"name"`
 	Icon       string             `json:"icon" bson:"icon"`
 	Placement  string             `json:"placement" bson:"placement"`
-	UI         string             `json:"ui" bson:"ui"`
+	Permission string             `json:"permission,omitempty" bson:"permission,omitempty"`
 	BindingUID string             `json:"binding_uid,omitempty" bson:"binding_uid,omitempty"`
 	Runtime    *ActionRuntimeSpec `json:"runtime,omitempty" bson:"runtime,omitempty"`
 	Meta       map[string]any     `json:"meta,omitempty" bson:"meta,omitempty"`
@@ -197,7 +194,7 @@ type ResourceAction struct {
 	Name       string             `json:"name"`
 	Icon       string             `json:"icon"`
 	Placement  string             `json:"placement"`
-	UI         string             `json:"ui"`
+	Permission string             `json:"permission,omitempty"`
 	BindingUID string             `json:"binding_uid,omitempty"`
 	Runtime    *ActionRuntimeSpec `json:"runtime,omitempty"`
 	Meta       map[string]any     `json:"meta,omitempty"`
@@ -229,12 +226,12 @@ type ResolveRequest struct {
 }
 
 type ResolveResult struct {
-	UI            string                   `json:"ui,omitempty"`
 	PluginID      string                   `json:"plugin_id"`
 	PluginName    string                   `json:"plugin_name"`
 	PluginVersion string                   `json:"plugin_version,omitempty"`
 	ActionName    string                   `json:"action_name"`
 	Action        string                   `json:"action"`
+	Permission    string                   `json:"permission,omitempty"`
 	BindingUID    string                   `json:"binding_uid,omitempty"`
 	ModelUID      string                   `json:"model_uid,omitempty"`
 	ResourceID    int64                    `json:"resource_id"`

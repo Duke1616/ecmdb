@@ -8,7 +8,7 @@ func TestRegistryDefinition(t *testing.T) {
 		"Test",
 		Type("builtin"),
 	).
-		Action("run", "运行", Icon("play"), UI("builtin:test")).
+		Action("run", "运行", Icon("play")).
 		Bind(Center[testHost]("host")).
 		MustDefinition()
 

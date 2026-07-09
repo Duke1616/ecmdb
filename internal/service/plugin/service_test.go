@@ -58,7 +58,7 @@ func TestResolveReturnsFriendlyMissingInputMessage(t *testing.T) {
 				UID:  "builtin.ssh",
 				Name: "SSH",
 				Actions: []domain.PluginActionSpec{
-					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal, BindingUID: "builtin.ssh.host"},
+					{Action: "terminal", Name: "SSH 终端", BindingUID: "builtin.ssh.host"},
 				},
 			},
 			bindingsByModelUID: map[string][]domain.PluginBinding{
@@ -122,7 +122,7 @@ func TestResolveActionContextReloadsTopLevelFields(t *testing.T) {
 				UID:  "builtin.ssh",
 				Name: "SSH",
 				Actions: []domain.PluginActionSpec{
-					{Action: "terminal", Name: "SSH 终端", UI: pluginx.UIBuiltinTerminal, BindingUID: "builtin.ssh.host"},
+					{Action: "terminal", Name: "SSH 终端", BindingUID: "builtin.ssh.host"},
 				},
 			},
 			bindingsByModelUID: map[string][]domain.PluginBinding{
@@ -262,7 +262,7 @@ func TestResolveResultIncludesBindingModelUID(t *testing.T) {
 		},
 		Action: pluginx.ActionSpec{
 			Action:     "terminal",
-			UI:         pluginx.UIBuiltinTerminal,
+			Permission: "cmdb:ssh:terminal",
 			BindingUID: "builtin.ssh.host",
 			Runtime:    runtime,
 			Meta: map[string]any{
@@ -277,6 +277,9 @@ func TestResolveResultIncludesBindingModelUID(t *testing.T) {
 	}
 	if result.BindingUID != "builtin.ssh.host" {
 		t.Fatalf("unexpected binding_uid: %s", result.BindingUID)
+	}
+	if result.Permission != "cmdb:ssh:terminal" {
+		t.Fatalf("unexpected permission: %s", result.Permission)
 	}
 	if result.Runtime != runtime {
 		t.Fatal("expected runtime config to be passed through")

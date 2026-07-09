@@ -53,7 +53,7 @@ func TestPluginResourceActions(t *testing.T) {
 	plugin := Plugin{
 		UID: "builtin.ssh",
 		Actions: []ActionSpec{
-			{Action: "terminal", Name: "SSH", UI: UIBuiltinTerminal, BindingUID: "builtin.ssh.host", Runtime: runtime},
+			{Action: "terminal", Name: "SSH", Permission: "cmdb:ssh:terminal", BindingUID: "builtin.ssh.host", Runtime: runtime},
 		},
 	}
 
@@ -66,6 +66,9 @@ func TestPluginResourceActions(t *testing.T) {
 	}
 	if actions[0].BindingUID != "builtin.ssh.host" {
 		t.Fatalf("expected binding uid builtin.ssh.host, got %s", actions[0].BindingUID)
+	}
+	if actions[0].Permission != "cmdb:ssh:terminal" {
+		t.Fatalf("expected permission cmdb:ssh:terminal, got %s", actions[0].Permission)
 	}
 	if actions[0].Runtime != runtime {
 		t.Fatal("expected runtime config to be preserved")

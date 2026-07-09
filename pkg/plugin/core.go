@@ -85,7 +85,7 @@ func (p Plugin) ResourceActions() []ResourceAction {
 			Name:       action.Name,
 			Icon:       action.Icon,
 			Placement:  action.Placement,
-			UI:         action.UI,
+			Permission: action.Permission,
 			BindingUID: action.BindingUID,
 			Runtime:    action.Runtime,
 			Meta:       action.Meta,

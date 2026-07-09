@@ -13,7 +13,7 @@ func TestExternalServiceRuntime(t *testing.T) {
 		"SSH",
 		ExternalServiceRuntime("http://ssh-plugin:8080/", RuntimeHealthPath("/healthz")),
 	).
-		Action("terminal", "SSH 终端", UI(UIBuiltinTerminal)).
+		Action("terminal", "SSH 终端").
 		MustDefinition()
 
 	runtime, ok := def.Plugin.Runtime()
@@ -34,7 +34,7 @@ func TestExternalServiceRuntime(t *testing.T) {
 func TestDefinitionHandler(t *testing.T) {
 	provider := ProviderFunc(func() (Definition, error) {
 		return NewRegistry("ssh", "SSH").
-			Action("terminal", "SSH 终端", UI(UIBuiltinTerminal)).
+			Action("terminal", "SSH 终端").
 			Definition()
 	})
 

@@ -117,7 +117,7 @@ services:
       - TZ=Asia/Shanghai
       - MINIO_ROOT_USER=minio
       - MINIO_ROOT_PASSWORD=minio123
-      - MINIO_DEFAULT_BUCKETS=ecmdb
+      - MINIO_DEFAULT_BUCKETS=ecmdb,etask-artifacts
     volumes:
       - minio:/bitnami/minio/data
   ecmdb:
@@ -179,6 +179,7 @@ services:
       - kafka
       - etcd
       - redis
+      - minio
   eiam:
     restart: always
     container_name: eiam

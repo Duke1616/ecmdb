@@ -4,6 +4,43 @@
 log:
   debug: true # 是否开启调试模式，开启后会打印更多详细日志
 
+# 制品仓库：发布后的不可变代码包存储在 MinIO，由 MinIO 数据卷负责持久化。
+artifact:
+  temp_dir: "/tmp/etask/artifacts"
+  storage:
+    driver: "s3"
+    s3:
+      endpoint: "http://minio:9000"
+      region: "us-east-1"
+      bucket: "etask-artifacts"
+      prefix: "codebook"
+      access_key: "minio"
+      secret_key: "minio123"
+
+# Agent 和 Executor 共享本地制品缓存；缓存丢失后可以从 MinIO 自动重建。
+artifact_cache:
+  dir: "/tmp/etask/artifact-cache"
+  max_download_size: "512MB"
+  max_unpacked_size: "2GB"
+  max_file_count: 10000
+  max_cache_size: "10GB"
+
+# Agent 和 Executor 共享 Shell/Python 脚本运行时。
+runtime:
+  workspace_dir: "/tmp/etask/runs"
+  workspace_max_age: 24h
+  max_code_size: "4MB"
+  max_args_size: "1MB"
+  max_variables_size: "1MB"
+  max_log_line_size: "1MB"
+  max_result_size: "4MB"
+  archive:
+    enabled: true
+    failed_only: true
+    dir: "/tmp/etask/script-archive"
+    max_age: 168h
+    max_size: "10GB"
+
 # web 配置: 对外暴露 http 接口
 web:
   host: "0.0.0.0"
@@ -51,7 +88,9 @@ grpc:
 agent:
   name: Kafka-Agent # 实例显示名称
   topic: agent_execute # 监听的任务消息队列 Topic
+  worker_count: 4 # 并发消费任务数量
   desc: 异步任务执行代理：负责从消息队列拉取并执行来自调度中心的任务指令 # 描述信息，展示在管理后台
+  isolation_level: "SHARED"
 
 # 执行节点集群配置
 executor:
@@ -65,6 +104,7 @@ executor:
   mode: "PULL"
   # 执行器集群功能描述。
   desc: "通用计算节点：提供 Shell 与 Python 脚本等系统级基础执行能力的默认执行器集群"
+  isolation_level: "SHARED"
 
 
 # 数据库配置 (MySQL)

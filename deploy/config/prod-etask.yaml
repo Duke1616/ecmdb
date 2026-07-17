@@ -4,6 +4,46 @@
 log:
   debug: true # 是否开启调试模式，开启后会打印更多详细日志
 
+# web 配置: 对外暴露 http 接口
+web:
+  host: "0.0.0.0"
+  port: 8000
+
+# 数据加密配置：针对敏感字段进行 AES 加密存储
+encryption:
+  version: "V1" # 加密算法版本
+  key: "1234567890"
+
+# 策略鉴权：IAM服务地址，用于登录验证与权限鉴权
+policy:
+  auth_url: http://eiam:8000
+  discovery_url: http://eiam:8000
+
+# gRPC 服务及客户端配置
+grpc:
+  server:
+    # 调度中心 gRPC Server 配置
+    scheduler:
+      name: scheduler # 注册到 Etcd 的服务名称
+      listen_addr: "0.0.0.0:9002" # 监听端口
+      advertise_addr: ""  # 广播地址，留空则自动探测物理 IP
+      auth_token: "1234567890" # JWT 认证 Token，留空则不开启
+    # 执行器 gRPC Server 配置
+    executor:
+      name: execute # 执行器分组名称
+      listen_addr: "0.0.0.0:9004" # 监听端口
+      advertise_addr: ""  # 广播地址
+      auth_token: "1234567890" # JWT 认证 Token
+  client:
+    # Executor、Agent 访问 Scheduler
+    scheduler:
+      name: scheduler
+      auth_token: "1234567890"
+    # Scheduler 访问 Executor
+    # 服务名称由任务对应的执行资源池动态决定，因此不需要 name
+    executor:
+      auth_token: "1234567890"
+
 # 制品仓库：发布后的不可变代码包存储在 MinIO，由 MinIO 数据卷负责持久化。
 artifact:
   temp_dir: "/tmp/etask/artifacts"
@@ -41,55 +81,17 @@ runtime:
     max_age: 168h
     max_size: "10GB"
 
-# web 配置: 对外暴露 http 接口
-web:
-  host: "0.0.0.0"
-  port: 8000
-
-# 数据加密配置：针对敏感字段进行 AES 加密存储
-encryption:
-  version: "V1" # 加密算法版本
-  key: "1234567890"
-
-# 策略鉴权：IAM服务地址，用于登录验证与权限鉴权
-policy:
-  auth_url: http://eiam:8000
-  discovery_url: http://eiam:8000
-
-# gRPC 服务及客户端配置
-grpc:
-  server:
-    # 调度中心 gRPC Server 配置
-    scheduler:
-      name: scheduler # 注册到 Etcd 的服务名称
-      listen_addr: "0.0.0.0:9002" # 监听端口
-      advertise_addr: ""  # 广播地址，留空则自动探测物理 IP
-      auth_token: "1234567890" # JWT 认证 Token，留空则不开启
-    # 执行器 gRPC Server 配置
-    executor:
-      name: execute # 执行器分组名称
-      listen_addr: "0.0.0.0:9004" # 监听端口
-      advertise_addr: ""  # 广播地址
-      auth_token: "1234567890" # JWT 认证 Token
-  client:
-    # 外部依赖服务客户端
-    ecmdb:
-      name: "ecmdb" # ECMDB 服务名
-      auth_token: "1234567890" # 访问 Token
-    # 内部调度中心客户端 (用于执行器上报结果)
-    scheduler:
-      name: "scheduler"
-      auth_token: "1234567890"
-    # 调度中心访问执行器的客户端配置
-    executor:
-      auth_token: "1234567890"
-
 # Agent 模块配置 (基于 Kafka 队列的异步执行器)
 agent:
-  name: Kafka-Agent # 实例显示名称
-  topic: agent_execute # 监听的任务消息队列 Topic
-  worker_count: 4 # 并发消费任务数量
-  desc: 异步任务执行代理：负责从消息队列拉取并执行来自调度中心的任务指令 # 描述信息，展示在管理后台
+  # 实例显示名称
+  name: Kafka-Agent
+  # 监听的任务消息队列 Topic
+  topic: agent_execute
+  # 并发消费任务数量
+  worker_count: 4
+  # 描述信息，展示在管理后台
+  desc: 异步任务执行代理：负责从消息队列拉取并执行来自调度中心的任务指令
+  # 资源池隔离级别：SHARED(共享) 或 DEDICATED(专有)
   isolation_level: "SHARED"
 
 # 执行节点集群配置
@@ -104,6 +106,7 @@ executor:
   mode: "PULL"
   # 执行器集群功能描述。
   desc: "通用计算节点：提供 Shell 与 Python 脚本等系统级基础执行能力的默认执行器集群"
+  # 资源池隔离级别：SHARED(共享) 或 DEDICATED(专有)
   isolation_level: "SHARED"
 
 

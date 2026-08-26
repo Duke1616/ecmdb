@@ -165,3 +165,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )
+
+replace github.com/ecodeclub/ginx => github.com/ecodeclub/ginx v0.0.2-0.20250919074712-66377c661570

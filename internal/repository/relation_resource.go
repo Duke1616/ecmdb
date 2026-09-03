@@ -5,7 +5,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 // RelationResourceRepository 资源实例关联关系仓储接口
@@ -44,6 +44,8 @@ type RelationResourceRepository interface {
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 	// DeleteDstRelation 删除目标端关系
 	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+	// DeleteByResourceId 级联删除指定资产关联的所有关系
+	DeleteByResourceId(ctx context.Context, resourceId int64) (int64, error)
 
 	// ListRecursiveSrc 递归查询下游关联资产列表（正向递归）
 	ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error)
@@ -67,28 +69,28 @@ func (r *resourceRelationRepository) CreateResourceRelation(ctx context.Context,
 
 func (r *resourceRelationRepository) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error) {
 	rrs, err := r.dao.ListSrcAggregated(ctx, modelUid, id)
-	return slice.Map(rrs, func(idx int, src dao.ResourceAggregatedAsset) domain.ResourceAggregatedAssets {
+	return lo.Map(rrs, func(src dao.ResourceAggregatedAsset, _ int) domain.ResourceAggregatedAssets {
 		return r.toAggregatedAssetsDomain(src)
 	}), err
 }
 
 func (r *resourceRelationRepository) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]domain.ResourceAggregatedAssets, error) {
 	rrs, err := r.dao.ListDstAggregated(ctx, modelUid, id)
-	return slice.Map(rrs, func(idx int, src dao.ResourceAggregatedAsset) domain.ResourceAggregatedAssets {
+	return lo.Map(rrs, func(src dao.ResourceAggregatedAsset, _ int) domain.ResourceAggregatedAssets {
 		return r.toAggregatedAssetsDomain(src)
 	}), err
 }
 
 func (r *resourceRelationRepository) ListSrcResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
 	rrs, err := r.dao.ListSrcResources(ctx, modelUid, id)
-	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+	return lo.Map(rrs, func(src dao.ResourceRelation, _ int) domain.ResourceRelation {
 		return r.toResourceDomain(src)
 	}), err
 }
 
 func (r *resourceRelationRepository) ListDstResources(ctx context.Context, modelUid string, id int64) ([]domain.ResourceRelation, error) {
 	rrs, err := r.dao.ListDstResources(ctx, modelUid, id)
-	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+	return lo.Map(rrs, func(src dao.ResourceRelation, _ int) domain.ResourceRelation {
 		return r.toResourceDomain(src)
 	}), err
 }
@@ -119,6 +121,10 @@ func (r *resourceRelationRepository) DeleteSrcRelation(ctx context.Context, reso
 
 func (r *resourceRelationRepository) DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
 	return r.dao.DeleteDstRelation(ctx, resourceId, modelUid, relationName)
+}
+
+func (r *resourceRelationRepository) DeleteByResourceId(ctx context.Context, resourceId int64) (int64, error) {
+	return r.dao.DeleteByResourceId(ctx, resourceId)
 }
 
 func (r *resourceRelationRepository) toEntity(req domain.ResourceRelation) dao.ResourceRelation {
@@ -163,14 +169,14 @@ func (r *resourceRelationRepository) CountByRelationName(ctx context.Context, na
 
 func (r *resourceRelationRepository) ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error) {
 	rrs, err := r.dao.ListRecursiveSrc(ctx, modelUid, id, maxDepth)
-	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+	return lo.Map(rrs, func(src dao.ResourceRelation, _ int) domain.ResourceRelation {
 		return r.toResourceDomain(src)
 	}), err
 }
 
 func (r *resourceRelationRepository) ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]domain.ResourceRelation, error) {
 	rrs, err := r.dao.ListRecursiveDst(ctx, modelUid, id, maxDepth)
-	return slice.Map(rrs, func(idx int, src dao.ResourceRelation) domain.ResourceRelation {
+	return lo.Map(rrs, func(src dao.ResourceRelation, _ int) domain.ResourceRelation {
 		return r.toResourceDomain(src)
 	}), err
 }

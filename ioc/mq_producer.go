@@ -9,9 +9,9 @@ import (
 )
 
 func InitFieldSecureAttrChangeEventProducer(q mq.MQ) (attrSvc.FieldSecureAttrChangeEventProducer, error) {
-	return mqx.NewGeneralProducer[domain.FieldSecureAttrChange](q, event.FieldSecureAttrChangeName)
+	return mqx.NewGeneralProducer[domain.FieldSecureAttrChange](q, event.FieldSecureAttrChangeEventName)
 }
 
 func InitFieldDeleteEventProducer(q mq.MQ) (attrSvc.IFieldDeleteEventProducer, error) {
-	return mqx.NewGeneralProducer[domain.FieldDelete](q, event.FIELD_DELETE_EVENT_NAME)
+	return mqx.NewGeneralProducer[domain.FieldDelete](q, event.FieldDeleteEventName)
 }

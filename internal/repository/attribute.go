@@ -5,7 +5,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 type AttributeRepository interface {
@@ -48,6 +48,9 @@ type AttributeRepository interface {
 	// DeleteByGroupId 根据分组ID删除所有属性
 	DeleteByGroupId(ctx context.Context, groupId int64) (int64, error)
 
+	// DeleteByModelUid 根据模型唯一标识删除该模型下的所有属性
+	DeleteByModelUid(ctx context.Context, modelUid string) (int64, error)
+
 	// ListByGroupID 根据分组ID获取属性列表（按 SortKey 排序）
 	ListByGroupID(ctx context.Context, groupId int64) ([]domain.Attribute, error)
 
@@ -81,7 +84,7 @@ func (repo *attributeRepository) CreateAttribute(ctx context.Context, req domain
 }
 
 func (repo *attributeRepository) BatchCreateAttribute(ctx context.Context, attrs []domain.Attribute) error {
-	daoAttrs := slice.Map(attrs, func(idx int, src domain.Attribute) dao.Attribute {
+	daoAttrs := lo.Map(attrs, func(src domain.Attribute, _ int) dao.Attribute {
 		return repo.toEntity(src)
 	})
 	return repo.dao.BatchCreateAttribute(ctx, daoAttrs)
@@ -95,7 +98,7 @@ func (repo *attributeRepository) UpdateAttribute(ctx context.Context, req domain
 func (repo *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Context, modelUid string) ([]string, error) {
 	attrs, err := repo.dao.SearchAttributeByModelUID(ctx, modelUid)
 
-	return slice.Map(attrs, func(idx int, src dao.Attribute) string {
+	return lo.Map(attrs, func(src dao.Attribute, _ int) string {
 		return src.FieldUid
 	}), err
 }
@@ -103,7 +106,7 @@ func (repo *attributeRepository) SearchAttributeFieldsByModelUid(ctx context.Con
 func (repo *attributeRepository) ListAttributes(ctx context.Context, modelUID string) ([]domain.Attribute, error) {
 	attrs, err := repo.dao.ListAttributes(ctx, modelUID)
 
-	return slice.Map(attrs, func(idx int, src dao.Attribute) domain.Attribute {
+	return lo.Map(attrs, func(src dao.Attribute, _ int) domain.Attribute {
 		return repo.toDomain(src)
 	}), err
 }
@@ -128,23 +131,31 @@ func (repo *attributeRepository) DeleteByGroupId(ctx context.Context, groupId in
 	return repo.dao.DeleteByGroupId(ctx, groupId)
 }
 
+func (repo *attributeRepository) DeleteByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	return repo.dao.DeleteByModelUid(ctx, modelUid)
+}
+
 func (repo *attributeRepository) ListAttributePipeline(ctx context.Context, modelUid string) ([]domain.AttributePipeline, error) {
 	rrs, err := repo.dao.ListAttributePipeline(ctx, modelUid)
-	return slice.Map(rrs, func(idx int, src dao.AttributePipeline) domain.AttributePipeline {
+	return lo.Map(rrs, func(src dao.AttributePipeline, _ int) domain.AttributePipeline {
 		return repo.toAttributeGroupsDomain(src)
 	}), err
 }
 
 func (repo *attributeRepository) SearchAttributeFieldsBySecure(ctx context.Context, modelUids []string) (map[string][]string, error) {
 	attrs, err := repo.dao.SearchAttributeFieldsBySecure(ctx, modelUids)
-	return slice.ToMapV(attrs, func(element dao.Attribute) (string, []string) {
-		return element.ModelUID, slice.FilterMap(attrs, func(idx int, src dao.Attribute) (string, bool) {
-			if src.ModelUID == element.ModelUID {
-				return src.FieldUid, true
-			}
-			return "", false
+	if err != nil {
+		return nil, err
+	}
+	grouped := lo.GroupBy(attrs, func(attr dao.Attribute) string {
+		return attr.ModelUID
+	})
+	res := lo.MapValues(grouped, func(items []dao.Attribute, _ string) []string {
+		return lo.Map(items, func(item dao.Attribute, _ int) string {
+			return item.FieldUid
 		})
-	}), err
+	})
+	return res, nil
 }
 
 func (repo *attributeRepository) toEntity(req domain.Attribute) dao.Attribute {
@@ -191,7 +202,7 @@ func (repo *attributeRepository) toAttributeGroupsDomain(ags dao.AttributePipeli
 	return domain.AttributePipeline{
 		GroupId: ags.GroupId,
 		Total:   ags.Total,
-		Attributes: slice.Map(ags.Attributes, func(idx int, src dao.Attribute) domain.Attribute {
+		Attributes: lo.Map(ags.Attributes, func(src dao.Attribute, _ int) domain.Attribute {
 			return repo.toDomain(src)
 		}),
 	}
@@ -199,7 +210,7 @@ func (repo *attributeRepository) toAttributeGroupsDomain(ags dao.AttributePipeli
 
 func (repo *attributeRepository) ListByGroupID(ctx context.Context, groupId int64) ([]domain.Attribute, error) {
 	attrs, err := repo.dao.ListByGroupID(ctx, groupId)
-	return slice.Map(attrs, func(idx int, src dao.Attribute) domain.Attribute {
+	return lo.Map(attrs, func(src dao.Attribute, _ int) domain.Attribute {
 		return repo.toDomain(src)
 	}), err
 }
@@ -213,7 +224,7 @@ func (repo *attributeRepository) UpdateSort(ctx context.Context, id, groupId, so
 }
 
 func (repo *attributeRepository) BatchUpdateSortKey(ctx context.Context, items []domain.AttributeSortItem) error {
-	daoItems := slice.Map(items, func(idx int, src domain.AttributeSortItem) dao.AttributeSortItem {
+	daoItems := lo.Map(items, func(src domain.AttributeSortItem, _ int) dao.AttributeSortItem {
 		return dao.AttributeSortItem{
 			ID:      src.ID,
 			GroupId: src.GroupId,

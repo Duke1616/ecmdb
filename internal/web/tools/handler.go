@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Duke1616/ecmdb/internal/service/tools"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
+	service "github.com/Duke1616/ecmdb/internal/service/tools"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 )
+
+var _ ginx.Handler = &Handler{}
 
 const DefaultBucket = "ecmdb"
 
@@ -31,27 +33,24 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	g.GET("/download/:filename", h.Download)
 }
 
+func (h *Handler) IdentifyRoutes(_ *gin.Engine) {}
+
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/tools")
-	g.POST("/upload", h.Capability("文件上传", "upload").
-		Handle(h.Upload),
+	g.POST("/upload", h.Define("文件上传", "upload").
+		Bind(h.Upload),
 	)
 
-	//g.GET("/download/:filename", h.Capability("文件下载", "download").
-	//	Needs("cmdb:tools:get_presigned_url").
-	//	Handle(h.Download),
-	//)
-
-	g.POST("/minio/get_presigned_url", h.Capability("获取下载预签名", "get_presigned_url").
+	g.POST("/minio/get_presigned_url", h.Define("获取下载预签名", "get_presigned_url").
 		NoSync().
-		Handle(ginx.WrapBody[GetPresignedUrl](h.GetPresignedUrl)),
+		Bind(ginx.B[GetPresignedUrl](h.GetPresignedUrl)),
 	)
-	g.POST("/minio/put_presigned_url", h.Capability("获取上传预签名", "put_presigned_url").
+	g.POST("/minio/put_presigned_url", h.Define("获取上传预签名", "put_presigned_url").
 		NoSync().
-		Handle(ginx.WrapBody[PutPresignedUrl](h.PutPresignedUrl)),
+		Bind(ginx.B[PutPresignedUrl](h.PutPresignedUrl)),
 	)
-	g.POST("/minio/object/remove", h.Capability("删除对象", "remove").
-		Handle(ginx.WrapBody[RemoveObjectReq](h.RemoveObject)),
+	g.POST("/minio/object/remove", h.Define("删除对象", "remove").
+		Bind(ginx.B[RemoveObjectReq](h.RemoveObject)),
 	)
 }
 
@@ -132,9 +131,9 @@ func (h *Handler) Download(ctx *gin.Context) {
 	ctx.File(filePath)
 }
 
-func (h *Handler) PutPresignedUrl(ctx *gin.Context, req PutPresignedUrl) (ginx.Result, error) {
+func (h *Handler) PutPresignedUrl(ctx *ginx.Context, req PutPresignedUrl) (ginx.Result, error) {
 	bucket := h.bucket(req.Bucket)
-	key, url, err := h.svc.PutPresignedUrl(ctx, bucket, req.Prefix, req.ObjectName)
+	key, url, err := h.svc.PutPresignedUrl(ctx.Context, bucket, req.Prefix, req.ObjectName)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -148,9 +147,9 @@ func (h *Handler) PutPresignedUrl(ctx *gin.Context, req PutPresignedUrl) (ginx.R
 	}, nil
 }
 
-func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.Result, error) {
+func (h *Handler) GetPresignedUrl(ctx *ginx.Context, req GetPresignedUrl) (ginx.Result, error) {
 	bucket := h.bucket(req.Bucket)
-	url, err := h.svc.GetPresignedUrl(ctx, bucket, req.ObjectName)
+	url, err := h.svc.GetPresignedUrl(ctx.Context, bucket, req.ObjectName)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -163,9 +162,9 @@ func (h *Handler) GetPresignedUrl(ctx *gin.Context, req GetPresignedUrl) (ginx.R
 	}, nil
 }
 
-func (h *Handler) RemoveObject(ctx *gin.Context, req RemoveObjectReq) (ginx.Result, error) {
+func (h *Handler) RemoveObject(ctx *ginx.Context, req RemoveObjectReq) (ginx.Result, error) {
 	bucket := h.bucket(req.Bucket)
-	err := h.svc.RemoveObject(ctx, bucket, req.ObjectName)
+	err := h.svc.RemoveObject(ctx.Context, bucket, req.ObjectName)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -183,3 +182,4 @@ func (h *Handler) bucket(bucket string) string {
 
 	return bucket
 }
+

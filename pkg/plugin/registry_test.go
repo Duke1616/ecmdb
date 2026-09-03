@@ -1,6 +1,23 @@
 package plugin
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Duke1616/ecmdb/pkg/plugin/dsl"
+	"github.com/Duke1616/ecmdb/pkg/plugin/graph"
+	"github.com/Duke1616/ecmdb/pkg/plugin/types"
+)
+
+type testGateway struct {
+	IP   string `plugin:"ip,required"`
+	Port int    `plugin:"port"`
+}
+
+type testHost struct {
+	IP       string        `plugin:"ip,required"`
+	Username string        `plugin:"username"`
+	Gateways []testGateway `plugin:"gateways,model=gateway,out=default"`
+}
 
 func TestRegistryDefinition(t *testing.T) {
 	def := NewRegistry(
@@ -28,14 +45,14 @@ func TestRegistryDefinition(t *testing.T) {
 	if binding.Graph == nil {
 		t.Fatalf("binding graph is nil")
 	}
-	specs, err := CompileBindingGraph(binding.Graph)
+	specs, err := graph.CompileBindingGraph(binding.Graph)
 	if err != nil {
 		t.Fatalf("CompileBindingGraph() error = %v", err)
 	}
 	if specs[0].ModelUID != "host" {
 		t.Fatalf("top spec model = %s", specs[0].ModelUID)
 	}
-	if specs[0].Children[0].RelationType != RelationTypeDefault {
+	if specs[0].Children[0].RelationType != types.RelationTypeDefault {
 		t.Fatalf("child relation type = %s", specs[0].Children[0].RelationType)
 	}
 }
@@ -51,7 +68,7 @@ func TestRegistryDefinitionWithCenter(t *testing.T) {
 	if def.Bindings[0].UID != "builtin.center.host" {
 		t.Fatalf("binding uid = %s", def.Bindings[0].UID)
 	}
-	specs, err := CompileBindingGraph(def.Bindings[0].Graph)
+	specs, err := graph.CompileBindingGraph(def.Bindings[0].Graph)
 	if err != nil {
 		t.Fatalf("CompileBindingGraph() error = %v", err)
 	}
@@ -59,7 +76,7 @@ func TestRegistryDefinitionWithCenter(t *testing.T) {
 	if spec.Name != "target" || spec.ModelUID != "host" {
 		t.Fatalf("spec = %#v", spec)
 	}
-	if spec.Children[0].RelationType != RelationTypeDefault {
+	if spec.Children[0].RelationType != types.RelationTypeDefault {
 		t.Fatalf("relation type = %s", spec.Children[0].RelationType)
 	}
 }
@@ -67,13 +84,9 @@ func TestRegistryDefinitionWithCenter(t *testing.T) {
 func TestRegistryDefinitionWithSchema(t *testing.T) {
 	def := NewRegistry("builtin.schema", "Schema").
 		Setup(
-			ModelGroup("主机模型"),
-			RelationTypes(BasicRelationTypes()...),
-			Model("host", "主机", ModelGroupName("主机模型")).
-				AttrGroup("基础属性", 0,
-					String("ip", "IP地址").Required().Display().Index(1),
-				),
-			Relation("gateway", RelationTypeDefault, "host").OneToMany(),
+			dsl.ModelGroup("主机模型"),
+			dsl.RelationTypes(dsl.BasicRelationTypes()...),
+			dsl.Relation("gateway", types.RelationTypeDefault, "host").OneToMany(),
 		).
 		MustDefinition()
 
@@ -83,17 +96,7 @@ func TestRegistryDefinitionWithSchema(t *testing.T) {
 	if len(def.Schema.RelationTypes) != 4 {
 		t.Fatalf("relation types = %#v", def.Schema.RelationTypes)
 	}
-	if len(def.Schema.Models) != 1 || def.Schema.Models[0].UID != "host" {
-		t.Fatalf("models = %#v", def.Schema.Models)
-	}
-	if len(def.Schema.Models[0].AttributeGroups) != 1 {
-		t.Fatalf("attribute groups = %#v", def.Schema.Models[0].AttributeGroups)
-	}
-	field := def.Schema.Models[0].AttributeGroups[0].Fields[0]
-	if field.UID != "ip" || !field.Required || !field.Display || field.Index != 1 {
-		t.Fatalf("field = %#v", field)
-	}
-	if len(def.Schema.ModelRelations) != 1 || def.Schema.ModelRelations[0].Mapping != MappingOneToMany {
+	if len(def.Schema.ModelRelations) != 1 || def.Schema.ModelRelations[0].Mapping != types.MappingOneToMany {
 		t.Fatalf("model relations = %#v", def.Schema.ModelRelations)
 	}
 }

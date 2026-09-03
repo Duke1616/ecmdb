@@ -59,6 +59,8 @@ var (
 	PluginSet = wire.NewSet(
 		dao.NewPluginDAO,
 		repository.NewPluginRepository,
+		pluginSvc.NewSchemaImporter,
+		pluginSvc.NewInputResolver,
 		pluginSvc.NewService,
 		plugin.NewHandler,
 	)
@@ -118,7 +120,6 @@ var (
 		InitTasks,
 
 		InitDeleteModelDependencyCheckers,
-		wire.Bind(new(modelSvc.IDefaultAttributeCreator), new(attrSvc.Service)),
 	)
 )
 

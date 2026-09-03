@@ -7,7 +7,8 @@ import (
 
 	pluginv1 "github.com/Duke1616/ecmdb/api/proto/gen/ecmdb/plugin/v1"
 	"github.com/Duke1616/ecmdb/internal/service/plugin"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	coreplugin "github.com/Duke1616/ecmdb/pkg/plugin"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/Duke1616/eiam/pkg/ctxutil"
 )
 
@@ -50,7 +51,7 @@ func (s *Server) RegisterPlugin(ctx context.Context, req *pluginv1.RegisterPlugi
 		return nil, fmt.Errorf("upstream 地址不能为空")
 	}
 
-	def, err := pluginx.FetchDefinition(ctx, req.Upstream)
+	def, err := coreplugin.FetchDefinition(ctx, req.Upstream)
 	if err != nil {
 		return nil, fmt.Errorf("读取插件自描述 Definition 失败: %w", err)
 	}

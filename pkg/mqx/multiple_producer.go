@@ -29,7 +29,7 @@ func (pm *MultipleProducer[T]) AddProducer(topic string) error {
 	defer pm.mu.Unlock()
 
 	if _, exists := pm.producers[topic]; exists {
-		return fmt.Errorf("topic %s 已经存在", topic)
+		return nil
 	}
 
 	producer, err := NewGeneralProducer[T](pm.mq, topic)

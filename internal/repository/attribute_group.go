@@ -5,7 +5,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 type AttributeGroupRepository interface {
@@ -23,6 +23,9 @@ type AttributeGroupRepository interface {
 
 	// DeleteAttributeGroup 删除属性组
 	DeleteAttributeGroup(ctx context.Context, id int64) (int64, error)
+
+	// DeleteByModelUid 根据模型唯一标识删除该模型下的所有属性组
+	DeleteByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
@@ -54,7 +57,7 @@ func (a *attributeGroupRepository) GetMaxSortKeyByModuleUid(ctx context.Context,
 func (a *attributeGroupRepository) ListAttributeGroup(ctx context.Context, modelUid string) ([]domain.AttributeGroup, error) {
 	ags, err := a.dao.ListAttributeGroup(ctx, modelUid)
 
-	return slice.Map(ags, func(idx int, src dao.AttributeGroup) domain.AttributeGroup {
+	return lo.Map(ags, func(src dao.AttributeGroup, _ int) domain.AttributeGroup {
 		return a.toDomain(src)
 	}), err
 }
@@ -62,7 +65,7 @@ func (a *attributeGroupRepository) ListAttributeGroup(ctx context.Context, model
 func (a *attributeGroupRepository) ListAttributeGroupByIds(ctx context.Context, ids []int64) ([]domain.AttributeGroup, error) {
 	ags, err := a.dao.ListAttributeGroupByIds(ctx, ids)
 
-	return slice.Map(ags, func(idx int, src dao.AttributeGroup) domain.AttributeGroup {
+	return lo.Map(ags, func(src dao.AttributeGroup, _ int) domain.AttributeGroup {
 		return a.toDomain(src)
 	}), err
 }
@@ -72,11 +75,11 @@ func (a *attributeGroupRepository) CreateAttributeGroup(ctx context.Context, req
 }
 
 func (a *attributeGroupRepository) BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
-	agsResp, err := a.dao.BatchCreateAttributeGroup(ctx, slice.Map(ags, func(idx int, src domain.AttributeGroup) dao.AttributeGroup {
+	agsResp, err := a.dao.BatchCreateAttributeGroup(ctx, lo.Map(ags, func(src domain.AttributeGroup, _ int) dao.AttributeGroup {
 		return a.toEntity(src)
 	}))
 
-	return slice.Map(agsResp, func(idx int, src dao.AttributeGroup) domain.AttributeGroup {
+	return lo.Map(agsResp, func(src dao.AttributeGroup, _ int) domain.AttributeGroup {
 		return a.toDomain(src)
 	}), err
 }
@@ -102,6 +105,10 @@ func (a *attributeGroupRepository) DeleteAttributeGroup(ctx context.Context, id 
 	return a.dao.DeleteAttributeGroup(ctx, id)
 }
 
+func (a *attributeGroupRepository) DeleteByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	return a.dao.DeleteByModelUid(ctx, modelUid)
+}
+
 func (a *attributeGroupRepository) RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error) {
 	return a.dao.RenameAttributeGroup(ctx, id, name)
 }
@@ -111,7 +118,7 @@ func (a *attributeGroupRepository) UpdateSort(ctx context.Context, id int64, sor
 }
 
 func (a *attributeGroupRepository) BatchUpdateSort(ctx context.Context, items []domain.AttributeGroupSortItem) error {
-	daoItems := slice.Map(items, func(idx int, src domain.AttributeGroupSortItem) dao.AttributeGroupSortItem {
+	daoItems := lo.Map(items, func(src domain.AttributeGroupSortItem, _ int) dao.AttributeGroupSortItem {
 		return dao.AttributeGroupSortItem{
 			ID:      src.ID,
 			SortKey: src.SortKey,

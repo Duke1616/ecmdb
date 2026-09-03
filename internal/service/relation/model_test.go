@@ -7,18 +7,17 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/errs"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
 )
 
 func TestRelationMappingErrorIsBusinessError(t *testing.T) {
 	err := relationMappingError("many_to_one")
 
-	var errCoder ginx.ErrorCoder
-	if !errors.As(err, &errCoder) {
-		t.Fatalf("relationMappingError() should implement ginx.ErrorCoder")
+	var errCode errs.ErrorCode
+	if !errors.As(err, &errCode) {
+		t.Fatalf("relationMappingError() should be errs.ErrorCode")
 	}
-	if errCoder.GetCode() != errs.RelationMappingConstraint.Code {
-		t.Fatalf("code = %d, want %d", errCoder.GetCode(), errs.RelationMappingConstraint.Code)
+	if errCode.GetCode() != errs.RelationMappingConstraint.Code {
+		t.Fatalf("code = %d, want %d", errCode.GetCode(), errs.RelationMappingConstraint.Code)
 	}
 }
 

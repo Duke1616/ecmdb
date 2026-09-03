@@ -2,13 +2,15 @@ package web
 
 import (
 	"github.com/Duke1616/ecmdb/internal/domain"
-	"github.com/Duke1616/ecmdb/internal/service/dataio"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
+	service "github.com/Duke1616/ecmdb/internal/service/dataio"
 	"github.com/Duke1616/ecmdb/pkg/storage"
 	"github.com/Duke1616/eiam/pkg/web/capability"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 )
+
+var _ ginx.Handler = &Handler{}
 
 type Handler struct {
 	svc     service.IDataIOService
@@ -24,36 +26,41 @@ func NewHandler(svc service.IDataIOService, storage *storage.S3Storage) *Handler
 	}
 }
 
+func (h *Handler) PublicRoutes(_ *gin.Engine) {}
+
+func (h *Handler) IdentifyRoutes(_ *gin.Engine) {}
+
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/dataio")
 	// 导出模板
-	g.GET("/template/export/:model_uid", h.Capability("模板导出", "export_template").
-		Handle(ginx.Wrap(h.ExportTemplate)),
+	g.GET("/template/export/:model_uid", h.Define("模板导出", "export_template").
+		Bind(ginx.W(h.ExportTemplate)),
 	)
 	// 导入数据 (S3 模式)
-	g.POST("/import", h.Capability("数据导入", "import").
-		Handle(ginx.WrapBody[ImportReq](h.Import)),
+	g.POST("/import", h.Define("数据导入", "import").
+		Bind(ginx.B[ImportReq](h.Import)),
 	)
 	// 导出数据
-	g.POST("/export", h.Capability("数据导出", "export").
-		Handle(ginx.WrapBody[ExportReq](h.Export)),
+	g.POST("/export", h.Define("数据导出", "export").
+		Bind(ginx.B[ExportReq](h.Export)),
 	)
 }
 
 // Export 导出数据
-func (h *Handler) Export(ctx *gin.Context, req ExportReq) (ginx.Result, error) {
+func (h *Handler) Export(ctx *ginx.Context, req ExportReq) (ginx.Result, error) {
 	// 转换 FilterGroups
-	groups := slice.Map(req.FilterGroups, func(idx int, src ExportFilterGroup) domain.FilterGroup {
+	groups := lo.Map(req.FilterGroups, func(src ExportFilterGroup, _ int) domain.FilterGroup {
 		return domain.FilterGroup{
-			Filters: slice.Map(src.Filters, func(idx int, src ExportFilterCondition) domain.FilterCondition {
+			Filters: lo.Map(src.Filters, func(f ExportFilterCondition, _ int) domain.FilterCondition {
 				return domain.FilterCondition{
-					FieldUID: src.FieldUID,
-					Operator: domain.Operator(src.Operator),
-					Value:    src.Value,
+					FieldUID: f.FieldUID,
+					Operator: domain.Operator(f.Operator),
+					Value:    f.Value,
 				}
 			}),
 		}
 	})
+
 
 	params := service.ExportParams{
 		ModelUID:     req.ModelUID,
@@ -65,7 +72,7 @@ func (h *Handler) Export(ctx *gin.Context, req ExportReq) (ginx.Result, error) {
 	}
 
 	// 调用 Service 导出数据
-	excelData, err := h.svc.Export(ctx.Request.Context(), params)
+	excelData, err := h.svc.Export(ctx.Context, params)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -91,15 +98,19 @@ func (h *Handler) Export(ctx *gin.Context, req ExportReq) (ginx.Result, error) {
 }
 
 // ExportTemplate 导出空白导入模板
-func (h *Handler) ExportTemplate(ctx *gin.Context) (ginx.Result, error) {
+func (h *Handler) ExportTemplate(ctx *ginx.Context) (ginx.Result, error) {
 	// 根据请求获取模型UID
-	modelUid := ctx.Param("model_uid")
-
-	// 调用 Service 生成 Excel 模板
-	excelData, err := h.svc.ExportTemplate(ctx.Request.Context(), modelUid)
+	modelUid, err := ctx.Param("model_uid").AsString()
 	if err != nil {
 		return systemErrorResult, err
 	}
+
+	// 调用 Service 生成 Excel 模板
+	excelData, err := h.svc.ExportTemplate(ctx.Context, modelUid)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
 
 	// 设置 HTTP 响应头,直接返回 Excel 文件
 	ctx.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -115,15 +126,15 @@ func (h *Handler) ExportTemplate(ctx *gin.Context) (ginx.Result, error) {
 
 // Import 导入数据
 // NOTE: 前端先通过 GenerateUploadURL 上传文件到 S3,然后调用此接口传入 file_key 进行导入
-func (h *Handler) Import(ctx *gin.Context, req ImportReq) (ginx.Result, error) {
+func (h *Handler) Import(ctx *ginx.Context, req ImportReq) (ginx.Result, error) {
 	// 1. 从 S3 下载文件
-	fileData, err := h.storage.GetFile(ctx.Request.Context(), "ecmdb", req.FileKey)
+	fileData, err := h.storage.GetFile(ctx.Context, "ecmdb", req.FileKey)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
 	// 2. 调用 Service 导入数据
-	importedCount, err := h.svc.Import(ctx.Request.Context(), req.ModelUID, fileData)
+	importedCount, err := h.svc.Import(ctx.Context, req.ModelUID, fileData)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -135,3 +146,4 @@ func (h *Handler) Import(ctx *gin.Context, req ImportReq) (ginx.Result, error) {
 		},
 	}, nil
 }
+

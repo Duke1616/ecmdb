@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
 
 var errRequiredInputMissing = errors.New("plugin required input missing")

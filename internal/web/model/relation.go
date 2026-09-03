@@ -5,13 +5,12 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	relationservice "github.com/Duke1616/ecmdb/internal/service/relation"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/gin-gonic/gin"
+	"github.com/ecodeclub/ginx"
+	"github.com/samber/lo"
 )
 
-func (h *Handler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationReq) (ginx.Result, error) {
-	id, err := h.RMSvc.CreateModelRelation(ctx, toModelDomain(req))
+func (h *Handler) CreateModelRelation(ctx *ginx.Context, req CreateModelRelationReq) (ginx.Result, error) {
+	id, err := h.RMSvc.CreateModelRelation(ctx.Context, toModelDomain(req))
 
 	if err != nil {
 		return systemErrorResult, err
@@ -24,8 +23,8 @@ func (h *Handler) CreateModelRelation(ctx *gin.Context, req CreateModelRelationR
 }
 
 // ListModelUIDRelation 根据模型唯一索引名称，查询所有关联信息
-func (h *Handler) ListModelUIDRelation(ctx *gin.Context, req ListModelRelationReq) (ginx.Result, error) {
-	relations, total, err := h.RMSvc.ListModelUidRelation(ctx, req.Offset, req.Limit, req.ModelUid)
+func (h *Handler) ListModelUIDRelation(ctx *ginx.Context, req ListModelRelationReq) (ginx.Result, error) {
+	relations, total, err := h.RMSvc.ListModelUidRelation(ctx.Context, req.Offset, req.Limit, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -33,15 +32,16 @@ func (h *Handler) ListModelUIDRelation(ctx *gin.Context, req ListModelRelationRe
 	return ginx.Result{
 		Data: RetrieveRelationModels{
 			Total: total,
-			ModelRelations: slice.Map(relations, func(idx int, src domain.ModelRelation) ModelRelation {
+			ModelRelations: lo.Map(relations, func(src domain.ModelRelation, _ int) ModelRelation {
 				return h.toRelationVO(src)
 			}),
 		},
 	}, nil
 }
 
-func (h *Handler) DeleteModelRelation(ctx *gin.Context, req DeleteModelRelationReq) (ginx.Result, error) {
-	id, err := h.RMSvc.DeleteModelRelation(ctx, req.Id)
+
+func (h *Handler) DeleteModelRelation(ctx *ginx.Context, req DeleteModelRelationReq) (ginx.Result, error) {
+	id, err := h.RMSvc.DeleteModelRelation(ctx.Context, req.Id)
 	if err != nil {
 		if errors.Is(err, relationservice.ErrDependency) {
 			return ginx.Result{
@@ -57,8 +57,8 @@ func (h *Handler) DeleteModelRelation(ctx *gin.Context, req DeleteModelRelationR
 	}, nil
 }
 
-func (h *Handler) UpdateModelRelation(ctx *gin.Context, req UpdateModelRelationReq) (ginx.Result, error) {
-	_, err := h.RMSvc.UpdateModelRelation(ctx, toUpdateModelDomain(req))
+func (h *Handler) UpdateModelRelation(ctx *ginx.Context, req UpdateModelRelationReq) (ginx.Result, error) {
+	_, err := h.RMSvc.UpdateModelRelation(ctx.Context, toUpdateModelDomain(req))
 	if err != nil {
 		if errors.Is(err, relationservice.ErrDependency) {
 			return ginx.Result{
@@ -100,3 +100,4 @@ func (h *Handler) toRelationVO(m domain.ModelRelation) ModelRelation {
 		Mapping:         m.Mapping,
 	}
 }
+

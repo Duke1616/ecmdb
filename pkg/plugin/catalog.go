@@ -4,7 +4,35 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/Duke1616/ecmdb/pkg/plugin/graph"
+	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
+
+// Builtin 表示一个内置插件，提供完整 Definition 与按 Bindings 裁剪 Schema 的能力
+type Builtin interface {
+	Definition() Definition
+	SchemaForBindings(bindings []types.Binding) (types.Schema, error)
+}
+
+type staticBuiltin struct {
+	def Definition
+}
+
+// StaticBuiltin 将一个已构建好的 Definition 包装成 Builtin 实现
+func StaticBuiltin(def Definition) Builtin {
+	return staticBuiltin{def: def}
+}
+
+func (b staticBuiltin) Definition() Definition {
+	return b.def
+}
+
+func (b staticBuiltin) SchemaForBindings(bindings []types.Binding) (types.Schema, error) {
+	return graph.BuildImportSchema(b.def.Schema, bindings)
+}
+
+// ── 全局内置插件目录 ──────────────────────────────────────────────────────────
 
 var builtinCatalog = struct {
 	sync.RWMutex
@@ -13,6 +41,7 @@ var builtinCatalog = struct {
 	builtins: make(map[string]Builtin),
 }
 
+// RegisterBuiltin 注册内置插件
 func RegisterBuiltin(builtin Builtin) error {
 	if builtin == nil {
 		return fmt.Errorf("builtin plugin is nil")
@@ -33,12 +62,14 @@ func RegisterBuiltin(builtin Builtin) error {
 	return nil
 }
 
+// MustRegisterBuiltin 注册内置插件，遇错 panic
 func MustRegisterBuiltin(builtin Builtin) {
 	if err := RegisterBuiltin(builtin); err != nil {
 		panic(err)
 	}
 }
 
+// Builtins 获取所有内置插件
 func Builtins() []Builtin {
 	builtinCatalog.RLock()
 	defer builtinCatalog.RUnlock()
@@ -53,6 +84,7 @@ func Builtins() []Builtin {
 	return items
 }
 
+// FindBuiltin 查询内置插件
 func FindBuiltin(pluginID string) (Builtin, bool) {
 	builtinCatalog.RLock()
 	defer builtinCatalog.RUnlock()

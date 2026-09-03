@@ -6,7 +6,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 // RelationModelRepository 模型关联关系仓储接口
@@ -53,7 +53,7 @@ type modelRelationRepository struct {
 }
 
 func (r *modelRelationRepository) BatchCreate(ctx context.Context, relations []domain.ModelRelation) error {
-	return r.dao.BatchCreate(ctx, slice.Map(relations, func(idx int, src domain.ModelRelation) dao.ModelRelation {
+	return r.dao.BatchCreate(ctx, lo.Map(relations, func(src domain.ModelRelation, _ int) dao.ModelRelation {
 		return r.toEntity(src)
 	}))
 }
@@ -61,7 +61,7 @@ func (r *modelRelationRepository) BatchCreate(ctx context.Context, relations []d
 func (r *modelRelationRepository) GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error) {
 	rms, err := r.dao.GetByRelationNames(ctx, names)
 
-	return slice.Map(rms, func(idx int, src dao.ModelRelation) domain.ModelRelation {
+	return lo.Map(rms, func(src dao.ModelRelation, _ int) domain.ModelRelation {
 		return r.toDomain(src)
 	}), err
 }
@@ -73,7 +73,7 @@ func (r *modelRelationRepository) CreateModelRelation(ctx context.Context, req d
 func (r *modelRelationRepository) ListRelationByModelUid(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, error) {
 	rms, err := r.dao.ListRelationByModelUid(ctx, offset, limit, modelUid)
 
-	return slice.Map(rms, func(idx int, src dao.ModelRelation) domain.ModelRelation {
+	return lo.Map(rms, func(src dao.ModelRelation, _ int) domain.ModelRelation {
 		return r.toDomain(src)
 	}), err
 }
@@ -85,7 +85,7 @@ func (r *modelRelationRepository) TotalByModelUid(ctx context.Context, modelUid 
 func (r *modelRelationRepository) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
 	diagrams, err := r.dao.FindModelDiagramBySrcUids(ctx, srcUids)
 
-	return slice.Map(diagrams, func(idx int, src dao.ModelRelation) domain.ModelDiagram {
+	return lo.Map(diagrams, func(src dao.ModelRelation, _ int) domain.ModelDiagram {
 		return r.toDiagram(src)
 	}), err
 }

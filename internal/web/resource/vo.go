@@ -45,14 +45,6 @@ type DeleteResourceReq struct {
 	Id int64 `json:"id"`
 }
 
-// ListCanBeRelatedReq 查询可以关联的节点
-type ListCanBeRelatedReq struct {
-	Page
-	ResourceId   int64  `json:"resource_id"`   // 当前资源ID
-	ModelUid     string `json:"model_uid"`     // 当前模型ID
-	RelationName string `json:"relation_name"` // 关联类型，以方便推断是数据正向 OR 反向
-}
-
 type ListCanBeRelatedReqByModel struct {
 	Page
 	ResourceId      int64  `json:"resource_id"`      // 当前资源ID
@@ -61,7 +53,6 @@ type ListCanBeRelatedReqByModel struct {
 	FilterName      string `json:"filter_name"`      // 过滤名称
 	FilterCondition string `json:"filter_condition"` // 过滤条件
 	FilterInput     string `json:"filter_input"`     // 过滤输入
-
 }
 
 type ListDiagramReq struct {
@@ -69,54 +60,6 @@ type ListDiagramReq struct {
 	ResourceId   int64  `json:"resource_id"`
 	ResourceName string `json:"resource_name"`
 	MaxDepth     int    `json:"max_depth"`
-}
-
-type ResourceRelation struct {
-	ID               int64  `json:"id"`
-	SourceModelUID   string `json:"source_model_uid"`
-	TargetModelUID   string `json:"target_model_uid"`
-	SourceResourceID int64  `json:"source_resource_id"`
-	TargetResourceID int64  `json:"target_resource_id"`
-	RelationTypeUID  string `json:"relation_type_uid"`
-	RelationName     string `json:"relation_name"`
-}
-
-type ResourceAssets struct {
-	ResourceID   int64  `json:"resource_id"`
-	ResourceName string `json:"resource_name"`
-}
-
-type RetrieveDiagram struct {
-	SRC    []ResourceRelation          `json:"src"`
-	DST    []ResourceRelation          `json:"dst"`
-	Assets map[string][]ResourceAssets `json:"assets"`
-}
-
-type RetrieveGraph struct {
-	RootId string       `json:"rootId"`
-	Nodes  []Node       `json:"nodes"`
-	Lines  []Line       `json:"lines"`
-	Models []GraphModel `json:"models,omitempty"`
-}
-
-type GraphModel struct {
-	ModelUID  string `json:"model_uid"`
-	ModelName string `json:"model_name"`
-	Icon      string `json:"icon,omitempty"`
-}
-
-type Node struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	// 扩展方向
-	ExpandHolderPosition string         `json:"expandHolderPosition,omitempty"`
-	Expanded             bool           `json:"expanded"`
-	Data                 map[string]any `json:"data,omitempty"`
-}
-
-type Line struct {
-	From string `json:"from"`
-	To   string `json:"to"`
 }
 
 type SearchReq struct {
@@ -130,24 +73,6 @@ type FindSecureReq struct {
 	FieldUid string `json:"field_uid"`
 }
 
-type Resource struct {
-	ID       int64         `json:"id"`
-	Name     string        `json:"name"`
-	ModelUID string        `json:"model_uid"`
-	Data     mongox.MapStr `json:"data"`
-}
-
-type RetrieveResources struct {
-	Resources []Resource `json:"resources"`
-	Total     int64      `json:"total"`
-}
-
-type RetrieveSearchResources struct {
-	ModelUid string          `json:"model_uid"`
-	Total    int             `json:"total"`
-	Data     []mongox.MapStr `json:"data"`
-}
-
 type CreateResourceRelationReq struct {
 	SourceResourceID int64  `json:"source_resource_id"`
 	TargetResourceID int64  `json:"target_resource_id"`
@@ -157,18 +82,6 @@ type CreateResourceRelationReq struct {
 type ListResourceDiagramReq struct {
 	ModelUid   string `json:"model_uid"`
 	ResourceId int64  `json:"resource_id"`
-}
-
-type RetrieveRelationResource struct {
-	Total             int64              `json:"total,omitempty"`
-	ResourceRelations []ResourceRelation `json:"resource_relations,omitempty"`
-}
-
-type RetrieveAggregatedAssets struct {
-	RelationName string  `json:"relation_name"`
-	ModelUid     string  `json:"model_uid"`
-	Total        int     `json:"total"`
-	ResourceIds  []int64 `json:"resource_ids"`
 }
 
 type DeleteResourceRelationReq struct {

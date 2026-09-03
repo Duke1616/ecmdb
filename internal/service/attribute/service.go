@@ -21,7 +21,8 @@ const (
 	IndexGap = 1000
 )
 
-//go:generate mockgen -source=./service.go -destination=../../mocks/attribute.mock.go -package=attributemocks -typed Service
+//go:generate mockgen -source=./service.go -destination=./mocks/service.mock.go -package=attributemocks -typed Service,FieldSecureAttrChangeEventProducer,IFieldDeleteEventProducer
+//go:generate mockgen -package=attributemocks -destination=./mocks/repository.mock.go -typed github.com/Duke1616/ecmdb/internal/repository AttributeRepository,AttributeGroupRepository
 type Service interface {
 	// CreateAttribute 创建模型字段
 	CreateAttribute(ctx context.Context, req domain.Attribute) (int64, error)
@@ -55,6 +56,9 @@ type Service interface {
 
 	// CreateDefaultAttribute 创建新模型，创建默认字段信息
 	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
+
+	// DeleteByModelUid 删除模型时级联删除该模型下的所有属性与属性分组
+	DeleteByModelUid(ctx context.Context, modelUid string) error
 
 	// CreateAttributeGroup 创建模型字段组
 	CreateAttributeGroup(ctx context.Context, req domain.AttributeGroup) (int64, error)
@@ -382,6 +386,20 @@ func (s *service) defaultAttr(modelUid string, groupId int64) domain.Attribute {
 		Secure:    false,
 		Builtin:   true,
 	}
+}
+
+func (s *service) DeleteByModelUid(ctx context.Context, modelUid string) error {
+	// 1. 级联删除该模型下的所有属性字段
+	if _, err := s.repo.DeleteByModelUid(ctx, modelUid); err != nil {
+		return fmt.Errorf("级联删除模型属性失败: %w", err)
+	}
+
+	// 2. 级联删除该模型下的所有属性分组
+	if _, err := s.groupRepo.DeleteByModelUid(ctx, modelUid); err != nil {
+		return fmt.Errorf("级联删除模型属性组失败: %w", err)
+	}
+
+	return nil
 }
 
 func (s *service) DeleteAttributeGroup(ctx context.Context, id int64) (int64, error) {

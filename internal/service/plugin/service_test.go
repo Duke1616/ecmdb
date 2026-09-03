@@ -2,15 +2,20 @@ package plugin
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/Duke1616/ecmdb/internal/repository"
+	pluginmocks "github.com/Duke1616/ecmdb/internal/service/plugin/mocks"
+	relationmocks "github.com/Duke1616/ecmdb/internal/service/relation/mocks"
+	coreplugin "github.com/Duke1616/ecmdb/pkg/plugin"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestCompleteRelationSpec(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		name     string
 		base     string
 		spec     pluginx.ResourceSpec
@@ -30,511 +35,529 @@ func TestCompleteRelationSpec(t *testing.T) {
 			name: "in from source",
 			base: "host",
 			spec: pluginx.ResourceSpec{
-				ModelUID:     "AuthGateway",
+				ModelUID:     "gateway",
 				RelationType: "default",
 				Direction:    pluginx.DirectionToSource,
 			},
-			expected: "AuthGateway_default_host",
+			expected: "gateway_default_host",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildRelationName(tt.base, tt.spec)
-			if err != nil {
-				t.Fatalf("buildRelationName() error = %v", err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := buildRelationName(tc.base, tc.spec)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestResolveActionContext(t *testing.T) {
+	testCases := []struct {
+		name        string
+		mock        func(ctrl *gomock.Controller) (repository.PluginRepository, IInputResolver)
+		req         pluginx.ResolveRequest
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, actCtx pluginx.ActionContext)
+	}{
+		{
+			name: "成功解析动作上下文并补全字段",
+			mock: func(ctrl *gomock.Controller) (repository.PluginRepository, IInputResolver) {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				resolver := pluginmocks.NewMockIInputResolver(ctrl)
+
+				repo.EXPECT().GetPlugin(gomock.Any(), "builtin.ssh").Return(domain.Plugin{
+					UID:  "builtin.ssh",
+					Name: "SSH",
+					Actions: []domain.PluginActionSpec{
+						{Action: "terminal", Name: "SSH 终端", BindingUID: "builtin.ssh.host"},
+					},
+				}, nil)
+
+				repo.EXPECT().ListEnabledBindingsByModelUID(gomock.Any(), "host").Return([]domain.PluginBinding{
+					{
+						UID:      "builtin.ssh.host",
+						PluginID: "builtin.ssh",
+						ModelUID: "host",
+						Enabled:  true,
+					},
+				}, nil)
+
+				resolver.EXPECT().LoadResource(gomock.Any(), int64(1), gomock.Any()).Return(domain.Resource{
+					ID:       1,
+					Name:     "host-01",
+					ModelUID: "host",
+					Data: map[string]any{
+						"ip":       "10.0.0.8",
+						"username": "root",
+					},
+				}, nil)
+
+				resolver.EXPECT().Resolve(gomock.Any(), gomock.Any(), gomock.Any()).Return(map[string]pluginx.ResolvedInput{
+					"target": {
+						Name: "target",
+						Resources: []pluginx.ResolvedResource{
+							{
+								ResourceID: 1,
+								ModelUID:   "host",
+								Fields: map[string]any{
+									"ip":       "10.0.0.8",
+									"username": "root",
+								},
+							},
+						},
+					},
+				}, nil)
+
+				return repo, resolver
+			},
+			req: pluginx.ResolveRequest{
+				PluginID:   "builtin.ssh",
+				Action:     "terminal",
+				ResourceID: 1,
+			},
+			validate: func(t *testing.T, actCtx pluginx.ActionContext) {
+				assert.Equal(t, "builtin.ssh", actCtx.Plugin.UID)
+				assert.Equal(t, "terminal", actCtx.Action.Action)
+				assert.Equal(t, "10.0.0.8", actCtx.Inputs["target"].Resources[0].Fields["ip"])
+				assert.Equal(t, "root", actCtx.Inputs["target"].Resources[0].Fields["username"])
+			},
+		},
+		{
+			name: "缺少必需输入时返回友好错误",
+			mock: func(ctrl *gomock.Controller) (repository.PluginRepository, IInputResolver) {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				resolver := pluginmocks.NewMockIInputResolver(ctrl)
+
+				repo.EXPECT().GetPlugin(gomock.Any(), "builtin.ssh").Return(domain.Plugin{
+					UID:  "builtin.ssh",
+					Name: "SSH",
+					Actions: []domain.PluginActionSpec{
+						{Action: "terminal", Name: "SSH 终端", BindingUID: "builtin.ssh.host"},
+					},
+				}, nil)
+
+				repo.EXPECT().ListEnabledBindingsByModelUID(gomock.Any(), "host").Return([]domain.PluginBinding{
+					{
+						UID:      "builtin.ssh.host",
+						PluginID: "builtin.ssh",
+						ModelUID: "host",
+						Enabled:  true,
+					},
+				}, nil)
+
+				resolver.EXPECT().LoadResource(gomock.Any(), int64(1), gomock.Any()).Return(domain.Resource{
+					ID:       1,
+					Name:     "host-01",
+					ModelUID: "host",
+					Data: map[string]any{
+						"username": "root",
+					},
+				}, nil)
+
+				resolver.EXPECT().Resolve(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, newMissingInputError("target.ip 不能为空"))
+
+				return repo, resolver
+			},
+			req: pluginx.ResolveRequest{
+				PluginID:   "builtin.ssh",
+				Action:     "terminal",
+				ResourceID: 1,
+			},
+			wantErr:     true,
+			errContains: "target.ip 不能为空",
+		},
+		{
+			name: "插件动作不存在时报错",
+			mock: func(ctrl *gomock.Controller) (repository.PluginRepository, IInputResolver) {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				resolver := pluginmocks.NewMockIInputResolver(ctrl)
+
+				repo.EXPECT().GetPlugin(gomock.Any(), "builtin.ssh").Return(domain.Plugin{
+					UID:     "builtin.ssh",
+					Name:    "SSH",
+					Actions: []domain.PluginActionSpec{},
+				}, nil)
+
+				resolver.EXPECT().LoadResource(gomock.Any(), int64(1), gomock.Any()).Return(domain.Resource{
+					ID:       1,
+					ModelUID: "host",
+				}, nil)
+
+				return repo, resolver
+			},
+			req: pluginx.ResolveRequest{
+				PluginID:   "builtin.ssh",
+				Action:     "unknown",
+				ResourceID: 1,
+			},
+			wantErr:     true,
+			errContains: "插件动作不存在",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			repo, resolver := tc.mock(ctrl)
+			svc := &service{
+				repo:     repo,
+				resolver: resolver,
 			}
-			if got != tt.expected {
-				t.Fatalf("RelationName = %s, want %s", got, tt.expected)
+
+			actCtx, err := svc.ResolveActionContext(context.Background(), tc.req)
+			if tc.wantErr {
+				assert.Error(t, err)
+				if tc.errContains != "" {
+					assert.Contains(t, err.Error(), tc.errContains)
+				}
+				return
+			}
+
+			assert.NoError(t, err)
+			if tc.validate != nil {
+				tc.validate(t, actCtx)
 			}
 		})
 	}
 }
 
-func TestResolveReturnsFriendlyMissingInputMessage(t *testing.T) {
-	svc := &service{
-		repo: &stubPluginRepo{
-			plugin: domain.Plugin{
-				UID:  "builtin.ssh",
-				Name: "SSH",
-				Actions: []domain.PluginActionSpec{
-					{Action: "terminal", Name: "SSH 终端", BindingUID: "builtin.ssh.host"},
-				},
-			},
-			bindingsByModelUID: map[string][]domain.PluginBinding{
-				"host": {
-					{
-						UID:      "builtin.ssh.host",
-						PluginID: "builtin.ssh",
-						ModelUID: "host",
-						Enabled:  true,
-						Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip", "username": "username"}, []string{"ip", "username"}),
-					},
-				},
-			},
-		},
-		resolver: &inputResolver{
-			resources: &stubResourceReader{
-				findByID: map[int64]domain.Resource{
-					1: {
-						ID:       1,
-						Name:     "host-01",
-						ModelUID: "host",
-						Data: map[string]any{
-							"username": "root",
+func TestGetActionRuntime(t *testing.T) {
+	testCases := []struct {
+		name        string
+		mock        func(ctrl *gomock.Controller) repository.PluginRepository
+		pluginID    string
+		action      string
+		wantErr     bool
+		errContains string
+		validate    func(t *testing.T, p domain.Plugin, spec pluginx.ActionSpec)
+	}{
+		{
+			name: "成功获取动作运行时定义",
+			mock: func(ctrl *gomock.Controller) repository.PluginRepository {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				repo.EXPECT().GetPlugin(gomock.Any(), "builtin.ssh").Return(domain.Plugin{
+					UID:     "builtin.ssh",
+					Name:    "SSH",
+					Version: "1.0.0",
+					Actions: []domain.PluginActionSpec{
+						{
+							Action: "terminal",
+							Name:   "SSH 终端",
+							Runtime: &pluginx.ActionRuntimeSpec{
+								Layout: "workspace",
+								Title:  "Web Shell",
+							},
 						},
 					},
-				},
+				}, nil)
+				return repo
+			},
+			pluginID: "builtin.ssh",
+			action:   "terminal",
+			validate: func(t *testing.T, p domain.Plugin, spec pluginx.ActionSpec) {
+				assert.Equal(t, "builtin.ssh", p.UID)
+				assert.Equal(t, "terminal", spec.Action)
+				assert.Equal(t, "workspace", spec.Runtime.Layout)
 			},
 		},
-	}
-
-	_, err := svc.ResolveActionContext(context.Background(), pluginx.ResolveRequest{
-		PluginID:   "builtin.ssh",
-		Action:     "terminal",
-		ResourceID: 1,
-	})
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !strings.Contains(err.Error(), "target.ip 不能为空") {
-		t.Fatalf("expected friendly missing field message, got %v", err)
-	}
-}
-
-func TestResolveActionContextReloadsTopLevelFields(t *testing.T) {
-	reader := &stubResourceReader{
-		findByID: map[int64]domain.Resource{
-			1: {
-				ID:       1,
-				Name:     "host-01",
-				ModelUID: "host",
-				Data: map[string]any{
-					"ip":       "10.0.0.8",
-					"username": "root",
-				},
-			},
-		},
-	}
-	svc := &service{
-		repo: &stubPluginRepo{
-			plugin: domain.Plugin{
-				UID:  "builtin.ssh",
-				Name: "SSH",
-				Actions: []domain.PluginActionSpec{
-					{Action: "terminal", Name: "SSH 终端", BindingUID: "builtin.ssh.host"},
-				},
-			},
-			bindingsByModelUID: map[string][]domain.PluginBinding{
-				"host": {
-					{
-						UID:      "builtin.ssh.host",
-						PluginID: "builtin.ssh",
-						ModelUID: "host",
-						Enabled:  true,
-						Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip", "username": "username"}, []string{"ip", "username"}),
-					},
-				},
-			},
-		},
-		resolver: &inputResolver{
-			resources: reader,
-		},
-	}
-
-	actionCtx, err := svc.ResolveActionContext(context.Background(), pluginx.ResolveRequest{
-		PluginID:   "builtin.ssh",
-		Action:     "terminal",
-		ResourceID: 1,
-	})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-
-	fields := actionCtx.Inputs["target"].Resources[0].Fields
-	if got := fields["ip"]; got != "10.0.0.8" {
-		t.Fatalf("expected ip field loaded from repository, got %v", got)
-	}
-	if got := fields["username"]; got != "root" {
-		t.Fatalf("expected username field loaded from repository, got %v", got)
-	}
-	if len(reader.findByIDFields) < 2 {
-		t.Fatalf("expected resource reader to be called twice, got %d", len(reader.findByIDFields))
-	}
-	lastFields := reader.findByIDFields[len(reader.findByIDFields)-1]
-	if len(lastFields) != 2 || !containsAll(lastFields, "ip", "username") {
-		t.Fatalf("expected reload with required fields, got %v", lastFields)
-	}
-}
-
-func TestImportModelRelationsUpdatesChangedExistingRelation(t *testing.T) {
-	modelRelations := &stubRelationModelService{
-		existing: []domain.ModelRelation{
-			{
-				ID:              42,
-				SourceModelUID:  "AuthGateway",
-				TargetModelUID:  "host",
-				RelationTypeUID: pluginx.RelationTypeDefault,
-				RelationName:    "AuthGateway_default_host",
-				Mapping:         pluginx.MappingOneToMany,
-			},
-		},
-	}
-	svc := &service{
-		modelRelations: modelRelations,
-	}
-
-	err := svc.importModelRelations(context.Background(), []pluginx.ModelRelation{
 		{
-			SourceModelUID:  "AuthGateway",
-			TargetModelUID:  "host",
-			RelationTypeUID: pluginx.RelationTypeDefault,
-			Mapping:         pluginx.MappingManyToMany,
-		},
-	})
-	if err != nil {
-		t.Fatalf("importModelRelations() error = %v", err)
-	}
-
-	if len(modelRelations.created) != 0 {
-		t.Fatalf("expected no created relations, got %+v", modelRelations.created)
-	}
-	if len(modelRelations.updated) != 1 {
-		t.Fatalf("expected 1 updated relation, got %+v", modelRelations.updated)
-	}
-	updated := modelRelations.updated[0]
-	if updated.ID != 42 {
-		t.Fatalf("expected existing relation ID to be preserved, got %+v", updated)
-	}
-	if updated.RelationName != "AuthGateway_default_host" {
-		t.Fatalf("expected relation name completed, got %+v", updated)
-	}
-	if updated.Mapping != pluginx.MappingManyToMany {
-		t.Fatalf("expected mapping updated to many_to_many, got %+v", updated)
-	}
-}
-
-func TestImportModelRelationsSkipsUnchangedExistingRelation(t *testing.T) {
-	modelRelations := &stubRelationModelService{
-		existing: []domain.ModelRelation{
-			{
-				ID:              42,
-				SourceModelUID:  "AuthGateway",
-				TargetModelUID:  "host",
-				RelationTypeUID: pluginx.RelationTypeDefault,
-				RelationName:    "AuthGateway_default_host",
-				Mapping:         pluginx.MappingManyToMany,
+			name: "参数为空返回错误",
+			mock: func(ctrl *gomock.Controller) repository.PluginRepository {
+				return pluginmocks.NewMockPluginRepository(ctrl)
 			},
+			pluginID:    "",
+			action:      "terminal",
+			wantErr:     true,
+			errContains: "不能为空",
 		},
-	}
-	svc := &service{
-		modelRelations: modelRelations,
-	}
-
-	err := svc.importModelRelations(context.Background(), []pluginx.ModelRelation{
 		{
-			SourceModelUID:  "AuthGateway",
-			TargetModelUID:  "host",
-			RelationTypeUID: pluginx.RelationTypeDefault,
-			Mapping:         pluginx.MappingManyToMany,
-		},
-	})
-	if err != nil {
-		t.Fatalf("importModelRelations() error = %v", err)
-	}
-	if len(modelRelations.updated) != 0 {
-		t.Fatalf("expected no updated relations, got %+v", modelRelations.updated)
-	}
-	if len(modelRelations.created) != 0 {
-		t.Fatalf("expected no created relations, got %+v", modelRelations.created)
-	}
-}
-
-func TestResolveResultIncludesBindingModelUID(t *testing.T) {
-	runtime := &pluginx.ActionRuntimeSpec{
-		Title: "SSH 终端",
-	}
-	result := resolveResult(pluginx.ActionContext{
-		Plugin: pluginx.Plugin{UID: "builtin.ssh", Name: "SSH"},
-		Binding: pluginx.Binding{
-			UID:      "builtin.ssh.host",
-			ModelUID: "host",
-		},
-		Action: pluginx.ActionSpec{
-			Action:     "terminal",
-			Permission: "cmdb:ssh:terminal",
-			BindingUID: "builtin.ssh.host",
-			Runtime:    runtime,
-			Meta: map[string]any{
-				"title": "SSH 终端",
+			name: "动作不存在返回错误",
+			mock: func(ctrl *gomock.Controller) repository.PluginRepository {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				repo.EXPECT().GetPlugin(gomock.Any(), "builtin.ssh").Return(domain.Plugin{
+					UID:     "builtin.ssh",
+					Name:    "SSH",
+					Actions: []domain.PluginActionSpec{},
+				}, nil)
+				return repo
 			},
-		},
-		ResourceID: 42,
-	})
-
-	if result.ModelUID != "host" {
-		t.Fatalf("unexpected model_uid: %s", result.ModelUID)
-	}
-	if result.BindingUID != "builtin.ssh.host" {
-		t.Fatalf("unexpected binding_uid: %s", result.BindingUID)
-	}
-	if result.Permission != "cmdb:ssh:terminal" {
-		t.Fatalf("unexpected permission: %s", result.Permission)
-	}
-	if result.Runtime != runtime {
-		t.Fatal("expected runtime config to be passed through")
-	}
-	if got := result.Meta["title"]; got != "SSH 终端" {
-		t.Fatalf("unexpected title meta: %v", got)
-	}
-}
-
-func TestGetDefaultDefinitionDoesNotFallbackToStoredSnapshot(t *testing.T) {
-	plugin := pluginx.Plugin{
-		UID:  "builtin.ssh",
-		Name: "SSH",
-		Meta: map[string]any{
-			"schema": pluginx.Schema{
-				Models: []pluginx.ModelSpec{{UID: "host", Name: "主机"}},
-			},
-			"bindings": []pluginx.Binding{
-				{
-					UID:      "builtin.ssh.host",
-					PluginID: "builtin.ssh",
-					ModelUID: "host",
-					Enabled:  true,
-					Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip"}, []string{"ip"}),
-				},
-			},
+			pluginID:    "builtin.ssh",
+			action:      "non_exist",
+			wantErr:     true,
+			errContains: "插件动作不存在",
 		},
 	}
 
-	svc := &service{
-		repo: &stubPluginRepo{
-			plugin: plugin,
-		},
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	def, err := svc.GetDefaultDefinition(context.Background(), "builtin.ssh")
-	if err == nil {
-		t.Fatalf("expected runtime definition error, got def: %#v", def)
+			repo := tc.mock(ctrl)
+			svc := &service{repo: repo}
+
+			p, spec, err := svc.GetActionRuntime(context.Background(), tc.pluginID, tc.action)
+			if tc.wantErr {
+				assert.Error(t, err)
+				if tc.errContains != "" {
+					assert.Contains(t, err.Error(), tc.errContains)
+				}
+				return
+			}
+
+			assert.NoError(t, err)
+			if tc.validate != nil {
+				tc.validate(t, p, spec)
+			}
+		})
 	}
 }
 
 func TestImportDefinitionOnlyPersistsPluginInfo(t *testing.T) {
-	repo := &stubPluginRepo{}
-	svc := &service{repo: repo}
-
-	err := svc.ImportDefinition(context.Background(), pluginx.Definition{
-		Plugin: pluginx.Plugin{
-			UID:  "builtin.ssh",
-			Name: "SSH",
-		},
-		Bindings: []pluginx.Binding{
-			{
-				UID:      "builtin.ssh.host",
-				ModelUID: "host",
-				Enabled:  true,
-				Graph:    mustCenterGraph(t, "target", "host", map[string]string{"ip": "ip"}, []string{"ip"}),
+	testCases := []struct {
+		name string
+		mock func(ctrl *gomock.Controller) repository.PluginRepository
+		def  coreplugin.Definition
+	}{
+		{
+			name: "成功导入插件基本信息且不持久化bindings与schema",
+			mock: func(ctrl *gomock.Controller) repository.PluginRepository {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				repo.EXPECT().UpsertPlugin(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, p domain.Plugin) error {
+					assert.Equal(t, "builtin.ssh", p.UID)
+					assert.Equal(t, "SSH", p.Name)
+					_, hasSchema := p.Meta["schema"]
+					assert.False(t, hasSchema)
+					return nil
+				})
+				return repo
+			},
+			def: coreplugin.Definition{
+				Plugin: pluginx.Plugin{
+					UID:  "builtin.ssh",
+					Name: "SSH",
+				},
+				Bindings: []pluginx.Binding{
+					{
+						UID:      "builtin.ssh.host",
+						ModelUID: "host",
+						Enabled:  true,
+					},
+				},
 			},
 		},
-	})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
 	}
 
-	if _, ok := repo.plugin.Meta["schema"]; ok {
-		t.Fatalf("schema should not be stored in plugin meta: %#v", repo.plugin.Meta)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			repo := tc.mock(ctrl)
+			svc := &service{repo: repo}
+
+			err := svc.ImportDefinition(context.Background(), tc.def)
+			assert.NoError(t, err)
+		})
 	}
-	if _, ok := repo.plugin.Meta["bindings"]; ok {
-		t.Fatalf("bindings should not be stored in plugin meta: %#v", repo.plugin.Meta)
-	}
-	if len(repo.upsertedBindings) != 0 {
-		t.Fatalf("definition bindings should not be persisted on registration: %#v", repo.upsertedBindings)
-	}
 }
 
-type stubPluginRepo struct {
-	plugin             domain.Plugin
-	upsertedPlugins    []domain.Plugin
-	upsertedBindings   []domain.PluginBinding
-	bindingsByModelUID map[string][]domain.PluginBinding
-}
-
-func (s *stubPluginRepo) UpsertPlugin(ctx context.Context, p domain.Plugin) error {
-	s.plugin = p
-	s.upsertedPlugins = append(s.upsertedPlugins, p)
-	return nil
-}
-func (s *stubPluginRepo) UpsertBinding(ctx context.Context, b domain.PluginBinding) error {
-	s.upsertedBindings = append(s.upsertedBindings, b)
-	return nil
-}
-func (s *stubPluginRepo) GetBinding(ctx context.Context, uid string) (domain.PluginBinding, error) {
-	return domain.PluginBinding{}, nil
-}
-func (s *stubPluginRepo) GetPlugin(ctx context.Context, uid string) (domain.Plugin, error) {
-	return s.plugin, nil
-}
-func (s *stubPluginRepo) ListPlugins(ctx context.Context) ([]domain.Plugin, error) { return nil, nil }
-func (s *stubPluginRepo) ListBindings(ctx context.Context) ([]domain.PluginBinding, error) {
-	return nil, nil
-}
-func (s *stubPluginRepo) ListBindingsByPluginID(ctx context.Context, pluginID string) ([]domain.PluginBinding, error) {
-	return nil, nil
-}
-func (s *stubPluginRepo) ListBindingsByPluginIDs(ctx context.Context, pluginIDs []string) ([]domain.PluginBinding, error) {
-	return nil, nil
-}
-func (s *stubPluginRepo) ListEnabledBindingsByModelUID(ctx context.Context, modelUID string) ([]domain.PluginBinding, error) {
-	return s.bindingsByModelUID[modelUID], nil
-}
-func (s *stubPluginRepo) ListEnabledBindingsByModelUIDs(ctx context.Context, modelUIDs []string) ([]domain.PluginBinding, error) {
-	var res []domain.PluginBinding
-	for _, modelUID := range modelUIDs {
-		res = append(res, s.bindingsByModelUID[modelUID]...)
-	}
-	return res, nil
-}
-func (s *stubPluginRepo) UpdateBindingEnabled(ctx context.Context, uid string, enabled bool) error {
-	return nil
-}
-func (s *stubPluginRepo) DeleteBinding(ctx context.Context, uid string) error { return nil }
-func (s *stubPluginRepo) DeletePlugin(ctx context.Context, uid string) error  { return nil }
-
-type stubResourceReader struct {
-	findByID       map[int64]domain.Resource
-	findByIDFields [][]string
-}
-
-func (s *stubResourceReader) FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error) {
-	copiedFields := append([]string(nil), fields...)
-	s.findByIDFields = append(s.findByIDFields, copiedFields)
-
-	resource := s.findByID[id]
-	if len(fields) == 0 {
-		resource.Data = map[string]any{}
-		return resource, nil
-	}
-
-	filtered := make(map[string]any, len(fields))
-	for _, field := range fields {
-		if value, ok := resource.Data[field]; ok {
-			filtered[field] = value
-		}
-	}
-	resource.Data = filtered
-	return resource, nil
-}
-
-func (s *stubResourceReader) ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error) {
-	return nil, nil
-}
-
-func (s *stubResourceReader) ListResourcesWithFilters(
-	ctx context.Context,
-	fields []string,
-	modelUID string,
-	ids []int64,
-	offset, limit int64,
-	filterGroups []domain.FilterGroup,
-) ([]domain.Resource, int64, error) {
-	return nil, 0, nil
-}
-
-type stubRelationModelService struct {
-	existing []domain.ModelRelation
-	created  []domain.ModelRelation
-	updated  []domain.ModelRelation
-}
-
-func (s *stubRelationModelService) CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubRelationModelService) BatchCreate(ctx context.Context, relations []domain.ModelRelation) error {
-	s.created = append(s.created, relations...)
-	return nil
-}
-
-func (s *stubRelationModelService) DeleteModelRelation(ctx context.Context, id int64) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubRelationModelService) GetByRelationNames(ctx context.Context, names []string) ([]domain.ModelRelation, error) {
-	nameSet := make(map[string]struct{}, len(names))
-	for _, name := range names {
-		nameSet[name] = struct{}{}
-	}
-
-	res := make([]domain.ModelRelation, 0, len(s.existing))
-	for _, relation := range s.existing {
-		if _, ok := nameSet[relation.RelationName]; ok {
-			res = append(res, relation)
-		}
-	}
-	return res, nil
-}
-
-func (s *stubRelationModelService) ListModelUidRelation(ctx context.Context, offset, limit int64, modelUid string) ([]domain.ModelRelation, int64, error) {
-	return nil, 0, nil
-}
-
-func (s *stubRelationModelService) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubRelationModelService) FindModelDiagramBySrcUids(ctx context.Context, srcUids []string) ([]domain.ModelDiagram, error) {
-	return nil, nil
-}
-
-func (s *stubRelationModelService) CountByRelationTypeUID(ctx context.Context, uid string) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubRelationModelService) UpdateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error) {
-	s.updated = append(s.updated, req)
-	return 1, nil
-}
-
-func (s *stubRelationModelService) CheckBeforeDelete(ctx context.Context, modelUid string) error {
-	return nil
-}
-
-func containsAll(fields []string, want ...string) bool {
-	set := make(map[string]struct{}, len(fields))
-	for _, field := range fields {
-		set[field] = struct{}{}
-	}
-	for _, field := range want {
-		if _, ok := set[field]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func mustCenterGraph(
-	t *testing.T,
-	name string,
-	modelUID string,
-	fields map[string]string,
-	required []string,
-) *pluginx.BindingGraph {
-	t.Helper()
-
-	graph, err := pluginx.GraphFromBindingSpecs(modelUID, []pluginx.ResourceSpec{
+func TestGetDefaultDefinition(t *testing.T) {
+	testCases := []struct {
+		name        string
+		mock        func(ctrl *gomock.Controller) repository.PluginRepository
+		pluginID    string
+		wantErr     bool
+		errContains string
+	}{
 		{
-			Name:           name,
-			ModelUID:       modelUID,
-			Cardinality:    pluginx.CardinalityOne,
-			Required:       true,
-			Fields:         fields,
-			RequiredFields: required,
+			name: "空 pluginID 返回错误",
+			mock: func(ctrl *gomock.Controller) repository.PluginRepository {
+				return pluginmocks.NewMockPluginRepository(ctrl)
+			},
+			pluginID:    "",
+			wantErr:     true,
+			errContains: "plugin_id 不能为空",
 		},
-	})
-	if err != nil {
-		t.Fatalf("GraphFromBindingSpecs() error = %v", err)
+		{
+			name: "运行时不可访问返回友好错误",
+			mock: func(ctrl *gomock.Controller) repository.PluginRepository {
+				repo := pluginmocks.NewMockPluginRepository(ctrl)
+				repo.EXPECT().GetPlugin(gomock.Any(), "builtin.ssh").Return(domain.Plugin{
+					UID:  "builtin.ssh",
+					Name: "SSH",
+					Meta: map[string]any{
+						"schema": pluginx.Schema{},
+					},
+				}, nil)
+				return repo
+			},
+			pluginID:    "builtin.ssh",
+			wantErr:     true,
+			errContains: "插件默认定义获取失败",
+		},
 	}
-	return graph
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			repo := tc.mock(ctrl)
+			svc := &service{repo: repo}
+
+			_, err := svc.GetDefaultDefinition(context.Background(), tc.pluginID)
+			if tc.wantErr {
+				assert.Error(t, err)
+				if tc.errContains != "" {
+					assert.Contains(t, err.Error(), tc.errContains)
+				}
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestResolveResult(t *testing.T) {
+	testCases := []struct {
+		name     string
+		ctx      pluginx.ActionContext
+		validate func(t *testing.T, res pluginx.ResolveResult)
+	}{
+		{
+			name: "ResolveResult 映射完整字段",
+			ctx: pluginx.ActionContext{
+				Plugin: pluginx.Plugin{UID: "builtin.ssh", Name: "SSH", Version: "1.0.0"},
+				Binding: pluginx.Binding{
+					UID:      "builtin.ssh.host",
+					ModelUID: "host",
+				},
+				Action: pluginx.ActionSpec{
+					Action:     "terminal",
+					Name:       "SSH 终端",
+					Permission: "cmdb:ssh:terminal",
+					BindingUID: "builtin.ssh.host",
+					Runtime: &pluginx.ActionRuntimeSpec{
+						Title: "SSH 终端",
+					},
+					Meta: map[string]any{
+						"title": "SSH 终端",
+					},
+				},
+				ResourceID: 42,
+			},
+			validate: func(t *testing.T, res pluginx.ResolveResult) {
+				assert.Equal(t, "host", res.ModelUID)
+				assert.Equal(t, "builtin.ssh.host", res.BindingUID)
+				assert.Equal(t, "cmdb:ssh:terminal", res.Permission)
+				assert.Equal(t, "SSH 终端", res.Meta["title"])
+				assert.Equal(t, int64(42), res.ResourceID)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := resolveResult(tc.ctx)
+			tc.validate(t, res)
+		})
+	}
+}
+
+func TestImportModelRelations(t *testing.T) {
+	testCases := []struct {
+		name      string
+		mock      func(ctrl *gomock.Controller) *relationmocks.MockRelationModelService
+		relations []pluginx.ModelRelation
+		wantErr   bool
+	}{
+		{
+			name: "已存在且变更则执行更新",
+			mock: func(ctrl *gomock.Controller) *relationmocks.MockRelationModelService {
+				modelRelations := relationmocks.NewMockRelationModelService(ctrl)
+				modelRelations.EXPECT().GetByRelationNames(gomock.Any(), []string{"AuthGateway_default_host"}).
+					Return([]domain.ModelRelation{
+						{
+							ID:              42,
+							SourceModelUID:  "AuthGateway",
+							TargetModelUID:  "host",
+							RelationTypeUID: pluginx.RelationTypeDefault,
+							RelationName:    "AuthGateway_default_host",
+							Mapping:         pluginx.MappingOneToMany,
+						},
+					}, nil)
+
+				modelRelations.EXPECT().UpdateModelRelation(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, rel domain.ModelRelation) (int64, error) {
+						assert.Equal(t, int64(42), rel.ID)
+						assert.Equal(t, pluginx.MappingManyToMany, rel.Mapping)
+						return 1, nil
+					})
+
+				modelRelations.EXPECT().BatchCreate(gomock.Any(), []domain.ModelRelation{}).Return(nil)
+				return modelRelations
+			},
+			relations: []pluginx.ModelRelation{
+				{
+					SourceModelUID:  "AuthGateway",
+					TargetModelUID:  "host",
+					RelationTypeUID: pluginx.RelationTypeDefault,
+					Mapping:         pluginx.MappingManyToMany,
+				},
+			},
+		},
+		{
+			name: "已存在且未变更则跳过更新",
+			mock: func(ctrl *gomock.Controller) *relationmocks.MockRelationModelService {
+				modelRelations := relationmocks.NewMockRelationModelService(ctrl)
+				modelRelations.EXPECT().GetByRelationNames(gomock.Any(), []string{"AuthGateway_default_host"}).
+					Return([]domain.ModelRelation{
+						{
+							ID:              42,
+							SourceModelUID:  "AuthGateway",
+							TargetModelUID:  "host",
+							RelationTypeUID: pluginx.RelationTypeDefault,
+							RelationName:    "AuthGateway_default_host",
+							Mapping:         pluginx.MappingManyToMany,
+						},
+					}, nil)
+
+				// 不应触发 UpdateModelRelation
+				modelRelations.EXPECT().BatchCreate(gomock.Any(), []domain.ModelRelation{}).Return(nil)
+				return modelRelations
+			},
+			relations: []pluginx.ModelRelation{
+				{
+					SourceModelUID:  "AuthGateway",
+					TargetModelUID:  "host",
+					RelationTypeUID: pluginx.RelationTypeDefault,
+					Mapping:         pluginx.MappingManyToMany,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			modelRelations := tc.mock(ctrl)
+			importer := &schemaImporter{
+				modelRelations: modelRelations,
+			}
+
+			err := importer.importModelRelations(context.Background(), tc.relations)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
 }

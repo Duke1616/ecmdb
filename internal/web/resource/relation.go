@@ -4,14 +4,13 @@ import (
 	"sort"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/gin-gonic/gin"
+	"github.com/ecodeclub/ginx"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
-func (h *Handler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRelationReq) (ginx.Result, error) {
-	resp, err := h.RRSvc.CreateResourceRelation(ctx, domain.ResourceRelation{
+func (h *Handler) CreateResourceRelation(ctx *ginx.Context, req CreateResourceRelationReq) (ginx.Result, error) {
+	resp, err := h.rrSvc.CreateResourceRelation(ctx.Context, domain.ResourceRelation{
 		RelationName:     req.RelationName,
 		SourceResourceID: req.SourceResourceID,
 		TargetResourceID: req.TargetResourceID,
@@ -27,65 +26,7 @@ func (h *Handler) CreateResourceRelation(ctx *gin.Context, req CreateResourceRel
 	}, nil
 }
 
-func (h *Handler) ListSrcResource(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	rrs, total, err := h.RRSvc.ListSrcResources(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: RetrieveRelationResource{
-			Total: total,
-			ResourceRelations: slice.Map(rrs, func(idx int, src domain.ResourceRelation) ResourceRelation {
-				return h.toResourceRelationVo(src)
-			}),
-		},
-	}, nil
-}
-
-func (h *Handler) ListDstResource(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	rrs, total, err := h.RRSvc.ListDstResources(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: RetrieveRelationResource{
-			Total: total,
-			ResourceRelations: slice.Map(rrs, func(idx int, src domain.ResourceRelation) ResourceRelation {
-				return h.toResourceRelationVo(src)
-			}),
-		},
-	}, nil
-}
-
-func (h *Handler) ListSrcAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	agg, err := h.RRSvc.ListSrcAggregated(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	return ginx.Result{
-		Data: slice.Map(agg, func(idx int, src domain.ResourceAggregatedAssets) RetrieveAggregatedAssets {
-			return h.toAggregatedAssetsVo(src)
-		}),
-	}, nil
-}
-
-func (h *Handler) ListDstAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
-	agg, err := h.RRSvc.ListDstAggregated(ctx, req.ModelUid, req.ResourceId)
-	if err != nil {
-		return ginx.Result{}, err
-	}
-
-	return ginx.Result{
-		Data: slice.Map(agg, func(idx int, src domain.ResourceAggregatedAssets) RetrieveAggregatedAssets {
-			return h.toAggregatedAssetsVo(src)
-		}),
-	}, nil
-}
-
-func (h *Handler) ListAllAggregated(ctx *gin.Context, req ListResourceDiagramReq) (ginx.Result, error) {
+func (h *Handler) ListAllAggregated(ctx *ginx.Context, req ListResourceDiagramReq) (ginx.Result, error) {
 	var (
 		eg   errgroup.Group
 		srcS []domain.ResourceAggregatedAssets
@@ -94,13 +35,13 @@ func (h *Handler) ListAllAggregated(ctx *gin.Context, req ListResourceDiagramReq
 
 	eg.Go(func() error {
 		var err error
-		srcS, err = h.RRSvc.ListSrcAggregated(ctx, req.ModelUid, req.ResourceId)
+		srcS, err = h.rrSvc.ListSrcAggregated(ctx.Context, req.ModelUid, req.ResourceId)
 		return err
 	})
 
 	eg.Go(func() error {
 		var err error
-		dstS, err = h.RRSvc.ListDstAggregated(ctx, req.ModelUid, req.ResourceId)
+		dstS, err = h.rrSvc.ListDstAggregated(ctx.Context, req.ModelUid, req.ResourceId)
 		return err
 	})
 	if err := eg.Wait(); err != nil {
@@ -112,14 +53,14 @@ func (h *Handler) ListAllAggregated(ctx *gin.Context, req ListResourceDiagramReq
 	})
 
 	return ginx.Result{
-		Data: slice.Map(result, func(idx int, src domain.ResourceAggregatedAssets) RetrieveAggregatedAssets {
+		Data: lo.Map(result, func(src domain.ResourceAggregatedAssets, _ int) RetrieveAggregatedAssets {
 			return h.toAggregatedAssetsVo(src)
 		}),
 	}, nil
 }
 
-func (h *Handler) DeleteResourceRelation(ctx *gin.Context, req DeleteResourceRelationReq) (ginx.Result, error) {
-	id, err := h.RRSvc.DeleteResourceRelationByName(ctx, req.ResourceId, req.ModelUid, req.RelationName)
+func (h *Handler) DeleteResourceRelation(ctx *ginx.Context, req DeleteResourceRelationReq) (ginx.Result, error) {
+	id, err := h.rrSvc.DeleteResourceRelationByName(ctx.Context, req.ResourceId, req.ModelUid, req.RelationName)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -128,7 +69,6 @@ func (h *Handler) DeleteResourceRelation(ctx *gin.Context, req DeleteResourceRel
 		Data: id,
 	}, nil
 }
-
 
 func (h *Handler) toAggregatedAssetsVo(src domain.ResourceAggregatedAssets) RetrieveAggregatedAssets {
 	return RetrieveAggregatedAssets{

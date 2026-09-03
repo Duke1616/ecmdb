@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
 
 func TestExternalServiceRuntime(t *testing.T) {
@@ -20,7 +22,7 @@ func TestExternalServiceRuntime(t *testing.T) {
 	if !ok {
 		t.Fatal("runtime not found")
 	}
-	if runtime.Mode != RuntimeModeExternalService {
+	if runtime.Mode != types.RuntimeModeExternalService {
 		t.Fatalf("mode = %s", runtime.Mode)
 	}
 	if runtime.Upstream != "http://ssh-plugin:8080" {
@@ -38,7 +40,7 @@ func TestDefinitionHandler(t *testing.T) {
 			Definition()
 	})
 
-	req := httptest.NewRequest(http.MethodGet, WellKnownPath, nil)
+	req := httptest.NewRequest(http.MethodGet, types.WellKnownPath, nil)
 	rec := httptest.NewRecorder()
 	DefinitionHandler(provider).ServeHTTP(rec, req)
 

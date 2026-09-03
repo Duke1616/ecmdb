@@ -31,6 +31,9 @@ type AttributeGroupDAO interface {
 	// DeleteAttributeGroup 删除属性组
 	DeleteAttributeGroup(ctx context.Context, id int64) (int64, error)
 
+	// DeleteByModelUid 根据模型唯一标识删除该模型下的所有属性组
+	DeleteByModelUid(ctx context.Context, modelUid string) (int64, error)
+
 	// RenameAttributeGroup 重命名属性组
 	RenameAttributeGroup(ctx context.Context, id int64, name string) (int64, error)
 
@@ -138,6 +141,17 @@ func (dao *attributeGroupDAO) DeleteAttributeGroup(ctx context.Context, id int64
 	res, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除属性组错误: %w", err)
+	}
+
+	return res.DeletedCount, nil
+}
+
+func (dao *attributeGroupDAO) DeleteByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	filter := bson.M{"model_uid": modelUid}
+
+	res, err := dao.coll.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("根据模型UID批量删除属性组错误: %w", err)
 	}
 
 	return res.DeletedCount, nil

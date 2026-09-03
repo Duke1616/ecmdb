@@ -7,7 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/Duke1616/ecmdb/pkg/plugin"
+	plugin "github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

@@ -3,8 +3,8 @@ module github.com/Duke1616/ecmdb
 go 1.25.0
 
 require (
-	github.com/Duke1616/eiam v0.0.20
-	github.com/Duke1616/etask v0.0.7
+	github.com/Duke1616/eiam v0.0.22
+	github.com/Duke1616/etask v1.14.1
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
@@ -32,7 +32,6 @@ require (
 	golang.org/x/sync v0.20.0
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 replace github.com/Bunny3th/easy-workflow v1.0.0 => github.com/Duke1616/easy-workflow v1.0.5
@@ -117,6 +116,7 @@ require (
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
 	github.com/segmentio/kafka-go v0.4.44 // indirect
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
+	github.com/smartystreets/goconvey v1.8.1 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
@@ -163,6 +163,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )
 

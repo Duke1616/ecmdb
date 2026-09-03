@@ -110,7 +110,10 @@ func (db *DB) runBeforeDelete(stmt *Statement) error {
 }
 
 // GetBatchIdGenerator 从 c_id_generator 中原子地为指定集合申请 count 个连续自增 ID，供手动批量 Upsert 场景使用
-func (db *DB) GetBatchIdGenerator(collection string, count int) (int64, error) {
+func (db *DB) GetBatchIdGenerator(ctx context.Context, collection string, count int) (int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	coll := db.native.Collection("c_id_generator")
 	var result struct {
 		Name   string `bson:"name"`
@@ -120,7 +123,7 @@ func (db *DB) GetBatchIdGenerator(collection string, count int) (int64, error) {
 	upsert := true
 	returnAfter := options.After
 	err := coll.FindOneAndUpdate(
-		context.Background(),
+		ctx,
 		bson.M{"name": collection},
 		bson.M{"$inc": bson.M{"next_id": int64(count)}},
 		&options.FindOneAndUpdateOptions{
@@ -134,4 +137,12 @@ func (db *DB) GetBatchIdGenerator(collection string, count int) (int64, error) {
 	}
 
 	return result.NextID - int64(count) + 1, nil
+}
+
+// Close 优雅断开底层连接池
+func (db *DB) Close(ctx context.Context) error {
+	if db.dbClient != nil {
+		return db.dbClient.Disconnect(ctx)
+	}
+	return nil
 }

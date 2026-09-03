@@ -6,6 +6,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// ErrMissingTenantContext 多租户安全拦截：未显式声明 IgnoreTenant 且缺失有效租户上下文
+var ErrMissingTenantContext = errors.New("多租户安全拦截：未显式声明 IgnoreTenant 且缺失有效租户上下文，请使用 mongox.IgnoreTenantContext(ctx) 显式提权")
+
 // IsUniqueConstraintError 检查是否是唯一索引冲突错误
 func IsUniqueConstraintError(err error) bool {
 	if err == nil {

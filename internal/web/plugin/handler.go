@@ -10,12 +10,15 @@ import (
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/errs"
 	pluginservice "github.com/Duke1616/ecmdb/internal/service/plugin"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/Duke1616/ecmdb/pkg/contract/permission"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 )
+
+var _ ginx.Handler = &Handler{}
 
 type Handler struct {
 	svc pluginservice.Service
@@ -25,58 +28,61 @@ type Handler struct {
 func NewHandler(svc pluginservice.Service) *Handler {
 	return &Handler{
 		svc:       svc,
-		IRegistry: capability.NewRegistry("cmdb", "plugin", "资产仓库/插件能力"),
+		IRegistry: capability.NewRegistry("cmdb", "plugin", "插件中心/插件管理"),
 	}
-}
-
-func (h *Handler) PrivateRoutes(server *gin.Engine) {
-	g := server.Group("/api/plugin")
-	g.GET("/list", h.Capability("插件目录", "view").
-		Needs("cmdb:plugin:enums", "cmdb:plugin:get").
-		Handle(ginx.Wrap(h.ListPlugins)),
-	)
-	g.GET("/detail", h.Capability("插件详情", "get").
-		NoSync().
-		Handle(ginx.Wrap(h.GetPluginDetail)),
-	)
-	g.GET("/enums", h.Capability("插件枚举", "enums").
-		NoSync().
-		Handle(ginx.Wrap(h.ListEnums)),
-	)
-	g.GET("/definition/default", h.Capability("查询默认插件定义", "default").
-		NoSync().
-		Handle(ginx.Wrap(h.GetDefaultDefinition)),
-	)
-	g.POST("/bindings/save", h.Capability("保存插件绑定", "create").
-		Needs("cmdb:plugin:default", "cmdb:attribute:view", "cmdb:model:list").
-		Handle(ginx.WrapBody[SaveBindingsReq](h.SaveBindings)),
-	)
-	g.PATCH("/binding/switch/:uid", h.Capability("切换插件绑定状态", "switch").
-		Handle(ginx.Wrap(h.SwitchBindingStatus)),
-	)
-	g.DELETE("/binding/delete/:uid", h.Capability("删除插件绑定", "delete").
-		Handle(ginx.Wrap(h.DeleteBinding)),
-	)
-	g.POST("/resource/actions/batch", h.Capability("查询资源插件动作", "actions").
-		NoSync().
-		Handle(ginx.WrapBody[ListResourceActionsBatchReq](h.ListResourceActionsBatch)),
-	)
-	g.POST("/action/resolve", h.Capability("解析插件动作", "resolve").
-		NoSync().
-		Handle(ginx.WrapBody[pluginx.ResolveRequest](h.ResolveAction)),
-	)
-	g.GET("/runtime/view", h.Capability("插件运行时视图", "runtime_view").
-		Needs("cmdb:plugin:resolve").
-		Handle(ginx.Wrap(h.GetRuntimeView)),
-	)
 }
 
 func (h *Handler) PublicRoutes(server *gin.Engine) {
 	server.Any("/api/plugin-runtime/:plugin_id/*any", h.ProxyToPlugin)
 }
 
-func (h *Handler) ListPlugins(ctx *gin.Context) (ginx.Result, error) {
-	items, err := h.svc.ListPlugins(ctx.Request.Context())
+func (h *Handler) IdentifyRoutes(_ *gin.Engine) {}
+
+func (h *Handler) PrivateRoutes(server *gin.Engine) {
+	g := server.Group("/api/plugin")
+	g.GET("/list", h.Define("插件目录", "view").
+		Needs(permission.Plugin.Enums, permission.Plugin.Get).
+		Bind(ginx.W(h.ListPlugins)),
+	)
+	g.GET("/detail", h.Define("插件详情", "get").
+		NoSync().
+		Bind(ginx.W(h.GetPluginDetail)),
+	)
+	g.GET("/enums", h.Define("插件枚举", "enums").
+		NoSync().
+		Bind(ginx.W(h.ListEnums)),
+	)
+	g.GET("/definition/default", h.Define("查询默认插件定义", "default").
+		NoSync().
+		Bind(ginx.W(h.GetDefaultDefinition)),
+	)
+	g.POST("/bindings/save", h.Define("保存插件绑定", "create").
+		Needs(permission.Plugin.Default, permission.Attribute.View, permission.Model.View).
+		Bind(ginx.B[SaveBindingsReq](h.SaveBindings)),
+	)
+	g.PATCH("/binding/switch/:uid", h.Define("切换插件绑定状态", "switch").
+		Bind(ginx.W(h.SwitchBindingStatus)),
+	)
+	g.DELETE("/binding/delete/:uid", h.Define("删除插件绑定", "delete").
+		Bind(ginx.W(h.DeleteBinding)),
+	)
+	g.POST("/resource/actions/batch", h.Define("查询资源插件动作", "actions").
+		NoSync().
+		Bind(ginx.B[ListResourceActionsBatchReq](h.ListResourceActionsBatch)),
+	)
+	g.POST("/action/resolve", h.Define("解析插件动作", "resolve").
+		NoSync().
+		Bind(ginx.B[pluginx.ResolveRequest](h.ResolveAction)),
+	)
+	g.GET("/runtime/view", h.Define("插件运行时视图", "runtime_view").
+		Needs(permission.Plugin.Resolve).
+		Bind(ginx.W(h.GetRuntimeView)),
+	)
+}
+
+
+func (h *Handler) ListPlugins(ctx *ginx.Context) (ginx.Result, error) {
+	items, err := h.svc.ListPlugins(ctx.Context)
 	if err != nil {
 		return ginx.Result{Msg: "查询插件目录失败"}, err
 	}
@@ -90,9 +96,9 @@ func (h *Handler) ListPlugins(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) GetPluginDetail(ctx *gin.Context) (ginx.Result, error) {
-	uid := ctx.Query("uid")
-	detail, err := h.svc.GetPluginDetail(ctx.Request.Context(), uid)
+func (h *Handler) GetPluginDetail(ctx *ginx.Context) (ginx.Result, error) {
+	uid := ctx.Query("uid").StringOrDefault("")
+	detail, err := h.svc.GetPluginDetail(ctx.Context, uid)
 	if err != nil {
 		return ginx.Result{Msg: "查询插件详情失败"}, err
 	}
@@ -103,8 +109,8 @@ func (h *Handler) GetPluginDetail(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) ListEnums(ctx *gin.Context) (ginx.Result, error) {
-	items, err := h.svc.ListEnums(ctx.Request.Context())
+func (h *Handler) ListEnums(ctx *ginx.Context) (ginx.Result, error) {
+	items, err := h.svc.ListEnums(ctx.Context)
 	if err != nil {
 		return ginx.Result{Msg: "查询插件枚举失败"}, err
 	}
@@ -115,9 +121,9 @@ func (h *Handler) ListEnums(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) GetDefaultDefinition(ctx *gin.Context) (ginx.Result, error) {
-	pluginID := ctx.Query("plugin_id")
-	def, err := h.svc.GetDefaultDefinition(ctx.Request.Context(), pluginID)
+func (h *Handler) GetDefaultDefinition(ctx *ginx.Context) (ginx.Result, error) {
+	pluginID := ctx.Query("plugin_id").StringOrDefault("")
+	def, err := h.svc.GetDefaultDefinition(ctx.Context, pluginID)
 	if err != nil {
 		return ginx.Result{Msg: "查询默认插件定义失败"}, err
 	}
@@ -128,8 +134,8 @@ func (h *Handler) GetDefaultDefinition(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) SaveBindings(ctx *gin.Context, req SaveBindingsReq) (ginx.Result, error) {
-	if err := h.svc.SaveBindings(ctx.Request.Context(), domain.SavePluginBindings{
+func (h *Handler) SaveBindings(ctx *ginx.Context, req SaveBindingsReq) (ginx.Result, error) {
+	if err := h.svc.SaveBindings(ctx.Context, domain.SavePluginBindings{
 		PluginID: req.PluginID,
 		Bindings: req.Bindings,
 	}); err != nil {
@@ -138,8 +144,12 @@ func (h *Handler) SaveBindings(ctx *gin.Context, req SaveBindingsReq) (ginx.Resu
 	return ginx.Result{Msg: "保存插件绑定成功"}, nil
 }
 
-func (h *Handler) SwitchBindingStatus(ctx *gin.Context) (ginx.Result, error) {
-	enabled, err := h.svc.ToggleBindingStatus(ctx.Request.Context(), ctx.Param("uid"))
+func (h *Handler) SwitchBindingStatus(ctx *ginx.Context) (ginx.Result, error) {
+	uid, err := ctx.Param("uid").AsString()
+	if err != nil {
+		return ginx.Result{Msg: "获取 uid 参数失败"}, err
+	}
+	enabled, err := h.svc.ToggleBindingStatus(ctx.Context, uid)
 	if err != nil {
 		return ginx.Result{Msg: "更新插件绑定状态失败"}, err
 	}
@@ -149,16 +159,19 @@ func (h *Handler) SwitchBindingStatus(ctx *gin.Context) (ginx.Result, error) {
 	}, nil
 }
 
-func (h *Handler) DeleteBinding(ctx *gin.Context) (ginx.Result, error) {
-	uid := ctx.Param("uid")
-	if err := h.svc.DeleteBinding(ctx.Request.Context(), uid); err != nil {
+func (h *Handler) DeleteBinding(ctx *ginx.Context) (ginx.Result, error) {
+	uid, err := ctx.Param("uid").AsString()
+	if err != nil {
+		return ginx.Result{Msg: "获取 uid 参数失败"}, err
+	}
+	if err := h.svc.DeleteBinding(ctx.Context, uid); err != nil {
 		return ginx.Result{Msg: "删除插件绑定失败"}, err
 	}
 	return ginx.Result{Msg: "删除插件绑定成功"}, nil
 }
 
-func (h *Handler) ListResourceActionsBatch(ctx *gin.Context, req ListResourceActionsBatchReq) (ginx.Result, error) {
-	actions, err := h.svc.ListResourceActionsBatch(ctx.Request.Context(), req.ResourceIDs)
+func (h *Handler) ListResourceActionsBatch(ctx *ginx.Context, req ListResourceActionsBatchReq) (ginx.Result, error) {
+	actions, err := h.svc.ListResourceActionsBatch(ctx.Context, req.ResourceIDs)
 	if err != nil {
 		return ginx.Result{Msg: "批量查询插件动作失败"}, err
 	}
@@ -169,8 +182,8 @@ func (h *Handler) ListResourceActionsBatch(ctx *gin.Context, req ListResourceAct
 	}, nil
 }
 
-func (h *Handler) ResolveAction(ctx *gin.Context, req pluginx.ResolveRequest) (ginx.Result, error) {
-	result, err := h.svc.ResolveAction(ctx.Request.Context(), req)
+func (h *Handler) ResolveAction(ctx *ginx.Context, req pluginx.ResolveRequest) (ginx.Result, error) {
+	result, err := h.svc.ResolveAction(ctx.Context, req)
 	if err != nil {
 		return ginx.Result{Msg: "解析插件动作失败"}, err
 	}
@@ -181,25 +194,23 @@ func (h *Handler) ResolveAction(ctx *gin.Context, req pluginx.ResolveRequest) (g
 	}, nil
 }
 
-func (h *Handler) GetRuntimeView(ctx *gin.Context) (ginx.Result, error) {
-	resourceID, err := strconv.ParseInt(ctx.Query("resource_id"), 10, 64)
+func (h *Handler) GetRuntimeView(ctx *ginx.Context) (ginx.Result, error) {
+	resourceID, err := ctx.Query("resource_id").AsInt64()
 	if err != nil || resourceID <= 0 {
 		return ginx.Result{Msg: "resource_id 非法"}, errs.ValidationError.WithMsg("resource_id 非法")
 	}
 
-	req := pluginx.ResolveRequest{
-		PluginID:   strings.TrimSpace(ctx.Query("plugin_id")),
-		Action:     strings.TrimSpace(ctx.Query("action")),
-		ResourceID: resourceID,
-	}
-	result, err := h.svc.ResolveAction(ctx.Request.Context(), req)
+	pluginID := strings.TrimSpace(ctx.Query("plugin_id").StringOrDefault(""))
+	action := strings.TrimSpace(ctx.Query("action").StringOrDefault(""))
+
+	p, spec, err := h.svc.GetActionRuntime(ctx.Context, pluginID, action)
 	if err != nil {
 		return ginx.Result{Msg: "解析插件运行时失败"}, err
 	}
 
 	return ginx.Result{
 		Msg:  "解析插件运行时成功",
-		Data: buildRuntimeView(result),
+		Data: buildRuntimeViewFromSpec(p, spec, resourceID),
 	}, nil
 }
 
@@ -235,29 +246,29 @@ type runtimePresentation struct {
 	Sidebar *pluginx.RuntimeSidebarSpec `json:"sidebar,omitempty"`
 }
 
-func buildRuntimeView(result pluginx.ResolveResult) runtimeView {
+func buildRuntimeViewFromSpec(p domain.Plugin, spec pluginx.ActionSpec, resourceID int64) runtimeView {
 	props := map[string]any{
-		"resourceId": strconv.FormatInt(result.ResourceID, 10),
+		"resourceId": strconv.FormatInt(resourceID, 10),
 	}
 
 	presentation := runtimePresentation{
-		Title: result.ActionName,
+		Title: spec.Name,
 	}
 
-	applyActionRuntime(result.Runtime, props, &presentation)
+	applyActionRuntime(spec.Runtime, props, &presentation)
 
 	return runtimeView{
-		PluginID: result.PluginID,
-		Action:   result.Action,
+		PluginID: p.UID,
+		Action:   spec.Action,
 		Entry: runtimeEntry{
 			Format:        "umd",
-			JSURL:         staticAssetURL(result.PluginID, "index.umd.js", result.PluginVersion),
-			CSSURL:        staticAssetURL(result.PluginID, "index.css", result.PluginVersion),
-			GlobalName:    pluginGlobalName(result.PluginID),
+			JSURL:         staticAssetURL(p.UID, "index.umd.js", p.Version),
+			CSSURL:        staticAssetURL(p.UID, "index.css", p.Version),
+			GlobalName:    pluginGlobalName(p.UID),
 			ComponentName: "Index",
 		},
 		Runtime: runtimePayload{
-			APIBase: "/api/cmdb/plugin-runtime/" + result.PluginID,
+			APIBase: "/api/cmdb/plugin-runtime/" + p.UID,
 			Props:   props,
 		},
 		Presentation: presentation,
@@ -362,3 +373,4 @@ func (h *Handler) ProxyToPlugin(ctx *gin.Context) {
 	// 4. 执行反向代理
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
+

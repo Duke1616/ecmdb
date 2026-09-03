@@ -3,16 +3,19 @@ package web
 import (
 	"testing"
 
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/Duke1616/ecmdb/internal/domain"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
 
-func TestBuildRuntimeViewUsesTypedActionRuntime(t *testing.T) {
-	view := buildRuntimeView(pluginx.ResolveResult{
-		PluginID:      "builtin.ssh",
-		PluginName:    "SSH",
-		PluginVersion: "1.0.0",
-		Action:        "terminal",
-		ResourceID:    42,
+func TestBuildRuntimeViewFromSpecUsesTypedActionRuntime(t *testing.T) {
+	p := domain.Plugin{
+		UID:     "builtin.ssh",
+		Name:    "SSH",
+		Version: "1.0.0",
+	}
+	spec := pluginx.ActionSpec{
+		Action: "terminal",
+		Name:   "SSH 终端",
 		Runtime: &pluginx.ActionRuntimeSpec{
 			Layout: "workspace",
 			Title:  "SSH 终端",
@@ -34,7 +37,8 @@ func TestBuildRuntimeViewUsesTypedActionRuntime(t *testing.T) {
 				},
 			},
 		},
-	})
+	}
+	view := buildRuntimeViewFromSpec(p, spec, 42)
 
 	if view.Presentation.Layout != "workspace" {
 		t.Fatalf("unexpected layout: %s", view.Presentation.Layout)
@@ -65,23 +69,26 @@ func TestBuildRuntimeViewUsesTypedActionRuntime(t *testing.T) {
 	}
 }
 
-func TestBuildRuntimeViewDefaultsToActionName(t *testing.T) {
-	view := buildRuntimeView(pluginx.ResolveResult{
-		PluginID:   "builtin.ssh",
-		PluginName: "SSH",
-		ActionName: "SSH 终端",
-		Action:     "terminal",
-		ResourceID: 42,
-	})
+func TestBuildRuntimeViewFromSpecDefaultsToActionName(t *testing.T) {
+	p := domain.Plugin{
+		UID:     "builtin.ssh",
+		Name:    "SSH",
+		Version: "1.0.0",
+	}
+	spec := pluginx.ActionSpec{
+		Action: "terminal",
+		Name:   "SSH 终端",
+	}
+	view := buildRuntimeViewFromSpec(p, spec, 42)
 
 	if view.Presentation.Title != "SSH 终端" {
-		t.Fatalf("unexpected presentation title: %s", view.Presentation.Title)
+		t.Fatalf("expected title to default to action name, got %s", view.Presentation.Title)
 	}
-	if _, ok := view.Runtime.Props["title"]; ok {
-		t.Fatal("did not expect implicit title prop")
+	if got := view.Runtime.Props["resourceId"]; got != "42" {
+		t.Fatalf("expected resourceId prop to be 42, got %v", got)
 	}
 }
 
-func boolPtr(value bool) *bool {
-	return &value
+func boolPtr(v bool) *bool {
+	return &v
 }

@@ -38,6 +38,9 @@ func InitIndexes(db *mongox.DB) error {
 	if err := initRMIndex(db); err != nil {
 		return err
 	}
+	if err := initRRIndex(db); err != nil {
+		return err
+	}
 
 	// Plugin 索引
 	if err := initPluginIndexes(db); err != nil {
@@ -58,6 +61,12 @@ func InitModelIndexes(db *mongox.DB) error {
 				{Key: "uid", Value: -1},
 			},
 			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "model_group_id", Value: 1},
+			},
 		},
 	}
 
@@ -192,6 +201,25 @@ func initResourceIndexes(db *mongox.DB) error {
 		{
 			Keys: bson.D{
 				{Key: "tenant_id", Value: 1},
+				{Key: "id", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "model_uid", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "model_uid", Value: 1},
+				{Key: "ctime", Value: -1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
 				{Key: "name", Value: -1},
 				{Key: "model_uid", Value: -1},
 			},
@@ -234,6 +262,42 @@ func initRMIndex(db *mongox.DB) error {
 				{Key: "relation_name", Value: -1},
 			},
 			Options: options.Index().SetUnique(true),
+		},
+	}
+
+	return mongox.SyncIndexes(ctx, col.Native(), indexes)
+}
+
+func initRRIndex(db *mongox.DB) error {
+	col := mongox.NewCollection[ResourceRelation](db, ResourceRelationCollection)
+	ctx := context.Background()
+
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "id", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "source_model_uid", Value: 1},
+				{Key: "source_resource_id", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "target_model_uid", Value: 1},
+				{Key: "target_resource_id", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "tenant_id", Value: 1},
+				{Key: "relation_name", Value: 1},
+			},
 		},
 	}
 

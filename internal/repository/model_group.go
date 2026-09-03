@@ -5,7 +5,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 type MGRepository interface {
@@ -53,34 +53,34 @@ func (repo *groupRepository) GetByName(ctx context.Context, name string) (domain
 }
 
 func (repo *groupRepository) BatchCreate(ctx context.Context, mgs []domain.ModelGroup) ([]domain.ModelGroup, error) {
-	mgsResp, err := repo.dao.BatchCreate(ctx, slice.Map(mgs, func(idx int, src domain.ModelGroup) dao.ModelGroup {
+	mgsResp, err := repo.dao.BatchCreate(ctx, lo.Map(mgs, func(src domain.ModelGroup, _ int) dao.ModelGroup {
 		return dao.ModelGroup{
 			Name: src.Name,
 		}
 	}))
 
-	return slice.Map(mgsResp, func(idx int, src dao.ModelGroup) domain.ModelGroup {
+	return lo.Map(mgsResp, func(src dao.ModelGroup, _ int) domain.ModelGroup {
 		return repo.toDomain(src)
 	}), err
 }
 
 func (repo *groupRepository) GetByNames(ctx context.Context, names []string) ([]domain.ModelGroup, error) {
 	mgs, err := repo.dao.GetByNames(ctx, names)
-	return slice.Map(mgs, func(idx int, src dao.ModelGroup) domain.ModelGroup {
+	return lo.Map(mgs, func(src dao.ModelGroup, _ int) domain.ModelGroup {
 		return repo.toDomain(src)
 	}), err
 }
 
 func (repo *groupRepository) GetByIDs(ctx context.Context, ids []int64) ([]domain.ModelGroup, error) {
 	mgs, err := repo.dao.GetByIDs(ctx, ids)
-	return slice.Map(mgs, func(idx int, src dao.ModelGroup) domain.ModelGroup {
+	return lo.Map(mgs, func(src dao.ModelGroup, _ int) domain.ModelGroup {
 		return repo.toDomain(src)
 	}), err
 }
 
 func (repo *groupRepository) List(ctx context.Context, offset, limit int64) ([]domain.ModelGroup, error) {
 	mgs, err := repo.dao.List(ctx, offset, limit)
-	return slice.Map(mgs, func(idx int, src dao.ModelGroup) domain.ModelGroup {
+	return lo.Map(mgs, func(src dao.ModelGroup, _ int) domain.ModelGroup {
 		return repo.toDomain(src)
 	}), err
 }

@@ -5,308 +5,205 @@ import (
 	"testing"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	attributemocks "github.com/Duke1616/ecmdb/internal/service/attribute/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestService_CreateAttribute(t *testing.T) {
-	t.Parallel()
-
-	t.Run("missing required fields", func(t *testing.T) {
-		t.Parallel()
-
-		repo := &stubAttributeRepository{}
-		groupRepo := &stubAttributeGroupRepository{}
-		svc := NewService(repo, groupRepo, noopSecureProducer{}, noopDeleteProducer{})
-
-		_, err := svc.CreateAttribute(context.Background(), domain.Attribute{
-			FieldUid:  "password",
-			FieldName: "密码",
-			FieldType: "string",
-		})
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "group_id 不能为空")
-		assert.Contains(t, err.Error(), "model_uid 不能为空")
-		assert.False(t, repo.createCalled)
-	})
-
-	t.Run("group not found", func(t *testing.T) {
-		t.Parallel()
-
-		repo := &stubAttributeRepository{}
-		groupRepo := &stubAttributeGroupRepository{}
-		svc := NewService(repo, groupRepo, noopSecureProducer{}, noopDeleteProducer{})
-
-		_, err := svc.CreateAttribute(context.Background(), domain.Attribute{
-			GroupId:   11,
-			ModelUid:  "host",
-			FieldUid:  "password",
-			FieldName: "密码",
-			FieldType: "string",
-		})
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "属性分组不存在")
-		assert.False(t, repo.createCalled)
-	})
-
-	t.Run("group model mismatch", func(t *testing.T) {
-		t.Parallel()
-
-		repo := &stubAttributeRepository{}
-		groupRepo := &stubAttributeGroupRepository{
-			groupsByID: map[int64]domain.AttributeGroup{
-				11: {ID: 11, ModelUid: "network"},
+	testCases := []struct {
+		name    string
+		mock    func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository)
+		req     domain.Attribute
+		wantID  int64
+		wantErr string
+	}{
+		{
+			name: "missing required fields",
+			mock: func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository) {
+				return attributemocks.NewMockAttributeRepository(ctrl), attributemocks.NewMockAttributeGroupRepository(ctrl)
 			},
-		}
-		svc := NewService(repo, groupRepo, noopSecureProducer{}, noopDeleteProducer{})
-
-		_, err := svc.CreateAttribute(context.Background(), domain.Attribute{
-			GroupId:   11,
-			ModelUid:  "host",
-			FieldUid:  "password",
-			FieldName: "密码",
-			FieldType: "string",
-		})
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "属性分组不属于当前模型")
-		assert.False(t, repo.createCalled)
-	})
-
-	t.Run("create with validated payload", func(t *testing.T) {
-		t.Parallel()
-
-		repo := &stubAttributeRepository{
-			maxSortKey: 2000,
-			createID:   99,
-		}
-		groupRepo := &stubAttributeGroupRepository{
-			groupsByID: map[int64]domain.AttributeGroup{
-				11: {ID: 11, ModelUid: "host"},
-			},
-		}
-		svc := NewService(repo, groupRepo, noopSecureProducer{}, noopDeleteProducer{})
-
-		id, err := svc.CreateAttribute(context.Background(), domain.Attribute{
-			GroupId:   11,
-			ModelUid:  "host",
-			FieldUid:  "password",
-			FieldName: "密码",
-			FieldType: "string",
-		})
-
-		require.NoError(t, err)
-		assert.Equal(t, int64(99), id)
-		assert.True(t, repo.createCalled)
-		assert.Equal(t, int64(3000), repo.created.SortKey)
-		assert.Equal(t, int64(11), repo.maxSortKeyGroupID)
-	})
-}
-
-func TestService_BatchCreateAttribute(t *testing.T) {
-	t.Parallel()
-
-	t.Run("validate group ownership", func(t *testing.T) {
-		t.Parallel()
-
-		repo := &stubAttributeRepository{}
-		groupRepo := &stubAttributeGroupRepository{
-			groupsByID: map[int64]domain.AttributeGroup{
-				11: {ID: 11, ModelUid: "host"},
-			},
-		}
-		svc := NewService(repo, groupRepo, noopSecureProducer{}, noopDeleteProducer{})
-
-		err := svc.BatchCreateAttribute(context.Background(), []domain.Attribute{
-			{
-				GroupId:   11,
-				ModelUid:  "network",
-				FieldUid:  "ip",
-				FieldName: "IP",
+			req: domain.Attribute{
+				FieldUid:  "password",
+				FieldName: "密码",
 				FieldType: "string",
 			},
-		})
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "属性分组不属于当前模型")
-		assert.False(t, repo.batchCreateCalled)
-	})
-
-	t.Run("batch create success", func(t *testing.T) {
-		t.Parallel()
-
-		repo := &stubAttributeRepository{}
-		groupRepo := &stubAttributeGroupRepository{
-			groupsByID: map[int64]domain.AttributeGroup{
-				11: {ID: 11, ModelUid: "host"},
-				12: {ID: 12, ModelUid: "host"},
+			wantErr: "group_id 不能为空",
+		},
+		{
+			name: "group not found",
+			mock: func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository) {
+				repo := attributemocks.NewMockAttributeRepository(ctrl)
+				groupRepo := attributemocks.NewMockAttributeGroupRepository(ctrl)
+				groupRepo.EXPECT().ListAttributeGroupByIds(gomock.Any(), []int64{11}).
+					Return([]domain.AttributeGroup{}, nil)
+				return repo, groupRepo
 			},
-		}
-		svc := NewService(repo, groupRepo, noopSecureProducer{}, noopDeleteProducer{})
-
-		err := svc.BatchCreateAttribute(context.Background(), []domain.Attribute{
-			{
+			req: domain.Attribute{
 				GroupId:   11,
-				ModelUid:  "host",
-				FieldUid:  "ip",
-				FieldName: "IP",
-				FieldType: "string",
-			},
-			{
-				GroupId:   12,
 				ModelUid:  "host",
 				FieldUid:  "password",
 				FieldName: "密码",
 				FieldType: "string",
 			},
-		})
-
-		require.NoError(t, err)
-		assert.True(t, repo.batchCreateCalled)
-		assert.Len(t, repo.batchCreated, 2)
-	})
-}
-
-type stubAttributeRepository struct {
-	maxSortKey        int64
-	maxSortKeyGroupID int64
-	createID          int64
-	createCalled      bool
-	created           domain.Attribute
-	batchCreateCalled bool
-	batchCreated      []domain.Attribute
-}
-
-func (s *stubAttributeRepository) CreateAttribute(_ context.Context, req domain.Attribute) (int64, error) {
-	s.createCalled = true
-	s.created = req
-	return s.createID, nil
-}
-
-func (s *stubAttributeRepository) BatchCreateAttribute(_ context.Context, attrs []domain.Attribute) error {
-	s.batchCreateCalled = true
-	s.batchCreated = attrs
-	return nil
-}
-
-func (s *stubAttributeRepository) SearchAttributeFieldsByModelUid(context.Context, string) ([]string, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeRepository) SearchAttributeFieldsBySecure(context.Context, []string) (map[string][]string, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeRepository) ListAttributes(context.Context, string) ([]domain.Attribute, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeRepository) Total(context.Context, string) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeRepository) DeleteAttribute(context.Context, int64) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeRepository) CustomAttributeFieldColumns(context.Context, string, []string) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeRepository) CustomAttributeFieldColumnsReverse(context.Context, string, []string) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeRepository) ListAttributePipeline(context.Context, string) ([]domain.AttributePipeline, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeRepository) UpdateAttribute(context.Context, domain.Attribute) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeRepository) DetailAttribute(context.Context, int64) (domain.Attribute, error) {
-	return domain.Attribute{}, nil
-}
-
-func (s *stubAttributeRepository) DeleteByGroupId(context.Context, int64) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeRepository) ListByGroupID(context.Context, int64) ([]domain.Attribute, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeRepository) GetMaxSortKeyByGroupID(_ context.Context, groupId int64) (int64, error) {
-	s.maxSortKeyGroupID = groupId
-	return s.maxSortKey, nil
-}
-
-func (s *stubAttributeRepository) UpdateSort(context.Context, int64, int64, int64) error {
-	return nil
-}
-
-func (s *stubAttributeRepository) BatchUpdateSortKey(context.Context, []domain.AttributeSortItem) error {
-	return nil
-}
-
-type stubAttributeGroupRepository struct {
-	groupsByID map[int64]domain.AttributeGroup
-}
-
-func (s *stubAttributeGroupRepository) CreateAttributeGroup(context.Context, domain.AttributeGroup) (int64, error) {
-	return 0, nil
-}
-
-func (s *stubAttributeGroupRepository) BatchCreateAttributeGroup(context.Context, []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeGroupRepository) ListAttributeGroup(context.Context, string) ([]domain.AttributeGroup, error) {
-	return nil, nil
-}
-
-func (s *stubAttributeGroupRepository) ListAttributeGroupByIds(_ context.Context, ids []int64) ([]domain.AttributeGroup, error) {
-	res := make([]domain.AttributeGroup, 0, len(ids))
-	for _, id := range ids {
-		group, ok := s.groupsByID[id]
-		if ok {
-			res = append(res, group)
-		}
+			wantErr: "属性分组不存在",
+		},
+		{
+			name: "group model mismatch",
+			mock: func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository) {
+				repo := attributemocks.NewMockAttributeRepository(ctrl)
+				groupRepo := attributemocks.NewMockAttributeGroupRepository(ctrl)
+				groupRepo.EXPECT().ListAttributeGroupByIds(gomock.Any(), []int64{11}).
+					Return([]domain.AttributeGroup{
+						{ID: 11, ModelUid: "network"},
+					}, nil)
+				return repo, groupRepo
+			},
+			req: domain.Attribute{
+				GroupId:   11,
+				ModelUid:  "host",
+				FieldUid:  "password",
+				FieldName: "密码",
+				FieldType: "string",
+			},
+			wantErr: "属性分组不属于当前模型",
+		},
+		{
+			name: "create with validated payload",
+			mock: func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository) {
+				repo := attributemocks.NewMockAttributeRepository(ctrl)
+				groupRepo := attributemocks.NewMockAttributeGroupRepository(ctrl)
+				groupRepo.EXPECT().ListAttributeGroupByIds(gomock.Any(), []int64{11}).
+					Return([]domain.AttributeGroup{
+						{ID: 11, ModelUid: "host"},
+					}, nil)
+				repo.EXPECT().GetMaxSortKeyByGroupID(gomock.Any(), int64(11)).
+					Return(int64(2000), nil)
+				repo.EXPECT().CreateAttribute(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(_ context.Context, attr domain.Attribute) (int64, error) {
+						assert.Equal(t, int64(3000), attr.SortKey)
+						assert.Equal(t, "password", attr.FieldUid)
+						return 99, nil
+					})
+				return repo, groupRepo
+			},
+			req: domain.Attribute{
+				GroupId:   11,
+				ModelUid:  "host",
+				FieldUid:  "password",
+				FieldName: "密码",
+				FieldType: "string",
+			},
+			wantID: 99,
+		},
 	}
-	return res, nil
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			repo, groupRepo := tc.mock(ctrl)
+			secureProducer := attributemocks.NewMockFieldSecureAttrChangeEventProducer(ctrl)
+			deleteProducer := attributemocks.NewMockIFieldDeleteEventProducer(ctrl)
+
+			svc := NewService(repo, groupRepo, secureProducer, deleteProducer)
+			id, err := svc.CreateAttribute(context.Background(), tc.req)
+
+			if tc.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantID, id)
+			}
+		})
+	}
 }
 
-func (s *stubAttributeGroupRepository) DeleteAttributeGroup(context.Context, int64) (int64, error) {
-	return 0, nil
-}
+func TestService_BatchCreateAttribute(t *testing.T) {
+	testCases := []struct {
+		name    string
+		mock    func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository)
+		attrs   []domain.Attribute
+		wantErr string
+	}{
+		{
+			name: "validate group ownership",
+			mock: func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository) {
+				repo := attributemocks.NewMockAttributeRepository(ctrl)
+				groupRepo := attributemocks.NewMockAttributeGroupRepository(ctrl)
+				groupRepo.EXPECT().ListAttributeGroupByIds(gomock.Any(), []int64{11}).
+					Return([]domain.AttributeGroup{
+						{ID: 11, ModelUid: "host"},
+					}, nil)
+				return repo, groupRepo
+			},
+			attrs: []domain.Attribute{
+				{
+					GroupId:   11,
+					ModelUid:  "network",
+					FieldUid:  "ip",
+					FieldName: "IP",
+					FieldType: "string",
+				},
+			},
+			wantErr: "属性分组不属于当前模型",
+		},
+		{
+			name: "batch create success",
+			mock: func(ctrl *gomock.Controller) (*attributemocks.MockAttributeRepository, *attributemocks.MockAttributeGroupRepository) {
+				repo := attributemocks.NewMockAttributeRepository(ctrl)
+				groupRepo := attributemocks.NewMockAttributeGroupRepository(ctrl)
+				groupRepo.EXPECT().ListAttributeGroupByIds(gomock.Any(), gomock.Any()).
+					Return([]domain.AttributeGroup{
+						{ID: 11, ModelUid: "host"},
+						{ID: 12, ModelUid: "host"},
+					}, nil)
+				repo.EXPECT().BatchCreateAttribute(gomock.Any(), gomock.Len(2)).
+					Return(nil)
+				return repo, groupRepo
+			},
+			attrs: []domain.Attribute{
+				{
+					GroupId:   11,
+					ModelUid:  "host",
+					FieldUid:  "ip",
+					FieldName: "IP",
+					FieldType: "string",
+				},
+				{
+					GroupId:   12,
+					ModelUid:  "host",
+					FieldUid:  "password",
+					FieldName: "密码",
+					FieldType: "string",
+				},
+			},
+		},
+	}
 
-func (s *stubAttributeGroupRepository) RenameAttributeGroup(context.Context, int64, string) (int64, error) {
-	return 0, nil
-}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-func (s *stubAttributeGroupRepository) GetMaxSortKeyByModuleUid(context.Context, string) (int64, error) {
-	return 0, nil
-}
+			repo, groupRepo := tc.mock(ctrl)
+			secureProducer := attributemocks.NewMockFieldSecureAttrChangeEventProducer(ctrl)
+			deleteProducer := attributemocks.NewMockIFieldDeleteEventProducer(ctrl)
 
-func (s *stubAttributeGroupRepository) UpdateSort(context.Context, int64, int64) error {
-	return nil
-}
+			svc := NewService(repo, groupRepo, secureProducer, deleteProducer)
+			err := svc.BatchCreateAttribute(context.Background(), tc.attrs)
 
-func (s *stubAttributeGroupRepository) BatchUpdateSort(context.Context, []domain.AttributeGroupSortItem) error {
-	return nil
-}
-
-type noopSecureProducer struct{}
-
-func (noopSecureProducer) Produce(context.Context, domain.FieldSecureAttrChange) error {
-	return nil
-}
-
-type noopDeleteProducer struct{}
-
-func (noopDeleteProducer) Produce(context.Context, domain.FieldDelete) error {
-	return nil
+			if tc.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

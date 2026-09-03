@@ -12,7 +12,7 @@ import (
 
 // RelationModelService 模型关联关系服务接口
 //
-//go:generate mockgen -source=./relation_model.go -destination=../../mocks/relation_model.mock.go -package=relationmocks -typed RelationModelService
+//go:generate mockgen -source=./model.go -destination=./mocks/relation_model.mock.go -package=relationmocks -typed RelationModelService
 type RelationModelService interface {
 	// CreateModelRelation 创建模型关联关系
 	CreateModelRelation(ctx context.Context, req domain.ModelRelation) (int64, error)

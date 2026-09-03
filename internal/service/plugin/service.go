@@ -1,29 +1,31 @@
 package plugin
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/internal/repository"
-	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	model "github.com/Duke1616/ecmdb/internal/service/model"
-	relation "github.com/Duke1616/ecmdb/internal/service/relation"
-	resource "github.com/Duke1616/ecmdb/internal/service/resource"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	coreplugin "github.com/Duke1616/ecmdb/pkg/plugin"
+	"github.com/Duke1616/ecmdb/pkg/plugin/graph"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/samber/lo"
 )
 
+//go:generate mockgen -source=./service.go -destination=./mocks/service.mock.go -package=pluginmocks -typed Service
+//go:generate mockgen -package=pluginmocks -destination=./mocks/repository.mock.go -typed github.com/Duke1616/ecmdb/internal/repository PluginRepository
 type Service interface {
 	// ImportDefinition 导入外部插件定义。
-	ImportDefinition(ctx context.Context, def pluginx.Definition) error
+	ImportDefinition(ctx context.Context, def coreplugin.Definition) error
 
 	// GetDefaultDefinition 返回插件默认定义草稿，供前端创建内置默认绑定时使用。
-	GetDefaultDefinition(ctx context.Context, pluginID string) (pluginx.Definition, error)
+	GetDefaultDefinition(ctx context.Context, pluginID string) (coreplugin.Definition, error)
 
 	// SaveBindings 保存某个插件的绑定图；若绑定模型命中内置默认定义，则自动导入对应 Schema。
 	SaveBindings(ctx context.Context, req domain.SavePluginBindings) error
@@ -34,33 +36,34 @@ type Service interface {
 	// DeleteBinding 删除单个插件绑定。
 	DeleteBinding(ctx context.Context, uid string) error
 
-	// ListPlugins 查询插件目录。
+	// ListPlugins 获取插件管理列表。
 	ListPlugins(ctx context.Context) ([]domain.PluginListItem, error)
 
-	// GetPluginDetail 查询插件详情。
+	// GetPluginDetail 获取插件详情与绑定列表。
 	GetPluginDetail(ctx context.Context, uid string) (domain.PluginDetail, error)
 
-	// ListEnums 查询插件管理所需枚举。
+	// ListEnums 获取插件管理所需的下拉字典选项。
 	ListEnums(ctx context.Context) (domain.PluginManagementEnums, error)
 
-	// ListResourceActionsBatch 批量查询多个资源可以使用的插件动作。
+	// ListResourceActionsBatch 批量获取多个资源当前可触发的插件动作。
 	ListResourceActionsBatch(ctx context.Context, resourceIDs []int64) ([]pluginx.ResourceActions, error)
 
-	// ResolveAction 解析插件动作需要的 UI 和输入数据。
+	// ResolveAction 根据资源与插件动作，解析动作运行所需上下文。
 	ResolveAction(ctx context.Context, req pluginx.ResolveRequest) (pluginx.ResolveResult, error)
 
-	// ResolveActionContext 解析插件动作运行时上下文，供内置后端能力直接复用。
+	// ResolveActionContext 根据资源与插件动作，解析完整的动作运行上下文。
 	ResolveActionContext(ctx context.Context, req pluginx.ResolveRequest) (pluginx.ActionContext, error)
+
+	// GetActionRuntime 获取插件动作运行时定义。
+	GetActionRuntime(ctx context.Context, pluginID, action string) (domain.Plugin, pluginx.ActionSpec, error)
 }
 
 type service struct {
-	repo           repository.PluginRepository
-	resolver       *inputResolver
-	models         model.Service
-	modelGroups    model.MGService
-	attributes     attribute.Service
-	relationTypes  relation.RelationTypeService
-	modelRelations relation.RelationModelService
+	repo        repository.PluginRepository
+	resolver    IInputResolver
+	importer    ISchemaImporter
+	models      model.Service
+	modelGroups model.MGService
 }
 
 type actionTarget struct {
@@ -84,67 +87,59 @@ type modelMeta struct {
 
 func NewService(
 	repo repository.PluginRepository,
-	resourceSvc resource.Service,
-	relationSvc relation.RelationResourceService,
+	resolver IInputResolver,
+	importer ISchemaImporter,
 	modelSvc model.Service,
 	modelGroupSvc model.MGService,
-	attributeSvc attribute.Service,
-	relationTypeSvc relation.RelationTypeService,
-	relationModelSvc relation.RelationModelService,
 ) Service {
 	return &service{
-		repo:           repo,
-		models:         modelSvc,
-		modelGroups:    modelGroupSvc,
-		attributes:     attributeSvc,
-		relationTypes:  relationTypeSvc,
-		modelRelations: relationModelSvc,
-		resolver: newInputResolver(
-			resourceSvc,
-			relationSvc,
-		),
+		repo:        repo,
+		resolver:    resolver,
+		importer:    importer,
+		models:      modelSvc,
+		modelGroups: modelGroupSvc,
 	}
 }
 
-func (s *service) ImportDefinition(ctx context.Context, def pluginx.Definition) error {
+func (s *service) ImportDefinition(ctx context.Context, def coreplugin.Definition) error {
 	return s.upsertPlugin(ctx, def.Plugin)
 }
 
-func (s *service) GetDefaultDefinition(ctx context.Context, pluginID string) (pluginx.Definition, error) {
+func (s *service) GetDefaultDefinition(ctx context.Context, pluginID string) (coreplugin.Definition, error) {
 	pluginID = strings.TrimSpace(pluginID)
 	if pluginID == "" {
-		return pluginx.Definition{}, fmt.Errorf("plugin_id 不能为空")
+		return coreplugin.Definition{}, fmt.Errorf("plugin_id 不能为空")
 	}
 
 	plugin, err := s.loadPlugin(ctx, pluginID)
 	if err != nil {
-		return pluginx.Definition{}, err
+		return coreplugin.Definition{}, err
 	}
 
 	if def, err := loadRuntimeDefaultDefinition(ctx, plugin); err == nil {
 		return def, nil
 	} else {
-		return pluginx.Definition{}, fmt.Errorf("插件默认定义获取失败，请确认插件运行时可访问: %s: %w", pluginID, err)
+		return coreplugin.Definition{}, fmt.Errorf("插件默认定义获取失败，请确认插件运行时可访问: %s: %w", pluginID, err)
 	}
 }
 
-func loadRuntimeDefaultDefinition(ctx context.Context, plugin domain.Plugin) (pluginx.Definition, error) {
+func loadRuntimeDefaultDefinition(ctx context.Context, plugin domain.Plugin) (coreplugin.Definition, error) {
 	runtime, ok := plugin.Runtime()
 	if !ok || strings.TrimSpace(runtime.Upstream) == "" {
-		return pluginx.Definition{}, fmt.Errorf("插件 runtime upstream 为空: %s", plugin.UID)
+		return coreplugin.Definition{}, fmt.Errorf("插件 runtime upstream 为空: %s", plugin.UID)
 	}
 
-	def, err := pluginx.FetchDefinition(ctx, runtime.Upstream)
+	def, err := coreplugin.FetchDefinition(ctx, runtime.Upstream)
 	if err != nil {
-		return pluginx.Definition{}, err
+		return coreplugin.Definition{}, err
 	}
 	if strings.TrimSpace(def.Plugin.UID) != strings.TrimSpace(plugin.UID) {
-		return pluginx.Definition{}, fmt.Errorf("插件自描述 UID 不匹配: got %s, want %s", def.Plugin.UID, plugin.UID)
+		return coreplugin.Definition{}, fmt.Errorf("插件自描述 UID 不匹配: got %s, want %s", def.Plugin.UID, plugin.UID)
 	}
 
 	bindings, err := prepareDefinitionBindings(def.Plugin.UID, def.Bindings)
 	if err != nil {
-		return pluginx.Definition{}, err
+		return coreplugin.Definition{}, err
 	}
 	def.Bindings = bindings
 	return def, nil
@@ -207,9 +202,7 @@ func (s *service) ListPlugins(ctx context.Context) ([]domain.PluginListItem, err
 		return nil, err
 	}
 
-	modelMeta, err := s.loadModelMetaByUID(ctx, lo.Uniq(lo.Map(bindings, func(item domain.PluginBinding, _ int) string {
-		return item.ModelUID
-	})))
+	modelMeta, err := s.loadBindingsModelMeta(ctx, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +211,9 @@ func (s *service) ListPlugins(ctx context.Context) ([]domain.PluginListItem, err
 		return item.PluginID
 	})
 
-	items := make([]domain.PluginListItem, 0, len(plugins))
-	for _, item := range plugins {
+	return lo.Map(plugins, func(item domain.Plugin, _ int) domain.PluginListItem {
 		pluginBindings := bindingsByPluginID[item.UID]
-		items = append(items, domain.PluginListItem{
+		return domain.PluginListItem{
 			ID:           item.ID,
 			UID:          item.UID,
 			Name:         item.Name,
@@ -232,9 +224,8 @@ func (s *service) ListPlugins(ctx context.Context) ([]domain.PluginListItem, err
 			BoundModels:  buildBoundModels(pluginBindings, modelMeta),
 			Actions:      item.Actions,
 			UpdatedAt:    item.Utime,
-		})
-	}
-	return items, nil
+		}
+	}), nil
 }
 
 func (s *service) GetPluginDetail(ctx context.Context, uid string) (domain.PluginDetail, error) {
@@ -253,18 +244,28 @@ func (s *service) GetPluginDetail(ctx context.Context, uid string) (domain.Plugi
 		return domain.PluginDetail{}, err
 	}
 
-	modelMeta, err := s.loadModelMetaByUID(ctx, lo.Uniq(lo.Map(bindings, func(item domain.PluginBinding, _ int) string {
-		return item.ModelUID
-	})))
+	modelMeta, err := s.loadBindingsModelMeta(ctx, bindings)
 	if err != nil {
 		return domain.PluginDetail{}, err
 	}
 
+	details, err := buildPluginBindingDetails(bindings, modelMeta)
+	if err != nil {
+		return domain.PluginDetail{}, err
+	}
+
+	return domain.PluginDetail{
+		Plugin:   plugin,
+		Bindings: details,
+	}, nil
+}
+
+func buildPluginBindingDetails(bindings []domain.PluginBinding, modelMeta map[string]modelMeta) ([]domain.PluginBindingDetail, error) {
 	details := make([]domain.PluginBindingDetail, 0, len(bindings))
 	for _, binding := range bindings {
-		normalized, err := pluginx.PrepareBinding(binding)
+		normalized, err := graph.PrepareBinding(binding)
 		if err != nil {
-			return domain.PluginDetail{}, err
+			return nil, err
 		}
 		meta := modelMeta[normalized.ModelUID]
 		details = append(details, domain.PluginBindingDetail{
@@ -279,11 +280,7 @@ func (s *service) GetPluginDetail(ctx context.Context, uid string) (domain.Plugi
 			Graph:     normalized.Graph,
 		})
 	}
-
-	return domain.PluginDetail{
-		Plugin:   plugin,
-		Bindings: details,
-	}, nil
+	return details, nil
 }
 
 func (s *service) ListEnums(ctx context.Context) (domain.PluginManagementEnums, error) {
@@ -306,11 +303,11 @@ func (s *service) ListEnums(ctx context.Context) (domain.PluginManagementEnums, 
 			Builtin:   item.Builtin,
 		}
 	})
-	sort.Slice(modelItems, func(i, j int) bool {
-		if modelItems[i].GroupName == modelItems[j].GroupName {
-			return modelItems[i].Name < modelItems[j].Name
+	slices.SortFunc(modelItems, func(a, b domain.PluginModelVM) int {
+		if a.GroupName == b.GroupName {
+			return cmp.Compare(a.Name, b.Name)
 		}
-		return modelItems[i].GroupName < modelItems[j].GroupName
+		return cmp.Compare(a.GroupName, b.GroupName)
 	})
 
 	return domain.PluginManagementEnums{
@@ -346,15 +343,11 @@ func (s *service) ListResourceActionsBatch(ctx context.Context, resourceIDs []in
 		return []pluginx.ResourceActions{}, nil
 	}
 
-	normalizedIDs := make([]int64, 0, len(resourceIDs))
-	for _, resourceID := range resourceIDs {
-		if err := pluginx.ValidateResourceID(resourceID); err != nil {
-			return nil, err
-		}
-		normalizedIDs = append(normalizedIDs, resourceID)
+	if lo.SomeBy(resourceIDs, func(id int64) bool { return id <= 0 }) {
+		return nil, fmt.Errorf("resource_id 参数错误")
 	}
 
-	resources, err := s.resolver.resources.ListResourceByIds(ctx, []string{}, lo.Uniq(normalizedIDs))
+	resources, err := s.resolver.ListResourcesByIDs(ctx, []string{}, lo.Uniq(resourceIDs))
 	if err != nil {
 		return nil, err
 	}
@@ -362,28 +355,34 @@ func (s *service) ListResourceActionsBatch(ctx context.Context, resourceIDs []in
 	resourceMap := lo.SliceToMap(resources, func(item domain.Resource) (int64, domain.Resource) {
 		return item.ID, item
 	})
-	bindingCache := make(map[string][]domain.PluginBinding)
-	pluginCache := make(map[string]domain.Plugin)
 
-	results := make([]pluginx.ResourceActions, 0, len(normalizedIDs))
-	for _, resourceID := range normalizedIDs {
+	// 循环外按涉及的模型 UID 预加载全部启用的绑定，消灭循环内 IO
+	modelUIDs := lo.Uniq(lo.Map(resources, func(r domain.Resource, _ int) string {
+		return r.ModelUID
+	}))
+	bindingCache := make(map[string][]domain.PluginBinding, len(modelUIDs))
+	for _, uid := range modelUIDs {
+		bindings, err := s.repo.ListEnabledBindingsByModelUID(ctx, uid)
+		if err != nil {
+			return nil, err
+		}
+		bindingCache[uid] = bindings
+	}
+
+	pluginCache := make(map[string]domain.Plugin)
+	actionCache := make(map[string][]pluginx.ResourceAction)
+
+	results := make([]pluginx.ResourceActions, 0, len(resourceIDs))
+	for _, resourceID := range resourceIDs {
 		resource, ok := resourceMap[resourceID]
 		if !ok {
 			return nil, fmt.Errorf("资源不存在: %d", resourceID)
 		}
 
-		bindings, ok := bindingCache[resource.ModelUID]
-		if !ok {
-			bindings, err = s.repo.ListEnabledBindingsByModelUID(ctx, resource.ModelUID)
-			if err != nil {
-				return nil, err
-			}
-			bindingCache[resource.ModelUID] = bindings
-		}
-
+		bindings := bindingCache[resource.ModelUID]
 		actions, err := s.listActionsByBindingsWithCache(ctx, bindings, func(binding domain.PluginBinding) (bool, error) {
-			return s.resolver.bindingSatisfied(ctx, resource, binding)
-		}, pluginCache)
+			return s.resolver.BindingSatisfied(ctx, resource, binding)
+		}, pluginCache, actionCache)
 		if err != nil {
 			return nil, err
 		}
@@ -434,7 +433,7 @@ func (s *service) upsertPlugin(ctx context.Context, p pluginx.Plugin) error {
 }
 
 func (s *service) upsertBinding(ctx context.Context, b pluginx.Binding) error {
-	prepared, err := pluginx.PrepareBinding(b)
+	prepared, err := graph.PrepareBinding(b)
 	if err != nil {
 		return err
 	}
@@ -455,7 +454,7 @@ func (s *service) buildBindingSavePlan(ctx context.Context, req domain.SavePlugi
 		return bindingSavePlan{}, err
 	}
 
-	bindings, err := pluginx.PrepareBindings(pluginID, req.Bindings)
+	bindings, err := graph.PrepareBindings(pluginID, req.Bindings)
 	if err != nil {
 		return bindingSavePlan{}, err
 	}
@@ -485,21 +484,21 @@ func (s *service) importRuntimePluginSchema(ctx context.Context, pluginID string
 	if err != nil {
 		return fmt.Errorf("插件 schema 获取失败，请确认插件运行时可访问: %s: %w", pluginID, err)
 	}
-	schema, err := pluginx.StaticBuiltin(def).SchemaForBindings(bindings)
+	schema, err := coreplugin.StaticBuiltin(def).SchemaForBindings(bindings)
 	if err != nil {
 		return err
 	}
 	if isEmptySchema(schema) {
 		return nil
 	}
-	return s.importSchema(ctx, schema)
+	return s.importer.ImportSchema(ctx, schema)
 }
 
 func prepareDefinitionBindings(pluginID string, bindings []pluginx.Binding) ([]pluginx.Binding, error) {
 	if len(bindings) == 0 {
 		return []pluginx.Binding{}, nil
 	}
-	return pluginx.PrepareBindings(pluginID, bindings)
+	return graph.PrepareBindings(pluginID, bindings)
 }
 
 func (s *service) listActionsForResource(ctx context.Context, primary domain.Resource) ([]pluginx.ResourceAction, error) {
@@ -512,7 +511,7 @@ func (s *service) listActionsForResource(ctx context.Context, primary domain.Res
 		ctx,
 		bindings,
 		func(binding domain.PluginBinding) (bool, error) {
-			return s.resolver.bindingSatisfied(ctx, primary, binding)
+			return s.resolver.BindingSatisfied(ctx, primary, binding)
 		},
 	)
 }
@@ -522,6 +521,7 @@ func (s *service) listActionsByBindingsWithCache(
 	bindings []domain.PluginBinding,
 	match func(binding domain.PluginBinding) (bool, error),
 	pluginCache map[string]domain.Plugin,
+	actionCache map[string][]pluginx.ResourceAction,
 ) ([]pluginx.ResourceAction, error) {
 	actions := make([]pluginx.ResourceAction, 0, len(bindings))
 	for _, binding := range bindings {
@@ -533,12 +533,17 @@ func (s *service) listActionsByBindingsWithCache(
 			continue
 		}
 
-		plugin, err := s.loadCachedPlugin(ctx, binding.PluginID, pluginCache)
-		if err != nil {
-			return nil, err
+		cachedActions, ok := actionCache[binding.PluginID]
+		if !ok {
+			plugin, err := s.loadCachedPlugin(ctx, binding.PluginID, pluginCache)
+			if err != nil {
+				return nil, err
+			}
+			cachedActions = plugin.ResourceActions()
+			actionCache[binding.PluginID] = cachedActions
 		}
 
-		actions = append(actions, plugin.ResourceActions()...)
+		actions = append(actions, cachedActions...)
 	}
 	return actions, nil
 }
@@ -548,7 +553,13 @@ func (s *service) listActionsByBindings(
 	bindings []domain.PluginBinding,
 	match func(binding domain.PluginBinding) (bool, error),
 ) ([]pluginx.ResourceAction, error) {
-	return s.listActionsByBindingsWithCache(ctx, bindings, match, make(map[string]domain.Plugin, len(bindings)))
+	return s.listActionsByBindingsWithCache(
+		ctx,
+		bindings,
+		match,
+		make(map[string]domain.Plugin, len(bindings)),
+		make(map[string][]pluginx.ResourceAction, len(bindings)),
+	)
 }
 
 func (s *service) loadCachedPlugin(
@@ -569,11 +580,11 @@ func (s *service) loadCachedPlugin(
 }
 
 func (s *service) resolveActionTarget(ctx context.Context, req pluginx.ResolveRequest) (actionTarget, error) {
-	if err := pluginx.ValidateResolveRequest(req); err != nil {
+	if err := req.Validate(); err != nil {
 		return actionTarget{}, err
 	}
 
-	resource, err := s.resolver.loadResource(ctx, req.ResourceID, nil)
+	resource, err := s.resolver.LoadResource(ctx, req.ResourceID, nil)
 	if err != nil {
 		return actionTarget{}, err
 	}
@@ -608,7 +619,7 @@ func (s *service) resolveActionInputs(
 	ctx context.Context,
 	target actionTarget,
 ) (map[string]pluginx.ResolvedInput, error) {
-	inputs, err := s.resolver.resolve(ctx, target.resource, target.binding.Graph)
+	inputs, err := s.resolver.Resolve(ctx, target.resource, target.binding.Graph)
 	if err == nil {
 		return inputs, nil
 	}
@@ -653,302 +664,34 @@ func resolveResult(actionCtx pluginx.ActionContext) pluginx.ResolveResult {
 	}
 }
 
-func (s *service) importSchema(ctx context.Context, schema pluginx.Schema) error {
-	if err := s.importModels(ctx, schema.ModelGroups, schema.Models); err != nil {
-		return err
-	}
-	if err := s.importRelationTypes(ctx, schema.RelationTypes); err != nil {
-		return err
-	}
-	return s.importModelRelations(ctx, schema.ModelRelations)
-}
-
-func (s *service) importModels(ctx context.Context, modelGroups []pluginx.ModelGroupSpec, models []pluginx.ModelSpec) error {
-	groups, err := s.ensureModelGroups(ctx, modelGroups, models)
-	if err != nil {
-		return err
-	}
-
-	for _, model := range models {
-		groupID := groups[model.GroupName]
-		if err = s.ensureModel(ctx, model, groupID); err != nil {
-			return err
-		}
-		if err = s.ensureAttributes(ctx, model); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *service) ensureModelGroups(
-	ctx context.Context,
-	modelGroups []pluginx.ModelGroupSpec,
-	models []pluginx.ModelSpec,
-) (map[string]int64, error) {
-	names := lo.Map(modelGroups, func(group pluginx.ModelGroupSpec, _ int) string {
-		return group.Name
-	})
-	names = append(names, lo.FilterMap(models, func(model pluginx.ModelSpec, _ int) (string, bool) {
-		return model.GroupName, model.GroupName != ""
-	})...)
-	names = lo.Uniq(lo.Filter(names, func(name string, _ int) bool {
-		return name != ""
-	}))
-	if len(names) == 0 {
-		return map[string]int64{}, nil
-	}
-
-	existing, err := s.modelGroups.GetByNames(ctx, names)
-	if err != nil {
-		return nil, err
-	}
-
-	byName := lo.SliceToMap(existing, func(group domain.ModelGroup) (string, domain.ModelGroup) {
-		return group.Name, group
-	})
-	missing := lo.FilterMap(names, func(name string, _ int) (domain.ModelGroup, bool) {
-		_, ok := byName[name]
-		return domain.ModelGroup{Name: name}, !ok
-	})
-	if len(missing) > 0 {
-		created, err := s.modelGroups.BatchCreate(ctx, missing)
-		if err != nil {
-			return nil, fmt.Errorf("创建插件模型分组失败: %w", err)
-		}
-		for _, group := range created {
-			byName[group.Name] = group
-		}
-	}
-
-	return lo.MapValues(byName, func(group domain.ModelGroup, _ string) int64 {
-		return group.ID
-	}), nil
-}
-
-func (s *service) ensureModel(ctx context.Context, spec pluginx.ModelSpec, groupID int64) error {
-	if spec.UID == "" {
-		return fmt.Errorf("插件模型 UID 不能为空")
-	}
-	if spec.Name == "" {
-		return fmt.Errorf("插件模型名称不能为空: %s", spec.UID)
-	}
-
-	_, err := s.models.GetByUid(ctx, spec.UID)
-	switch {
-	case err == nil:
-		return nil
-	case errors.Is(err, errs.ErrNotFound):
-		_, err = s.models.Create(ctx, domain.Model{
-			UID:     spec.UID,
-			Name:    spec.Name,
-			Icon:    spec.Icon,
-			GroupId: groupID,
-			Builtin: spec.Builtin,
-		})
-		if err != nil {
-			return fmt.Errorf("创建插件模型失败 %s: %w", spec.UID, err)
-		}
-		return nil
-	default:
-		return err
-	}
-}
-
-func (s *service) ensureAttributes(ctx context.Context, model pluginx.ModelSpec) error {
-	if len(model.AttributeGroups) == 0 {
-		return nil
-	}
-
-	groups, err := s.ensureAttributeGroups(ctx, model)
-	if err != nil {
-		return err
-	}
-	return s.ensureAttributeFields(ctx, model, groups)
-}
-
-func (s *service) ensureAttributeGroups(ctx context.Context, model pluginx.ModelSpec) (map[string]int64, error) {
-	existing, err := s.attributes.ListAttributeGroup(ctx, model.UID)
-	if err != nil {
-		return nil, err
-	}
-
-	byName := lo.SliceToMap(existing, func(group domain.AttributeGroup) (string, domain.AttributeGroup) {
-		return group.Name, group
-	})
-	missing := lo.FilterMap(model.AttributeGroups, func(group pluginx.AttributeGroup, _ int) (domain.AttributeGroup, bool) {
-		_, ok := byName[group.Name]
-		return domain.AttributeGroup{
-			Name:     group.Name,
-			ModelUid: model.UID,
-			SortKey:  group.Index,
-		}, group.Name != "" && !ok
-	})
-	if len(missing) > 0 {
-		created, err := s.attributes.BatchCreateAttributeGroup(ctx, missing)
-		if err != nil {
-			return nil, fmt.Errorf("创建插件模型属性分组失败 %s: %w", model.UID, err)
-		}
-		for _, group := range created {
-			byName[group.Name] = group
-		}
-	}
-
-	return lo.MapValues(byName, func(group domain.AttributeGroup, _ string) int64 {
-		return group.ID
-	}), nil
-}
-
-func (s *service) ensureAttributeFields(ctx context.Context, model pluginx.ModelSpec, groups map[string]int64) error {
-	existing, _, err := s.attributes.ListAttributes(ctx, model.UID)
-	if err != nil {
-		return err
-	}
-	existingFields := lo.SliceToMap(existing, func(attr domain.Attribute) (string, struct{}) {
-		return attr.FieldUid, struct{}{}
-	})
-
-	fields := make([]domain.Attribute, 0)
-	for _, group := range model.AttributeGroups {
-		groupID := groups[group.Name]
-		for _, field := range group.Fields {
-			if field.UID == "" {
-				return fmt.Errorf("插件模型字段 UID 不能为空: %s.%s", model.UID, group.Name)
-			}
-			if _, ok := existingFields[field.UID]; ok {
-				continue
-			}
-			fields = append(fields, domain.Attribute{
-				GroupId:   groupID,
-				ModelUid:  model.UID,
-				FieldUid:  field.UID,
-				FieldName: field.Name,
-				FieldType: field.Type,
-				Required:  field.Required,
-				Display:   field.Display,
-				Secure:    field.Secure,
-				Index:     field.Index,
-				SortKey:   field.Index,
-				Option:    field.Option,
-				Builtin:   field.Builtin,
-			})
-		}
-	}
-	if len(fields) == 0 {
-		return nil
-	}
-	return s.attributes.BatchCreateAttribute(ctx, fields)
-}
-
-func (s *service) importRelationTypes(ctx context.Context, relationTypes []pluginx.RelationType) error {
-	if len(relationTypes) == 0 {
-		return nil
-	}
-
-	uids := lo.Map(relationTypes, func(relationType pluginx.RelationType, _ int) string {
-		return relationType.UID
-	})
-	existing, err := s.relationTypes.GetByUids(ctx, uids)
-	if err != nil {
-		return err
-	}
-	existingUIDs := lo.SliceToMap(existing, func(relationType domain.RelationType) (string, struct{}) {
-		return relationType.UID, struct{}{}
-	})
-
-	missing := lo.FilterMap(relationTypes, func(relationType pluginx.RelationType, _ int) (domain.RelationType, bool) {
-		_, ok := existingUIDs[relationType.UID]
-		return domain.RelationType{
-			UID:            relationType.UID,
-			Name:           relationType.Name,
-			SourceDescribe: relationType.SourceDescribe,
-			TargetDescribe: relationType.TargetDescribe,
-		}, relationType.UID != "" && !ok
-	})
-	return s.relationTypes.BatchCreate(ctx, missing)
-}
-
-func (s *service) importModelRelations(ctx context.Context, relations []pluginx.ModelRelation) error {
-	if len(relations) == 0 {
-		return nil
-	}
-
-	modelRelations := lo.Map(relations, func(relation pluginx.ModelRelation, _ int) domain.ModelRelation {
-		return domain.ModelRelation{
-			SourceModelUID:  relation.SourceModelUID,
-			TargetModelUID:  relation.TargetModelUID,
-			RelationTypeUID: relation.RelationTypeUID,
-			Mapping:         relation.Mapping,
-		}
-	})
-
-	for i := range modelRelations {
-		if err := modelRelations[i].Validate(); err != nil {
-			return err
-		}
-	}
-
-	names := lo.Map(modelRelations, func(relation domain.ModelRelation, _ int) string {
-		return relation.RelationName
-	})
-	existing, err := s.modelRelations.GetByRelationNames(ctx, names)
-	if err != nil {
-		return err
-	}
-	existingByName := lo.SliceToMap(existing, func(relation domain.ModelRelation) (string, domain.ModelRelation) {
-		return relation.RelationName, relation
-	})
-
-	missing := make([]domain.ModelRelation, 0)
-	for _, relation := range modelRelations {
-		existingRelation, ok := existingByName[relation.RelationName]
-		if !ok {
-			missing = append(missing, relation)
-			continue
-		}
-		if !modelRelationChanged(existingRelation, relation) {
-			continue
-		}
-
-		relation.ID = existingRelation.ID
-		if _, err = s.modelRelations.UpdateModelRelation(ctx, relation); err != nil {
-			return err
-		}
-	}
-	return s.modelRelations.BatchCreate(ctx, missing)
-}
-
-func modelRelationChanged(current domain.ModelRelation, next domain.ModelRelation) bool {
-	return current.SourceModelUID != next.SourceModelUID ||
-		current.TargetModelUID != next.TargetModelUID ||
-		current.RelationTypeUID != next.RelationTypeUID ||
-		current.Mapping != next.Mapping
-}
-
 func buildBoundModels(bindings []domain.PluginBinding, modelMeta map[string]modelMeta) []domain.PluginBoundModel {
-	seen := map[string]struct{}{}
-	items := make([]domain.PluginBoundModel, 0, len(bindings))
-	for _, binding := range bindings {
-		if _, ok := seen[binding.ModelUID]; ok {
-			continue
-		}
-		seen[binding.ModelUID] = struct{}{}
+	uniqBindings := lo.UniqBy(bindings, func(b domain.PluginBinding) string {
+		return b.ModelUID
+	})
+	items := lo.Map(uniqBindings, func(binding domain.PluginBinding, _ int) domain.PluginBoundModel {
 		meta := modelMeta[binding.ModelUID]
-		items = append(items, domain.PluginBoundModel{
+		return domain.PluginBoundModel{
 			UID:       binding.ModelUID,
 			Name:      meta.Name,
 			GroupName: meta.GroupName,
 			Icon:      meta.Icon,
 			Builtin:   meta.Builtin,
-		})
-	}
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].GroupName == items[j].GroupName {
-			return items[i].Name < items[j].Name
 		}
-		return items[i].GroupName < items[j].GroupName
+	})
+	slices.SortFunc(items, func(a, b domain.PluginBoundModel) int {
+		if a.GroupName == b.GroupName {
+			return cmp.Compare(a.Name, b.Name)
+		}
+		return cmp.Compare(a.GroupName, b.GroupName)
 	})
 	return items
+}
+
+func (s *service) loadBindingsModelMeta(ctx context.Context, bindings []domain.PluginBinding) (map[string]modelMeta, error) {
+	modelUIDs := lo.Uniq(lo.Map(bindings, func(item domain.PluginBinding, _ int) string {
+		return item.ModelUID
+	}))
+	return s.loadModelMetaByUID(ctx, modelUIDs)
 }
 
 func (s *service) loadModelMetaByUID(ctx context.Context, modelUIDs []string) (map[string]modelMeta, error) {
@@ -969,16 +712,14 @@ func (s *service) loadModelMetaByUID(ctx context.Context, modelUIDs []string) (m
 		return nil, err
 	}
 
-	result := make(map[string]modelMeta, len(models))
-	for _, item := range models {
-		result[item.UID] = modelMeta{
+	return lo.SliceToMap(models, func(item domain.Model) (string, modelMeta) {
+		return item.UID, modelMeta{
 			Name:      item.Name,
 			GroupName: groupMap[item.GroupId],
 			Icon:      item.Icon,
 			Builtin:   item.Builtin,
 		}
-	}
-	return result, nil
+	}), nil
 }
 
 func (s *service) loadModelGroupNameMap(ctx context.Context, models []domain.Model) (map[int64]string, error) {
@@ -994,16 +735,28 @@ func (s *service) loadModelGroupNameMap(ctx context.Context, models []domain.Mod
 		return nil, err
 	}
 
-	result := make(map[int64]string, len(groups))
-	for _, group := range groups {
-		result[group.ID] = group.Name
-	}
-	return result, nil
+	return lo.SliceToMap(groups, func(g domain.ModelGroup) (int64, string) {
+		return g.ID, g.Name
+	}), nil
 }
 
-func isEmptySchema(schema pluginx.Schema) bool {
-	return len(schema.Models) == 0 &&
-		len(schema.ModelGroups) == 0 &&
-		len(schema.RelationTypes) == 0 &&
-		len(schema.ModelRelations) == 0
+func (s *service) GetActionRuntime(ctx context.Context, pluginID, action string) (domain.Plugin, pluginx.ActionSpec, error) {
+	pluginID = strings.TrimSpace(pluginID)
+	action = strings.TrimSpace(action)
+	if pluginID == "" || action == "" {
+		return domain.Plugin{}, pluginx.ActionSpec{}, fmt.Errorf("plugin_id 或 action 不能为空")
+	}
+
+	p, err := s.loadPlugin(ctx, pluginID)
+	if err != nil {
+		return domain.Plugin{}, pluginx.ActionSpec{}, err
+	}
+
+	spec, ok := p.FindAction(action)
+	if !ok {
+		return domain.Plugin{}, pluginx.ActionSpec{}, fmt.Errorf("插件动作不存在: %s", action)
+	}
+
+	return p, spec, nil
 }
+

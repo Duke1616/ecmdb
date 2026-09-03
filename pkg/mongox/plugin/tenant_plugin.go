@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// IGNORE_TENANT_KEY 跳过租户隔离校验的 Context Key
-	IGNORE_TENANT_KEY = "mongox:ignore_tenant"
+	// IGNORE_TENANT_KEY 跳过租户隔离校验的 Context Key (对齐 mongox.IgnoreTenantKey)
+	IGNORE_TENANT_KEY = mongox.IgnoreTenantKey
 )
 
 // SharedConfig 共享规则配置
@@ -67,7 +67,7 @@ func (p *TenantPlugin) Name() string {
 	return "tenant_plugin"
 }
 
-// BeforeFind 拦截查询操作，注入多租户安全边界
+// BeforeFind 拦截查询操作，注入多租户安全边界（Fail-Closed 零信任拦截）
 func (p *TenantPlugin) BeforeFind(stmt *mongox.Statement) error {
 	if IsIgnoreTenant(stmt.Context) {
 		return nil
@@ -79,8 +79,8 @@ func (p *TenantPlugin) BeforeFind(stmt *mongox.Statement) error {
 	}
 
 	tid := ctxutil.GetTenantID(stmt.Context).Int64()
-	if tid < 0 {
-		tid = 0 // 无有效租户上下文，自动归属到0，确保安全性
+	if tid <= 0 {
+		return mongox.ErrMissingTenantContext
 	}
 
 	cond := p.buildFindFilter(stmt.Context, conf, tid)
@@ -100,7 +100,7 @@ func (p *TenantPlugin) BeforeDelete(stmt *mongox.Statement) error {
 	return p.runWriteBarrier(stmt)
 }
 
-// runWriteBarrier 统一的变更写屏障校验逻辑
+// runWriteBarrier 统一的变更写屏障校验逻辑（Fail-Closed 零信任写拦截）
 func (p *TenantPlugin) runWriteBarrier(stmt *mongox.Statement) error {
 	if IsIgnoreTenant(stmt.Context) {
 		return nil
@@ -112,8 +112,8 @@ func (p *TenantPlugin) runWriteBarrier(stmt *mongox.Statement) error {
 	}
 
 	tid := ctxutil.GetTenantID(stmt.Context).Int64()
-	if tid < 0 {
-		tid = 0
+	if tid <= 0 {
+		return mongox.ErrMissingTenantContext
 	}
 
 	injectConditions(stmt.Filter, bson.M{p.tenantField: tid})
@@ -151,7 +151,7 @@ func (p *TenantPlugin) buildFindFilter(ctx context.Context, conf SharedConfig, t
 	return bson.M{p.tenantField: tid}
 }
 
-// BeforeInsert 拦截写入操作，反射安全填充当前租户 ID
+// BeforeInsert 拦截写入操作，反射安全填充当前租户 ID（Fail-Closed 零信任写拦截）
 func (p *TenantPlugin) BeforeInsert(stmt *mongox.Statement) error {
 	if IsIgnoreTenant(stmt.Context) {
 		return nil
@@ -163,8 +163,8 @@ func (p *TenantPlugin) BeforeInsert(stmt *mongox.Statement) error {
 	}
 
 	tid := ctxutil.GetTenantID(stmt.Context).Int64()
-	if tid < 0 {
-		tid = 0
+	if tid <= 0 {
+		return mongox.ErrMissingTenantContext
 	}
 
 	p.setTenantIDValue(stmt.Model, tid)
@@ -282,18 +282,14 @@ func (p *TenantPlugin) setField(v reflect.Value, tenantID int64) {
 // 提权与隔离 Context 快捷辅助函数
 // ==========================================
 
-// IgnoreTenantContext 将跳过租户隔离标记注入 Context，允许全局访问数据
+// IgnoreTenantContext 将跳过租户隔离标记注入 Context，允许全局访问数据 (代理 mongox.IgnoreTenantContext)
 func IgnoreTenantContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, IGNORE_TENANT_KEY, true)
+	return mongox.IgnoreTenantContext(ctx)
 }
 
-// IsIgnoreTenant 检查是否处于跳过隔离校验模式
+// IsIgnoreTenant 检查是否处于跳过隔离校验模式 (代理 mongox.IsIgnoreTenant)
 func IsIgnoreTenant(ctx context.Context) bool {
-	if ctx == nil {
-		return false
-	}
-	val, ok := ctx.Value(IGNORE_TENANT_KEY).(bool)
-	return ok && val
+	return mongox.IsIgnoreTenant(ctx)
 }
 
 // ==========================================

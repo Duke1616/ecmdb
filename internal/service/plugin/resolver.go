@@ -2,72 +2,86 @@ package plugin
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	relation "github.com/Duke1616/ecmdb/internal/service/relation"
+	resource "github.com/Duke1616/ecmdb/internal/service/resource"
+	"github.com/Duke1616/ecmdb/pkg/plugin/graph"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/samber/lo"
 )
 
-// resourceReader 定义插件输入解析过程中需要读取的资源能力。
-type resourceReader interface {
-	// FindResourceById 查询单个资源，并只加载插件声明需要的字段。
-	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
+//go:generate mockgen -source=./resolver.go -destination=./mocks/resolver.mock.go -package=pluginmocks -typed IInputResolver
+// IInputResolver 定义插件输入解析能力接口，负责资源动作匹配与关联拓扑图参数装配
+type IInputResolver interface {
+	// BindingSatisfied 在纯内存中判定资源是否满足绑定的入口过滤条件（零数据库 IO，毫秒级响应）
+	BindingSatisfied(ctx context.Context, primary domain.Resource, binding domain.PluginBinding) (bool, error)
 
-	// ListResourceByIds 按资源 ID 批量查询关联资源，并只加载插件声明需要的字段。
-	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
+	// Resolve 递归执行绑定图的拓扑解析，装配插件动作触发所需的全部输入数据（包括凭证与上下游资产属性）
+	Resolve(ctx context.Context, primary domain.Resource, bg *pluginx.BindingGraph) (map[string]pluginx.ResolvedInput, error)
 
-	// ListResourcesWithFilters 按资源 ID 范围和过滤条件批量查询关联资源。
-	ListResourcesWithFilters(ctx context.Context, fields []string, modelUID string, ids []int64, offset, limit int64, filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error)
-}
+	// LoadResource 查询指定资源并仅按需加载插件声明所需的字段，避免加载不必要的大字段
+	LoadResource(ctx context.Context, resourceID int64, fields []string) (domain.Resource, error)
 
-// relationReader 定义插件输入解析过程中需要读取的资源关联能力。
-type relationReader interface {
-	// ListSrcRelated 查询当前资源作为源端时，指定关联名称下的目标端资源 ID。
-	ListSrcRelated(ctx context.Context, modelUID, relationName string, id int64) ([]int64, error)
-
-	// ListDstRelated 查询当前资源作为目标端时，指定关联名称下的源端资源 ID。
-	ListDstRelated(ctx context.Context, modelUID, relationName string, id int64) ([]int64, error)
+	// ListResourcesByIDs 批量查询多个关联资产，用于列表动作的批量预加载与按需裁剪
+	ListResourcesByIDs(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 }
 
 type inputResolver struct {
-	resources resourceReader
-	relations relationReader
+	resources resource.Service
+	relations relation.RelationResourceService
 }
 
-func newInputResolver(
-	resources resourceReader,
-	relations relationReader,
-) *inputResolver {
+func NewInputResolver(
+	resources resource.Service,
+	relations relation.RelationResourceService,
+) IInputResolver {
 	return &inputResolver{
 		resources: resources,
 		relations: relations,
 	}
 }
 
-func (r *inputResolver) bindingSatisfied(ctx context.Context, primary domain.Resource, binding domain.PluginBinding) (bool, error) {
-	_, err := r.resolve(ctx, primary, binding.Graph)
-	if errors.Is(err, errRequiredInputMissing) {
+// BindingSatisfied 在纯内存中极轻量判定资源是否满足绑定的入口过滤条件（零数据库 IO，毫秒级响应）
+func (r *inputResolver) BindingSatisfied(_ context.Context, primary domain.Resource, binding domain.PluginBinding) (bool, error) {
+	if !binding.Enabled || binding.ModelUID != primary.ModelUID {
 		return false, nil
 	}
-	return err == nil, err
+
+	if binding.Graph == nil {
+		return true, nil
+	}
+
+	entryNode, ok := graph.GraphEntryNode(binding.Graph)
+	if !ok || len(entryNode.Filters) == 0 {
+		return true, nil
+	}
+
+	return resourceMatchesFilters(primary, entryNode.Filters), nil
 }
 
-func (r *inputResolver) resolve(
+func (r *inputResolver) Resolve(
 	ctx context.Context,
 	primary domain.Resource,
-	graph *pluginx.BindingGraph,
+	bg *pluginx.BindingGraph,
 ) (map[string]pluginx.ResolvedInput, error) {
-	specs, err := pluginx.CompileBindingGraph(graph)
+	specs, err := graph.CompileBindingGraph(bg)
 	if err != nil {
 		return nil, err
 	}
-	inputs, err := r.resolveSpecsWithPath(ctx, primary, specs, true, "")
-	if err != nil {
-		return nil, err
+	return r.resolveSpecsWithPath(ctx, primary, specs, true, "")
+}
+
+func (r *inputResolver) LoadResource(ctx context.Context, resourceID int64, fields []string) (domain.Resource, error) {
+	if fields == nil {
+		fields = []string{}
 	}
-	return inputs, nil
+	return r.resources.FindResourceById(ctx, fields, resourceID)
+}
+
+func (r *inputResolver) ListResourcesByIDs(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error) {
+	return r.resources.ListResourceByIds(ctx, fields, ids)
 }
 
 func (r *inputResolver) resolveSpecsWithPath(
@@ -77,6 +91,10 @@ func (r *inputResolver) resolveSpecsWithPath(
 	topLevel bool,
 	parentPath string,
 ) (map[string]pluginx.ResolvedInput, error) {
+	if len(specs) == 0 {
+		return nil, nil
+	}
+
 	resolved := make(map[string]pluginx.ResolvedInput, len(specs))
 	for _, spec := range specs {
 		path := joinSpecPath(parentPath, spec.Name)
@@ -129,7 +147,7 @@ func (r *inputResolver) resolveCenterInput(
 	if base.ModelUID == spec.ModelUID && resourceHasFields(base, fields) {
 		resource = base
 	} else {
-		resource, err = r.loadResource(ctx, base.ID, fields)
+		resource, err = r.LoadResource(ctx, base.ID, fields)
 		if err != nil {
 			return emptyInput(spec), false, err
 		}
@@ -207,13 +225,6 @@ func emptyInput(spec pluginx.ResourceSpec) pluginx.ResolvedInput {
 	}
 }
 
-func (r *inputResolver) loadResource(ctx context.Context, resourceID int64, fields []string) (domain.Resource, error) {
-	if fields == nil {
-		fields = []string{}
-	}
-	return r.resources.FindResourceById(ctx, fields, resourceID)
-}
-
 func (r *inputResolver) loadRelatedResources(ctx context.Context, base domain.Resource, spec pluginx.ResourceSpec) ([]domain.Resource, error) {
 	relationName, err := buildRelationName(base.ModelUID, spec)
 	if err != nil {
@@ -266,12 +277,10 @@ func (r *inputResolver) relatedIDs(
 }
 
 func resourceHasFields(resource domain.Resource, fields []string) bool {
-	for _, field := range fields {
-		if _, ok := resource.Data[field]; !ok {
-			return false
-		}
-	}
-	return true
+	return lo.EveryBy(fields, func(field string) bool {
+		_, ok := resource.Data[field]
+		return ok
+	})
 }
 
 
@@ -297,11 +306,11 @@ func buildRelationName(baseModelUID string, spec pluginx.ResourceSpec) (string, 
 }
 
 func specFields(spec pluginx.ResourceSpec) []string {
-	fields := lo.Values(spec.Fields)
-	fields = append(fields, lo.Map(spec.Filters, func(filter pluginx.Filter, _ int) string {
+	filterFields := lo.Map(spec.Filters, func(filter pluginx.Filter, _ int) string {
 		return filter.Field
-	})...)
-	return lo.Uniq(lo.Filter(fields, func(field string, _ int) bool {
+	})
+	allFields := append(lo.Values(spec.Fields), filterFields...)
+	return lo.Uniq(lo.Filter(allFields, func(field string, _ int) bool {
 		return field != ""
 	}))
 }

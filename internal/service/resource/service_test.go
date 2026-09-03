@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
-	attributemocks "github.com/Duke1616/ecmdb/internal/mocks/attributemocks"
-	repositorymocks "github.com/Duke1616/ecmdb/internal/mocks/repositorymocks"
+	attributemocks "github.com/Duke1616/ecmdb/internal/service/attribute/mocks"
+	resourcemocks "github.com/Duke1616/ecmdb/internal/service/resource/mocks"
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/stretchr/testify/assert"
@@ -24,13 +24,13 @@ func crypto() cryptox.Crypto {
 func Test_BatchUpdate_Resources(t *testing.T) {
 	testCases := []struct {
 		name    string
-		mock    func(ctrl *gomock.Controller) (attribute.Service, *repositorymocks.MockResourceRepository)
+		mock    func(ctrl *gomock.Controller) (attribute.Service, *resourcemocks.MockResourceRepository)
 		input   []domain.Resource
 		wantErr error
 	}{
 		{
 			name: "批量修改资源成功",
-			mock: func(ctrl *gomock.Controller) (attribute.Service, *repositorymocks.MockResourceRepository) {
+			mock: func(ctrl *gomock.Controller) (attribute.Service, *resourcemocks.MockResourceRepository) {
 				attrSvc := attributemocks.NewMockService(ctrl)
 				attrSvc.EXPECT().
 					SearchAttributeFieldsBySecure(gomock.Any(), []string{"host"}).
@@ -38,7 +38,7 @@ func Test_BatchUpdate_Resources(t *testing.T) {
 						"host": {"password", "backend"},
 					}, nil)
 
-				repo := repositorymocks.NewMockResourceRepository(ctrl)
+				repo := resourcemocks.NewMockResourceRepository(ctrl)
 				repo.EXPECT().BatchUpdateResources(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, resources []domain.Resource) (int64, error) {
 						if len(resources) != 1 {
@@ -73,13 +73,13 @@ func Test_BatchUpdate_Resources(t *testing.T) {
 		},
 		{
 			name: "attrSvc 查询失败",
-			mock: func(ctrl *gomock.Controller) (attribute.Service, *repositorymocks.MockResourceRepository) {
+			mock: func(ctrl *gomock.Controller) (attribute.Service, *resourcemocks.MockResourceRepository) {
 				attrSvc := attributemocks.NewMockService(ctrl)
 				attrSvc.EXPECT().
 					SearchAttributeFieldsBySecure(gomock.Any(), []string{"host"}).
 					Return(nil, fmt.Errorf("attr 查询错误"))
 
-				repo := repositorymocks.NewMockResourceRepository(ctrl)
+				repo := resourcemocks.NewMockResourceRepository(ctrl)
 				return attrSvc, repo
 			},
 			input: []domain.Resource{

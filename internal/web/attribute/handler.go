@@ -8,12 +8,15 @@ import (
 	"github.com/Duke1616/ecmdb/internal/errs"
 	service "github.com/Duke1616/ecmdb/internal/service/attribute"
 	modelservice "github.com/Duke1616/ecmdb/internal/service/model"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/Duke1616/ecmdb/pkg/contract/permission"
 	"github.com/Duke1616/eiam/pkg/web/capability"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var _ ginx.Handler = &Handler{}
 
 type Handler struct {
 	svc      service.Service
@@ -29,85 +32,95 @@ func NewHandler(svc service.Service, modelSvc modelservice.Service) *Handler {
 	}
 }
 
+func (h *Handler) PublicRoutes(_ *gin.Engine) {}
+
+func (h *Handler) IdentifyRoutes(_ *gin.Engine) {}
+
 // PrivateRoutes 注册属性管理模块需要中心化登录及权限判定（由 EIAM SDK 统一拦截承载）的私有路由
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/attribute")
 
 	// ==========================================
-	// 1. 属性分组管理接口
+	// 1. 属性分组管理接口 (派生属性分组层级)
 	// ==========================================
+	group := h.Sub("", "属性分组")
+
 	// 创建属性分组
-	g.POST("/group/create", h.Capability("创建分组", "group_add").
-		Handle(ginx.WrapBody[CreateAttributeGroup](h.CreateAttributeGroup)),
+	g.POST("/group/create", group.Define("创建分组", "group_add").
+		Bind(ginx.B[CreateAttributeGroup](h.CreateAttributeGroup)),
 	)
 
 	// 根据 ID 批量查询属性分组
-	g.POST("/group/ids", h.Capability("批量查询分组", "group_view_by_ids").
+	g.POST("/group/ids", group.Define("批量查询分组", "group_view_by_ids").
 		NoSync().
-		Handle(ginx.WrapBody[ListAttributeGroupByIdsReq](h.ListAttributeGroupByIds)),
+		Bind(ginx.B[ListAttributeGroupByIdsReq](h.ListAttributeGroupByIds)),
 	)
 
 	// 删除属性分组
-	g.POST("/group/delete", h.Capability("删除分组", "group_delete").
-		Handle(ginx.WrapBody[DeleteAttributeGroupReq](h.DeleteAttributeGroup)),
+	g.POST("/group/delete", group.Define("删除分组", "group_delete").
+		Bind(ginx.B[DeleteAttributeGroupReq](h.DeleteAttributeGroup)),
 	)
 
 	// 重命名属性分组
-	g.POST("/group/rename", h.Capability("重命名分组", "group_rename").
-		Handle(ginx.WrapBody[RenameAttributeGroupReq](h.RenameAttributeGroup)),
+	g.POST("/group/rename", group.Define("重命名分组", "group_rename").
+		Bind(ginx.B[RenameAttributeGroupReq](h.RenameAttributeGroup)),
 	)
 
 	// 属性分组排序
-	g.POST("/group/sort", h.Capability("分组排序", "group_sort").
+	g.POST("/group/sort", group.Define("分组排序", "group_sort").
 		NoSync().
-		Handle(ginx.WrapBody[SortAttributeGroupReq](h.SortAttributeGroup)),
+		Bind(ginx.B[SortAttributeGroupReq](h.SortAttributeGroup)),
 	)
+
 
 	// ==========================================
 	// 2. 属性字段基础操作接口
 	// ==========================================
 
 	// 创建属性字段
-	g.POST("/create", h.Capability("创建属性", "add").
-		Handle(ginx.WrapBody[CreateAttributeReq](h.CreateAttribute)),
+	g.POST("/create", h.Define("创建属性", "add").
+		Bind(ginx.B[CreateAttributeReq](h.CreateAttribute)),
 	)
 
 	// 查询属性列表
-	g.POST("/list", h.Capability("属性列表", "view").
+	g.POST("/list", h.Define("属性列表", "view").
 		NoSync().
-		Handle(ginx.WrapBody[ListAttributeReq](h.ListAttributes)),
+		Bind(ginx.B[ListAttributeReq](h.ListAttributes)),
 	)
 
 	// 查询属性字段列表
-	g.POST("/list/field", h.Capability("属性字段", "view_fields").
+	g.POST("/list/field", h.Define("属性字段", "view_fields").
 		NoSync().
-		Handle(ginx.WrapBody[ListAttributeReq](h.ListAttributeField)),
+		Bind(ginx.B[ListAttributeReq](h.ListAttributeField)),
 	)
 
 	// 自定义属性列展示
-	g.POST("/custom/field", h.Capability("自定义列展示", "view_custom_fields").
-		Handle(ginx.WrapBody[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns)),
+	g.POST("/custom/field", h.Define("自定义列展示", "view_custom_fields").
+		Bind(ginx.B[CustomAttributeFieldColumnsReq](h.CustomAttributeFieldColumns)),
 	)
 
 	// 删除属性字段
-	g.POST("/delete", h.Capability("删除属性", "delete").
-		Handle(ginx.WrapBody[DeleteAttributeReq](h.DeleteAttribute)),
+	g.POST("/delete", h.Define("删除属性", "delete").
+		Bind(ginx.B[DeleteAttributeReq](h.DeleteAttribute)),
 	)
 
 	// 更新属性字段
-	g.POST("/update", h.Capability("更新属性", "edit").
-		Handle(ginx.WrapBody[UpdateAttributeReq](h.UpdateAttribute)),
+	g.POST("/update", h.Define("更新属性", "edit").
+		Bind(ginx.B[UpdateAttributeReq](h.UpdateAttribute)),
 	)
 
 	// 属性字段排序
-	g.POST("/sort", h.Capability("属性排序", "sort").
-		Needs("cmdb:attribute:group_sort").
-		Handle(ginx.WrapBody[SortAttributeReq](h.Sort)),
+	g.POST("/sort", h.Define("属性排序", "sort").
+		Needs(permission.Attribute.GroupSort).
+		Bind(ginx.B[SortAttributeReq](h.Sort)),
 	)
 }
 
-func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (ginx.Result, error) {
-	id, err := h.svc.CreateAttribute(ctx.Request.Context(), toDomain(req))
+
+
+
+func (h *Handler) CreateAttribute(ctx *ginx.Context, req CreateAttributeReq) (ginx.Result, error) {
+	id, err := h.svc.CreateAttribute(ctx.Context, toDomain(req))
 
 	if mongo.IsDuplicateKeyError(err) {
 		return duplicateErrorResult, fmt.Errorf("%w: %w", errs.ErrUniqueDuplicate, err)
@@ -122,8 +135,8 @@ func (h *Handler) CreateAttribute(ctx *gin.Context, req CreateAttributeReq) (gin
 	}, nil
 }
 
-func (h *Handler) UpdateAttribute(ctx *gin.Context, req UpdateAttributeReq) (ginx.Result, error) {
-	id, err := h.svc.UpdateAttribute(ctx, h.toDomainUpdate(req))
+func (h *Handler) UpdateAttribute(ctx *ginx.Context, req UpdateAttributeReq) (ginx.Result, error) {
+	id, err := h.svc.UpdateAttribute(ctx.Context, h.toDomainUpdate(req))
 	if err != nil {
 		if errors.Is(err, errs.ErrConcurrentUpdate) {
 			return ErrConcurrentUpdate, nil
@@ -137,18 +150,18 @@ func (h *Handler) UpdateAttribute(ctx *gin.Context, req UpdateAttributeReq) (gin
 	}, nil
 }
 
-func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
-	model, err := h.modelSvc.GetByUid(ctx.Request.Context(), req.ModelUid)
+func (h *Handler) ListAttributes(ctx *ginx.Context, req ListAttributeReq) (ginx.Result, error) {
+	model, err := h.modelSvc.GetByUid(ctx.Context, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	groups, err := h.svc.ListAttributeGroup(ctx, req.ModelUid)
+	groups, err := h.svc.ListAttributeGroup(ctx.Context, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
 
-	attrs, _, err := h.svc.ListAttributes(ctx.Request.Context(), req.ModelUid)
+	attrs, _, err := h.svc.ListAttributes(ctx.Context, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -164,7 +177,7 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 				ModelUid: model.UID,
 				Name:     model.Name,
 			},
-			Groups: slice.Map(groups, func(idx int, group domain.AttributeGroup) AttributeGroup {
+			Groups: lo.Map(groups, func(group domain.AttributeGroup, _ int) AttributeGroup {
 				return AttributeGroup{
 					GroupName: group.Name,
 					ModelUid:  group.ModelUid,
@@ -174,19 +187,19 @@ func (h *Handler) ListAttributes(ctx *gin.Context, req ListAttributeReq) (ginx.R
 					FieldUids: fieldUIDsByGroup[group.ID],
 				}
 			}),
-			Fields: slice.Map(attrs, func(idx int, attr domain.Attribute) Attribute {
+			Fields: lo.Map(attrs, func(attr domain.Attribute, _ int) Attribute {
 				return toAttributeVo(attr)
 			}),
 		},
 	}, nil
 }
 
-func (h *Handler) ListAttributeField(ctx *gin.Context, req ListAttributeReq) (ginx.Result, error) {
-	attrs, total, err := h.svc.ListAttributes(ctx, req.ModelUid)
+func (h *Handler) ListAttributeField(ctx *ginx.Context, req ListAttributeReq) (ginx.Result, error) {
+	attrs, total, err := h.svc.ListAttributes(ctx.Context, req.ModelUid)
 	if err != nil {
 		return systemErrorResult, err
 	}
-	att := slice.Map(attrs, func(idx int, src domain.Attribute) Attribute {
+	att := lo.Map(attrs, func(src domain.Attribute, _ int) Attribute {
 		return toAttributeVo(src)
 	})
 
@@ -198,8 +211,8 @@ func (h *Handler) ListAttributeField(ctx *gin.Context, req ListAttributeReq) (gi
 	}, nil
 }
 
-func (h *Handler) CustomAttributeFieldColumns(ctx *gin.Context, req CustomAttributeFieldColumnsReq) (ginx.Result, error) {
-	columns, err := h.svc.CustomAttributeFieldColumns(ctx.Request.Context(), req.ModelUid, req.CustomFieldName)
+func (h *Handler) CustomAttributeFieldColumns(ctx *ginx.Context, req CustomAttributeFieldColumnsReq) (ginx.Result, error) {
+	columns, err := h.svc.CustomAttributeFieldColumns(ctx.Context, req.ModelUid, req.CustomFieldName)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -209,8 +222,8 @@ func (h *Handler) CustomAttributeFieldColumns(ctx *gin.Context, req CustomAttrib
 	}, nil
 }
 
-func (h *Handler) DeleteAttribute(ctx *gin.Context, req DeleteAttributeReq) (ginx.Result, error) {
-	count, err := h.svc.DeleteAttribute(ctx, req.Id)
+func (h *Handler) DeleteAttribute(ctx *ginx.Context, req DeleteAttributeReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteAttribute(ctx.Context, req.Id)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -219,8 +232,8 @@ func (h *Handler) DeleteAttribute(ctx *gin.Context, req DeleteAttributeReq) (gin
 	}, nil
 }
 
-func (h *Handler) CreateAttributeGroup(ctx *gin.Context, req CreateAttributeGroup) (ginx.Result, error) {
-	id, err := h.svc.CreateAttributeGroup(ctx.Request.Context(), h.toAttrGroupDomain(req))
+func (h *Handler) CreateAttributeGroup(ctx *ginx.Context, req CreateAttributeGroup) (ginx.Result, error) {
+	id, err := h.svc.CreateAttributeGroup(ctx.Context, h.toAttrGroupDomain(req))
 
 	if err != nil {
 		return systemErrorResult, err
@@ -231,8 +244,8 @@ func (h *Handler) CreateAttributeGroup(ctx *gin.Context, req CreateAttributeGrou
 	}, nil
 }
 
-func (h *Handler) DeleteAttributeGroup(ctx *gin.Context, req DeleteAttributeGroupReq) (ginx.Result, error) {
-	count, err := h.svc.DeleteAttributeGroup(ctx, req.ID)
+func (h *Handler) DeleteAttributeGroup(ctx *ginx.Context, req DeleteAttributeGroupReq) (ginx.Result, error) {
+	count, err := h.svc.DeleteAttributeGroup(ctx.Context, req.ID)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -242,8 +255,8 @@ func (h *Handler) DeleteAttributeGroup(ctx *gin.Context, req DeleteAttributeGrou
 	}, nil
 }
 
-func (h *Handler) RenameAttributeGroup(ctx *gin.Context, req RenameAttributeGroupReq) (ginx.Result, error) {
-	_, err := h.svc.RenameAttributeGroup(ctx, req.ID, req.Name)
+func (h *Handler) RenameAttributeGroup(ctx *ginx.Context, req RenameAttributeGroupReq) (ginx.Result, error) {
+	_, err := h.svc.RenameAttributeGroup(ctx.Context, req.ID, req.Name)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -252,12 +265,12 @@ func (h *Handler) RenameAttributeGroup(ctx *gin.Context, req RenameAttributeGrou
 	}, nil
 }
 
-func (h *Handler) ListAttributeGroup(ctx *gin.Context, req ListAttributeGroupReq) (ginx.Result, error) {
+func (h *Handler) ListAttributeGroup(ctx *ginx.Context, req ListAttributeGroupReq) (ginx.Result, error) {
 	return ginx.Result{}, nil
 }
 
-func (h *Handler) ListAttributeGroupByIds(ctx *gin.Context, req ListAttributeGroupByIdsReq) (ginx.Result, error) {
-	ags, err := h.svc.ListAttributeGroupByIds(ctx, req.Ids)
+func (h *Handler) ListAttributeGroupByIds(ctx *ginx.Context, req ListAttributeGroupByIdsReq) (ginx.Result, error) {
+	ags, err := h.svc.ListAttributeGroupByIds(ctx.Context, req.Ids)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -265,11 +278,12 @@ func (h *Handler) ListAttributeGroupByIds(ctx *gin.Context, req ListAttributeGro
 	return ginx.Result{
 		Code: 0,
 		Msg:  "根据 ids 获取属性分组成功",
-		Data: slice.Map(ags, func(idx int, src domain.AttributeGroup) AttributeGroup {
+		Data: lo.Map(ags, func(src domain.AttributeGroup, _ int) AttributeGroup {
 			return h.toAttrGroupVo(src)
 		}),
 	}, nil
 }
+
 
 func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
 	return AttributeGroup{
@@ -302,8 +316,8 @@ func (h *Handler) toAttrGroupDomain(req CreateAttributeGroup) domain.AttributeGr
 }
 
 // Sort 属性拖拽排序
-func (h *Handler) Sort(ctx *gin.Context, req SortAttributeReq) (ginx.Result, error) {
-	err := h.svc.Sort(ctx.Request.Context(), req.ID, req.TargetGroupID, req.TargetPosition)
+func (h *Handler) Sort(ctx *ginx.Context, req SortAttributeReq) (ginx.Result, error) {
+	err := h.svc.Sort(ctx.Context, req.ID, req.TargetGroupID, req.TargetPosition)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -313,8 +327,8 @@ func (h *Handler) Sort(ctx *gin.Context, req SortAttributeReq) (ginx.Result, err
 }
 
 // SortAttributeGroup 属性组拖拽排序
-func (h *Handler) SortAttributeGroup(ctx *gin.Context, req SortAttributeGroupReq) (ginx.Result, error) {
-	err := h.svc.SortAttributeGroup(ctx.Request.Context(), req.ID, req.TargetPosition)
+func (h *Handler) SortAttributeGroup(ctx *ginx.Context, req SortAttributeGroupReq) (ginx.Result, error) {
+	err := h.svc.SortAttributeGroup(ctx.Context, req.ID, req.TargetPosition)
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -322,3 +336,4 @@ func (h *Handler) SortAttributeGroup(ctx *gin.Context, req SortAttributeGroupReq
 		Msg: "排序成功",
 	}, nil
 }
+

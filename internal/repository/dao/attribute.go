@@ -56,6 +56,9 @@ type AttributeDAO interface {
 	// DeleteByGroupId 根据分组ID删除所有属性
 	DeleteByGroupId(ctx context.Context, groupId int64) (int64, error)
 
+	// DeleteByModelUid 根据模型唯一标识删除该模型下的所有属性
+	DeleteByModelUid(ctx context.Context, modelUid string) (int64, error)
+
 	// ListByGroupID 根据分组ID获取属性列表（按 SortKey 排序）
 	ListByGroupID(ctx context.Context, groupId int64) ([]Attribute, error)
 
@@ -263,6 +266,17 @@ func (dao *attributeDAO) DeleteByGroupId(ctx context.Context, groupId int64) (in
 	result, err := dao.coll.DeleteMany(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("批量删除属性失败: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *attributeDAO) DeleteByModelUid(ctx context.Context, modelUid string) (int64, error) {
+	filter := bson.M{"model_uid": modelUid}
+
+	result, err := dao.coll.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("根据模型UID批量删除属性失败: %w", err)
 	}
 
 	return result.DeletedCount, nil

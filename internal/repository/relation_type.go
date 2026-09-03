@@ -6,7 +6,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 // RelationTypeRepository 关联关系类型仓储接口
@@ -48,13 +48,13 @@ type relationRepository struct {
 
 func (r *relationRepository) GetByUids(ctx context.Context, uids []string) ([]domain.RelationType, error) {
 	rts, err := r.dao.GetByUids(ctx, uids)
-	return slice.Map(rts, func(idx int, src dao.RelationType) domain.RelationType {
+	return lo.Map(rts, func(src dao.RelationType, _ int) domain.RelationType {
 		return r.toDomain(src)
 	}), err
 }
 
 func (r *relationRepository) BatchCreate(ctx context.Context, rts []domain.RelationType) error {
-	return r.dao.BatchCreate(ctx, slice.Map(rts, func(idx int, src domain.RelationType) dao.RelationType {
+	return r.dao.BatchCreate(ctx, lo.Map(rts, func(src domain.RelationType, _ int) dao.RelationType {
 		return r.toEntity(src)
 	}))
 }
@@ -66,7 +66,7 @@ func (r *relationRepository) Create(ctx context.Context, req domain.RelationType
 func (r *relationRepository) List(ctx context.Context, offset, limit int64) ([]domain.RelationType, error) {
 	rts, err := r.dao.List(ctx, offset, limit)
 
-	return slice.Map(rts, func(idx int, src dao.RelationType) domain.RelationType {
+	return lo.Map(rts, func(src dao.RelationType, _ int) domain.RelationType {
 		return r.toDomain(src)
 	}), err
 }

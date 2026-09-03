@@ -5,10 +5,9 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
-//go:generate mockgen -source=repository.go -destination=../../mocks/repository.mock.go --package=resourcemocks ResourceRepository
 type ResourceRepository interface {
 	// CreateResource 创建资产
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
@@ -80,13 +79,13 @@ func (repo *resourceRepository) ListBeforeUtime(ctx context.Context, utime int64
 	offset, limit int64) ([]domain.Resource, error) {
 	rrs, err := repo.dao.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
 
-	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+	return lo.Map(rrs, func(src dao.Resource, _ int) domain.Resource {
 		return repo.toDomain(src)
 	}), err
 }
 
 func (repo *resourceRepository) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
-	return repo.dao.BatchUpdateResources(ctx, slice.Map(resources, func(idx int, src domain.Resource) dao.Resource {
+	return repo.dao.BatchUpdateResources(ctx, lo.Map(resources, func(src domain.Resource, _ int) dao.Resource {
 		return repo.toEntity(src)
 	}))
 }
@@ -125,7 +124,7 @@ func (repo *resourceRepository) FindResourceById(ctx context.Context, fields []s
 func (repo *resourceRepository) ListResourcesByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error) {
 	rrs, err := repo.dao.ListResourcesByIds(ctx, fields, ids)
 
-	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+	return lo.Map(rrs, func(src dao.Resource, _ int) domain.Resource {
 		return repo.toDomain(src)
 	}), err
 }
@@ -133,7 +132,7 @@ func (repo *resourceRepository) ListResourcesByIds(ctx context.Context, fields [
 func (repo *resourceRepository) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
 	rrs, err := repo.dao.ListResource(ctx, fields, modelUid, offset, limit)
 
-	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+	return lo.Map(rrs, func(src dao.Resource, _ int) domain.Resource {
 		return repo.toDomain(src)
 	}), err
 }
@@ -149,7 +148,7 @@ func (repo *resourceRepository) DeleteResource(ctx context.Context, id int64) (i
 func (repo *resourceRepository) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
 	search, err := repo.dao.Search(ctx, text)
 
-	return slice.Map(search, func(idx int, src dao.SearchResource) domain.SearchResource {
+	return lo.Map(search, func(src dao.SearchResource, _ int) domain.SearchResource {
 		return domain.SearchResource{
 			ModelUid: src.ModelUid,
 			Total:    src.Total,
@@ -162,7 +161,7 @@ func (repo *resourceRepository) ListExcludeAndFilterResourceByIds(ctx context.Co
 	offset, limit int64, ids []int64, filter domain.Condition) ([]domain.Resource, error) {
 	rrs, err := repo.dao.ListExcludeAndFilterResourceByIds(ctx, fields, modelUid, offset, limit, ids, filter)
 
-	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+	return lo.Map(rrs, func(src dao.Resource, _ int) domain.Resource {
 		return repo.toDomain(src)
 	}), err
 }
@@ -197,7 +196,7 @@ func (repo *resourceRepository) toDomain(src dao.Resource) domain.Resource {
 
 // BatchCreateOrUpdate 批量创建或更新资产
 func (repo *resourceRepository) BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error {
-	return repo.dao.BatchCreateOrUpdate(ctx, slice.Map(resources, func(idx int, src domain.Resource) dao.Resource {
+	return repo.dao.BatchCreateOrUpdate(ctx, lo.Map(resources, func(src domain.Resource, _ int) dao.Resource {
 		return repo.toEntity(src)
 	}))
 }
@@ -206,7 +205,7 @@ func (repo *resourceRepository) ListResourcesWithFilters(ctx context.Context, fi
 	filterGroups []domain.FilterGroup) ([]domain.Resource, error) {
 	rrs, err := repo.dao.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
 
-	return slice.Map(rrs, func(idx int, src dao.Resource) domain.Resource {
+	return lo.Map(rrs, func(src dao.Resource, _ int) domain.Resource {
 		return repo.toDomain(src)
 	}), err
 }

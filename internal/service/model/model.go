@@ -6,6 +6,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository"
+	attributeservice "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -25,7 +26,7 @@ type Service interface {
 	// GetByUids 根据唯一标识检索模型列表
 	GetByUids(ctx context.Context, uids []string) ([]domain.Model, error)
 
-	// GetByUid 根据唯一标识获取模型详情
+	// GetByUid 根据唯一标识检索模型
 	GetByUid(ctx context.Context, uid string) (domain.Model, error)
 
 	// DeleteById 根据ID删除指定模型
@@ -41,12 +42,6 @@ type Service interface {
 	ListModelByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error)
 }
 
-// IDefaultAttributeCreator 创建模型时初始化默认属性的能力接口
-// NOTE: 接口反转设计——model 模块仅依赖自定义的窄接口，由 attribute 模块的 Service 提供实现
-type IDefaultAttributeCreator interface {
-	CreateDefaultAttribute(ctx context.Context, modelUid string) (int64, error)
-}
-
 // IDeleteModelDependencyChecker 多维度依赖探测接口，各子模块注册以在删除模型前实施级联阻断校验
 type IDeleteModelDependencyChecker interface {
 	// CheckBeforeDelete 深度校验模型是否可删除，若已被使用则返回 error
@@ -54,9 +49,9 @@ type IDeleteModelDependencyChecker interface {
 }
 
 type service struct {
-	repo        repository.ModelRepository
-	checkers    []IDeleteModelDependencyChecker
-	attrCreator IDefaultAttributeCreator
+	repo     repository.ModelRepository
+	checkers []IDeleteModelDependencyChecker
+	attrSvc  attributeservice.Service
 }
 
 func (s *service) GetByUid(ctx context.Context, uid string) (domain.Model, error) {
@@ -67,11 +62,11 @@ func (s *service) GetByUids(ctx context.Context, uids []string) ([]domain.Model,
 	return s.repo.GetByUids(ctx, uids)
 }
 
-func NewModelService(repo repository.ModelRepository, checkers []IDeleteModelDependencyChecker, attrCreator IDefaultAttributeCreator) Service {
+func NewModelService(repo repository.ModelRepository, checkers []IDeleteModelDependencyChecker, attrSvc attributeservice.Service) Service {
 	return &service{
-		repo:        repo,
-		checkers:    checkers,
-		attrCreator: attrCreator,
+		repo:     repo,
+		checkers: checkers,
+		attrSvc:  attrSvc,
 	}
 }
 
@@ -91,12 +86,10 @@ func (s *service) CreateModelWithDefaults(ctx context.Context, req domain.Model)
 		return 0, err
 	}
 
-	if s.attrCreator != nil {
-		if _, err = s.attrCreator.CreateDefaultAttribute(ctx, req.UID); err != nil {
-			// 补偿：创建默认属性失败时回滚模型
-			_, _ = s.repo.DeleteByUid(ctx, req.UID)
-			return 0, fmt.Errorf("创建默认属性失败，模型已回滚: %w", err)
-		}
+	if _, err = s.attrSvc.CreateDefaultAttribute(ctx, req.UID); err != nil {
+		// 补偿：创建默认属性失败时回滚模型
+		_, _ = s.repo.DeleteByUid(ctx, req.UID)
+		return 0, fmt.Errorf("创建默认属性失败，模型已回滚: %w", err)
 	}
 
 	return id, nil
@@ -137,6 +130,7 @@ func (s *service) DeleteById(ctx context.Context, id int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	// 委托领域对象校验是否允许删除
 	if err = m.EnsureDeletable(); err != nil {
 		return 0, err
@@ -147,6 +141,11 @@ func (s *service) DeleteById(ctx context.Context, id int64) (int64, error) {
 		if err = checker.CheckBeforeDelete(ctx, m.UID); err != nil {
 			return 0, err
 		}
+	}
+
+	// 级联清理模型绑定的全部属性及属性分组，彻底杜绝孤儿脏数据
+	if err = s.attrSvc.DeleteByModelUid(ctx, m.UID); err != nil {
+		return 0, fmt.Errorf("级联删除模型属性及分组失败: %w", err)
 	}
 
 	return s.repo.DeleteById(ctx, id)
@@ -169,6 +168,11 @@ func (s *service) DeleteByModelUid(ctx context.Context, modelUid string) (int64,
 		if err = checker.CheckBeforeDelete(ctx, modelUid); err != nil {
 			return 0, err
 		}
+	}
+
+	// 级联清理模型绑定的全部属性及属性分组，彻底杜绝孤儿脏数据
+	if err = s.attrSvc.DeleteByModelUid(ctx, modelUid); err != nil {
+		return 0, fmt.Errorf("级联删除模型属性及分组失败: %w", err)
 	}
 
 	return s.repo.DeleteByUid(ctx, modelUid)

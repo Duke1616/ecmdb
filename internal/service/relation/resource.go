@@ -12,7 +12,7 @@ import (
 
 // RelationResourceService 资源实例关联关系服务接口
 //
-//go:generate mockgen -source=./relation_resource.go -destination=../../mocks/relation_resource.mock.go -package=relationmocks -typed RelationResourceService
+//go:generate mockgen -source=./resource.go -destination=./mocks/relation_resource.mock.go -package=relationmocks -typed RelationResourceService
 type RelationResourceService interface {
 	// CreateResourceRelation 创建资源关联关系
 	CreateResourceRelation(ctx context.Context, req domain.ResourceRelation) (int64, error)
@@ -52,6 +52,12 @@ type RelationResourceService interface {
 
 	// ListRecursiveDiagram 递归获取多级关联拓扑（支持最大深度）
 	ListRecursiveDiagram(ctx context.Context, modelUid string, id int64, maxDepth int) (domain.ResourceDiagram, error)
+
+	// GetCanBeRelatedContext 根据当前模型、关系名称和资源ID，解析对端模型 UID 及需要排除的已关联资源 ID 列表
+	GetCanBeRelatedContext(ctx context.Context, modelUid, relationName string, resourceId int64) (string, []int64, error)
+
+	// DeleteByResourceId 级联删除资产关联关系
+	DeleteByResourceId(ctx context.Context, resourceId int64) (int64, error)
 }
 
 type resourceService struct {
@@ -259,6 +265,10 @@ func (s *resourceService) DeleteResourceRelation(ctx context.Context, id int64) 
 	return s.repo.DeleteResourceRelation(ctx, id)
 }
 
+func (s *resourceService) DeleteByResourceId(ctx context.Context, resourceId int64) (int64, error) {
+	return s.repo.DeleteByResourceId(ctx, resourceId)
+}
+
 // DeleteResourceRelationByName 根据关联名称和资源信息删除资产关联关系
 func (s *resourceService) DeleteResourceRelationByName(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error) {
 	// NOTE: 优先通过定义表获取正确的拓扑模型，无惧任何下划线分割，且完全规避了原本在 Web 层的 Split Bug
@@ -307,4 +317,27 @@ func (s *resourceService) ListRecursiveDiagram(ctx context.Context, modelUid str
 		return domain.ResourceDiagram{}, err
 	}
 	return rd, nil
+}
+
+func (s *resourceService) GetCanBeRelatedContext(ctx context.Context, modelUid, relationName string, resourceId int64) (string, []int64, error) {
+	// 1. 查询关联关系拓扑定义，规避下划线分割 Bug
+	mrs, err := s.modelRepo.GetByRelationNames(ctx, []string{relationName})
+	if err != nil {
+		return "", nil, fmt.Errorf("查询关联定义异常: %w", err)
+	}
+	if len(mrs) == 0 {
+		return "", nil, fmt.Errorf("未找到对应的关联关系定义: %s", relationName)
+	}
+
+	// 2. 根据当前资源所属模型的角色判定关联对端及待排除 ID 集合
+	mr := mrs[0]
+	if mr.IsSource(modelUid) {
+		excludeIds, err := s.repo.ListSrcRelated(ctx, modelUid, relationName, resourceId)
+		return mr.TargetModelUID, excludeIds, err
+	} else if mr.IsTarget(modelUid) {
+		excludeIds, err := s.repo.ListDstRelated(ctx, modelUid, relationName, resourceId)
+		return mr.SourceModelUID, excludeIds, err
+	}
+
+	return "", nil, fmt.Errorf("模型 UID %s 不属于关联关系 %s", modelUid, relationName)
 }

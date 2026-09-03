@@ -133,11 +133,3 @@ func (m *Mongo) InsertManyWithAutoID(ctx context.Context, collectionName string,
 // MapStr 兼容 map[string]interface{}
 type MapStr map[string]interface{}
 
-// Filter 兼容 Filter
-type Filter interface{}
-
-// Querier 兼容 Querier
-type Querier[T any] interface {
-	FindOne(ctx context.Context) (*T, error)
-	FindMany(ctx context.Context) ([]*T, error)
-}

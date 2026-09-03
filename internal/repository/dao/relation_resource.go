@@ -18,31 +18,57 @@ const (
 	ResourceRelationCollection = "c_relation_resource"
 )
 
+// RelationResourceDAO 资产实例关联关系底层数据访问接口
 type RelationResourceDAO interface {
+	// CreateResourceRelation 创建单条资产实例关联关系
 	CreateResourceRelation(ctx context.Context, mr ResourceRelation) (int64, error)
 
+	// ListSrcResources 查询以指定资产作为源端的正向直接关联列表
 	ListSrcResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
+
+	// ListDstResources 查询以指定资产作为目标端的反向直接关联列表
 	ListDstResources(ctx context.Context, modelUid string, id int64) ([]ResourceRelation, error)
+
+	// CountSrc 统计以指定资产作为源端的正向关联关系总数
 	CountSrc(ctx context.Context, modelUid string, id int64) (int64, error)
+
+	// CountDst 统计以指定资产作为目标端的反向关联关系总数
 	CountDst(ctx context.Context, modelUid string, id int64) (int64, error)
 
+	// ListSrcAggregated 聚合统计源端资产在各关联关系类型下的目标资产 ID 集合与数量
 	ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error)
+
+	// ListDstAggregated 聚合统计目标端资产在各关联关系类型下的源端资产 ID 集合与数量
 	ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error)
 
+	// ListSrcRelated 查询指定源资产在特定关系类型下已关联的目标资产 ID 列表（用于新增关联时的防重过滤）
 	ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
+
+	// ListDstRelated 查询指定目标资产在特定关系类型下已关联的源资产 ID 列表（用于新增关联时的防重过滤）
 	ListDstRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error)
 
+	// DeleteResourceRelation 根据关系主键 ID 删除单条关联关系
 	DeleteResourceRelation(ctx context.Context, id int64) (int64, error)
+
+	// DeleteSrcRelation 根据源端资产信息和关系名称，解除源资产的正向关联
 	DeleteSrcRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
+
+	// DeleteDstRelation 根据目标端资产信息和关系名称，解除目标资产的反向关联
 	DeleteDstRelation(ctx context.Context, resourceId int64, modelUid, relationName string) (int64, error)
 
-	// CountByRelationTypeUid 根据关联类型 UID 获取数量
+	// DeleteByResourceId 级联删除指定资产关联的所有连边关系（无论作为源端还是目标端，彻底杜绝孤儿悬空节点）
+	DeleteByResourceId(ctx context.Context, resourceId int64) (int64, error)
+
+	// CountByRelationTypeUid 统计引用了指定关联类型 UID 的资产关系总数（用于模型元数据删除保护校验）
 	CountByRelationTypeUid(ctx context.Context, uid string) (int64, error)
 
-	// CountByRelationName 根据关联名称获取数量
+	// CountByRelationName 统计引用了指定模型关联唯一标识的资产关系总数（用于关系模型删除保护校验）
 	CountByRelationName(ctx context.Context, name string) (int64, error)
 
+	// ListRecursiveSrc 利用 MongoDB $graphLookup 递归遍历下游关联资产（正向拓扑树生成）
 	ListRecursiveSrc(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error)
+
+	// ListRecursiveDst 利用 MongoDB $graphLookup 递归遍历上游关联资产（反向拓扑树生成）
 	ListRecursiveDst(ctx context.Context, modelUid string, id int64, maxDepth int) ([]ResourceRelation, error)
 }
 
@@ -126,18 +152,18 @@ func (dao *resourceRelationDAO) CountDst(ctx context.Context, modelUid string, i
 	return count, nil
 }
 
-func (dao *resourceRelationDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
+func (dao *resourceRelationDAO) aggregateRelations(ctx context.Context, modelField, idField, pushID, peerModel string, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
 	filter := bson.M{
-		"source_model_uid":   modelUid,
-		"source_resource_id": id,
+		modelField: modelUid,
+		idField:    id,
 	}
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: filter}},
 		{{Key: "$group", Value: bson.D{
 			{Key: "_id", Value: "$relation_name"},
-			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},                             // 统计每个分组中的文档数量
-			{Key: "resource_ids", Value: bson.D{{Key: "$push", Value: "$target_resource_id"}}}, // 将目标资源 Ids 添加到一个数组中
-			{Key: "model_uid", Value: bson.D{{Key: "$first", Value: "$target_model_uid"}}},     // 添加额外字段
+			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "resource_ids", Value: bson.D{{Key: "$push", Value: "$" + pushID}}},
+			{Key: "model_uid", Value: bson.D{{Key: "$first", Value: "$" + peerModel}}},
 		}}},
 	}
 
@@ -158,37 +184,12 @@ func (dao *resourceRelationDAO) ListSrcAggregated(ctx context.Context, modelUid 
 	return result, nil
 }
 
+func (dao *resourceRelationDAO) ListSrcAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
+	return dao.aggregateRelations(ctx, "source_model_uid", "source_resource_id", "target_resource_id", "target_model_uid", modelUid, id)
+}
+
 func (dao *resourceRelationDAO) ListDstAggregated(ctx context.Context, modelUid string, id int64) ([]ResourceAggregatedAsset, error) {
-	filter := bson.M{
-		"target_model_uid":   modelUid,
-		"target_resource_id": id,
-	}
-
-	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: filter}}, // 添加筛选条件
-		{{Key: "$group", Value: bson.D{
-			{Key: "_id", Value: "$relation_name"},
-			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},                             // 统计每个分组中的文档数量
-			{Key: "resource_ids", Value: bson.D{{Key: "$push", Value: "$source_resource_id"}}}, // 将源资源 Ids 添加到一个数组中
-			{Key: "model_uid", Value: bson.D{{Key: "$first", Value: "$source_model_uid"}}},     // 添加额外字段
-		}}},
-	}
-
-	cursor, err := dao.coll.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var result []ResourceAggregatedAsset
-	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
-	}
-	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
-	}
-
-	return result, nil
+	return dao.aggregateRelations(ctx, "target_model_uid", "target_resource_id", "source_resource_id", "source_model_uid", modelUid, id)
 }
 
 func (dao *resourceRelationDAO) ListSrcRelated(ctx context.Context, modelUid, relationName string, id int64) ([]int64, error) {
@@ -270,6 +271,22 @@ func (dao *resourceRelationDAO) DeleteDstRelation(ctx context.Context, resourceI
 	result, err := dao.coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return 0, fmt.Errorf("删除文档错误: %w", err)
+	}
+
+	return result.DeletedCount, nil
+}
+
+func (dao *resourceRelationDAO) DeleteByResourceId(ctx context.Context, resourceId int64) (int64, error) {
+	filter := bson.M{
+		"$or": []bson.M{
+			{"source_resource_id": resourceId},
+			{"target_resource_id": resourceId},
+		},
+	}
+
+	result, err := dao.coll.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, fmt.Errorf("级联删除关联关系错误: %w", err)
 	}
 
 	return result.DeletedCount, nil

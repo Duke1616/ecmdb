@@ -3,11 +3,12 @@ package plugin
 import (
 	"testing"
 
-	pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+	coreplugin "github.com/Duke1616/ecmdb/pkg/plugin"
+	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
 
 func TestBuildImportSchema(t *testing.T) {
-	builtin := pluginx.StaticBuiltin(pluginx.Definition{
+	builtin := coreplugin.StaticBuiltin(coreplugin.Definition{
 		Schema: pluginx.Schema{
 			ModelGroups: []pluginx.ModelGroupSpec{
 				{Name: "主机模型"},

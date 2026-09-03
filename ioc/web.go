@@ -13,6 +13,7 @@ import (
 	resource "github.com/Duke1616/ecmdb/internal/web/resource"
 	tools "github.com/Duke1616/ecmdb/internal/web/tools"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/capability/syncer"
 	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/Duke1616/eiam/pkg/web/sdk"
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,7 @@ import (
 	"github.com/gotomicro/ego/server/egin"
 )
 
-func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Syncer, providers []capability.PermissionProvider,
+func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer syncer.Syncer, providers []capability.PermissionProvider,
 	modelHdl *model.Handler, attributeHdl *attribute.Handler, resourceHdl *resource.Handler,
 	rmHdl *relation.RelationTypeHandler,
 	toolsHdl *tools.Handler,
@@ -32,26 +33,40 @@ func InitWebServer(mdls []gin.HandlerFunc, sdk *sdk.SDK, syncer capability.Synce
 	server.Engine.ContextWithFallback = true
 	server.Use(mdls...)
 
-	// 不需要登录认证鉴权的路由
+	// 1. 不需要登录认证鉴权的公开路由
 	pluginHdl.PublicRoutes(server.Engine)
 	toolsHdl.PublicRoutes(server.Engine)
+	modelHdl.PublicRoutes(server.Engine)
+	attributeHdl.PublicRoutes(server.Engine)
+	resourceHdl.PublicRoutes(server.Engine)
+	rmHdl.PublicRoutes(server.Engine)
+	dataIOHdl.PublicRoutes(server.Engine)
 
-	// 登录检查
+	// 2. 登录检查
 	server.Use(sdk.CheckLogin())
 
-	// 权限策略检查
+	// 3. 仅需登录态无需细粒度 RBAC 的 Identify 路由
+	pluginHdl.IdentifyRoutes(server.Engine)
+	toolsHdl.IdentifyRoutes(server.Engine)
+	modelHdl.IdentifyRoutes(server.Engine)
+	attributeHdl.IdentifyRoutes(server.Engine)
+	resourceHdl.IdentifyRoutes(server.Engine)
+	rmHdl.IdentifyRoutes(server.Engine)
+	dataIOHdl.IdentifyRoutes(server.Engine)
+
+	// 4. 权限策略检查
 	server.Use(sdk.CheckPolicy())
 
-	// CMDB 相关接口
+	// 5. CMDB 业务私有路由
 	modelHdl.PrivateRoutes(server.Engine)
 	attributeHdl.PrivateRoutes(server.Engine)
 	resourceHdl.PrivateRoutes(server.Engine)
-	rmHdl.PrivateRoute(server.Engine)
+	rmHdl.PrivateRoutes(server.Engine)
 	pluginHdl.PrivateRoutes(server.Engine)
 	toolsHdl.PrivateRoutes(server.Engine)
 	dataIOHdl.PrivateRoutes(server.Engine)
 
-	// 异步启动 EIAM 资产注册控制器
+	// 6. 异步启动 EIAM 资产注册控制器
 	go func() {
 		// 延迟执行，确保路由完全就绪
 		time.Sleep(time.Second)
@@ -74,3 +89,4 @@ func InitGinMiddlewares() []gin.HandlerFunc {
 		middleware.NewCorsBuilder().Build(),
 	}
 }
+

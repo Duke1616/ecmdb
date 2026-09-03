@@ -15,7 +15,8 @@ import (
 
 type EncryptedSvc = Service
 
-//go:generate mockgen -source=./service.go -destination=../../mocks/resource.mock.go -package=resourcemocks -typed Service
+//go:generate mockgen -source=./service.go -destination=./mocks/service.mock.go -package=resourcemocks -typed Service,EncryptedSvc
+//go:generate mockgen -package=resourcemocks -destination=./mocks/repository.mock.go -typed github.com/Duke1616/ecmdb/internal/repository ResourceRepository
 type Service interface {
 	// CreateResource 创建资产
 	CreateResource(ctx context.Context, req domain.Resource) (int64, error)
@@ -152,10 +153,6 @@ func (s *service) FindResourceById(ctx context.Context, fields []string, id int6
 }
 
 func (s *service) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, int64, error) {
-	if fields == nil {
-		return nil, 0, fmt.Errorf("传递字段信息不能为空")
-	}
-
 	if modelUid == "" {
 		return nil, 0, fmt.Errorf("模型唯一标识不能为空")
 	}
@@ -166,14 +163,14 @@ func (s *service) ListResource(ctx context.Context, fields []string, modelUid st
 		eg        errgroup.Group
 	)
 	eg.Go(func() error {
-		var err error
-		resources, err = s.repo.ListResource(ctx, fields, modelUid, offset, limit)
-		return err
+		var listErr error
+		resources, listErr = s.repo.ListResource(ctx, fields, modelUid, offset, limit)
+		return listErr
 	})
 	eg.Go(func() error {
-		var err error
-		total, err = s.repo.TotalByModelUid(ctx, modelUid)
-		return err
+		var totalErr error
+		total, totalErr = s.repo.TotalByModelUid(ctx, modelUid)
+		return totalErr
 	})
 	if err := eg.Wait(); err != nil {
 		return resources, total, err
@@ -188,6 +185,10 @@ func (s *service) ListResource(ctx context.Context, fields []string, modelUid st
 }
 
 func (s *service) ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error) {
+	if len(ids) == 0 {
+		return []domain.Resource{}, nil
+	}
+
 	rs, err := s.repo.ListResourcesByIds(ctx, fields, ids)
 	if err != nil {
 		return nil, err

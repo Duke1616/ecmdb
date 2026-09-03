@@ -2,6 +2,7 @@ package mqx
 
 import (
 	"context"
+	"sync"
 
 	"github.com/ecodeclub/mq-api"
 	"github.com/gotomicro/ego/core/elog"
@@ -10,12 +11,11 @@ import (
 type (
 	ConsumeFunc func(ctx context.Context, message *mq.Message) error
 	Consumer    struct {
-		name string
-
-		mq     mq.MQ
-		topic  string
-		ctx    context.Context
-		cancel context.CancelFunc
+		name     string
+		consumer *ResilientConsumer
+		ctx      context.Context
+		cancel   context.CancelFunc
+		wg       sync.WaitGroup
 
 		logger *elog.Component
 	}
@@ -24,35 +24,27 @@ type (
 func NewConsumer(name string, mq mq.MQ, topic string) *Consumer {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &Consumer{
-		name:   name,
-		mq:     mq,
-		topic:  topic,
-		ctx:    ctx,
-		cancel: cancelFunc,
-		logger: elog.DefaultLogger.With(elog.FieldComponent(name)),
+		name:     name,
+		consumer: NewResilientConsumer(mq, topic, name),
+		ctx:      ctx,
+		cancel:   cancelFunc,
+		logger:   elog.DefaultLogger.With(elog.FieldComponent(name)),
 	}
 }
 
 func (c *Consumer) Start(ctx context.Context, consumeFunc ConsumeFunc) error {
-	consumer, err := c.mq.Consumer(c.topic, c.name)
-	if err != nil {
-		c.logger.Error("获取MQ消费者失败",
-			elog.FieldErr(err),
-		)
-		return err
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
-	ch, err := consumer.ConsumeChan(ctx)
-	if err != nil {
-		c.logger.Error("获取MQ消费者Chan失败",
-			elog.FieldErr(err),
-		)
-		return err
-	}
-	go c.consume(ctx, ch, consumeFunc)
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.consume(ctx, consumeFunc)
+	}()
 	return nil
 }
 
-func (c *Consumer) consume(ctx context.Context, mqChan <-chan *mq.Message, consumeFunc func(ctx context.Context, message *mq.Message) error) {
+func (c *Consumer) consume(ctx context.Context, consumeFunc func(ctx context.Context, message *mq.Message) error) {
 	c.logger.Info("消费者已启动")
 	for {
 		select {
@@ -62,14 +54,13 @@ func (c *Consumer) consume(ctx context.Context, mqChan <-chan *mq.Message, consu
 		case <-ctx.Done():
 			c.logger.Info("参数上下文取消，结束消费循环")
 			return
-		case message, ok := <-mqChan:
-			if !ok {
+		default:
+			message, err := c.consumer.Consume(ctx)
+			if err != nil {
 				return
 			}
-			// 自动从 Kafka 消息头部提取并解包多租户及业务 Context
 			activeCtx := ExtractContext(ctx, message)
-
-			err := consumeFunc(activeCtx, message)
+			err = consumeFunc(activeCtx, message)
 			if err != nil {
 				c.logger.Error("消费消息失败",
 					elog.String("消息体", string(message.Value)),
@@ -88,5 +79,7 @@ func (c *Consumer) Name() string {
 
 func (c *Consumer) Stop() error {
 	c.cancel()
-	return nil
+	err := c.consumer.Close()
+	c.wg.Wait()
+	return err
 }

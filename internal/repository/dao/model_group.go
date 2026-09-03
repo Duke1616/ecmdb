@@ -7,7 +7,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -93,9 +93,9 @@ func (dao *groupDAO) BatchCreate(ctx context.Context, mgs []ModelGroup) ([]Model
 	now := time.Now().UnixMilli()
 
 	// 依靠 mongoxv2 的 AutoIDPlugin 插件，一次获取批量 ID 并自动设置。
-	docs := slice.Map(mgs, func(idx int, src ModelGroup) *ModelGroup {
+	docs := lo.Map(mgs, func(src ModelGroup, _ int) *ModelGroup {
 		return &ModelGroup{
-			Name:  mgs[idx].Name,
+			Name:  src.Name,
 			Ctime: now,
 			Utime: now,
 		}

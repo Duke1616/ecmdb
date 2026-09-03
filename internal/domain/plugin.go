@@ -1,12 +1,12 @@
 package domain
 
-import "github.com/Duke1616/ecmdb/pkg/plugin"
+import "github.com/Duke1616/ecmdb/pkg/plugin/types"
 
-type Plugin = plugin.Plugin
-type PluginActionSpec = plugin.ActionSpec
-type PluginFilter = plugin.Filter
-type PluginBinding = plugin.Binding
-type PluginResourceSpec = plugin.ResourceSpec
-type PluginResourceAction = plugin.ResourceAction
-type PluginResolvedInput = plugin.ResolvedInput
-type PluginResolvedResource = plugin.ResolvedResource
+type Plugin = types.Plugin
+type PluginActionSpec = types.ActionSpec
+type PluginFilter = types.Filter
+type PluginBinding = types.Binding
+type PluginResourceSpec = types.ResourceSpec
+type PluginResourceAction = types.ResourceAction
+type PluginResolvedInput = types.ResolvedInput
+type PluginResolvedResource = types.ResolvedResource

@@ -1,6 +1,6 @@
 package domain
 
-import pluginx "github.com/Duke1616/ecmdb/pkg/plugin"
+import pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 
 type PluginListItem struct {
 	ID           int64                `json:"id"`

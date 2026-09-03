@@ -2,7 +2,7 @@ package web
 
 import (
 	"github.com/Duke1616/ecmdb/internal/errs"
-	"github.com/Duke1616/ecmdb/pkg/ginx"
+	"github.com/ecodeclub/ginx"
 )
 
 var (
@@ -21,3 +21,4 @@ var (
 		Msg:  "数据已被其他用户修改，请刷新后重试",
 	}
 )
+

@@ -39,9 +39,6 @@ func (c *Collection[T]) Native() *mongo.Collection {
 
 // FindOne 查询单条记录，应用生命周期拦截并自动反序列化
 func (c *Collection[T]) FindOne(ctx context.Context, filter interface{}, opts ...*options.FindOneOptions) (*T, error) {
-	if c.shouldShortCircuit(ctx) {
-		return nil, mongo.ErrNoDocuments
-	}
 	var dest T
 	finalFilter, err := c.applyBeforeFind(ctx, filter, &dest)
 	if err != nil {
@@ -57,9 +54,6 @@ func (c *Collection[T]) FindOne(ctx context.Context, filter interface{}, opts ..
 
 // Find 查询多条记录，应用生命周期拦截并自动转换为强类型切片
 func (c *Collection[T]) Find(ctx context.Context, filter interface{}, opts ...*options.FindOptions) ([]T, error) {
-	if c.shouldShortCircuit(ctx) {
-		return []T{}, nil
-	}
 	var dest []T
 	finalFilter, err := c.applyBeforeFind(ctx, filter, &dest)
 	if err != nil {
@@ -170,9 +164,6 @@ func (c *Collection[T]) DeleteMany(ctx context.Context, filter interface{}, opts
 
 // CountDocuments 统计文档数量，自动触发 BeforeFinder 拦截
 func (c *Collection[T]) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
-	if c.shouldShortCircuit(ctx) {
-		return 0, nil
-	}
 	finalFilter, err := c.applyBeforeFind(ctx, filter, nil)
 	if err != nil {
 		return 0, err
@@ -182,9 +173,6 @@ func (c *Collection[T]) CountDocuments(ctx context.Context, filter interface{}, 
 
 // Distinct 获取去重字段集，自动拦截查询并追加租户隔离
 func (c *Collection[T]) Distinct(ctx context.Context, fieldName string, filter interface{}, opts ...*options.DistinctOptions) ([]interface{}, error) {
-	if c.shouldShortCircuit(ctx) {
-		return []interface{}{}, nil
-	}
 	finalFilter, err := c.applyBeforeFind(ctx, filter, nil)
 	if err != nil {
 		return nil, err
@@ -195,23 +183,29 @@ func (c *Collection[T]) Distinct(ctx context.Context, fieldName string, filter i
 // Aggregate 聚合查询方法，自动在管道最前端织入租户过滤阶段以保障租户隔离
 func (c *Collection[T]) Aggregate(ctx context.Context, pipeline mongo.Pipeline, opts ...*options.AggregateOptions) (*mongo.Cursor, error) {
 	tenantID := ctxutil.GetTenantID(ctx).Int64()
-	if tenantID < 0 {
-		tenantID = 0
+	ignoreTenant := IsIgnoreTenant(ctx)
+
+	// Fail-Closed 零信任防线：未显式声明 IgnoreTenant 且缺失有效租户上下文，直接阻断报错
+	if !ignoreTenant && tenantID <= 0 {
+		return nil, ErrMissingTenantContext
 	}
-	ignoreTenant, _ := ctx.Value("mongox:ignore_tenant").(bool)
+
+	// 复制一份 pipeline，避免原地污染外部传入的切片
+	execPipeline := make(mongo.Pipeline, len(pipeline))
+	copy(execPipeline, pipeline)
 
 	// 只要没有显式开启受控豁免，在管道中织入当前租户空间的限制过滤条件
-	if !ignoreTenant && !c.tryMergeTenantID(pipeline, tenantID) {
+	if !ignoreTenant && !c.tryMergeTenantID(execPipeline, tenantID) {
 		tenantMatch := bson.D{{
 			Key: "$match",
 			Value: bson.M{
 				"tenant_id": tenantID,
 			},
 		}}
-		pipeline = append(mongo.Pipeline{tenantMatch}, pipeline...)
+		execPipeline = append(mongo.Pipeline{tenantMatch}, execPipeline...)
 	}
 
-	return c.coll.Aggregate(ctx, pipeline, opts...)
+	return c.coll.Aggregate(ctx, execPipeline, opts...)
 }
 
 // tryMergeTenantID 尝试将 tenant_id 合并到聚合管道的第一个 $match 阶段
@@ -359,18 +353,18 @@ func (c *Collection[T]) applyBeforeFind(ctx context.Context, filter interface{},
 	return stmt.Filter, nil
 }
 
-func (c *Collection[T]) shouldShortCircuit(ctx context.Context) bool {
-	tid := ctxutil.GetTenantID(ctx).Int64()
-	ignoreTenant, _ := ctx.Value("mongox:ignore_tenant").(bool)
-	return tid <= 0 && !ignoreTenant
-}
 
 func toFilterMap(filter interface{}) bson.M {
 	if filter == nil {
 		return bson.M{}
 	}
 	if m, ok := filter.(bson.M); ok {
-		return m
+		// 浅拷贝外部传入的 bson.M，防止中间件原地修改外部 map 引发并发竞争或多次调用套娃
+		cloned := make(bson.M, len(m))
+		for k, v := range m {
+			cloned[k] = v
+		}
+		return cloned
 	}
 	byteData, err := bson.Marshal(filter)
 	if err != nil {

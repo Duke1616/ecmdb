@@ -214,11 +214,15 @@ func buildBsonCondition(f domain.FilterCondition) bson.M {
 }
 
 func buildProjection(fields []string) map[string]int {
-	// NOTE: 借助 lo.Associate 简化投影初始化，消除显式循环
-	projection := lo.Associate(lo.FilterMap(fields, func(v string, _ int) (string, bool) {
+	validFields := lo.FilterMap(fields, func(v string, _ int) (string, bool) {
 		v = strings.TrimSpace(v)
 		return v, v != ""
-	}), func(v string) (string, int) {
+	})
+	// 当未指定特定字段时，采用 MongoDB 排除模式仅排除 _id，自动全量加载包含动态属性在内的所有文档字段
+	if len(validFields) == 0 {
+		return map[string]int{"_id": 0}
+	}
+	projection := lo.Associate(validFields, func(v string) (string, int) {
 		return v, 1
 	})
 	projection["_id"] = 0

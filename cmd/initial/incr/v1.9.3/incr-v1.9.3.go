@@ -2,17 +2,11 @@ package v193
 
 import (
 	"context"
-	_ "embed"
 
 	"github.com/Duke1616/ecmdb/cmd/initial/incr"
 	"github.com/Duke1616/ecmdb/cmd/initial/ioc"
-	"github.com/Duke1616/ecmdb/internal/bootstrap/structure"
 	"github.com/gotomicro/ego/core/elog"
-	"gopkg.in/yaml.v3"
 )
-
-//go:embed config.yaml
-var configYAML []byte
 
 type incrV193 struct {
 	App    *ioc.App
@@ -31,22 +25,7 @@ func (i *incrV193) Version() string {
 }
 
 func (i *incrV193) Commit(ctx context.Context) error {
-	i.logger.Info("开始执行 Commit", elog.String("版本", i.Version()))
-
-	// 从嵌入的配置文件解析
-	var cfg structure.Config
-	if err := yaml.Unmarshal(configYAML, &cfg); err != nil {
-		i.logger.Error("解析配置失败", elog.FieldErr(err))
-		return err
-	}
-
-	// 使用 Bootstrap 加载器从配置对象创建模型、属性、关联
-	if err := i.App.BootstrapSvc.LoadFromConfig(ctx, &cfg); err != nil {
-		i.logger.Error("加载配置失败", elog.FieldErr(err))
-		return err
-	}
-
-	i.logger.Info("Commit 执行完成", elog.String("版本", i.Version()))
+	i.logger.Info("开始执行 Commit（历史版本已归档）", elog.String("版本", i.Version()))
 	return nil
 }
 

@@ -3,17 +3,22 @@ package plugin
 import (
 	"context"
 	"fmt"
+
+	"github.com/Duke1616/ecmdb/pkg/plugin/codec"
+	"github.com/Duke1616/ecmdb/pkg/plugin/dsl"
+	"github.com/Duke1616/ecmdb/pkg/plugin/graph"
+	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
 
 type Definition struct {
-	Plugin   Plugin    `json:"plugin"`
-	Schema   Schema    `json:"schema"`
-	Bindings []Binding `json:"bindings"`
+	Plugin   types.Plugin    `json:"plugin"`
+	Schema   types.Schema    `json:"schema"`
+	Bindings []types.Binding `json:"bindings"`
 }
 
 type Store interface {
-	UpsertPlugin(ctx context.Context, p Plugin) error
-	UpsertBinding(ctx context.Context, b Binding) error
+	UpsertPlugin(ctx context.Context, p types.Plugin) error
+	UpsertBinding(ctx context.Context, b types.Binding) error
 }
 
 func (d Definition) Save(ctx context.Context, store Store) error {
@@ -29,15 +34,15 @@ func (d Definition) Save(ctx context.Context, store Store) error {
 }
 
 type Registry struct {
-	plugin   Plugin
-	schema   Schema
-	bindings []Binding
+	plugin   types.Plugin
+	schema   types.Schema
+	bindings []types.Binding
 	err      error
 }
 
 func NewRegistry(uid string, name string, opts ...Option) *Registry {
 	r := &Registry{
-		plugin: Plugin{
+		plugin: types.Plugin{
 			UID:     uid,
 			Name:    name,
 			Type:    "custom",
@@ -51,10 +56,10 @@ func NewRegistry(uid string, name string, opts ...Option) *Registry {
 }
 
 func (r *Registry) Action(action string, name string, opts ...ActionOption) *Registry {
-	spec := ActionSpec{
+	spec := types.ActionSpec{
 		Action:    action,
 		Name:      name,
-		Placement: PlacementResourceDetailActions,
+		Placement: types.PlacementResourceDetailActions,
 	}
 	for _, opt := range opts {
 		opt(&spec)
@@ -63,10 +68,10 @@ func (r *Registry) Action(action string, name string, opts ...ActionOption) *Reg
 	return r
 }
 
-func (r *Registry) Setup(items ...SetupItem) *Registry {
+func (r *Registry) Setup(items ...dsl.SetupItem) *Registry {
 	for _, item := range items {
 		if item != nil {
-			item.applyToSchema(&r.schema)
+			item.ApplyToSchema(&r.schema)
 		}
 	}
 	return r
@@ -114,55 +119,55 @@ func (r *Registry) MustDefinition() Definition {
 	return def
 }
 
-type Option func(*Plugin)
+type Option func(*types.Plugin)
 
 func Type(value string) Option {
-	return func(p *Plugin) {
+	return func(p *types.Plugin) {
 		p.Type = value
 	}
 }
 
 func Version(value string) Option {
-	return func(p *Plugin) {
+	return func(p *types.Plugin) {
 		p.Version = value
 	}
 }
 
-type ActionOption func(*ActionSpec)
+type ActionOption func(*types.ActionSpec)
 
 func Icon(value string) ActionOption {
-	return func(a *ActionSpec) {
+	return func(a *types.ActionSpec) {
 		a.Icon = value
 	}
 }
 
 func Placement(value string) ActionOption {
-	return func(a *ActionSpec) {
+	return func(a *types.ActionSpec) {
 		a.Placement = value
 	}
 }
 
 func Permission(value string) ActionOption {
-	return func(a *ActionSpec) {
+	return func(a *types.ActionSpec) {
 		a.Permission = value
 	}
 }
 
 func UseBinding(uid string) ActionOption {
-	return func(a *ActionSpec) {
+	return func(a *types.ActionSpec) {
 		a.BindingUID = uid
 	}
 }
 
-func ActionRuntime(value ActionRuntimeSpec) ActionOption {
-	return func(a *ActionSpec) {
+func ActionRuntime(value types.ActionRuntimeSpec) ActionOption {
+	return func(a *types.ActionSpec) {
 		runtime := value
 		a.Runtime = &runtime
 	}
 }
 
 func Meta(key string, value any) ActionOption {
-	return func(a *ActionSpec) {
+	return func(a *types.ActionSpec) {
 		if a.Meta == nil {
 			a.Meta = make(map[string]any)
 		}
@@ -170,77 +175,13 @@ func Meta(key string, value any) ActionOption {
 	}
 }
 
-type BindingOption func(*Binding)
+type BindingOption func(*types.Binding)
 
-type BindingFactory func(pluginUID string) (Binding, error)
+type BindingFactory func(pluginUID string) (types.Binding, error)
 
 func BindingEnabled(value bool) BindingOption {
-	return func(b *Binding) {
+	return func(b *types.Binding) {
 		b.Enabled = value
-	}
-}
-
-func Spec(path string, fn func(*ResourceSpec)) BindingOption {
-	return func(b *Binding) {
-		if b.Graph == nil {
-			return
-		}
-		specs, err := CompileBindingGraph(b.Graph)
-		if err != nil {
-			panic(err)
-		}
-		specs = Configure(specs).ForPath(path, fn).Build()
-		graph, err := GraphFromBindingSpecs(b.ModelUID, specs)
-		if err != nil {
-			panic(err)
-		}
-		b.Graph = graph
-	}
-}
-
-func At(path string, opts ...SpecOption) BindingOption {
-	return Node(path, func(node *BindingGraphNode, edge *BindingGraphEdge) {
-		for _, opt := range opts {
-			opt(node, edge)
-		}
-	})
-}
-
-type SpecOption func(*BindingGraphNode, *BindingGraphEdge)
-
-func In(relationType string) SpecOption {
-	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
-		if edge == nil {
-			return
-		}
-		edge.Direction = DirectionToSource
-		edge.RelationType = relationType
-	}
-}
-
-func Out(relationType string) SpecOption {
-	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
-		if edge == nil {
-			return
-		}
-		edge.Direction = DirectionToTarget
-		edge.RelationType = relationType
-	}
-}
-
-func Where(field string, operator string, value any) SpecOption {
-	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
-		node.Filters = append(node.Filters, Filter{
-			Field:    field,
-			Operator: operator,
-			Value:    value,
-		})
-	}
-}
-
-func Required(value bool) SpecOption {
-	return func(node *BindingGraphNode, edge *BindingGraphEdge) {
-		node.Required = value
 	}
 }
 
@@ -249,7 +190,7 @@ func Center[T any](modelUID string, opts ...BindingOption) BindingFactory {
 }
 
 func CenterNamed[T any](name string, modelUID string, opts ...BindingOption) BindingFactory {
-	return func(pluginUID string) (Binding, error) {
+	return func(pluginUID string) (types.Binding, error) {
 		uid := CenterBindingUID(pluginUID, modelUID)
 		return bindingForCenter[T](uid, name, modelUID, opts...)
 	}
@@ -259,32 +200,27 @@ func CenterBindingUID(pluginUID string, modelUID string) string {
 	return fmt.Sprintf("%s.%s", pluginUID, modelUID)
 }
 
-func bindingForCenter[T any](uid string, name string, modelUID string, opts ...BindingOption) (Binding, error) {
-	graph, err := BuildCenterGraph[T](name, modelUID)
+func bindingForCenter[T any](uid string, name string, modelUID string, opts ...BindingOption) (types.Binding, error) {
+	spec, err := codec.BuildCenterSpec[T](name, modelUID)
 	if err != nil {
-		return Binding{}, err
+		return types.Binding{}, err
+	}
+	g, err := graph.GraphFromBindingSpecs(modelUID, []types.ResourceSpec{spec})
+	if err != nil {
+		return types.Binding{}, err
 	}
 
-	binding := Binding{
+	binding := types.Binding{
 		UID:      uid,
 		ModelUID: modelUID,
 		Enabled:  true,
-		Graph:    graph,
+		Graph:    g,
 	}
 	for _, opt := range opts {
 		opt(&binding)
 	}
-	if _, err = CompileBindingGraph(binding.Graph); err != nil {
-		return Binding{}, err
+	if _, err = graph.CompileBindingGraph(binding.Graph); err != nil {
+		return types.Binding{}, err
 	}
 	return binding, nil
-}
-
-func Node(path string, fn func(node *BindingGraphNode, edge *BindingGraphEdge)) BindingOption {
-	return func(b *Binding) {
-		if b.Graph == nil {
-			return
-		}
-		MutateBindingGraphPath(b.Graph, path, fn)
-	}
 }

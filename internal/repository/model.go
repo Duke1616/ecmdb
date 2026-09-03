@@ -6,7 +6,7 @@ import (
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	"github.com/Duke1616/ecmdb/internal/repository/dao"
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 type ModelRepository interface {
@@ -43,7 +43,7 @@ func (repo *modelRepository) GetByUid(ctx context.Context, uid string) (domain.M
 func (repo *modelRepository) GetByUids(ctx context.Context, uids []string) ([]domain.Model, error) {
 	models, err := repo.dao.GetByUids(ctx, uids)
 
-	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
+	return lo.Map(models, func(src dao.Model, _ int) domain.Model {
 		return repo.toDomain(src)
 	}), err
 }
@@ -51,7 +51,7 @@ func (repo *modelRepository) GetByUids(ctx context.Context, uids []string) ([]do
 func (repo *modelRepository) ListAll(ctx context.Context) ([]domain.Model, error) {
 	models, err := repo.dao.ListAll(ctx)
 
-	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
+	return lo.Map(models, func(src dao.Model, _ int) domain.Model {
 		return repo.toDomain(src)
 	}), err
 }
@@ -68,7 +68,7 @@ func (repo *modelRepository) FindById(ctx context.Context, id int64) (domain.Mod
 func (repo *modelRepository) List(ctx context.Context, offset, limit int64) ([]domain.Model, error) {
 	models, err := repo.dao.List(ctx, offset, limit)
 
-	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
+	return lo.Map(models, func(src dao.Model, _ int) domain.Model {
 		return repo.toDomain(src)
 	}), err
 }
@@ -80,7 +80,7 @@ func (repo *modelRepository) Total(ctx context.Context) (int64, error) {
 func (repo *modelRepository) ListByGroupIds(ctx context.Context, mgids []int64) ([]domain.Model, error) {
 	models, err := repo.dao.ListByGroupIds(ctx, mgids)
 
-	return slice.Map(models, func(idx int, src dao.Model) domain.Model {
+	return lo.Map(models, func(src dao.Model, _ int) domain.Model {
 		return repo.toDomain(src)
 	}), err
 }

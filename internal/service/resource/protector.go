@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
@@ -70,11 +71,8 @@ func (p *resourceProtector) Encrypt(ctx context.Context, res domain.Resource) (d
 	}
 
 	secureFields, err := p.getSecureFields(ctx, res.ModelUID)
-	if err != nil {
+	if err != nil || len(secureFields) == 0 {
 		return res, err
-	}
-	if len(secureFields) == 0 {
-		return res, nil
 	}
 
 	res.Data = p.encryptData(res.Data, secureFields, res.ModelUID)
@@ -92,15 +90,14 @@ func (p *resourceProtector) EncryptMany(ctx context.Context, resources []domain.
 		return nil, err
 	}
 
-	for i := range resources {
-		secureFields := secureFieldsMap[resources[i].ModelUID]
-		if len(secureFields) == 0 || len(resources[i].Data) == 0 {
-			continue
+	return lo.Map(resources, func(res domain.Resource, _ int) domain.Resource {
+		secureFields := secureFieldsMap[res.ModelUID]
+		if len(secureFields) == 0 || len(res.Data) == 0 {
+			return res
 		}
-		resources[i].Data = p.encryptData(resources[i].Data, secureFields, resources[i].ModelUID)
-	}
-
-	return resources, nil
+		res.Data = p.encryptData(res.Data, secureFields, res.ModelUID)
+		return res
+	}), nil
 }
 
 // Decrypt 对单个资产进行敏感属性解密（含 ENC: 兜底解密）
@@ -129,15 +126,13 @@ func (p *resourceProtector) DecryptMany(ctx context.Context, resources []domain.
 		return nil, err
 	}
 
-	for i := range resources {
-		if len(resources[i].Data) == 0 {
-			continue
+	return lo.Map(resources, func(res domain.Resource, _ int) domain.Resource {
+		if len(res.Data) == 0 {
+			return res
 		}
-		secureFields := secureFieldsMap[resources[i].ModelUID]
-		resources[i].Data = p.decryptData(resources[i].Data, secureFields, resources[i].ModelUID)
-	}
-
-	return resources, nil
+		res.Data = p.decryptData(res.Data, secureFieldsMap[res.ModelUID], res.ModelUID)
+		return res
+	}), nil
 }
 
 // DecryptFields 对资源切片中指定的字段执行解密
@@ -146,29 +141,22 @@ func (p *resourceProtector) DecryptFields(ctx context.Context, resources []domai
 		return resources, nil
 	}
 
-	for i := range resources {
-		if len(resources[i].Data) == 0 {
-			continue
+	return lo.Map(resources, func(res domain.Resource, _ int) domain.Resource {
+		if len(res.Data) == 0 {
+			return res
 		}
+		res.Data = maps.Clone(res.Data)
 		for _, field := range fields {
-			val, exists := resources[i].Data[field]
-			if !exists || val == nil {
-				continue
+			if strVal, ok := res.Data[field].(string); ok && strVal != "" {
+				if decrypted, err := p.decryptString(strVal, res.ModelUID, field); err == nil {
+					res.Data[field] = decrypted
+				} else {
+					p.logger.Warn("指定字段解密失败，保留原值", elog.String("field", field), elog.FieldErr(err))
+				}
 			}
-			strVal, ok := val.(string)
-			if !ok || strVal == "" {
-				continue
-			}
-			decrypted, err := p.decryptString(strVal, resources[i].ModelUID, field)
-			if err != nil {
-				p.logger.Warn("指定字段解密失败，保留原值", elog.String("field", field), elog.FieldErr(err))
-				continue
-			}
-			resources[i].Data[field] = decrypted
 		}
-	}
-
-	return resources, nil
+		return res
+	}), nil
 }
 
 // Mask 将资产中的敏感属性值替换为统一展示掩码
@@ -178,16 +166,14 @@ func (p *resourceProtector) Mask(ctx context.Context, res domain.Resource) (doma
 	}
 
 	secureFields, err := p.getSecureFields(ctx, res.ModelUID)
-	if err != nil {
+	if err != nil || len(secureFields) == 0 {
 		return res, err
 	}
 
+	res.Data = maps.Clone(res.Data)
 	for _, field := range secureFields {
-		val, exists := res.Data[field]
-		if exists && val != nil {
-			if strVal, ok := val.(string); ok && strVal != "" {
-				res.Data[field] = cryptox.DefaultMask
-			}
+		if strVal, ok := res.Data[field].(string); ok && strVal != "" {
+			res.Data[field] = cryptox.DefaultMask
 		}
 	}
 
@@ -197,56 +183,31 @@ func (p *resourceProtector) Mask(ctx context.Context, res domain.Resource) (doma
 // 内部加解密数据辅助方法
 
 func (p *resourceProtector) encryptData(data map[string]any, secureFields []string, modelUID string) map[string]any {
-	result := make(map[string]any, len(data))
-	for k, v := range data {
-		result[k] = v
-	}
+	result := maps.Clone(data)
 
 	for _, field := range secureFields {
-		val, exists := result[field]
-		if !exists || val == nil {
-			continue
+		if strVal, ok := result[field].(string); ok && strVal != "" && !p.IsMasked(strVal) {
+			if encrypted, err := p.protector.Encrypt(strVal); err == nil {
+				result[field] = encrypted
+			} else {
+				p.logger.Error("资产属性加密失败", elog.String("model_uid", modelUID), elog.String("field", field), elog.FieldErr(err))
+			}
 		}
-
-		strVal, ok := val.(string)
-		if !ok || strVal == "" || p.IsMasked(strVal) {
-			continue
-		}
-
-		encrypted, err := p.protector.Encrypt(strVal)
-		if err != nil {
-			p.logger.Error("资产属性加密失败", elog.String("model_uid", modelUID), elog.String("field", field), elog.FieldErr(err))
-			continue
-		}
-		result[field] = encrypted
 	}
 
 	return result
 }
 
 func (p *resourceProtector) decryptData(data map[string]any, secureFields []string, modelUID string) map[string]any {
-	result := make(map[string]any, len(data))
-	for k, v := range data {
-		result[k] = v
-	}
+	result := maps.Clone(data)
 
 	// 1. 解密已配置为敏感的安全字段
 	for _, field := range secureFields {
-		val, exists := result[field]
-		if !exists || val == nil {
-			continue
+		if strVal, ok := result[field].(string); ok && strVal != "" {
+			if decrypted, err := p.decryptString(strVal, modelUID, field); err == nil {
+				result[field] = decrypted
+			}
 		}
-
-		strVal, ok := val.(string)
-		if !ok || strVal == "" {
-			continue
-		}
-
-		decrypted, err := p.decryptString(strVal, modelUID, field)
-		if err != nil {
-			continue
-		}
-		result[field] = decrypted
 	}
 
 	// 2. 兜底解密：即使当前字段非安全属性，若内容为 ENC: 格式的历史密文，自动还原为明文展示
@@ -254,10 +215,8 @@ func (p *resourceProtector) decryptData(data map[string]any, secureFields []stri
 		if lo.Contains(secureFields, field) {
 			continue
 		}
-		strVal, ok := val.(string)
-		if ok && strings.HasPrefix(strVal, cryptox.EncryptedPrefix) {
-			decrypted, err := p.decryptString(strVal, modelUID, field)
-			if err == nil {
+		if strVal, ok := val.(string); ok && strings.HasPrefix(strVal, cryptox.EncryptedPrefix) {
+			if decrypted, err := p.decryptString(strVal, modelUID, field); err == nil {
 				result[field] = decrypted
 			}
 		}

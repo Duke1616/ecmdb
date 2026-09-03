@@ -9,6 +9,7 @@ import (
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -299,12 +300,9 @@ func (s *service) CheckBeforeDelete(ctx context.Context, modelUid string) error 
 // ==========================================
 
 func (s *service) handleMaskedFieldsOnUpdate(ctx context.Context, req *domain.Resource) error {
-	var maskedFields []string
-	for k, v := range req.Data {
-		if s.protector.IsMasked(v) {
-			maskedFields = append(maskedFields, k)
-		}
-	}
+	maskedFields := lo.FilterMap(lo.Entries(req.Data), func(entry lo.Entry[string, any], _ int) (string, bool) {
+		return entry.Key, s.protector.IsMasked(entry.Value)
+	})
 	if len(maskedFields) == 0 {
 		return nil
 	}

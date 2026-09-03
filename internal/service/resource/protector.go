@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Duke1616/ecmdb/internal/domain"
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/gotomicro/ego/core/elog"
@@ -13,19 +14,28 @@ import (
 
 // IResourceProtector 统管 ECMDB 资产在存储、运行和展示阶段的敏感属性保护
 type IResourceProtector interface {
-	// EncryptResource 根据模型敏感属性配置，对资产入库数据执行加密
-	EncryptResource(ctx context.Context, modelUID string, data map[string]any) (map[string]any, error)
+	// Encrypt 对单个资产的敏感属性执行加密
+	Encrypt(ctx context.Context, res domain.Resource) (domain.Resource, error)
 
-	// DecryptResource 严格解密资产中的敏感属性，用于内部运行时或需要明文凭据的场景
-	DecryptResource(ctx context.Context, modelUID string, data map[string]any) (map[string]any, error)
+	// EncryptMany 批量对资产执行敏感属性加密（聚合查询属性以优化性能）
+	EncryptMany(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error)
+
+	// Decrypt 对单个资产的敏感属性执行严格解密，并自动还原带有 ENC: 的历史密文
+	Decrypt(ctx context.Context, res domain.Resource) (domain.Resource, error)
+
+	// DecryptMany 批量对资产执行敏感属性解密
+	DecryptMany(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error)
 
 	// DecryptFields 针对明确指定的字段列表执行解密（用于安全属性关闭时的存量数据异步清洗与还原）
-	DecryptFields(ctx context.Context, data map[string]any, fields []string) (map[string]any, error)
+	DecryptFields(ctx context.Context, resources []domain.Resource, fields []string) ([]domain.Resource, error)
 
-	// MaskResource 将资产敏感字段替换为 "[已脱敏]"，用于列表展示、详情查看及审计日志
-	MaskResource(ctx context.Context, modelUID string, data map[string]any) (map[string]any, error)
+	// Mask 将单个资产的敏感字段替换为 "[已脱敏]"，用于展示与审计
+	Mask(ctx context.Context, res domain.Resource) (domain.Resource, error)
 
-	// IsMasked 判断值是否为脱敏占位文本（用于防止编辑保存时将掩码误写入库）
+	// DecryptValue 对单个密文字符串进行解密
+	DecryptValue(encryptedText string) (string, error)
+
+	// IsMasked 判断值是否为脱敏占位文本
 	IsMasked(val any) bool
 }
 
@@ -49,31 +59,144 @@ func (p *resourceProtector) IsMasked(val any) bool {
 	return ok && str == cryptox.DefaultMask
 }
 
-func (p *resourceProtector) getSecureFields(ctx context.Context, modelUID string) ([]string, error) {
-	if p.attrSvc == nil {
-		return nil, nil
-	}
-	secureFieldsMap, err := p.attrSvc.SearchAttributeFieldsBySecure(ctx, []string{modelUID})
-	if err != nil {
-		return nil, fmt.Errorf("查询模型 %s 敏感属性失败: %w", modelUID, err)
-	}
-	return secureFieldsMap[modelUID], nil
+func (p *resourceProtector) DecryptValue(encryptedText string) (string, error) {
+	return p.decryptString(encryptedText, "", "")
 }
 
-// EncryptResource 遍历安全属性字段并执行加密
-func (p *resourceProtector) EncryptResource(ctx context.Context, modelUID string, data map[string]any) (map[string]any, error) {
-	if len(data) == 0 {
-		return data, nil
+// Encrypt 对单个资产进行敏感属性加密
+func (p *resourceProtector) Encrypt(ctx context.Context, res domain.Resource) (domain.Resource, error) {
+	if len(res.Data) == 0 {
+		return res, nil
 	}
 
-	secureFields, err := p.getSecureFields(ctx, modelUID)
+	secureFields, err := p.getSecureFields(ctx, res.ModelUID)
+	if err != nil {
+		return res, err
+	}
+	if len(secureFields) == 0 {
+		return res, nil
+	}
+
+	res.Data = p.encryptData(res.Data, secureFields, res.ModelUID)
+	return res, nil
+}
+
+// EncryptMany 批量对资产进行敏感属性加密（聚合查询各模型敏感字段，避免 N 次 RPC）
+func (p *resourceProtector) EncryptMany(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
+	if len(resources) == 0 {
+		return resources, nil
+	}
+
+	secureFieldsMap, err := p.getSecureFieldsMap(ctx, resources)
 	if err != nil {
 		return nil, err
 	}
-	if len(secureFields) == 0 {
-		return data, nil
+
+	for i := range resources {
+		secureFields := secureFieldsMap[resources[i].ModelUID]
+		if len(secureFields) == 0 || len(resources[i].Data) == 0 {
+			continue
+		}
+		resources[i].Data = p.encryptData(resources[i].Data, secureFields, resources[i].ModelUID)
 	}
 
+	return resources, nil
+}
+
+// Decrypt 对单个资产进行敏感属性解密（含 ENC: 兜底解密）
+func (p *resourceProtector) Decrypt(ctx context.Context, res domain.Resource) (domain.Resource, error) {
+	if len(res.Data) == 0 {
+		return res, nil
+	}
+
+	secureFields, err := p.getSecureFields(ctx, res.ModelUID)
+	if err != nil {
+		return res, err
+	}
+
+	res.Data = p.decryptData(res.Data, secureFields, res.ModelUID)
+	return res, nil
+}
+
+// DecryptMany 批量对资产进行敏感属性解密
+func (p *resourceProtector) DecryptMany(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
+	if len(resources) == 0 {
+		return resources, nil
+	}
+
+	secureFieldsMap, err := p.getSecureFieldsMap(ctx, resources)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range resources {
+		if len(resources[i].Data) == 0 {
+			continue
+		}
+		secureFields := secureFieldsMap[resources[i].ModelUID]
+		resources[i].Data = p.decryptData(resources[i].Data, secureFields, resources[i].ModelUID)
+	}
+
+	return resources, nil
+}
+
+// DecryptFields 对资源切片中指定的字段执行解密
+func (p *resourceProtector) DecryptFields(ctx context.Context, resources []domain.Resource, fields []string) ([]domain.Resource, error) {
+	if len(resources) == 0 || len(fields) == 0 {
+		return resources, nil
+	}
+
+	for i := range resources {
+		if len(resources[i].Data) == 0 {
+			continue
+		}
+		for _, field := range fields {
+			val, exists := resources[i].Data[field]
+			if !exists || val == nil {
+				continue
+			}
+			strVal, ok := val.(string)
+			if !ok || strVal == "" {
+				continue
+			}
+			decrypted, err := p.decryptString(strVal, resources[i].ModelUID, field)
+			if err != nil {
+				p.logger.Warn("指定字段解密失败，保留原值", elog.String("field", field), elog.FieldErr(err))
+				continue
+			}
+			resources[i].Data[field] = decrypted
+		}
+	}
+
+	return resources, nil
+}
+
+// Mask 将资产中的敏感属性值替换为统一展示掩码
+func (p *resourceProtector) Mask(ctx context.Context, res domain.Resource) (domain.Resource, error) {
+	if len(res.Data) == 0 {
+		return res, nil
+	}
+
+	secureFields, err := p.getSecureFields(ctx, res.ModelUID)
+	if err != nil {
+		return res, err
+	}
+
+	for _, field := range secureFields {
+		val, exists := res.Data[field]
+		if exists && val != nil {
+			if strVal, ok := val.(string); ok && strVal != "" {
+				res.Data[field] = cryptox.DefaultMask
+			}
+		}
+	}
+
+	return res, nil
+}
+
+// 内部加解密数据辅助方法
+
+func (p *resourceProtector) encryptData(data map[string]any, secureFields []string, modelUID string) map[string]any {
 	result := make(map[string]any, len(data))
 	for k, v := range data {
 		result[k] = v
@@ -93,31 +216,21 @@ func (p *resourceProtector) EncryptResource(ctx context.Context, modelUID string
 		encrypted, err := p.protector.Encrypt(strVal)
 		if err != nil {
 			p.logger.Error("资产属性加密失败", elog.String("model_uid", modelUID), elog.String("field", field), elog.FieldErr(err))
-			return nil, fmt.Errorf("资产字段 %s 加密失败: %w", field, err)
+			continue
 		}
 		result[field] = encrypted
 	}
 
-	return result, nil
+	return result
 }
 
-// DecryptResource 遍历安全属性字段并执行解密；对于非安全属性但含有 ENC: 历史密文的字段自动解密还原
-func (p *resourceProtector) DecryptResource(ctx context.Context, modelUID string, data map[string]any) (map[string]any, error) {
-	if len(data) == 0 {
-		return data, nil
-	}
-
-	secureFields, err := p.getSecureFields(ctx, modelUID)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *resourceProtector) decryptData(data map[string]any, secureFields []string, modelUID string) map[string]any {
 	result := make(map[string]any, len(data))
 	for k, v := range data {
 		result[k] = v
 	}
 
-	// 1. 解密当前模型标记为 secure 的字段
+	// 1. 解密已配置为敏感的安全字段
 	for _, field := range secureFields {
 		val, exists := result[field]
 		if !exists || val == nil {
@@ -129,67 +242,33 @@ func (p *resourceProtector) DecryptResource(ctx context.Context, modelUID string
 			continue
 		}
 
-		decrypted, err := p.decryptFieldValue(strVal, modelUID, field)
+		decrypted, err := p.decryptString(strVal, modelUID, field)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		result[field] = decrypted
 	}
 
-	// 2. 兜底保护：如果某些字段当前虽然未标记为 secure（如刚被关闭安全属性或存量数据未洗），但其内容明显是 ENC: 密文，自动解密还原
+	// 2. 兜底解密：即使当前字段非安全属性，若内容为 ENC: 格式的历史密文，自动还原为明文展示
 	for field, val := range result {
 		if lo.Contains(secureFields, field) {
 			continue
 		}
 		strVal, ok := val.(string)
 		if ok && strings.HasPrefix(strVal, cryptox.EncryptedPrefix) {
-			decrypted, err := p.decryptFieldValue(strVal, modelUID, field)
+			decrypted, err := p.decryptString(strVal, modelUID, field)
 			if err == nil {
 				result[field] = decrypted
 			}
 		}
 	}
 
-	return result, nil
+	return result
 }
 
-// DecryptFields 针对明确指定的字段列表执行解密（用于安全属性关闭时的存量数据异步清洗与还原）
-func (p *resourceProtector) DecryptFields(ctx context.Context, data map[string]any, fields []string) (map[string]any, error) {
-	if len(data) == 0 || len(fields) == 0 {
-		return data, nil
-	}
-
-	result := make(map[string]any, len(data))
-	for k, v := range data {
-		result[k] = v
-	}
-
-	for _, field := range fields {
-		val, exists := result[field]
-		if !exists || val == nil {
-			continue
-		}
-
-		strVal, ok := val.(string)
-		if !ok || strVal == "" {
-			continue
-		}
-
-		decrypted, err := p.decryptFieldValue(strVal, "", field)
-		if err != nil {
-			p.logger.Warn("指定字段解密失败，保留原值", elog.String("field", field), elog.FieldErr(err))
-			continue
-		}
-		result[field] = decrypted
-	}
-
-	return result, nil
-}
-
-func (p *resourceProtector) decryptFieldValue(strVal string, modelUID, field string) (string, error) {
+func (p *resourceProtector) decryptString(strVal string, modelUID, field string) (string, error) {
 	decrypted, err := p.protector.DecryptCiphertext(strVal)
 	if err != nil {
-		// 若严格解密失败，尝试兼容解密（如普通明文则保留明文）
 		decrypted, err = p.protector.Decrypt(strVal)
 		if err != nil {
 			p.logger.Error("资产属性解密失败", elog.String("model_uid", modelUID), elog.String("field", field), elog.FieldErr(err))
@@ -199,36 +278,28 @@ func (p *resourceProtector) decryptFieldValue(strVal string, modelUID, field str
 	return decrypted, nil
 }
 
-// MaskResource 将所有敏感属性字段值遮蔽为统一掩码占位符
-func (p *resourceProtector) MaskResource(ctx context.Context, modelUID string, data map[string]any) (map[string]any, error) {
-	if len(data) == 0 {
-		return data, nil
+func (p *resourceProtector) getSecureFields(ctx context.Context, modelUID string) ([]string, error) {
+	if p.attrSvc == nil || modelUID == "" {
+		return nil, nil
 	}
-
-	secureFields, err := p.getSecureFields(ctx, modelUID)
+	secureFieldsMap, err := p.attrSvc.SearchAttributeFieldsBySecure(ctx, []string{modelUID})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("查询模型 %s 敏感属性失败: %w", modelUID, err)
 	}
-	if len(secureFields) == 0 {
-		return data, nil
-	}
+	return secureFieldsMap[modelUID], nil
+}
 
-	result := make(map[string]any, len(data))
-	for k, v := range data {
-		result[k] = v
-	}
-
-	for _, field := range secureFields {
-		val, exists := result[field]
-		if !exists || val == nil {
-			continue
-		}
-
-		strVal, ok := val.(string)
-		if ok && strVal != "" {
-			result[field] = cryptox.DefaultMask
-		}
+func (p *resourceProtector) getSecureFieldsMap(ctx context.Context, resources []domain.Resource) (map[string][]string, error) {
+	if p.attrSvc == nil {
+		return map[string][]string{}, nil
 	}
 
-	return result, nil
+	modelUIDs := lo.Uniq(lo.FilterMap(resources, func(r domain.Resource, _ int) (string, bool) {
+		return r.ModelUID, r.ModelUID != ""
+	}))
+	if len(modelUIDs) == 0 {
+		return map[string][]string{}, nil
+	}
+
+	return p.attrSvc.SearchAttributeFieldsBySecure(ctx, modelUIDs)
 }

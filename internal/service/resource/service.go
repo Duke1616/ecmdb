@@ -23,13 +23,13 @@ type Service interface {
 	// BatchCreateOrUpdate 批量创建或修改资产
 	BatchCreateOrUpdate(ctx context.Context, rs []domain.Resource) error
 
-	// FindResourceById 根据ID，获取资产信息
+	// FindResourceById 根据 ID 获取资产详情（自动解密敏感数据）
 	FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error)
 
-	// ListResource 获取资产数据
-	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource,
-		int64, error)
+	// ListResource 获取模型资产列表（自动解密）
+	ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, int64, error)
 
+	// CountByModelUid 统计模型下的资产数量
 	CountByModelUid(ctx context.Context, modelUid string) (int64, error)
 
 	// SetCustomField 变更指定字段的数据
@@ -38,67 +38,66 @@ type Service interface {
 	// UnsetCustomField 抹除指定模型下所有资产的自定义字段
 	UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error)
 
-	// ListResourceByIds 资源关联关系调用，查询关联数据
+	// ListResourceByIds 按 ID 列表批量查询关联资源（自动解密）
 	ListResourceByIds(ctx context.Context, fields []string, ids []int64) ([]domain.Resource, error)
 
-	// ListExcludeAndFilterResourceByIds 排序以及过滤
+	// ListExcludeAndFilterResourceByIds 排序以及复杂条件过滤
 	ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset, limit int64,
 		ids []int64, filter domain.Condition) ([]domain.Resource, int64, error)
 
 	// DeleteResource 删除资产数据
 	DeleteResource(ctx context.Context, id int64) (int64, error)
 
-	// CountByModelUids 聚合查看模型下的数量
+	// CountByModelUids 聚合查看各模型下的数量
 	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
 
 	// Search 全局搜索
 	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
 
-	// FindSecureData 查看指定资产加密字段数据
+	// FindSecureData 查看指定资产加密字段明文数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
 
-	// UpdateResource 修改资产数据
+	// UpdateResource 修改资产数据（支持脱敏占位符防覆盖与自动加密）
 	UpdateResource(ctx context.Context, resource domain.Resource) (int64, error)
 
-	// BatchUpdateResources 因为资产属性变更，处理改变
+	// BatchUpdateResources 批量更新资产（支持敏感属性变更重加密）
 	BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error)
 
 	// ListBeforeUtime 获取指定时间前的资产列表
-	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
-		offset, limit int64) ([]domain.Resource, error)
+	ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
 
-	// ListAndDecryptBeforeUtime 获取指定时间前的资产列表并解密
-	ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string,
-		offset, limit int64) ([]domain.Resource, error)
+	// ListAndDecryptBeforeUtime 获取指定时间前的资产列表并精准解密传入字段
+	ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error)
 
-	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表
+	// ListResourcesWithFilters 根据复杂筛选条件获取资产列表（自动解密）
 	ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
 		filterGroups []domain.FilterGroup) ([]domain.Resource, int64, error)
 
-	// CheckBeforeDelete 检查指定模型下是否还有资产实例
+	// CheckBeforeDelete 检查指定模型下是否还有资产实例，未清空时阻断删除
 	CheckBeforeDelete(ctx context.Context, modelUid string) error
 }
 
 type service struct {
 	repo      repository.ResourceRepository
-	attrSvc   attribute.Service
-	crypto    cryptox.Crypto
 	protector IResourceProtector
 	logger    *elog.Component
 }
 
+// NewService 创建资产领域服务实例
 func NewService(repo repository.ResourceRepository, attrSvc attribute.Service, crypto cryptox.Crypto) Service {
 	return &service{
 		repo:      repo,
-		attrSvc:   attrSvc,
-		crypto:    crypto,
 		protector: NewResourceProtector(attrSvc, crypto),
 		logger:    elog.DefaultLogger,
 	}
 }
 
+// ==========================================
+// 1. 资产写入与变更管理
+// ==========================================
+
 func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int64, error) {
-	encryptedReq, err := s.encryptResource(ctx, req)
+	encryptedReq, err := s.protector.Encrypt(ctx, req)
 	if err != nil {
 		return 0, err
 	}
@@ -109,7 +108,7 @@ func (s *service) UpdateResource(ctx context.Context, req domain.Resource) (int6
 	if err := s.handleMaskedFieldsOnUpdate(ctx, &req); err != nil {
 		return 0, err
 	}
-	encryptedReq, err := s.encryptResource(ctx, req)
+	encryptedReq, err := s.protector.Encrypt(ctx, req)
 	if err != nil {
 		return 0, err
 	}
@@ -117,7 +116,7 @@ func (s *service) UpdateResource(ctx context.Context, req domain.Resource) (int6
 }
 
 func (s *service) BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error {
-	encryptedRs, err := s.encryptResources(ctx, resources)
+	encryptedRs, err := s.protector.EncryptMany(ctx, resources)
 	if err != nil {
 		return err
 	}
@@ -125,26 +124,43 @@ func (s *service) BatchCreateOrUpdate(ctx context.Context, resources []domain.Re
 }
 
 func (s *service) BatchUpdateResources(ctx context.Context, resources []domain.Resource) (int64, error) {
-	encryptedRs, err := s.encryptResources(ctx, resources)
+	encryptedRs, err := s.protector.EncryptMany(ctx, resources)
 	if err != nil {
 		return 0, err
 	}
 	return s.repo.BatchUpdateResources(ctx, encryptedRs)
 }
 
+func (s *service) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
+	return s.repo.SetCustomField(ctx, id, field, data)
+}
+
+func (s *service) UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error) {
+	return s.repo.UnsetCustomField(ctx, modelUid, fieldUid)
+}
+
+func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {
+	return s.repo.DeleteResource(ctx, id)
+}
+
+// ==========================================
+// 2. 资产检索与读取管理
+// ==========================================
+
 func (s *service) FindResourceById(ctx context.Context, fields []string, id int64) (domain.Resource, error) {
 	resource, err := s.repo.FindResourceById(ctx, fields, id)
 	if err != nil {
 		return resource, err
 	}
+	return s.protector.Decrypt(ctx, resource)
+}
 
-	decryptedData, err := s.protector.DecryptResource(ctx, resource.ModelUID, resource.Data)
+func (s *service) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
+	encryptedData, err := s.repo.FindSecureData(ctx, id, fieldUid)
 	if err != nil {
-		return resource, fmt.Errorf("failed to decrypt resource %d: %w", resource.ID, err)
+		return "", fmt.Errorf("读取加密数据失败: %w", err)
 	}
-
-	resource.Data = decryptedData
-	return resource, nil
+	return s.protector.DecryptValue(encryptedData)
 }
 
 func (s *service) ListResource(ctx context.Context, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, int64, error) {
@@ -171,11 +187,7 @@ func (s *service) ListResource(ctx context.Context, fields []string, modelUid st
 		return resources, total, err
 	}
 
-	if len(resources) == 0 {
-		return resources, total, nil
-	}
-
-	decodedRs, err := s.decryptResources(ctx, resources)
+	decodedRs, err := s.protector.DecryptMany(ctx, resources)
 	return decodedRs, total, err
 }
 
@@ -184,16 +196,12 @@ func (s *service) ListResourceByIds(ctx context.Context, fields []string, ids []
 		return []domain.Resource{}, nil
 	}
 
-	rs, err := s.repo.ListResourcesByIds(ctx, fields, ids)
-	if err != nil {
-		return nil, err
+	resources, err := s.repo.ListResourcesByIds(ctx, fields, ids)
+	if err != nil || len(resources) == 0 {
+		return resources, err
 	}
 
-	if len(rs) == 0 {
-		return rs, nil
-	}
-
-	return s.decryptResources(ctx, rs)
+	return s.protector.DecryptMany(ctx, resources)
 }
 
 func (s *service) ListResourcesWithFilters(ctx context.Context, fields []string, modelUid string, ids []int64, offset, limit int64,
@@ -209,65 +217,29 @@ func (s *service) ListResourcesWithFilters(ctx context.Context, fields []string,
 		resources, err = s.repo.ListResourcesWithFilters(ctx, fields, modelUid, ids, offset, limit, filterGroups)
 		return err
 	})
-
 	eg.Go(func() error {
 		var err error
 		total, err = s.repo.TotalResourcesWithFilters(ctx, modelUid, ids, filterGroups)
 		return err
 	})
-
 	if err := eg.Wait(); err != nil {
 		return resources, total, err
 	}
 
-	if len(resources) == 0 {
-		return resources, total, nil
-	}
-
-	decodedRs, err := s.decryptResources(ctx, resources)
+	decodedRs, err := s.protector.DecryptMany(ctx, resources)
 	return decodedRs, total, err
-}
-
-func (s *service) ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
-	resources, err := s.repo.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range resources {
-		decryptedData, err := s.protector.DecryptFields(ctx, resources[i].Data, fields)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt resource %d: %w", resources[i].ID, err)
-		}
-		resources[i].Data = decryptedData
-	}
-
-	return resources, nil
-}
-
-func (s *service) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
-	encryptedData, err := s.repo.FindSecureData(ctx, id, fieldUid)
-	if err != nil {
-		return "", fmt.Errorf("failed to get secure data: %w", err)
-	}
-
-	if decryptor, ok := s.crypto.(cryptox.CiphertextDecryptor); ok {
-		decryptedData, err := decryptor.DecryptCiphertext(encryptedData)
-		if err == nil {
-			return decryptedData, nil
-		}
-	}
-
-	decryptedData, err := s.crypto.Decrypt(encryptedData)
-	if err != nil {
-		return "", fmt.Errorf("failed to decrypt secure data: %w", err)
-	}
-
-	return decryptedData, nil
 }
 
 func (s *service) ListBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
 	return s.repo.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
+}
+
+func (s *service) ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fields []string, modelUid string, offset, limit int64) ([]domain.Resource, error) {
+	resources, err := s.repo.ListBeforeUtime(ctx, utime, fields, modelUid, offset, limit)
+	if err != nil || len(resources) == 0 {
+		return resources, err
+	}
+	return s.protector.DecryptFields(ctx, resources, fields)
 }
 
 func (s *service) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string, offset,
@@ -290,31 +262,25 @@ func (s *service) ListExcludeAndFilterResourceByIds(ctx context.Context, fields 
 	if err := eg.Wait(); err != nil {
 		return resources, total, err
 	}
-	return resources, total, nil
+
+	decodedRs, err := s.protector.DecryptMany(ctx, resources)
+	return decodedRs, total, err
 }
 
-func (s *service) SetCustomField(ctx context.Context, id int64, field string, data interface{}) (int64, error) {
-	return s.repo.SetCustomField(ctx, id, field, data)
+func (s *service) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
+	return s.repo.Search(ctx, text)
 }
 
-func (s *service) UnsetCustomField(ctx context.Context, modelUid string, fieldUid string) (int64, error) {
-	return s.repo.UnsetCustomField(ctx, modelUid, fieldUid)
-}
+// ==========================================
+// 3. 模型统计与删除依赖阻断
+// ==========================================
 
 func (s *service) CountByModelUid(ctx context.Context, modelUid string) (int64, error) {
 	return s.repo.TotalByModelUid(ctx, modelUid)
 }
 
-func (s *service) DeleteResource(ctx context.Context, id int64) (int64, error) {
-	return s.repo.DeleteResource(ctx, id)
-}
-
 func (s *service) CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error) {
 	return s.repo.CountByModelUids(ctx, modelUids)
-}
-
-func (s *service) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
-	return s.repo.Search(ctx, text)
 }
 
 func (s *service) CheckBeforeDelete(ctx context.Context, modelUid string) error {
@@ -328,7 +294,9 @@ func (s *service) CheckBeforeDelete(ctx context.Context, modelUid string) error 
 	return nil
 }
 
-// 辅助加解密实现
+// ==========================================
+// 4. 内部安全与脱敏辅助方法
+// ==========================================
 
 func (s *service) handleMaskedFieldsOnUpdate(ctx context.Context, req *domain.Resource) error {
 	var maskedFields []string
@@ -341,7 +309,6 @@ func (s *service) handleMaskedFieldsOnUpdate(ctx context.Context, req *domain.Re
 		return nil
 	}
 
-	// 查出已有资产中敏感字段的原有密文，防止前端传入的脱敏占位符覆盖原密码
 	original, err := s.repo.FindResourceById(ctx, maskedFields, req.ID)
 	if err != nil {
 		return fmt.Errorf("读取原资产敏感字段失败: %w", err)
@@ -355,41 +322,4 @@ func (s *service) handleMaskedFieldsOnUpdate(ctx context.Context, req *domain.Re
 		}
 	}
 	return nil
-}
-
-func (s *service) encryptResource(ctx context.Context, req domain.Resource) (domain.Resource, error) {
-	encryptedData, err := s.protector.EncryptResource(ctx, req.ModelUID, req.Data)
-	if err != nil {
-		return req, err
-	}
-	req.Data = encryptedData
-	return req, nil
-}
-
-func (s *service) encryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
-	if len(resources) == 0 {
-		return resources, nil
-	}
-	for i := range resources {
-		encryptedData, err := s.protector.EncryptResource(ctx, resources[i].ModelUID, resources[i].Data)
-		if err != nil {
-			return nil, err
-		}
-		resources[i].Data = encryptedData
-	}
-	return resources, nil
-}
-
-func (s *service) decryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
-	if len(resources) == 0 {
-		return resources, nil
-	}
-	for i := range resources {
-		decryptedData, err := s.protector.DecryptResource(ctx, resources[i].ModelUID, resources[i].Data)
-		if err != nil {
-			return nil, err
-		}
-		resources[i].Data = decryptedData
-	}
-	return resources, nil
 }

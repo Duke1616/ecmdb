@@ -97,7 +97,7 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	fieldSecureAttrChangeConsumer, err := InitFieldSecureAttrChangeConsumer(mq, service7, crypto)
+	fieldSecureAttrChangeConsumer, err := InitFieldSecureAttrChangeConsumer(mq, service7)
 	if err != nil {
 		return nil, err
 	}

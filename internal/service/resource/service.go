@@ -9,7 +9,6 @@ import (
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -81,18 +80,20 @@ type Service interface {
 }
 
 type service struct {
-	repo    repository.ResourceRepository
-	attrSvc attribute.Service
-	crypto  cryptox.Crypto
-	logger  *elog.Component
+	repo      repository.ResourceRepository
+	attrSvc   attribute.Service
+	crypto    cryptox.Crypto
+	protector IResourceProtector
+	logger    *elog.Component
 }
 
 func NewService(repo repository.ResourceRepository, attrSvc attribute.Service, crypto cryptox.Crypto) Service {
 	return &service{
-		repo:    repo,
-		attrSvc: attrSvc,
-		crypto:  crypto,
-		logger:  elog.DefaultLogger,
+		repo:      repo,
+		attrSvc:   attrSvc,
+		crypto:    crypto,
+		protector: NewResourceProtector(attrSvc, crypto),
+		logger:    elog.DefaultLogger,
 	}
 }
 
@@ -105,6 +106,9 @@ func (s *service) CreateResource(ctx context.Context, req domain.Resource) (int6
 }
 
 func (s *service) UpdateResource(ctx context.Context, req domain.Resource) (int64, error) {
+	if err := s.handleMaskedFieldsOnUpdate(ctx, &req); err != nil {
+		return 0, err
+	}
 	encryptedReq, err := s.encryptResource(ctx, req)
 	if err != nil {
 		return 0, err
@@ -134,16 +138,7 @@ func (s *service) FindResourceById(ctx context.Context, fields []string, id int6
 		return resource, err
 	}
 
-	secureFields, err := s.getSecureFields(ctx, resource.ModelUID)
-	if err != nil {
-		return resource, fmt.Errorf("failed to get secure fields: %w", err)
-	}
-
-	if len(secureFields) == 0 {
-		return resource, nil
-	}
-
-	decryptedData, err := s.decryptSensitiveFields(resource.Data, secureFields)
+	decryptedData, err := s.protector.DecryptResource(ctx, resource.ModelUID, resource.Data)
 	if err != nil {
 		return resource, fmt.Errorf("failed to decrypt resource %d: %w", resource.ID, err)
 	}
@@ -239,21 +234,20 @@ func (s *service) ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fi
 		return nil, err
 	}
 
-	for i := range resources {
-		decryptedData, err1 := s.decryptSensitiveFields(resources[i].Data, fields)
-		if err1 != nil {
-			return nil, fmt.Errorf("failed to decrypt resource %d: %w", resources[i].ID, err1)
-		}
-		resources[i].Data = decryptedData
-	}
-
-	return resources, nil
+	return s.decryptResources(ctx, resources)
 }
 
 func (s *service) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {
 	encryptedData, err := s.repo.FindSecureData(ctx, id, fieldUid)
 	if err != nil {
 		return "", fmt.Errorf("failed to get secure data: %w", err)
+	}
+
+	if decryptor, ok := s.crypto.(cryptox.CiphertextDecryptor); ok {
+		decryptedData, err := decryptor.DecryptCiphertext(encryptedData)
+		if err == nil {
+			return decryptedData, nil
+		}
 	}
 
 	decryptedData, err := s.crypto.Decrypt(encryptedData)
@@ -328,137 +322,66 @@ func (s *service) CheckBeforeDelete(ctx context.Context, modelUid string) error 
 
 // 辅助加解密实现
 
-func (s *service) buildModelUIDs(resources []domain.Resource) []string {
-	return lo.Uniq(lo.Map(resources, func(src domain.Resource, _ int) string {
-		return src.ModelUID
-	}))
-}
-
-// transformSensitiveFields 统一处理敏感字段的值转换逻辑 (加密/解密)
-func (s *service) transformSensitiveFields(
-	data map[string]interface{},
-	secureFields []string,
-	transform func(interface{}) (interface{}, error),
-) (map[string]interface{}, error) {
-	if len(secureFields) == 0 || len(data) == 0 {
-		return data, nil
-	}
-
-	result := make(map[string]interface{}, len(data))
-	for key, value := range data {
-		if lo.Contains(secureFields, key) {
-			transformedValue, err := transform(value)
-			if err != nil {
-				return nil, fmt.Errorf("transform field %s failed: %w", key, err)
-			}
-			result[key] = transformedValue
-		} else {
-			result[key] = value
+func (s *service) handleMaskedFieldsOnUpdate(ctx context.Context, req *domain.Resource) error {
+	var maskedFields []string
+	for k, v := range req.Data {
+		if s.protector.IsMasked(v) {
+			maskedFields = append(maskedFields, k)
 		}
 	}
-
-	return result, nil
-}
-
-func (s *service) encryptSensitiveFields(data map[string]interface{}, secureFields []string) (map[string]interface{}, error) {
-	return s.transformSensitiveFields(data, secureFields, s.encryptValue)
-}
-
-func (s *service) decryptSensitiveFields(data map[string]interface{}, secureFields []string) (map[string]interface{}, error) {
-	return s.transformSensitiveFields(data, secureFields, s.decryptValue)
-}
-
-// transformResources 统一批量处理资源的加解密逻辑
-func (s *service) transformResources(
-	ctx context.Context,
-	resources []domain.Resource,
-	transform func(map[string]interface{}, []string) (map[string]interface{}, error),
-) ([]domain.Resource, error) {
-	if len(resources) == 0 {
-		return resources, nil
+	if len(maskedFields) == 0 {
+		return nil
 	}
 
-	modelUIDs := s.buildModelUIDs(resources)
-	secureFieldsMap, err := s.attrSvc.SearchAttributeFieldsBySecure(ctx, modelUIDs)
+	// 查出已有资产中敏感字段的原有密文，防止前端传入的脱敏占位符覆盖原密码
+	original, err := s.repo.FindResourceById(ctx, maskedFields, req.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch secure fields: %w", err)
+		return fmt.Errorf("读取原资产敏感字段失败: %w", err)
 	}
 
-	for i := range resources {
-		secureFields := secureFieldsMap[resources[i].ModelUID]
-		if len(secureFields) == 0 {
-			continue
+	for _, field := range maskedFields {
+		if oldVal, ok := original.Data[field]; ok {
+			req.Data[field] = oldVal
+		} else {
+			delete(req.Data, field)
 		}
-
-		transformedData, err1 := transform(resources[i].Data, secureFields)
-		if err1 != nil {
-			return nil, err1
-		}
-		resources[i].Data = transformedData
 	}
-
-	return resources, nil
-}
-
-func (s *service) encryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
-	return s.transformResources(ctx, resources, s.encryptSensitiveFields)
-}
-
-func (s *service) decryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
-	return s.transformResources(ctx, resources, s.decryptSensitiveFields)
+	return nil
 }
 
 func (s *service) encryptResource(ctx context.Context, req domain.Resource) (domain.Resource, error) {
-	secureFields, err := s.getSecureFields(ctx, req.ModelUID)
+	encryptedData, err := s.protector.EncryptResource(ctx, req.ModelUID, req.Data)
 	if err != nil {
-		return req, fmt.Errorf("failed to get secure fields: %w", err)
+		return req, err
 	}
-
-	if len(secureFields) == 0 {
-		return req, nil
-	}
-
-	encryptedData, err := s.encryptSensitiveFields(req.Data, secureFields)
-	if err != nil {
-		return req, fmt.Errorf("failed to encrypt sensitive fields: %w", err)
-	}
-
 	req.Data = encryptedData
 	return req, nil
 }
 
-func (s *service) getSecureFields(ctx context.Context, modelUID string) ([]string, error) {
-	secureFieldsMap, err := s.attrSvc.SearchAttributeFieldsBySecure(ctx, []string{modelUID})
-	if err != nil {
-		return nil, err
+func (s *service) encryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
+	if len(resources) == 0 {
+		return resources, nil
 	}
-	return secureFieldsMap[modelUID], nil
+	for i := range resources {
+		encryptedData, err := s.protector.EncryptResource(ctx, resources[i].ModelUID, resources[i].Data)
+		if err != nil {
+			return nil, err
+		}
+		resources[i].Data = encryptedData
+	}
+	return resources, nil
 }
 
-func (s *service) encryptValue(value interface{}) (interface{}, error) {
-	strVal, ok := value.(string)
-	if !ok {
-		return value, nil
+func (s *service) decryptResources(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
+	if len(resources) == 0 {
+		return resources, nil
 	}
-
-	val, err := s.crypto.Encrypt(strVal)
-	if err != nil {
-		s.logger.Error("encrypt failed", elog.FieldErr(err), elog.FieldValue(strVal))
-		return val, err
+	for i := range resources {
+		decryptedData, err := s.protector.DecryptResource(ctx, resources[i].ModelUID, resources[i].Data)
+		if err != nil {
+			return nil, err
+		}
+		resources[i].Data = decryptedData
 	}
-	return val, nil
-}
-
-func (s *service) decryptValue(value interface{}) (interface{}, error) {
-	strVal, ok := value.(string)
-	if !ok {
-		return value, nil
-	}
-
-	val, err := s.crypto.Decrypt(strVal)
-	if err != nil {
-		s.logger.Error("decrypt failed", elog.FieldErr(err), elog.FieldValue(strVal))
-		return val, err
-	}
-	return val, nil
+	return resources, nil
 }

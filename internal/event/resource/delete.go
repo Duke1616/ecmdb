@@ -28,17 +28,24 @@ func NewFieldDeleteConsumer(consumer mq.Consumer, svc resourceservice.Service) *
 	}
 }
 
-// Start 启动后台消费协程
+// Start 启动后台消费循环，支持响应上下文取消实现优雅退出
 func (c *FieldDeleteConsumer) Start(ctx context.Context) {
-	go func() {
-		for {
+	for {
+		select {
+		case <-ctx.Done():
+			c.logger.Info("字段删除级联清理消费者收到退出信号，停止消费")
+			return
+		default:
 			err := c.Consume(ctx)
 			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
 				c.logger.Error("字段删除级联清理，同步资产数据变更失败", elog.Any("错误信息", err))
 				time.Sleep(time.Second)
 			}
 		}
-	}()
+	}
 }
 
 // Consume 提取事件消息并反序列化

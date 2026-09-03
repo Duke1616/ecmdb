@@ -1,52 +1,51 @@
 package cryptox
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestDecryptAES(t *testing.T) {
-	key := "1234567890" // Key must be at least 1 byte, we use SHA256 internally now!
-	data := "my-secret-data"
+func TestAESCrypto_V1(t *testing.T) {
+	key := "my-secret-key-123"
+	data := "hello-cmdb-v1"
 
-	// Encrypt
-	encrypted, err := EncryptAES(key, data)
-	if err != nil {
-		fmt.Println("Encryption error:", err)
-		return
-	}
-	fmt.Println("Encrypted:", encrypted)
+	crypto := MustNewAESCrypto(key)
 
-	// Decrypt
-	decryptedData, err := DecryptAES(key, encrypted)
-	if err != nil {
-		fmt.Println("Decryption error:", err)
-		return
-	}
-	fmt.Println("Decrypted:", decryptedData)
+	encrypted, err := crypto.Encrypt(data)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, encrypted)
+
+	decrypted, err := crypto.Decrypt(encrypted)
+	assert.NoError(t, err)
+	assert.Equal(t, data, decrypted)
+
+	// 错误密文解密
+	_, err = crypto.Decrypt("invalid_hex")
+	assert.Error(t, err)
+
+	_, err = crypto.Decrypt("1234") // 过短密文
+	assert.Error(t, err)
 }
 
-func TestAESCryptoString(t *testing.T) {
-	key := "1234567890"
-	data := "hello world"
+func TestAESCrypto_V2(t *testing.T) {
+	key := "my-high-security-key-456"
+	data := "hello-cmdb-v2"
 
-	// 使用接口
-	crypto, err := NewAESCrypto(key)
-	if err != nil {
-		t.Fatalf("Init error: %v", err)
-	}
+	crypto := MustNewAESCryptoV2(key)
 
-	// Encrypt
 	encrypted, err := crypto.Encrypt(data)
-	if err != nil {
-		t.Fatalf("Encryption error: %v", err)
-	}
-	fmt.Println("String Encrypted:", encrypted)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, encrypted)
 
-	// Decrypt
-	decryptedData, err := crypto.Decrypt(encrypted)
-	if err != nil {
-		t.Fatalf("Decryption error: %v", err)
-	}
-	fmt.Println("String Decrypted:", decryptedData)
+	decrypted, err := crypto.Decrypt(encrypted)
+	assert.NoError(t, err)
+	assert.Equal(t, data, decrypted)
+
+	// 错误密文解密
+	_, err = crypto.Decrypt("invalid_hex")
+	assert.Error(t, err)
+
+	_, err = crypto.Decrypt("1234") // 过短密文
+	assert.Error(t, err)
 }

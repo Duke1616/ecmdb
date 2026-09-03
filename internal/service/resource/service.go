@@ -234,7 +234,15 @@ func (s *service) ListAndDecryptBeforeUtime(ctx context.Context, utime int64, fi
 		return nil, err
 	}
 
-	return s.decryptResources(ctx, resources)
+	for i := range resources {
+		decryptedData, err := s.protector.DecryptFields(ctx, resources[i].Data, fields)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt resource %d: %w", resources[i].ID, err)
+		}
+		resources[i].Data = decryptedData
+	}
+
+	return resources, nil
 }
 
 func (s *service) FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error) {

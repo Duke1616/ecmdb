@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
@@ -98,8 +97,6 @@ type service struct {
 	producer       FieldSecureAttrChangeEventProducer
 	deleteProducer IFieldDeleteEventProducer
 	groupRepo      repository.AttributeGroupRepository
-	attrSorter     *sorter.Sorter[domain.Attribute, domain.AttributeSortItem]
-	groupSorter    *sorter.Sorter[domain.AttributeGroup, domain.AttributeGroupSortItem]
 }
 
 func (s *service) BatchCreateAttributeGroup(ctx context.Context, ags []domain.AttributeGroup) ([]domain.AttributeGroup, error) {
@@ -148,25 +145,6 @@ func NewService(repo repository.AttributeRepository, groupRepo repository.Attrib
 		groupRepo:      groupRepo,
 		producer:       producer,
 		deleteProducer: deleteProducer,
-		// NOTE: 初始化属性排序器,传入转换函数
-		attrSorter: sorter.NewSorter[domain.Attribute, domain.AttributeSortItem](
-			func(elem domain.Attribute, idx int) domain.AttributeSortItem {
-				return domain.AttributeSortItem{
-					ID:      elem.ID,
-					GroupId: elem.GroupId,
-					SortKey: int64(idx+1) * IndexGap,
-				}
-			},
-		),
-		// NOTE: 初始化属性组排序器
-		groupSorter: sorter.NewSorter[domain.AttributeGroup, domain.AttributeGroupSortItem](
-			func(elem domain.AttributeGroup, idx int) domain.AttributeGroupSortItem {
-				return domain.AttributeGroupSortItem{
-					ID:      elem.ID,
-					SortKey: int64(idx+1) * IndexGap,
-				}
-			},
-		),
 	}
 }
 
@@ -186,7 +164,7 @@ func (s *service) CreateAttribute(ctx context.Context, req domain.Attribute) (in
 		return 0, err
 	}
 
-	// NOTE: 分配稀疏索引，防止频繁更新
+	// 分配稀疏索引，防止频繁更新
 	if req.SortKey == 0 {
 		maxSortKey, err := s.repo.GetMaxSortKeyByGroupID(ctx, req.GroupId)
 		if err != nil {
@@ -318,7 +296,7 @@ func (s *service) DeleteAttribute(ctx context.Context, id int64) (int64, error) 
 	}
 
 	// 异步发布删除事件以清理资源中的垃圾平铺字段
-	// NOTE: 仅在删除成功时发布事件，触发 Cascade Cleaner
+	// 仅在删除成功时发布事件，触发 Cascade Cleaner
 	go func() {
 		// 使用 Background 避免 ctx 被请求生命周期取消
 		evtCtx := context.Background()
@@ -415,7 +393,7 @@ func (s *service) RenameAttributeGroup(ctx context.Context, id int64, name strin
 	return s.groupRepo.RenameAttributeGroup(ctx, id, name)
 }
 
-// Sort 属性拖拽排序（使用泛型排序器）
+// Sort 属性拖拽排序
 func (s *service) Sort(ctx context.Context, id, targetGroupId, targetPosition int64) error {
 	// 1. 获取目标分组的所有属性
 	targetAttrs, err := s.repo.ListByGroupID(ctx, targetGroupId)
@@ -423,30 +401,28 @@ func (s *service) Sort(ctx context.Context, id, targetGroupId, targetPosition in
 		return err
 	}
 
-	// 2. 获取被拖拽的属性详情
-	draggedAttr, err := s.repo.DetailAttribute(ctx, id)
-	if err != nil {
-		return err
+	// 2. 计算重排方案
+	plan := sorter.Reorder(targetAttrs, id, targetPosition)
+	if plan.Unchanged {
+		return nil
 	}
-	draggedAttr.GroupId = targetGroupId
 
-	// 3. 使用泛型排序器计算重排方案
-	plan := s.attrSorter.PlanReorder(targetAttrs, draggedAttr, targetPosition)
-
-	// 4. 执行计划
+	// 3. 执行重排更新
 	if plan.NeedRebalance {
-		// 修正批量更新项的 GroupId，防止历史脏数据（GroupId=0）被写入
-		for i := range plan.Items {
-			plan.Items[i].GroupId = targetGroupId
-		}
-		return s.repo.BatchUpdateSortKey(ctx, plan.Items)
+		items := lo.Map(plan.Items, func(item sorter.Item, _ int) domain.AttributeSortItem {
+			return domain.AttributeSortItem{
+				ID:      item.ID,
+				GroupId: targetGroupId,
+				SortKey: item.SortKey,
+			}
+		})
+		return s.repo.BatchUpdateSortKey(ctx, items)
 	}
 
-	// 快速路径:单条更新
 	return s.repo.UpdateSort(ctx, id, targetGroupId, plan.NewSortKey)
 }
 
-// SortAttributeGroup 属性组拖拽排序（使用泛型排序器）
+// SortAttributeGroup 属性组拖拽排序
 func (s *service) SortAttributeGroup(ctx context.Context, id, targetPosition int64) error {
 	// 0. 获取当前组信息，拿到 ModelUid
 	groups, err := s.groupRepo.ListAttributeGroupByIds(ctx, []int64{id})
@@ -454,7 +430,7 @@ func (s *service) SortAttributeGroup(ctx context.Context, id, targetPosition int
 		return err
 	}
 	if len(groups) == 0 {
-		return fmt.Errorf("属性组不存在")
+		return fmt.Errorf("属性组不存在: %d", id)
 	}
 	modelUid := groups[0].ModelUid
 
@@ -464,24 +440,22 @@ func (s *service) SortAttributeGroup(ctx context.Context, id, targetPosition int
 		return err
 	}
 
-	// 2. 获取被拖拽的分组
-	draggedIdx := slices.IndexFunc(allGroups, func(g domain.AttributeGroup) bool {
-		return g.ID == id
-	})
-	if draggedIdx == -1 {
-		return fmt.Errorf("被拖拽的分组未在列表中找到")
+	// 2. 计算重排方案
+	plan := sorter.Reorder(allGroups, id, targetPosition)
+	if plan.Unchanged {
+		return nil
 	}
-	draggedGroup := allGroups[draggedIdx]
 
-	// 3. 使用泛型排序器计算重排方案
-	plan := s.groupSorter.PlanReorder(allGroups, draggedGroup, targetPosition)
-
-	// 4. 执行计划
+	// 3. 执行重排更新
 	if plan.NeedRebalance {
-		// 慢路径：批量更新整个模型下的分组
-		return s.groupRepo.BatchUpdateSort(ctx, plan.Items)
+		items := lo.Map(plan.Items, func(item sorter.Item, _ int) domain.AttributeGroupSortItem {
+			return domain.AttributeGroupSortItem{
+				ID:      item.ID,
+				SortKey: item.SortKey,
+			}
+		})
+		return s.groupRepo.BatchUpdateSort(ctx, items)
 	}
 
-	// 快速路径：单条更新
 	return s.groupRepo.UpdateSort(ctx, id, plan.NewSortKey)
 }

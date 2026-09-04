@@ -3,7 +3,7 @@ package sorter
 import (
 	"slices"
 
-	"github.com/ecodeclub/ekit/slice"
+	"github.com/samber/lo"
 )
 
 const (
@@ -12,143 +12,145 @@ const (
 )
 
 // Sortable 可排序元素接口
-// NOTE: 所有需要使用拖拽排序功能的实体都应实现此接口
 type Sortable interface {
 	GetID() int64
 	GetSortKey() int64
 }
 
-// SortItem 排序更新项接口
-// NOTE: 用于批量更新时的数据传输
-type SortItem interface {
-	any
+// Item 排序更新项
+type Item struct {
+	ID      int64
+	SortKey int64
 }
 
-// ReorderPlan 重排执行计划
-// NOTE: T 为排序项类型,必须满足 SortItem 约束
-type ReorderPlan[T SortItem] struct {
-	// NeedRebalance 是否需要重平衡
+// ReorderPlan 重排计算方案
+type ReorderPlan struct {
+	// Unchanged 是否未发生位置变化（原地拖拽，无需写库）
+	Unchanged bool
+	// NeedRebalance 是否需要全局重平衡
 	NeedRebalance bool
-	// NewSortKey 单个元素的新 SortKey（快速路径）
+	// NewSortKey 单条更新时的目标 SortKey（快速路径）
 	NewSortKey int64
-	// Items 批量更新的元素列表（慢路径）
-	Items []T
+	// Items 批量重平衡更新项列表（慢路径）
+	Items []Item
 }
 
-// Sorter 通用排序器
-// NOTE: E 为元素类型(实现 Sortable), T 为排序项类型(实现 SortItem)
-type Sorter[E Sortable, T SortItem] struct {
-	indexGap int64
-	// convertFunc 将元素转换为排序项的函数
-	convertFunc func(elem E, idx int) T
+// Reorder 使用默认步长计算重排方案
+func Reorder[E Sortable](elements []E, draggedID, targetPosition int64) ReorderPlan {
+	return ReorderWithGap(elements, draggedID, targetPosition, DefaultIndexGap)
 }
 
-// NewSorter 创建排序器
-// convertFunc: 将元素转换为排序项,用于重平衡场景
-// 例如: func(attr Attribute, idx int) AttributeSortItem { ... }
-func NewSorter[E Sortable, T SortItem](convertFunc func(elem E, idx int) T) *Sorter[E, T] {
-	return &Sorter[E, T]{
-		indexGap:    DefaultIndexGap,
-		convertFunc: convertFunc,
+// ReorderWithGap 自定义稀疏步长计算重排方案
+func ReorderWithGap[E Sortable](elements []E, draggedID, targetPosition, gap int64) ReorderPlan {
+	if gap <= 0 {
+		gap = DefaultIndexGap
 	}
-}
 
-// WithIndexGap 设置索引间隔
-func (s *Sorter[E, T]) WithIndexGap(gap int64) *Sorter[E, T] {
-	s.indexGap = gap
-	return s
-}
+	// 1. 查找被拖拽元素在当前列表中的位置
+	oldIdx := slices.IndexFunc(elements, func(e E) bool {
+		return e.GetID() == draggedID
+	})
 
-// PlanReorder 计算重排方案（核心算法，纯函数）
-// elements: 目标分组/列表中的所有元素
-// draggedElem: 被拖拽的元素
-// targetPosition: 目标位置 (0-based)
-func (s *Sorter[E, T]) PlanReorder(elements []E, draggedElem E, targetPosition int64) ReorderPlan[T] {
-	// 1. 移除被拖拽元素（如果是组内拖拽），得到剩余列表
-	remainingElems := s.removeDragged(elements, draggedElem.GetID())
-
-	// 2. 基于剩余列表和目标位置，计算新的 SortKey
-	newSortKey := s.calculateSortKey(remainingElems, targetPosition)
-
-	// 3. 检测是否需要重平衡
-	if s.needsRebalance(remainingElems, targetPosition, newSortKey) {
-		// 4. 构建包含被拖拽元素的完整最终列表
-		finalList := s.insertElem(remainingElems, draggedElem, targetPosition)
-
-		// 触发重平衡：生成批量更新方案
-		return ReorderPlan[T]{
-			NeedRebalance: true,
-			Items:         s.generateRebalanceItems(finalList),
+	// 2. 原地拖拽识别：同列表且位置未变，直接短路
+	if oldIdx != -1 && int64(oldIdx) == targetPosition {
+		return ReorderPlan{
+			Unchanged:     true,
+			NeedRebalance: false,
+			NewSortKey:    elements[oldIdx].GetSortKey(),
 		}
 	}
 
-	// 快速路径：返回单条更新方案
-	return ReorderPlan[T]{
+	// 3. 构建移除被拖拽元素后的剩余列表
+	remaining := removeByID(elements, draggedID)
+
+	// 4. 规范化 targetPosition 边界 [0, len(remaining)]
+	n := int64(len(remaining))
+	if targetPosition < 0 {
+		targetPosition = 0
+	}
+	if targetPosition > n {
+		targetPosition = n
+	}
+
+	// 5. 计算目标位置的新 SortKey
+	newSortKey := calculateSortKey(remaining, targetPosition, gap)
+
+	// 6. 检测是否需要重平衡（空间耗尽、衰减至0或逆序冲突）
+	if needsRebalance(remaining, targetPosition, newSortKey) {
+		// 生成完整的 ID 列表
+		finalIDs := lo.Map(remaining, func(e E, _ int) int64 {
+			return e.GetID()
+		})
+		finalIDs = slices.Insert(finalIDs, int(targetPosition), draggedID)
+
+		// 批量按均匀步长分配新的 SortKey
+		items := lo.Map(finalIDs, func(id int64, idx int) Item {
+			return Item{
+				ID:      id,
+				SortKey: int64(idx+1) * gap,
+			}
+		})
+
+		return ReorderPlan{
+			Unchanged:     false,
+			NeedRebalance: true,
+			Items:         items,
+		}
+	}
+
+	// 快速路径：仅需单条更新
+	return ReorderPlan{
+		Unchanged:     false,
 		NeedRebalance: false,
 		NewSortKey:    newSortKey,
 	}
 }
 
-// removeDragged 移除被拖拽元素
-func (s *Sorter[E, T]) removeDragged(elems []E, draggedId int64) []E {
-	idx := slices.IndexFunc(elems, func(e E) bool {
-		return e.GetID() == draggedId
+// removeByID 过滤掉指定 ID 的元素
+func removeByID[E Sortable](elems []E, id int64) []E {
+	return lo.Filter(elems, func(e E, _ int) bool {
+		return e.GetID() != id
 	})
-	if idx == -1 {
-		return elems
-	}
-	return slices.Delete(slices.Clone(elems), idx, idx+1)
 }
 
-// insertElem 将元素插入到指定位置
-func (s *Sorter[E, T]) insertElem(elems []E, elem E, position int64) []E {
-	// 修正 position 范围
-	if position < 0 {
-		position = 0
-	}
-	if position > int64(len(elems)) {
-		position = int64(len(elems))
-	}
-
-	// 插入
-	result := slices.Insert(slices.Clone(elems), int(position), elem)
-	return result
-}
-
-// calculateSortKey 计算新的 SortKey（统一算法）
-func (s *Sorter[E, T]) calculateSortKey(elems []E, position int64) int64 {
+// calculateSortKey 计算插入点的新 SortKey
+func calculateSortKey[E Sortable](elems []E, position, gap int64) int64 {
 	n := int64(len(elems))
 
-	// 边界：空列表或末尾插入
+	// 列表为空或追加至末尾
 	if n == 0 || position >= n {
 		if n == 0 {
-			return s.indexGap
+			return gap
 		}
-		return elems[n-1].GetSortKey() + s.indexGap
+		return elems[n-1].GetSortKey() + gap
 	}
 
-	// 开头插入
+	// 插入至首位
 	if position == 0 {
 		return elems[0].GetSortKey() / 2
 	}
 
-	// 中间插入：取前后中点
+	// 插入至中间
 	return (elems[position-1].GetSortKey() + elems[position].GetSortKey()) / 2
 }
 
-// needsRebalance 检测是否需要重平衡
-func (s *Sorter[E, T]) needsRebalance(elems []E, position, newSortKey int64) bool {
-	// 只有中间插入才可能冲突
-	if position <= 0 || position >= int64(len(elems)) {
+// needsRebalance 检查是否空间不足触发重平衡
+func needsRebalance[E Sortable](elems []E, position, newSortKey int64) bool {
+	n := int64(len(elems))
+	if n == 0 {
 		return false
 	}
-	// SortKey 冲突（间隙 < 1）
-	return newSortKey <= elems[position-1].GetSortKey()
-}
 
-// generateRebalanceItems 生成重平衡的批量更新方案
-func (s *Sorter[E, T]) generateRebalanceItems(elems []E) []T {
-	return slice.Map(elems, func(idx int, src E) T {
-		return s.convertFunc(src, idx)
-	})
+	// 头部插入：key 衰减至 <= 0 或未能严格小于后继元素
+	if position == 0 {
+		return newSortKey <= 0 || newSortKey >= elems[0].GetSortKey()
+	}
+
+	// 中间插入：key 未能严格落入 (prev, next) 严格递增区间
+	if position < n {
+		return newSortKey <= elems[position-1].GetSortKey() || newSortKey >= elems[position].GetSortKey()
+	}
+
+	// 尾部插入：防溢出或历史脏数据逆序冲突
+	return newSortKey <= elems[n-1].GetSortKey()
 }

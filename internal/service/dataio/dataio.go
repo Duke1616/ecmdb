@@ -1,9 +1,10 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
@@ -81,10 +82,14 @@ func (s *dataIOService) Export(ctx context.Context, req ExportParams) ([]byte, e
 		return nil, err
 	}
 
-	// 2. 字段过滤：若用户指定了目标字段集，则只导出对应字段
+	// 2. 字段过滤：若用户指定了目标字段集，则只导出对应字段（O(1) 哈希判定）
 	if len(req.Fields) > 0 {
+		fieldSet := lo.SliceToMap(req.Fields, func(f string) (string, struct{}) {
+			return f, struct{}{}
+		})
 		attrs = lo.Filter(attrs, func(src domain.Attribute, _ int) bool {
-			return lo.Contains(req.Fields, src.FieldUid)
+			_, exists := fieldSet[src.FieldUid]
+			return exists
 		})
 	}
 
@@ -96,30 +101,39 @@ func (s *dataIOService) Export(ctx context.Context, req ExportParams) ([]byte, e
 		return attr.FieldUid
 	})
 
-	// 5. 分页循环检索符合条件的全量资产
-	var allResources []domain.Resource
-	offset := int64(0)
-	limit := int64(100)
+	// 5. 分页循环检索符合条件的全量资产（批次由 100 增至 500，预分配切片容量并直接收集 Data 消除双倍内存）
+	const exportBatchSize = 500
+	var (
+		records []map[string]interface{}
+		offset  = int64(0)
+	)
 
 	for {
-		resources, _, err1 := s.resSvc.ListResourcesWithFilters(ctx, dstFields, req.ModelUID, req.ResourceIDs, offset, limit, req.FilterGroups)
-		if err1 != nil {
-			return nil, fmt.Errorf("获取资源列表失败: %w", err1)
+		resources, total, err := s.resSvc.ListResourcesWithFilters(
+			ctx, dstFields, req.ModelUID, req.ResourceIDs, offset, exportBatchSize, req.FilterGroups,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("获取资源列表失败: %w", err)
 		}
-		allResources = append(allResources, resources...)
 
-		if len(resources) < int(limit) {
+		// 首次获取 total 后预分配容量，彻底消除切片反复扩容与重分配
+		if records == nil {
+			records = make([]map[string]interface{}, 0, total)
+		}
+
+		for _, r := range resources {
+			records = append(records, r.Data)
+		}
+
+		// 已提取全量资产或本次返回不足一页时提前退出，消除无意义的空查询
+		if int64(len(records)) >= total || len(resources) < exportBatchSize {
 			break
 		}
-		offset += limit
+		offset += exportBatchSize
 	}
 
 	// 6. 构造 Excel Schema 与数据记录，由 excelx 引擎统一输出
 	columns := toExcelColumns(sortedAttrs)
-	records := lo.Map(allResources, func(r domain.Resource, _ int) map[string]interface{} {
-		return r.Data
-	})
-
 	return excelx.NewWriter(mdl.SheetName(), columns).WriteData(records)
 }
 
@@ -157,23 +171,22 @@ func toExcelColumns(attrs []domain.Attribute) []excelx.Column {
 
 // sortAttributesByPriority 按模型元数据自然排序字段
 func sortAttributesByPriority(attrs []domain.Attribute) []domain.Attribute {
-	sorted := make([]domain.Attribute, len(attrs))
-	copy(sorted, attrs)
+	sorted := slices.Clone(attrs)
 
-	sort.SliceStable(sorted, func(i, j int) bool {
+	slices.SortStableFunc(sorted, func(a, b domain.Attribute) int {
 		// name 资产名称优先排在首列
-		if sorted[i].FieldUid == "name" {
-			return true
+		if a.FieldUid == "name" && b.FieldUid != "name" {
+			return -1
 		}
-		if sorted[j].FieldUid == "name" {
-			return false
+		if b.FieldUid == "name" && a.FieldUid != "name" {
+			return 1
 		}
-		// 依 SortKey 排序
-		if sorted[i].SortKey != sorted[j].SortKey {
-			return sorted[i].SortKey < sorted[j].SortKey
+		// 依 SortKey 升序
+		if diff := cmp.Compare(a.SortKey, b.SortKey); diff != 0 {
+			return diff
 		}
-		// 依 Index 排序
-		return sorted[i].Index < sorted[j].Index
+		// 依 Index 升序
+		return cmp.Compare(a.Index, b.Index)
 	})
 
 	return sorted
@@ -183,13 +196,14 @@ func (s *dataIOService) fetchModelAndAttributes(ctx context.Context, modelUID st
 	var (
 		mdl   domain.Model
 		attrs []domain.Attribute
-		eg    errgroup.Group
 	)
+
+	eg, gctx := errgroup.WithContext(ctx)
 
 	// 并行获取 Model 信息和 Attribute 定义
 	eg.Go(func() error {
 		var err error
-		mdl, err = s.modelSvc.GetByUid(ctx, modelUID)
+		mdl, err = s.modelSvc.GetByUid(gctx, modelUID)
 		if err != nil {
 			return fmt.Errorf("获取模型信息失败: %w", err)
 		}
@@ -197,9 +211,11 @@ func (s *dataIOService) fetchModelAndAttributes(ctx context.Context, modelUID st
 	})
 
 	eg.Go(func() error {
-		var err error
-		var total int64
-		attrs, total, err = s.attrSvc.ListAttributes(ctx, modelUID)
+		var (
+			err   error
+			total int64
+		)
+		attrs, total, err = s.attrSvc.ListAttributes(gctx, modelUID)
 		if err != nil {
 			return fmt.Errorf("获取模型字段定义失败: %w", err)
 		}

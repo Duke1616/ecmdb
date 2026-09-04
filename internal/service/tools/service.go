@@ -14,11 +14,11 @@ type Service interface {
 }
 
 type service struct {
-	storage *storage.S3Storage
+	storage storage.IStorage
 	expires time.Duration
 }
 
-func NewService(storage *storage.S3Storage) Service {
+func NewService(storage storage.IStorage) Service {
 	return &service{
 		storage: storage,
 		expires: time.Minute * 2,

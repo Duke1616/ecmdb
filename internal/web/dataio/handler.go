@@ -14,11 +14,11 @@ var _ ginx.Handler = &Handler{}
 
 type Handler struct {
 	svc     service.IDataIOService
-	storage *storage.S3Storage
+	storage storage.IStorage
 	capability.IRegistry
 }
 
-func NewHandler(svc service.IDataIOService, storage *storage.S3Storage) *Handler {
+func NewHandler(svc service.IDataIOService, storage storage.IStorage) *Handler {
 	return &Handler{
 		svc:       svc,
 		storage:   storage,
@@ -120,12 +120,11 @@ func (h *Handler) ExportTemplate(ctx *ginx.Context) (ginx.Result, error) {
 	// 直接写入 Excel 数据
 	ctx.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelData)
 
-	// NOTE: 返回空 Result,因为已经通过 ctx.Data 直接发送了响应
+	// 直接通过 ctx.Data 发送二进制响应
 	return ginx.Result{}, nil
 }
 
 // Import 导入数据
-// NOTE: 前端先通过 GenerateUploadURL 上传文件到 S3,然后调用此接口传入 file_key 进行导入
 func (h *Handler) Import(ctx *ginx.Context, req ImportReq) (ginx.Result, error) {
 	// 1. 从 S3 下载文件
 	fileData, err := h.storage.GetFile(ctx.Context, "ecmdb", req.FileKey)

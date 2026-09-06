@@ -47,6 +47,27 @@ casbin:
     password: "1234567890"
     db: 2
 
+# 统一身份提供商 (IdP / OIDC Server)
+idp:
+  # OIDC 签发者地址，须与客户端配置的 issuer 保持一致 (对外访问地址)
+  issuer_url: "http://localhost:8888"
+  # 未登录重定向地址
+  login_url: "/login"
+  # JWT 签名密钥标识
+  key_id: "eiam-default-key"
+
+# 操作与安全审计
+audit:
+  # 是否开启操作审计
+  enabled: true
+  # 审计拦截的 HTTP 方法 (记录增删改等写操作，GET 查看类可按需解开)
+  methods:
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "PATCH"
+    # - "GET"
+
 migration:
   source:
     mongo:

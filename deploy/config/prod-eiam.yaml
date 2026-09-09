@@ -41,6 +41,11 @@ etcd:
 identity:
   encryption_key: 1234567890
 
+discovery:
+  # 微服务 API 资产自发现注册端点认证
+  # 密钥通过 `eiam token gen --service <name>` 命令生成
+  auth_enabled: false
+
 casbin:
   redis:
     addr: "redis:6379"
@@ -58,16 +63,37 @@ audit:
     - "PATCH"
     # - "GET"
 
-# 统一身份提供商 (IdP / OIDC Server)
+# 统一身份提供商 (IdP)
 idp:
-  # OIDC 签发者地址，须与客户端配置的 issuer 保持一致 (对外访问地址)
-  issuer_url: "http://localhost:8888"
-  # 未登录重定向地址
+  # 统一公共配置 (所有身份协议共享)
   login_url: "/login"
-  # JWT 签名密钥标识
-  key_id: "eiam-default-key"
-  # 是否启用 OIDC 单点注销端点广播 (SLO）
-  enable_slo: false
+
+  # OIDC 协议专有配置
+  oidc:
+    # 签发者地址，须与客户端配置保持一致 (对外访问地址)
+    issuer_url: "http://localhost:8888"
+    # JWT 签名密钥标识
+    key_id: "eiam-default-key"
+    # RSA 私钥 (支持 PEM 内容或私钥文件路径，为空则自动集群生成)
+    private_key: ""
+    # 授权确认页地址 (为空则使用默认内置页)
+    consent_url: ""
+    # 是否启用 OIDC 单点注销端点广播 (SLO)
+    enable_slo: false
+
+  # SAML 2.0 协议专有配置
+  saml:
+    # 外部 X.509 证书 (支持 PEM 文本或 .crt 文件路径，为空则自动集群自签)
+    certificate: ""
+    # 外部 RSA 私钥 (支持 PEM 文本或 .key 文件路径，为空则默认复用 OIDC 私钥或集群生成)
+    private_key: ""
+    # 自签名证书有效天数
+    validity_days: 1095
+
+  # CAS 协议专有配置
+  cas:
+    # 票据有效时长 (分钟)
+    ticket_ttl_minutes: 5
 
 migration:
   source:

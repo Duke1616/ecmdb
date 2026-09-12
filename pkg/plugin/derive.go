@@ -9,15 +9,26 @@ import (
 
 type derivedSchemaItem[T any] struct {
 	modelUID string
+	opts     []codec.DeriveOption
 }
 
 func (d *derivedSchemaItem[T]) ApplyToSchema(schema *types.Schema) {
-	derived, err := codec.DeriveSchema[T](d.modelUID)
+	derived, err := codec.DeriveSchema[T](d.modelUID, d.opts...)
 	if err != nil {
 		panic(err)
 	}
 
-	// 1. 合并模型列表（已有同 UID 模型不覆盖）
+	// 1. 合并模型分组（已有同名分组不重复添加）
+	existingGroups := lo.SliceToMap(schema.ModelGroups, func(g types.ModelGroupSpec) (string, struct{}) {
+		return g.Name, struct{}{}
+	})
+	for _, group := range derived.ModelGroups {
+		if _, exists := existingGroups[group.Name]; !exists {
+			schema.ModelGroups = append(schema.ModelGroups, group)
+		}
+	}
+
+	// 2. 合并模型列表（已有同 UID 模型不覆盖）
 	existingModelUIDs := lo.SliceToMap(schema.Models, func(m types.ModelSpec) (string, struct{}) {
 		return m.UID, struct{}{}
 	})
@@ -27,7 +38,7 @@ func (d *derivedSchemaItem[T]) ApplyToSchema(schema *types.Schema) {
 		}
 	}
 
-	// 2. 合并关联类型定义
+	// 3. 合并关联类型定义
 	existingRelationUIDs := lo.SliceToMap(schema.RelationTypes, func(r types.RelationType) (string, struct{}) {
 		return r.UID, struct{}{}
 	})
@@ -37,7 +48,7 @@ func (d *derivedSchemaItem[T]) ApplyToSchema(schema *types.Schema) {
 		}
 	}
 
-	// 3. 合并模型间关联关系
+	// 4. 合并模型间关联关系
 	for _, rel := range derived.ModelRelations {
 		exists := lo.SomeBy(schema.ModelRelations, func(existing types.ModelRelation) bool {
 			return existing.SourceModelUID == rel.SourceModelUID &&
@@ -50,8 +61,8 @@ func (d *derivedSchemaItem[T]) ApplyToSchema(schema *types.Schema) {
 	}
 }
 
-// Derive 基于目标结构体 T 及其根模型 UID，自动反射推导并注入所需的 CMDB 模型、属性和关联关系
-// 一行代码直接替代繁冗的 Setup(...) 手写 Schema 定义，实现零重复的约定优于配置
-func Derive[T any](modelUID string) dsl.SetupItem {
-	return &derivedSchemaItem[T]{modelUID: modelUID}
+// Derive 基于目标结构体 T 及其根模型 UID，自动反射推导并注入所需的 CMDB 模型、属性和关联关系。
+// 可通过 opts 传入 codec.WithModelName、codec.WithModelGroup 等选项补充中文名称与分组。
+func Derive[T any](modelUID string, opts ...codec.DeriveOption) dsl.SetupItem {
+	return &derivedSchemaItem[T]{modelUID: modelUID, opts: opts}
 }

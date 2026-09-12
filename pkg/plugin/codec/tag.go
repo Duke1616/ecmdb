@@ -9,6 +9,7 @@ import (
 
 type pluginTag struct {
 	name         string
+	label        string // 中文展示名，优先作为 Attribute.Name（不影响 UID 映射）
 	model        string
 	relationType string
 	direction    string
@@ -17,6 +18,14 @@ type pluginTag struct {
 	field        string
 	defaultValue string
 	skip         bool
+}
+
+// displayName 返回最终展示用的名称：label 优先，其次 name
+func (t pluginTag) displayName() string {
+	if t.label != "" {
+		return t.label
+	}
+	return t.name
 }
 
 func parsePluginTag(field reflect.StructField) pluginTag {
@@ -44,6 +53,9 @@ func parsePluginTag(field reflect.StructField) pluginTag {
 			switch k {
 			case "name":
 				tag.name = v
+			case "label", "title":
+				// label/title 均作为中文展示名
+				tag.label = v
 			case "model":
 				tag.model = v
 			case "type", "relation_type":

@@ -9,9 +9,38 @@ import (
 	"github.com/samber/lo"
 )
 
+// DeriveOption 用于向 DeriveSchema 传入模型级别的元数据覆写选项
+type DeriveOption func(*deriveOptions)
+
+type deriveOptions struct {
+	// modelName  根模型的中文名称（若不设置则退回 modelUID）
+	modelName string
+	// modelGroup 根模型所属的模型分组名称（CMDB 分组，如 "安全认证"）
+	modelGroup string
+}
+
+// WithModelName 设置根模型的中文展示名称
+func WithModelName(name string) DeriveOption {
+	return func(o *deriveOptions) {
+		o.modelName = name
+	}
+}
+
+// WithModelGroup 设置根模型所属的 CMDB 模型分组
+func WithModelGroup(group string) DeriveOption {
+	return func(o *deriveOptions) {
+		o.modelGroup = group
+	}
+}
+
 // DeriveSchema 基于泛型结构体 T 与入口 modelUID，自动反射推导出一套最小合法的 CMDB 元数据 Schema
 // 自动推导模型、属性组、属性类型、安全字段标记（密码/私钥）以及模型间关联关系
-func DeriveSchema[T any](modelUID string) (types.Schema, error) {
+func DeriveSchema[T any](modelUID string, opts ...DeriveOption) (types.Schema, error) {
+	options := &deriveOptions{}
+	for _, o := range opts {
+		o(options)
+	}
+
 	spec, err := BuildCenterSpec[T]("target", modelUID)
 	if err != nil {
 		return types.Schema{}, err
@@ -24,8 +53,23 @@ func DeriveSchema[T any](modelUID string) (types.Schema, error) {
 		RelationTypes: dsl.BasicRelationTypes(),
 	}
 
+	// 若声明了模型分组，先注入到 ModelGroups
+	if options.modelGroup != "" {
+		schema.ModelGroups = append(schema.ModelGroups, types.ModelGroupSpec{Name: options.modelGroup})
+	}
+
 	modelMap := make(map[string]*types.ModelSpec)
 	collectModelsFromSpec(&schema, modelMap, spec, rootType)
+
+	// 对根模型进行中文名称和分组的覆写
+	if root, ok := modelMap[modelUID]; ok {
+		if options.modelName != "" {
+			root.Name = options.modelName
+		}
+		if options.modelGroup != "" {
+			root.GroupName = options.modelGroup
+		}
+	}
 
 	schema.Models = lo.Map(lo.Values(modelMap), func(m *types.ModelSpec, _ int) types.ModelSpec {
 		return *m
@@ -48,7 +92,7 @@ func collectModelsFromSpec(
 	if _, exists := modelMap[modelUID]; !exists {
 		modelSpec := &types.ModelSpec{
 			UID:     modelUID,
-			Name:    modelUID,
+			Name:    modelUID, // 默认 fallback 为 UID，可由 DeriveOption 覆写
 			Builtin: true,
 			AttributeGroups: []types.AttributeGroup{
 				{
@@ -123,17 +167,17 @@ func extractAttributesFromType(t reflect.Type) []types.Attribute {
 			continue
 		}
 
-		fieldName := tag.field
-		if fieldName == "" {
-			fieldName = tag.name
+		fieldUID := tag.field
+		if fieldUID == "" {
+			fieldUID = tag.name
 		}
 
 		attrType := inferAttributeType(field.Type)
-		isSecure := isSecureField(fieldName, tag.name)
+		isSecure := isSecureField(fieldUID, tag.name)
 
 		attrs = append(attrs, types.Attribute{
-			UID:      fieldName,
-			Name:     fieldName,
+			UID:      fieldUID,
+			Name:     tag.displayName(), // 优先使用 label 中文名，回退到 name（英文 UID）
 			Type:     attrType,
 			Required: tag.required,
 			Display:  !isSecure,

@@ -8,6 +8,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/repository"
 	attribute "github.com/Duke1616/ecmdb/internal/service/attribute"
 	"github.com/Duke1616/ecmdb/pkg/cryptox"
+	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -52,8 +53,14 @@ type Service interface {
 	// CountByModelUids 聚合查看各模型下的数量
 	CountByModelUids(ctx context.Context, modelUids []string) (map[string]int, error)
 
-	// Search 全局搜索
-	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
+	// SearchStructure 单租户检索模型 Tabs 统计（轻量元数据，支撑模型Tabs）
+	SearchStructure(ctx context.Context, text string) (domain.SearchStructureResult, error)
+
+	// SearchPagedResources 模型资产物理分页检索并执行敏感脱敏（支持指定租户或当前租户上下文）
+	SearchPagedResources(ctx context.Context, tenantID int64, modelUid string, text string, offset, limit int64) ([]domain.Resource, int64, error)
+
+	// AdminSearchStructure 跨租户检索大盘结构统计（轻量元数据，支撑左侧租户树与右侧模型Tabs）
+	AdminSearchStructure(ctx context.Context, text string) (domain.AdminSearchStructureResult, error)
 
 	// FindSecureData 查看指定资产加密字段明文数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
@@ -81,6 +88,7 @@ type Service interface {
 type service struct {
 	repo      repository.ResourceRepository
 	protector IResourceProtector
+	attrSvc   attribute.Service
 	logger    *elog.Component
 }
 
@@ -89,6 +97,7 @@ func NewService(repo repository.ResourceRepository, attrSvc attribute.Service, c
 	return &service{
 		repo:      repo,
 		protector: NewResourceProtector(attrSvc, crypto),
+		attrSvc:   attrSvc,
 		logger:    elog.DefaultLogger,
 	}
 }
@@ -268,8 +277,115 @@ func (s *service) ListExcludeAndFilterResourceByIds(ctx context.Context, fields 
 	return decodedRs, total, err
 }
 
-func (s *service) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
-	return s.repo.Search(ctx, text)
+func (s *service) SearchStructure(ctx context.Context, text string) (domain.SearchStructureResult, error) {
+	models, err := s.repo.SearchStructure(ctx, text)
+	if err != nil {
+		return domain.SearchStructureResult{}, err
+	}
+
+	total := lo.SumBy(models, func(m domain.AdminSearchStructureModel) int {
+		return m.Total
+	})
+
+	if models == nil {
+		models = []domain.AdminSearchStructureModel{}
+	}
+
+	return domain.SearchStructureResult{
+		Total:  total,
+		Models: models,
+	}, nil
+}
+
+func (s *service) SearchPagedResources(ctx context.Context, tenantID int64, modelUid string,
+	text string, offset, limit int64) ([]domain.Resource, int64, error) {
+	resources, total, err := s.repo.SearchPagedResources(ctx, tenantID, modelUid, text, offset, limit)
+	if err != nil || len(resources) == 0 {
+		return resources, total, err
+	}
+
+	maskedRs, err := s.protector.MaskMany(ctx, resources)
+	return maskedRs, total, err
+}
+
+func (s *service) AdminSearchStructure(ctx context.Context, text string) (domain.AdminSearchStructureResult, error) {
+	counts, err := s.repo.AdminSearchStructure(ctx, text)
+	if err != nil {
+		return domain.AdminSearchStructureResult{}, err
+	}
+
+	if len(counts) == 0 {
+		return domain.AdminSearchStructureResult{
+			Organizations: []domain.AdminSearchStructureTenant{},
+			Personals:     []domain.AdminSearchStructureTenant{},
+		}, nil
+	}
+
+	// 按租户归集模型 Tabs
+	tenantMap := lo.GroupBy(counts, func(item domain.AdminSearchModelCount) int64 {
+		return item.TenantID
+	})
+
+	var (
+		total         int
+		organizations []domain.AdminSearchStructureTenant
+		personals     []domain.AdminSearchStructureTenant
+	)
+
+	for tid, items := range tenantMap {
+		tenantTotal := lo.SumBy(items, func(item domain.AdminSearchModelCount) int {
+			return item.Total
+		})
+		total += tenantTotal
+
+		models := lo.Map(items, func(item domain.AdminSearchModelCount, _ int) domain.AdminSearchStructureModel {
+			return domain.AdminSearchStructureModel{
+				ModelUID: item.ModelUID,
+				Total:    item.Total,
+			}
+		})
+
+		tType := s.resolveTenantType(tid)
+		tGroup := domain.AdminSearchStructureTenant{
+			TenantID:   tid,
+			TenantType: tType,
+			Total:      tenantTotal,
+			Models:     models,
+		}
+
+		if tType == "personal" {
+			personals = append(personals, tGroup)
+		} else {
+			organizations = append(organizations, tGroup)
+		}
+	}
+
+	if organizations == nil {
+		organizations = []domain.AdminSearchStructureTenant{}
+	}
+	if personals == nil {
+		personals = []domain.AdminSearchStructureTenant{}
+	}
+
+	return domain.AdminSearchStructureResult{
+		Total:         total,
+		Organizations: organizations,
+		Personals:     personals,
+	}, nil
+}
+
+
+// resolveTenantType 判定租户空间类型：
+// TenantID == SystemTenantID (1) 为系统空间，
+// TenantID == 2 (默认租户) 等业务空间为 organization，其余默认为 personal
+func (s *service) resolveTenantType(tenantID int64) string {
+	if tenantID == ctxutil.SystemTenantID {
+		return "system"
+	}
+	if tenantID == 2 {
+		return "organization"
+	}
+	return "personal"
 }
 
 // ==========================================

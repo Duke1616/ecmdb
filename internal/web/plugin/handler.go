@@ -14,6 +14,7 @@ import (
 	pluginx "github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/Duke1616/eiam/pkg/ctxutil"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 )
@@ -68,7 +69,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	)
 	g.POST("/resource/actions/batch", h.Define("查询资源插件动作", "actions").
 		NoSync().
-		Bind(ginx.B[ListResourceActionsBatchReq](h.ListResourceActionsBatch)),
+		Bind(middleware.BTO[ListResourceActionsBatchReq](h.ListResourceActionsBatch)),
 	)
 	g.POST("/action/resolve", h.Define("解析插件动作", "resolve").
 		NoSync().

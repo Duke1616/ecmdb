@@ -123,41 +123,45 @@ var Relation = struct {
 
 // Resource 资产仓库
 var Resource = struct {
-	Module            string
-	Add               string // 创建资产 [租户级]
-	AddRelationLeft   string // 拓扑图向左拓展 [租户级 · 静默]
-	AddRelationRight  string // 拓扑图向右拓展 [租户级 · 静默]
-	Delete            string // 删除资产 [租户级]
-	Edit              string // 修改资产 [租户级]
-	EditCustomField   string // 设置自定义属性 [租户级]
-	Get               string // 资产详情 [租户级]
-	GetSecure         string // 查询加密字段 [租户级]
-	RelationAdd       string // 创建资产关系 [租户级]
-	RelationDelete    string // 删除资产关系 [租户级]
-	Search            string // 全文检索资产 [租户级]
-	View              string // 资产列表 [租户级]
-	ViewByIds         string // 批量查询资产 [租户级 · 静默]
-	ViewCanBeRelated  string // 查询可关联的资产列表 [租户级 · 静默]
-	ViewRelationAll   string // 所有资产关系聚合查询 [租户级]
-	ViewRelationGraph string // 资产关联拓扑图 [租户级]
+	Module               string
+	Add                  string // 创建资产 [租户级]
+	AddRelationLeft      string // 拓扑图向左拓展 [租户级 · 静默]
+	AddRelationRight     string // 拓扑图向右拓展 [租户级 · 静默]
+	AdminSearchStructure string // 跨租户全局大盘结构检索 [系统级]
+	Delete               string // 删除资产 [租户级]
+	Edit                 string // 修改资产 [租户级]
+	EditCustomField      string // 设置自定义属性 [租户级]
+	Get                  string // 资产详情 [租户级]
+	GetSecure            string // 查询加密字段 [租户级]
+	RelationAdd          string // 创建资产关系 [租户级]
+	RelationDelete       string // 删除资产关系 [租户级]
+	SearchResources      string // 模型资产分页检索 [租户级]
+	SearchStructure      string // 检索模型概览 [租户级]
+	View                 string // 资产列表 [租户级]
+	ViewByIds            string // 批量查询资产 [租户级 · 静默]
+	ViewCanBeRelated     string // 查询可关联的资产列表 [租户级 · 静默]
+	ViewRelationAll      string // 所有资产关系聚合查询 [租户级]
+	ViewRelationGraph    string // 资产关联拓扑图 [租户级]
 }{
-	Module:            "cmdb:resource",
-	Add:               "cmdb:resource:add",
-	AddRelationLeft:   "cmdb:resource:add_relation_left",
-	AddRelationRight:  "cmdb:resource:add_relation_right",
-	Delete:            "cmdb:resource:delete",
-	Edit:              "cmdb:resource:edit",
-	EditCustomField:   "cmdb:resource:edit_custom_field",
-	Get:               "cmdb:resource:get",
-	GetSecure:         "cmdb:resource:get_secure",
-	RelationAdd:       "cmdb:resource:relation_add",
-	RelationDelete:    "cmdb:resource:relation_delete",
-	Search:            "cmdb:resource:search",
-	View:              "cmdb:resource:view",
-	ViewByIds:         "cmdb:resource:view_by_ids",
-	ViewCanBeRelated:  "cmdb:resource:view_can_be_related",
-	ViewRelationAll:   "cmdb:resource:view_relation_all",
-	ViewRelationGraph: "cmdb:resource:view_relation_graph",
+	Module:               "cmdb:resource",
+	Add:                  "cmdb:resource:add",
+	AddRelationLeft:      "cmdb:resource:add_relation_left",
+	AddRelationRight:     "cmdb:resource:add_relation_right",
+	AdminSearchStructure: "cmdb:resource:admin_search_structure",
+	Delete:               "cmdb:resource:delete",
+	Edit:                 "cmdb:resource:edit",
+	EditCustomField:      "cmdb:resource:edit_custom_field",
+	Get:                  "cmdb:resource:get",
+	GetSecure:            "cmdb:resource:get_secure",
+	RelationAdd:          "cmdb:resource:relation_add",
+	RelationDelete:       "cmdb:resource:relation_delete",
+	SearchResources:      "cmdb:resource:search_resources",
+	SearchStructure:      "cmdb:resource:search_structure",
+	View:                 "cmdb:resource:view",
+	ViewByIds:            "cmdb:resource:view_by_ids",
+	ViewCanBeRelated:     "cmdb:resource:view_can_be_related",
+	ViewRelationAll:      "cmdb:resource:view_relation_all",
+	ViewRelationGraph:    "cmdb:resource:view_relation_graph",
 }
 
 // Tools 资产仓库/文件管理

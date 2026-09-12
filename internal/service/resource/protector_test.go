@@ -194,6 +194,35 @@ func TestResourceProtector_Lifecycle(t *testing.T) {
 				assert.Equal(t, "secret", val)
 			},
 		},
+		{
+			name: "MaskMany批量对敏感属性置空脱敏",
+			mockAttr: func(ctrl *gomock.Controller) *attributemocks.MockService {
+				svc := attributemocks.NewMockService(ctrl)
+				svc.EXPECT().SearchAttributeFieldsBySecure(gomock.Any(), []string{"host"}).
+					Return(map[string][]string{
+						"host": {"password", "token"},
+					}, nil)
+				return svc
+			},
+			testFunc: func(t *testing.T, protector IResourceProtector) {
+				resources := []domain.Resource{
+					{
+						ID:       1,
+						ModelUID: "host",
+						Data: mongox.MapStr{
+							"ip":       "192.168.1.1",
+							"password": "plain_password",
+							"token":    "secret_token",
+						},
+					},
+				}
+				res, err := protector.MaskMany(context.Background(), resources)
+				assert.NoError(t, err)
+				assert.Equal(t, "192.168.1.1", res[0].Data["ip"])
+				assert.Equal(t, "", res[0].Data["password"])
+				assert.Equal(t, "", res[0].Data["token"])
+			},
+		},
 	}
 
 	for _, tc := range testCases {

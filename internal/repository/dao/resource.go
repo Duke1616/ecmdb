@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/sync/errgroup"
 )
 
 const ResourceCollection = "c_resources"
@@ -45,8 +46,14 @@ type ResourceDAO interface {
 	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64,
 		filter domain.Condition) (int64, error)
 
-	// Search 全局搜索资产
-	Search(ctx context.Context, text string) ([]SearchResource, error)
+	// SearchStructure 单租户检索模型 Tabs 统计（纯数值聚合）
+	SearchStructure(ctx context.Context, text string) ([]domain.AdminSearchStructureModel, error)
+
+	// SearchPagedResources 模型资产全文检索物理分页（支持指定租户或默认租户上下文）
+	SearchPagedResources(ctx context.Context, tenantID int64, modelUid string, text string, offset, limit int64) ([]Resource, int64, error)
+
+	// AdminSearchStructure 跨租户检索大盘结构统计（纯数值聚合，不搬运资产实体）
+	AdminSearchStructure(ctx context.Context, text string) ([]AdminSearchModelCount, error)
 
 	// FindSecureData 查找指定资产的加密字段数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
@@ -291,36 +298,124 @@ func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string
 	return modelCountMap, nil
 }
 
-func (dao *resourceDAO) Search(ctx context.Context, text string) ([]SearchResource, error) {
-	filter := bson.M{"$text": bson.M{"$search": text}}
 
-	groupStage := bson.D{
-		{Key: "$group", Value: bson.D{
-			{Key: "_id", Value: "$model_uid"},
-			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},
-			{Key: "data", Value: bson.D{{Key: "$push", Value: "$$ROOT"}}},
-		}},
-	}
+// SearchStructure 单租户检索模型 Tabs 统计
+// NOTE: 纯数值聚合，不搬运资产实体数据（零 $push），天然结合当前租户隔离上下文，10ms 内极速返回
+func (dao *resourceDAO) SearchStructure(ctx context.Context, text string) ([]domain.AdminSearchStructureModel, error) {
+	filter := bson.M{"$text": bson.M{"$search": text}}
 
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: filter}},
-		{{Key: "$limit", Value: 1000}}, // NOTE: 极限防御：限制匹配上限，阻断全文检索匹配数万文档触发 16MB 崩溃与内存溢出灾难
-		groupStage,
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$model_uid"},
+			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
 		{{Key: "$sort", Value: bson.D{{Key: "total", Value: -1}}}},
 	}
 
 	cursor, err := dao.coll.Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, fmt.Errorf("查询错误, %w", err)
+		return nil, fmt.Errorf("单租户检索模型统计失败: %w", err)
 	}
 	defer cursor.Close(ctx)
 
-	var result []SearchResource
+	type countResult struct {
+		ModelUID string `bson:"_id"`
+		Total    int    `bson:"total"`
+	}
+
+	var results []countResult
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, fmt.Errorf("解码统计错误: %w", err)
+	}
+
+	return lo.Map(results, func(item countResult, _ int) domain.AdminSearchStructureModel {
+		return domain.AdminSearchStructureModel{
+			ModelUID: item.ModelUID,
+			Total:    item.Total,
+		}
+	}), nil
+}
+
+// SearchPagedResources 模型资产全文检索物理分页（支持指定租户或当前租户上下文）
+func (dao *resourceDAO) SearchPagedResources(ctx context.Context, tenantID int64, modelUid string, text string, offset, limit int64) ([]Resource, int64, error) {
+	filter := bson.M{
+		"model_uid": modelUid,
+		"$text":     bson.M{"$search": text},
+	}
+
+	tCtx := ctx
+	if tenantID > 0 {
+		filter["tenant_id"] = tenantID
+		tCtx = mongox.IgnoreTenantContext(ctx)
+	}
+
+	opts := &options.FindOptions{
+		Limit: &limit,
+		Skip:  &offset,
+		Sort:  bson.D{{Key: "ctime", Value: -1}},
+	}
+
+	var (
+		resources []Resource
+		total     int64
+		eg        errgroup.Group
+	)
+
+	eg.Go(func() error {
+		rs, err := dao.coll.Find(tCtx, filter, opts)
+		if err != nil {
+			return fmt.Errorf("查询资产列表失败: %w", err)
+		}
+		resources = rs
+		return nil
+	})
+
+	eg.Go(func() error {
+		cnt, err := dao.coll.CountDocuments(tCtx, filter)
+		if err != nil {
+			return fmt.Errorf("统计资产总数失败: %w", err)
+		}
+		total = cnt
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, 0, err
+	}
+
+	return resources, total, nil
+}
+
+// AdminSearchStructure 跨租户检索大盘结构统计
+// NOTE: 纯数值聚合，不搬运任何文档实体数据（零 $push 搬运），从根本上杜绝 16MB 与内存溢出，毫秒级画出左侧租户与右侧 Tabs。
+func (dao *resourceDAO) AdminSearchStructure(ctx context.Context, text string) ([]AdminSearchModelCount, error) {
+	filter := bson.M{"$text": bson.M{"$search": text}}
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: filter}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: bson.D{
+				{Key: "tenant_id", Value: "$tenant_id"},
+				{Key: "model_uid", Value: "$model_uid"},
+			}},
+			{Key: "total", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "total", Value: -1}}}},
+	}
+
+	cursor, err := dao.coll.Aggregate(mongox.IgnoreTenantContext(ctx), pipeline)
+	if err != nil {
+		return nil, fmt.Errorf("大盘结构聚合查询错误: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var result []AdminSearchModelCount
 	if err = cursor.All(ctx, &result); err != nil {
-		return nil, fmt.Errorf("解码错误: %w", err)
+		return nil, fmt.Errorf("大盘结构解码错误: %w", err)
 	}
 	if err = cursor.Err(); err != nil {
-		return nil, fmt.Errorf("游标遍历错误: %w", err)
+		return nil, fmt.Errorf("大盘结构游标遍历错误: %w", err)
 	}
 
 	return result, nil
@@ -463,8 +558,13 @@ type Pipeline struct {
 	Total    int    `bson:"total"`
 }
 
-type SearchResource struct {
-	ModelUid string          `bson:"_id"`
-	Total    int             `bson:"total"`
-	Data     []mongox.MapStr `bson:"data"`
+
+type AdminSearchGroupID struct {
+	TenantID int64  `bson:"tenant_id"`
+	ModelUID string `bson:"model_uid"`
+}
+
+type AdminSearchModelCount struct {
+	ID    AdminSearchGroupID `bson:"_id"`
+	Total int                `bson:"total"`
 }

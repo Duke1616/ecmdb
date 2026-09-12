@@ -41,6 +41,45 @@ func (m *MockResourceRepository) EXPECT() *MockResourceRepositoryMockRecorder {
 	return m.recorder
 }
 
+// AdminSearchStructure mocks base method.
+func (m *MockResourceRepository) AdminSearchStructure(ctx context.Context, text string) ([]domain.AdminSearchModelCount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminSearchStructure", ctx, text)
+	ret0, _ := ret[0].([]domain.AdminSearchModelCount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AdminSearchStructure indicates an expected call of AdminSearchStructure.
+func (mr *MockResourceRepositoryMockRecorder) AdminSearchStructure(ctx, text any) *MockResourceRepositoryAdminSearchStructureCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminSearchStructure", reflect.TypeOf((*MockResourceRepository)(nil).AdminSearchStructure), ctx, text)
+	return &MockResourceRepositoryAdminSearchStructureCall{Call: call}
+}
+
+// MockResourceRepositoryAdminSearchStructureCall wrap *gomock.Call
+type MockResourceRepositoryAdminSearchStructureCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockResourceRepositoryAdminSearchStructureCall) Return(arg0 []domain.AdminSearchModelCount, arg1 error) *MockResourceRepositoryAdminSearchStructureCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockResourceRepositoryAdminSearchStructureCall) Do(f func(context.Context, string) ([]domain.AdminSearchModelCount, error)) *MockResourceRepositoryAdminSearchStructureCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockResourceRepositoryAdminSearchStructureCall) DoAndReturn(f func(context.Context, string) ([]domain.AdminSearchModelCount, error)) *MockResourceRepositoryAdminSearchStructureCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // BatchCreateOrUpdate mocks base method.
 func (m *MockResourceRepository) BatchCreateOrUpdate(ctx context.Context, resources []domain.Resource) error {
 	m.ctrl.T.Helper()
@@ -508,41 +547,81 @@ func (c *MockResourceRepositoryListResourcesWithFiltersCall) DoAndReturn(f func(
 	return c
 }
 
-// Search mocks base method.
-func (m *MockResourceRepository) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
+// SearchPagedResources mocks base method.
+func (m *MockResourceRepository) SearchPagedResources(ctx context.Context, tenantID int64, modelUid, text string, offset, limit int64) ([]domain.Resource, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Search", ctx, text)
-	ret0, _ := ret[0].([]domain.SearchResource)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "SearchPagedResources", ctx, tenantID, modelUid, text, offset, limit)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// Search indicates an expected call of Search.
-func (mr *MockResourceRepositoryMockRecorder) Search(ctx, text any) *MockResourceRepositorySearchCall {
+// SearchPagedResources indicates an expected call of SearchPagedResources.
+func (mr *MockResourceRepositoryMockRecorder) SearchPagedResources(ctx, tenantID, modelUid, text, offset, limit any) *MockResourceRepositorySearchPagedResourcesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockResourceRepository)(nil).Search), ctx, text)
-	return &MockResourceRepositorySearchCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchPagedResources", reflect.TypeOf((*MockResourceRepository)(nil).SearchPagedResources), ctx, tenantID, modelUid, text, offset, limit)
+	return &MockResourceRepositorySearchPagedResourcesCall{Call: call}
 }
 
-// MockResourceRepositorySearchCall wrap *gomock.Call
-type MockResourceRepositorySearchCall struct {
+// MockResourceRepositorySearchPagedResourcesCall wrap *gomock.Call
+type MockResourceRepositorySearchPagedResourcesCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockResourceRepositorySearchCall) Return(arg0 []domain.SearchResource, arg1 error) *MockResourceRepositorySearchCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockResourceRepositorySearchPagedResourcesCall) Return(arg0 []domain.Resource, arg1 int64, arg2 error) *MockResourceRepositorySearchPagedResourcesCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockResourceRepositorySearchCall) Do(f func(context.Context, string) ([]domain.SearchResource, error)) *MockResourceRepositorySearchCall {
+func (c *MockResourceRepositorySearchPagedResourcesCall) Do(f func(context.Context, int64, string, string, int64, int64) ([]domain.Resource, int64, error)) *MockResourceRepositorySearchPagedResourcesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockResourceRepositorySearchCall) DoAndReturn(f func(context.Context, string) ([]domain.SearchResource, error)) *MockResourceRepositorySearchCall {
+func (c *MockResourceRepositorySearchPagedResourcesCall) DoAndReturn(f func(context.Context, int64, string, string, int64, int64) ([]domain.Resource, int64, error)) *MockResourceRepositorySearchPagedResourcesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SearchStructure mocks base method.
+func (m *MockResourceRepository) SearchStructure(ctx context.Context, text string) ([]domain.AdminSearchStructureModel, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchStructure", ctx, text)
+	ret0, _ := ret[0].([]domain.AdminSearchStructureModel)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchStructure indicates an expected call of SearchStructure.
+func (mr *MockResourceRepositoryMockRecorder) SearchStructure(ctx, text any) *MockResourceRepositorySearchStructureCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchStructure", reflect.TypeOf((*MockResourceRepository)(nil).SearchStructure), ctx, text)
+	return &MockResourceRepositorySearchStructureCall{Call: call}
+}
+
+// MockResourceRepositorySearchStructureCall wrap *gomock.Call
+type MockResourceRepositorySearchStructureCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockResourceRepositorySearchStructureCall) Return(arg0 []domain.AdminSearchStructureModel, arg1 error) *MockResourceRepositorySearchStructureCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockResourceRepositorySearchStructureCall) Do(f func(context.Context, string) ([]domain.AdminSearchStructureModel, error)) *MockResourceRepositorySearchStructureCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockResourceRepositorySearchStructureCall) DoAndReturn(f func(context.Context, string) ([]domain.AdminSearchStructureModel, error)) *MockResourceRepositorySearchStructureCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

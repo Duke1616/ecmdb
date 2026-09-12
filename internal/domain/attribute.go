@@ -1,10 +1,15 @@
 package domain
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
+
+	"github.com/samber/lo"
 )
+
 
 type Attribute struct {
 	ID        int64
@@ -132,3 +137,38 @@ type AttributeGroupSortItem struct {
 	ID      int64
 	SortKey int64
 }
+
+const defaultDisplayLimit = 6
+
+// ResolveDisplayFields 解析模型的默认展示列
+// 策略 1：如果存在显式配置为 Display == true 的属性，按 Index 升序排列返回
+// 策略 2：若未显式配置，进行智能兜底：按 SortKey、Index 升序排列，排除文件与内置字段，返回前 6 个核心属性
+func ResolveDisplayFields(attrs []Attribute) []Attribute {
+	// 策略 1：优先提取显式配置为展示列的属性，按 Index 升序
+	displays := lo.Filter(attrs, func(a Attribute, _ int) bool { return a.Display })
+	if len(displays) > 0 {
+		slices.SortFunc(displays, func(a, b Attribute) int {
+			return cmp.Compare(a.Index, b.Index)
+		})
+		return displays
+	}
+
+	// 策略 2：智能兜底，优先排除文件与内置字段
+	candidates := lo.Filter(attrs, func(a Attribute, _ int) bool {
+		return a.FieldType != "file" && !a.Builtin
+	})
+	if len(candidates) == 0 {
+		candidates = slices.Clone(attrs)
+	}
+
+	// 级联升序排序：优先比较 SortKey，相同则按 Index 排序
+	slices.SortFunc(candidates, func(a, b Attribute) int {
+		if n := cmp.Compare(a.SortKey, b.SortKey); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.Index, b.Index)
+	})
+
+	return lo.Subset(candidates, 0, defaultDisplayLimit)
+}
+

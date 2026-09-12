@@ -10,6 +10,7 @@ import (
 	resourceservice "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/Duke1616/ecmdb/pkg/contract/permission"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -113,7 +114,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 查询模型拥有的所有关联信息
 	g.POST("/relation/list", relation.Define("模型关联列表", "relation_view").
-		Bind(ginx.B[ListModelRelationReq](h.ListModelUIDRelation)),
+		Bind(middleware.BTO[ListModelRelationReq](h.ListModelUIDRelation)),
 	)
 
 	// 删除模型关联关系

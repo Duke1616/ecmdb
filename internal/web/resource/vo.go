@@ -62,11 +62,22 @@ type ListDiagramReq struct {
 	MaxDepth     int    `json:"max_depth"`
 }
 
-type SearchReq struct {
-	Text    string   `json:"text"`
-	OrText  []string `json:"or_text"`
-	AndText []string `json:"and_text"`
+type SearchStructureReq struct {
+	Text string `json:"text"`
 }
+
+type SearchPagedResourcesReq struct {
+	Page
+	TenantID int64  `json:"tenant_id"` // 可选：指定租户ID（用于跨租户大盘场景），不传默认使用当前租户
+	Text     string `json:"text"`
+	ModelUID string `json:"model_uid"`
+}
+
+type AdminSearchStructureReq struct {
+	Text string `json:"text"`
+}
+
+type AdminSearchPagedResourcesReq = SearchPagedResourcesReq
 
 type FindSecureReq struct {
 	ID       int64  `json:"id"`

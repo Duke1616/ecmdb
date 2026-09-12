@@ -33,6 +33,9 @@ type IResourceProtector interface {
 	// Mask 将单个资产的敏感字段替换为 "[已脱敏]"，用于展示与审计
 	Mask(ctx context.Context, res domain.Resource) (domain.Resource, error)
 
+	// MaskMany 批量对资产敏感属性置空脱敏（用于列表检索安全展示，支持前端解密查看）
+	MaskMany(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error)
+
 	// DecryptValue 对单个密文字符串进行解密
 	DecryptValue(encryptedText string) (string, error)
 
@@ -178,6 +181,32 @@ func (p *resourceProtector) Mask(ctx context.Context, res domain.Resource) (doma
 	}
 
 	return res, nil
+}
+
+// MaskMany 批量对资产敏感属性置空脱敏（用于列表检索安全展示，支持前端解密查看）
+func (p *resourceProtector) MaskMany(ctx context.Context, resources []domain.Resource) ([]domain.Resource, error) {
+	if len(resources) == 0 {
+		return resources, nil
+	}
+
+	secureFieldsMap, err := p.getSecureFieldsMap(ctx, resources)
+	if err != nil {
+		p.logger.Warn("批量脱敏获取安全字段失败，保留原值", elog.FieldErr(err))
+		return resources, nil
+	}
+
+	return lo.Map(resources, func(res domain.Resource, _ int) domain.Resource {
+		if len(res.Data) == 0 {
+			return res
+		}
+		res.Data = maps.Clone(res.Data)
+		for _, field := range secureFieldsMap[res.ModelUID] {
+			if _, ok := res.Data[field]; ok {
+				res.Data[field] = ""
+			}
+		}
+		return res
+	}), nil
 }
 
 // 内部加解密数据辅助方法

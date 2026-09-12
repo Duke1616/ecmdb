@@ -12,6 +12,7 @@ import (
 	service "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/Duke1616/ecmdb/pkg/contract/permission"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -57,7 +58,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 
 	// 查询资产详情
 	g.POST("/detail", h.Define("资产详情", "get").
-		Bind(ginx.B[DetailResourceReq](h.DetailResource)),
+		Bind(middleware.BTO[DetailResourceReq](h.DetailResource)),
 	)
 
 	// 根据模型 UID 查询资产列表
@@ -85,12 +86,12 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// 批量查询资产
 	g.POST("/list/ids", h.Define("批量查询资产", "view_by_ids").
 		NoSync().
-		Bind(ginx.B[ListResourceByIdsReq](h.ListResourceByIds)),
+		Bind(middleware.BTO[ListResourceByIdsReq](h.ListResourceByIds)),
 	)
 
 	// 查询加密字段数据
 	g.POST("/secure", h.Define("查询加密字段", "get_secure").
-		Bind(ginx.B[FindSecureReq](h.FindSecureData)),
+		Bind(middleware.BTO[FindSecureReq](h.FindSecureData)),
 	)
 
 	// ==========================================
@@ -107,19 +108,19 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// 查询资产关联拓扑图
 	g.POST("/relation/graph", relation.Define("资产关联拓扑图", "view_relation_graph").
 		Needs(permission.Resource.AddRelationLeft, permission.Resource.AddRelationRight).
-		Bind(ginx.B[ListDiagramReq](h.FindAllGraph)),
+		Bind(middleware.BTO[ListDiagramReq](h.FindAllGraph)),
 	)
 
 	// 拓扑图向左拓展
 	g.POST("/relation/graph/add/left", relation.Define("拓扑图向左拓展", "add_relation_left").
 		NoSync().
-		Bind(ginx.B[ListDiagramReq](h.FindLeftGraph)),
+		Bind(middleware.BTO[ListDiagramReq](h.FindLeftGraph)),
 	)
 
 	// 拓扑图向右拓展
 	g.POST("/relation/graph/add/right", relation.Define("拓扑图向右拓展", "add_relation_right").
 		NoSync().
-		Bind(ginx.B[ListDiagramReq](h.FindRightGraph)),
+		Bind(middleware.BTO[ListDiagramReq](h.FindRightGraph)),
 	)
 
 	// 创建资源关联关系
@@ -132,7 +133,7 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/relation/pipeline/all", relation.Define("所有资产关系聚合查询", "view_relation_all").
 		Needs(permission.Relation.View, permission.Model.RelationView, permission.Model.ViewByUids,
 			permission.Attribute.ViewFields, permission.Resource.ViewByIds).
-		Bind(ginx.B[ListResourceDiagramReq](h.ListAllAggregated)),
+		Bind(middleware.BTO[ListResourceDiagramReq](h.ListAllAggregated)),
 	)
 
 	// 删除资产关系
@@ -145,9 +146,20 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// ==========================================
 	search := h.Sub("", "全局搜索")
 
-	// 全文检索资产
-	g.POST("/search", search.Define("全文检索资产", "search").
-		Bind(ginx.B[SearchReq](h.Search)),
+	// 单租户检索模型 Tabs 概览（两阶段模式：阶段一）
+	g.POST("/search/structure", search.Define("检索模型概览", "search_structure").
+		Bind(ginx.B[SearchStructureReq](h.SearchStructure)),
+	)
+
+	// 模型资产物理分页检索（两阶段模式：阶段二，接入 BTO 自动支持超管 X-Active-Tenant-ID 跨租户覆盖）
+	g.POST("/search/resources", search.Define("模型资产分页检索", "search_resources").
+		Bind(middleware.BTO[SearchPagedResourcesReq](h.SearchPagedResources)),
+	)
+
+	// 全局大盘结构与导航检索（支撑左侧租户树 + 右侧模型Tabs）
+	g.POST("/admin/search/structure", search.Define("跨租户全局大盘结构检索", "admin_search_structure").
+		Scope(capability.ScopeSystem).
+		Bind(ginx.B[AdminSearchStructureReq](h.AdminSearchStructure)),
 	)
 }
 
@@ -192,21 +204,9 @@ func (h *Handler) ListResource(ctx *ginx.Context, req ListResourceReq) (ginx.Res
 		return systemErrorResult, err
 	}
 
-	rs := lo.Map(resp, func(src domain.Resource, _ int) Resource {
-		return Resource{
-			ID:       src.ID,
-			Name:     src.Name,
-			ModelUID: src.ModelUID,
-			Data:     src.Data,
-		}
-	})
-
 	return ginx.Result{
-		Data: RetrieveResources{
-			Resources: rs,
-			Total:     total,
-		},
-		Msg: "查看资源列表成功",
+		Data: h.toRetrieveResources(resp, total),
+		Msg:  "查看资源列表成功",
 	}, nil
 }
 
@@ -448,49 +448,6 @@ func (h *Handler) ListResourceByIds(ctx *ginx.Context, req ListResourceByIdsReq)
 	}, nil
 }
 
-func (h *Handler) Search(ctx *ginx.Context, req SearchReq) (ginx.Result, error) {
-	search, err := h.svc.Search(ctx.Context, req.Text)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	// NOTE: 如果未检索到匹配数据，直接短路返回空列表，规避无意义的 MongoDB 聚合查询开销
-	if len(search) == 0 {
-		return ginx.Result{
-			Data: []RetrieveSearchResources{},
-		}, nil
-	}
-
-	modelUids := lo.Uniq(lo.Map(search, func(src domain.SearchResource, _ int) string {
-		return src.ModelUid
-	}))
-
-	fields, err := h.attrSvc.SearchAttributeFieldsBySecure(ctx.Context, modelUids)
-	if err != nil {
-		return systemErrorResult, err
-	}
-
-	return ginx.Result{
-		Data: lo.Map(search, func(src domain.SearchResource, _ int) RetrieveSearchResources {
-			val, ok := fields[src.ModelUid]
-			if ok {
-				for _, name := range src.Data {
-					for key := range name {
-						if lo.Contains(val, key) {
-							name[key] = ""
-						}
-					}
-				}
-			}
-			return RetrieveSearchResources{
-				ModelUid: src.ModelUid,
-				Total:    src.Total,
-				Data:     src.Data,
-			}
-		}),
-	}, err
-}
-
 func (h *Handler) DeleteResource(ctx *ginx.Context, req DeleteResourceReq) (ginx.Result, error) {
 	count, err := h.svc.DeleteResource(ctx.Context, req.Id)
 	if err != nil {
@@ -535,4 +492,118 @@ func (h *Handler) toUpdateDomain(src UpdateResourceReq) domain.Resource {
 	}
 }
 
+// SearchStructure 单租户检索模型 Tabs 概览（两阶段模式：阶段一）
+func (h *Handler) SearchStructure(ctx *ginx.Context, req SearchStructureReq) (ginx.Result, error) {
+	res, err := h.svc.SearchStructure(ctx.Context, req.Text)
+	if err != nil {
+		return systemErrorResult, err
+	}
 
+	modelNames := h.fetchModelNamesByUIDs(ctx.Context, res.ModelUIDs())
+	return ginx.Result{
+		Data: h.toRetrieveSearchStructure(res, modelNames),
+		Msg:  "检索模型概览获取成功",
+	}, nil
+}
+
+// SearchPagedResources 模型资产物理分页检索（支持指定租户或默认租户上下文）
+func (h *Handler) SearchPagedResources(ctx *ginx.Context, req SearchPagedResourcesReq) (ginx.Result, error) {
+	resources, total, err := h.svc.SearchPagedResources(ctx.Context, req.TenantID, req.ModelUID, req.Text, req.Offset, req.Limit)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	return ginx.Result{
+		Data: h.toRetrieveResources(resources, total),
+		Msg:  "查询资产明细列表成功",
+	}, nil
+}
+
+// AdminSearchStructure 跨租户全局大盘结构与导航检索
+// NOTE: 纯数值聚合，不拉取资产 data 实体，10ms 极速画出左侧租户树与右侧模型 Tabs
+func (h *Handler) AdminSearchStructure(ctx *ginx.Context, req AdminSearchStructureReq) (ginx.Result, error) {
+	res, err := h.svc.AdminSearchStructure(ctx.Context, req.Text)
+	if err != nil {
+		return systemErrorResult, err
+	}
+
+	modelNames := h.fetchModelNamesByUIDs(ctx.Context, res.ModelUIDs())
+	return ginx.Result{
+		Data: h.toRetrieveAdminSearchStructure(res, modelNames),
+		Msg:  "全局检索大盘结构获取成功",
+	}, nil
+}
+
+func (h *Handler) fetchModelNamesByUIDs(ctx context.Context, uids []string) map[string]string {
+	if h.modelSvc == nil || len(uids) == 0 {
+		return nil
+	}
+
+	models, err := h.modelSvc.GetByUids(ctx, uids)
+	if err != nil {
+		return nil
+	}
+	return lo.SliceToMap(models, func(m domain.Model) (string, string) {
+		return m.UID, m.Name
+	})
+}
+
+func (h *Handler) toRetrieveSearchStructure(res domain.SearchStructureResult, names map[string]string) RetrieveSearchStructure {
+	return RetrieveSearchStructure{
+		Total: res.Total,
+		Models: lo.Map(res.Models, func(m domain.AdminSearchStructureModel, _ int) AdminSearchStructureModelVO {
+			name := names[m.ModelUID]
+			if name == "" {
+				name = m.ModelUID
+			}
+			return AdminSearchStructureModelVO{
+				ModelUID:  m.ModelUID,
+				ModelName: name,
+				Total:     m.Total,
+			}
+		}),
+	}
+}
+
+func (h *Handler) toRetrieveAdminSearchStructure(res domain.AdminSearchStructureResult, names map[string]string) RetrieveAdminSearchStructure {
+	return RetrieveAdminSearchStructure{
+		Total:         res.Total,
+		Organizations: h.toTenantVOs(res.Organizations, names),
+		Personals:     h.toTenantVOs(res.Personals, names),
+	}
+}
+
+func (h *Handler) toTenantVOs(tenants []domain.AdminSearchStructureTenant, names map[string]string) []AdminSearchStructureTenantVO {
+	return lo.Map(tenants, func(t domain.AdminSearchStructureTenant, _ int) AdminSearchStructureTenantVO {
+		return AdminSearchStructureTenantVO{
+			TenantID:   t.TenantID,
+			TenantType: t.TenantType,
+			Total:      t.Total,
+			Models: lo.Map(t.Models, func(m domain.AdminSearchStructureModel, _ int) AdminSearchStructureModelVO {
+				name := names[m.ModelUID]
+				if name == "" {
+					name = m.ModelUID
+				}
+				return AdminSearchStructureModelVO{
+					ModelUID:  m.ModelUID,
+					ModelName: name,
+					Total:     m.Total,
+				}
+			}),
+		}
+	})
+}
+
+func (h *Handler) toRetrieveResources(resources []domain.Resource, total int64) RetrieveResources {
+	return RetrieveResources{
+		Resources: lo.Map(resources, func(src domain.Resource, _ int) Resource {
+			return Resource{
+				ID:       src.ID,
+				Name:     src.Name,
+				ModelUID: src.ModelUID,
+				Data:     src.Data,
+			}
+		}),
+		Total: total,
+	}
+}

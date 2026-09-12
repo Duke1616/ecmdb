@@ -41,6 +41,45 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// AdminSearchStructure mocks base method.
+func (m *MockService) AdminSearchStructure(ctx context.Context, text string) (domain.AdminSearchStructureResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminSearchStructure", ctx, text)
+	ret0, _ := ret[0].(domain.AdminSearchStructureResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AdminSearchStructure indicates an expected call of AdminSearchStructure.
+func (mr *MockServiceMockRecorder) AdminSearchStructure(ctx, text any) *MockServiceAdminSearchStructureCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminSearchStructure", reflect.TypeOf((*MockService)(nil).AdminSearchStructure), ctx, text)
+	return &MockServiceAdminSearchStructureCall{Call: call}
+}
+
+// MockServiceAdminSearchStructureCall wrap *gomock.Call
+type MockServiceAdminSearchStructureCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceAdminSearchStructureCall) Return(arg0 domain.AdminSearchStructureResult, arg1 error) *MockServiceAdminSearchStructureCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceAdminSearchStructureCall) Do(f func(context.Context, string) (domain.AdminSearchStructureResult, error)) *MockServiceAdminSearchStructureCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceAdminSearchStructureCall) DoAndReturn(f func(context.Context, string) (domain.AdminSearchStructureResult, error)) *MockServiceAdminSearchStructureCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // BatchCreateOrUpdate mocks base method.
 func (m *MockService) BatchCreateOrUpdate(ctx context.Context, rs []domain.Resource) error {
 	m.ctrl.T.Helper()
@@ -627,41 +666,81 @@ func (c *MockServiceListResourcesWithFiltersCall) DoAndReturn(f func(context.Con
 	return c
 }
 
-// Search mocks base method.
-func (m *MockService) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
+// SearchPagedResources mocks base method.
+func (m *MockService) SearchPagedResources(ctx context.Context, tenantID int64, modelUid, text string, offset, limit int64) ([]domain.Resource, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Search", ctx, text)
-	ret0, _ := ret[0].([]domain.SearchResource)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "SearchPagedResources", ctx, tenantID, modelUid, text, offset, limit)
+	ret0, _ := ret[0].([]domain.Resource)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// Search indicates an expected call of Search.
-func (mr *MockServiceMockRecorder) Search(ctx, text any) *MockServiceSearchCall {
+// SearchPagedResources indicates an expected call of SearchPagedResources.
+func (mr *MockServiceMockRecorder) SearchPagedResources(ctx, tenantID, modelUid, text, offset, limit any) *MockServiceSearchPagedResourcesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockService)(nil).Search), ctx, text)
-	return &MockServiceSearchCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchPagedResources", reflect.TypeOf((*MockService)(nil).SearchPagedResources), ctx, tenantID, modelUid, text, offset, limit)
+	return &MockServiceSearchPagedResourcesCall{Call: call}
 }
 
-// MockServiceSearchCall wrap *gomock.Call
-type MockServiceSearchCall struct {
+// MockServiceSearchPagedResourcesCall wrap *gomock.Call
+type MockServiceSearchPagedResourcesCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServiceSearchCall) Return(arg0 []domain.SearchResource, arg1 error) *MockServiceSearchCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockServiceSearchPagedResourcesCall) Return(arg0 []domain.Resource, arg1 int64, arg2 error) *MockServiceSearchPagedResourcesCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServiceSearchCall) Do(f func(context.Context, string) ([]domain.SearchResource, error)) *MockServiceSearchCall {
+func (c *MockServiceSearchPagedResourcesCall) Do(f func(context.Context, int64, string, string, int64, int64) ([]domain.Resource, int64, error)) *MockServiceSearchPagedResourcesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServiceSearchCall) DoAndReturn(f func(context.Context, string) ([]domain.SearchResource, error)) *MockServiceSearchCall {
+func (c *MockServiceSearchPagedResourcesCall) DoAndReturn(f func(context.Context, int64, string, string, int64, int64) ([]domain.Resource, int64, error)) *MockServiceSearchPagedResourcesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SearchStructure mocks base method.
+func (m *MockService) SearchStructure(ctx context.Context, text string) (domain.SearchStructureResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchStructure", ctx, text)
+	ret0, _ := ret[0].(domain.SearchStructureResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchStructure indicates an expected call of SearchStructure.
+func (mr *MockServiceMockRecorder) SearchStructure(ctx, text any) *MockServiceSearchStructureCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchStructure", reflect.TypeOf((*MockService)(nil).SearchStructure), ctx, text)
+	return &MockServiceSearchStructureCall{Call: call}
+}
+
+// MockServiceSearchStructureCall wrap *gomock.Call
+type MockServiceSearchStructureCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServiceSearchStructureCall) Return(arg0 domain.SearchStructureResult, arg1 error) *MockServiceSearchStructureCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServiceSearchStructureCall) Do(f func(context.Context, string) (domain.SearchStructureResult, error)) *MockServiceSearchStructureCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServiceSearchStructureCall) DoAndReturn(f func(context.Context, string) (domain.SearchStructureResult, error)) *MockServiceSearchStructureCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

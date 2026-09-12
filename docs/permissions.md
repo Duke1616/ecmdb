@@ -5,7 +5,7 @@
 > 💡 **联动包含机制**：当为角色分配某项操作权限时，系统将**自动附带拥有**其“联动包含”中的权限，无需管理员手动重复勾选（例如：勾选“修改用户”会自动附带拥有“用户详情”权限）。
 
 - **受控业务模块数**: 7
-- **受控权限点总数**: 62
+- **受控权限点总数**: 64
 
 
 ## 模块: 模型管理/属性管理 (`attribute`)
@@ -15,18 +15,18 @@
 
 | 操作名称 | 完整权限码 | 作用域 | 归属类型 | 暴露状态 | 联动包含权限 | 宿主源码位置 |
 |:---|:---|:---|:---|:---|:---|:---|
-| 创建属性 | `cmdb:attribute:add` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 81 |
-| 删除属性 | `cmdb:attribute:delete` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 103 |
-| 更新属性 | `cmdb:attribute:edit` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 108 |
-| 创建分组 | `cmdb:attribute:group_add` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 49 |
-| 删除分组 | `cmdb:attribute:group_delete` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 60 |
-| 重命名分组 | `cmdb:attribute:group_rename` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 65 |
-| 分组排序 | `cmdb:attribute:group_sort` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 70 |
-| 批量查询分组 | `cmdb:attribute:group_view_by_ids` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 54 |
-| 属性排序 | `cmdb:attribute:sort` | 租户级 | 本级 | 正常 | 分组排序 · `cmdb:attribute:group_sort` | `internal/web/attribute/handler.go` 行 113 |
-| 属性列表 | `cmdb:attribute:view` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 86 |
-| 自定义列展示 | `cmdb:attribute:view_custom_fields` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 98 |
-| 属性字段 | `cmdb:attribute:view_fields` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 92 |
+| 创建属性 | `cmdb:attribute:add` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 82 |
+| 删除属性 | `cmdb:attribute:delete` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 104 |
+| 更新属性 | `cmdb:attribute:edit` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 109 |
+| 创建分组 | `cmdb:attribute:group_add` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 50 |
+| 删除分组 | `cmdb:attribute:group_delete` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 61 |
+| 重命名分组 | `cmdb:attribute:group_rename` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 66 |
+| 分组排序 | `cmdb:attribute:group_sort` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 71 |
+| 批量查询分组 | `cmdb:attribute:group_view_by_ids` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 55 |
+| 属性排序 | `cmdb:attribute:sort` | 租户级 | 本级 | 正常 | 分组排序 · `cmdb:attribute:group_sort` | `internal/web/attribute/handler.go` 行 114 |
+| 属性列表 | `cmdb:attribute:view` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 87 |
+| 自定义列展示 | `cmdb:attribute:view_custom_fields` | 租户级 | 本级 | 正常 | - | `internal/web/attribute/handler.go` 行 99 |
+| 属性字段 | `cmdb:attribute:view_fields` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/attribute/handler.go` 行 93 |
 
 ---
 
@@ -112,22 +112,24 @@
 
 | 操作名称 | 完整权限码 | 作用域 | 归属类型 | 暴露状态 | 联动包含权限 | 宿主源码位置 |
 |:---|:---|:---|:---|:---|:---|:---|
-| 创建资产 | `cmdb:resource:add` | 租户级 | 本级 | 正常 | 获取上传预签名 · `cmdb:tools:put_presigned_url` | `internal/web/resource/handler.go` 行 53 |
-| 拓扑图向左拓展 | `cmdb:resource:add_relation_left` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 114 |
-| 拓扑图向右拓展 | `cmdb:resource:add_relation_right` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 120 |
-| 删除资产 | `cmdb:resource:delete` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 70 |
-| 修改资产 | `cmdb:resource:edit` | 租户级 | 本级 | 正常 | 获取上传预签名 · `cmdb:tools:put_presigned_url` | `internal/web/resource/handler.go` 行 75 |
-| 设置自定义属性 | `cmdb:resource:edit_custom_field` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 81 |
-| 资产详情 | `cmdb:resource:get` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 59 |
-| 查询加密字段 | `cmdb:resource:get_secure` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 92 |
-| 创建资产关系 | `cmdb:resource:relation_add` | 租户级 | 本级 | 正常 | 查询可关联的资产列表 · `cmdb:resource:view_can_be_related` | `internal/web/resource/handler.go` 行 126 |
-| 删除资产关系 | `cmdb:resource:relation_delete` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 139 |
-| 全文检索资产 | `cmdb:resource:search` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 149 |
-| 资产列表 | `cmdb:resource:view` | 租户级 | 本级 | 正常 | 模型列表 · `cmdb:model:view`<br>属性列表 · `cmdb:attribute:view`<br>获取下载预签名 · `cmdb:tools:get_presigned_url`<br>查询资源插件动作 · `cmdb:plugin:actions` | `internal/web/resource/handler.go` 行 64 |
-| 批量查询资产 | `cmdb:resource:view_by_ids` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 86 |
-| 查询可关联的资产列表 | `cmdb:resource:view_can_be_related` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 102 |
-| 所有资产关系聚合查询 | `cmdb:resource:view_relation_all` | 租户级 | 本级 | 正常 | 关联类型列表 · `cmdb:relation:view`<br>模型关联列表 · `cmdb:model:relation_view`<br>按UID批量查询模型 · `cmdb:model:view_by_uids`<br>属性字段 · `cmdb:attribute:view_fields`<br>批量查询资产 · `cmdb:resource:view_by_ids` | `internal/web/resource/handler.go` 行 132 |
-| 资产关联拓扑图 | `cmdb:resource:view_relation_graph` | 租户级 | 本级 | 正常 | 拓扑图向左拓展 · `cmdb:resource:add_relation_left`<br>拓扑图向右拓展 · `cmdb:resource:add_relation_right` | `internal/web/resource/handler.go` 行 108 |
+| 创建资产 | `cmdb:resource:add` | 租户级 | 本级 | 正常 | 获取上传预签名 · `cmdb:tools:put_presigned_url` | `internal/web/resource/handler.go` 行 54 |
+| 拓扑图向左拓展 | `cmdb:resource:add_relation_left` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 115 |
+| 拓扑图向右拓展 | `cmdb:resource:add_relation_right` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 121 |
+| 跨租户全局大盘结构检索 | `cmdb:resource:admin_search_structure` | 系统级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 160 |
+| 删除资产 | `cmdb:resource:delete` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 71 |
+| 修改资产 | `cmdb:resource:edit` | 租户级 | 本级 | 正常 | 获取上传预签名 · `cmdb:tools:put_presigned_url` | `internal/web/resource/handler.go` 行 76 |
+| 设置自定义属性 | `cmdb:resource:edit_custom_field` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 82 |
+| 资产详情 | `cmdb:resource:get` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 60 |
+| 查询加密字段 | `cmdb:resource:get_secure` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 93 |
+| 创建资产关系 | `cmdb:resource:relation_add` | 租户级 | 本级 | 正常 | 查询可关联的资产列表 · `cmdb:resource:view_can_be_related` | `internal/web/resource/handler.go` 行 127 |
+| 删除资产关系 | `cmdb:resource:relation_delete` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 140 |
+| 模型资产分页检索 | `cmdb:resource:search_resources` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 155 |
+| 检索模型概览 | `cmdb:resource:search_structure` | 租户级 | 本级 | 正常 | - | `internal/web/resource/handler.go` 行 150 |
+| 资产列表 | `cmdb:resource:view` | 租户级 | 本级 | 正常 | 模型列表 · `cmdb:model:view`<br>属性列表 · `cmdb:attribute:view`<br>获取下载预签名 · `cmdb:tools:get_presigned_url`<br>查询资源插件动作 · `cmdb:plugin:actions` | `internal/web/resource/handler.go` 行 65 |
+| 批量查询资产 | `cmdb:resource:view_by_ids` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 87 |
+| 查询可关联的资产列表 | `cmdb:resource:view_can_be_related` | 租户级 | 本级 | 静默 (不暴露) | - | `internal/web/resource/handler.go` 行 103 |
+| 所有资产关系聚合查询 | `cmdb:resource:view_relation_all` | 租户级 | 本级 | 正常 | 关联类型列表 · `cmdb:relation:view`<br>模型关联列表 · `cmdb:model:relation_view`<br>按UID批量查询模型 · `cmdb:model:view_by_uids`<br>属性字段 · `cmdb:attribute:view_fields`<br>批量查询资产 · `cmdb:resource:view_by_ids` | `internal/web/resource/handler.go` 行 133 |
+| 资产关联拓扑图 | `cmdb:resource:view_relation_graph` | 租户级 | 本级 | 正常 | 拓扑图向左拓展 · `cmdb:resource:add_relation_left`<br>拓扑图向右拓展 · `cmdb:resource:add_relation_right` | `internal/web/resource/handler.go` 行 109 |
 
 ---
 

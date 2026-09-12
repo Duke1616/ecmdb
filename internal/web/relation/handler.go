@@ -6,6 +6,7 @@ import (
 	"github.com/Duke1616/ecmdb/internal/domain"
 	service "github.com/Duke1616/ecmdb/internal/service/relation"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -44,7 +45,7 @@ func (h *RelationTypeHandler) PrivateRoutes(server *gin.Engine) {
 
 	// 查询关联类型列表
 	g.POST("/list", h.Define("关联类型列表", "view").
-		Bind(ginx.B[Page](h.List)),
+		Bind(middleware.BTO[Page](h.List)),
 	)
 
 	// 更新关联类型

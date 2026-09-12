@@ -16,11 +16,33 @@ type RetrieveResources struct {
 	Total     int64      `json:"total"`
 }
 
-// RetrieveSearchResources 全文检索结果视图
-type RetrieveSearchResources struct {
-	ModelUid string          `json:"model_uid"`
-	Total    int             `json:"total"`
-	Data     []mongox.MapStr `json:"data"`
+
+// RetrieveSearchStructure 单租户检索模型 Tabs 概览响应
+type RetrieveSearchStructure struct {
+	Total  int                           `json:"total"`
+	Models []AdminSearchStructureModelVO `json:"models"`
+}
+
+// RetrieveAdminSearchStructure 全局大盘结构与导航响应（支撑左侧租户树 + 右侧模型Tabs）
+type RetrieveAdminSearchStructure struct {
+	Total         int                            `json:"total"`
+	Organizations []AdminSearchStructureTenantVO `json:"organizations"`
+	Personals     []AdminSearchStructureTenantVO `json:"personals"`
+}
+
+// AdminSearchStructureTenantVO 租户维度统计与下属模型 Tabs
+type AdminSearchStructureTenantVO struct {
+	TenantID   int64                         `json:"tenant_id"`
+	TenantType string                        `json:"tenant_type"`
+	Total      int                           `json:"total"`
+	Models     []AdminSearchStructureModelVO `json:"models"`
+}
+
+// AdminSearchStructureModelVO 单个模型 Tab 的统计与名称
+type AdminSearchStructureModelVO struct {
+	ModelUID  string `json:"model_uid"`
+	ModelName string `json:"model_name"`
+	Total     int    `json:"total"`
 }
 
 // RetrieveAggregatedAssets 资产关联关系聚合统计视图

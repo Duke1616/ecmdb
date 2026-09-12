@@ -40,8 +40,14 @@ type ResourceRepository interface {
 	// TotalExcludeAndFilterResourceByIds 排除指定 ID 并根据条件统计资产总数
 	TotalExcludeAndFilterResourceByIds(ctx context.Context, modelUid string, ids []int64, filter domain.Condition) (int64, error)
 
-	// Search 全局搜索资产
-	Search(ctx context.Context, text string) ([]domain.SearchResource, error)
+	// SearchStructure 单租户检索模型 Tabs 统计
+	SearchStructure(ctx context.Context, text string) ([]domain.AdminSearchStructureModel, error)
+
+	// SearchPagedResources 模型资产全文检索物理分页（支持指定租户或默认租户上下文）
+	SearchPagedResources(ctx context.Context, tenantID int64, modelUid string, text string, offset, limit int64) ([]domain.Resource, int64, error)
+
+	// AdminSearchStructure 跨租户检索大盘结构统计
+	AdminSearchStructure(ctx context.Context, text string) ([]domain.AdminSearchModelCount, error)
 
 	// FindSecureData 查找指定资产的加密字段数据
 	FindSecureData(ctx context.Context, id int64, fieldUid string) (string, error)
@@ -145,16 +151,35 @@ func (repo *resourceRepository) DeleteResource(ctx context.Context, id int64) (i
 	return repo.dao.DeleteResource(ctx, id)
 }
 
-func (repo *resourceRepository) Search(ctx context.Context, text string) ([]domain.SearchResource, error) {
-	search, err := repo.dao.Search(ctx, text)
+func (repo *resourceRepository) SearchStructure(ctx context.Context, text string) ([]domain.AdminSearchStructureModel, error) {
+	return repo.dao.SearchStructure(ctx, text)
+}
 
-	return lo.Map(search, func(src dao.SearchResource, _ int) domain.SearchResource {
-		return domain.SearchResource{
-			ModelUid: src.ModelUid,
+func (repo *resourceRepository) SearchPagedResources(ctx context.Context, tenantID int64, modelUid string,
+	text string, offset, limit int64) ([]domain.Resource, int64, error) {
+	rrs, total, err := repo.dao.SearchPagedResources(ctx, tenantID, modelUid, text, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return lo.Map(rrs, func(src dao.Resource, _ int) domain.Resource {
+		return repo.toDomain(src)
+	}), total, nil
+}
+
+func (repo *resourceRepository) AdminSearchStructure(ctx context.Context, text string) ([]domain.AdminSearchModelCount, error) {
+	counts, err := repo.dao.AdminSearchStructure(ctx, text)
+	if err != nil {
+		return nil, err
+	}
+
+	return lo.Map(counts, func(src dao.AdminSearchModelCount, _ int) domain.AdminSearchModelCount {
+		return domain.AdminSearchModelCount{
+			TenantID: src.ID.TenantID,
+			ModelUID: src.ID.ModelUID,
 			Total:    src.Total,
-			Data:     src.Data,
 		}
-	}), err
+	}), nil
 }
 
 func (repo *resourceRepository) ListExcludeAndFilterResourceByIds(ctx context.Context, fields []string, modelUid string,

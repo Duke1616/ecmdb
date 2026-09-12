@@ -10,6 +10,7 @@ import (
 	modelservice "github.com/Duke1616/ecmdb/internal/service/model"
 	"github.com/Duke1616/ecmdb/pkg/contract/permission"
 	"github.com/Duke1616/eiam/pkg/web/capability"
+	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/ecodeclub/ginx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -72,7 +73,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 		Bind(ginx.B[SortAttributeGroupReq](h.SortAttributeGroup)),
 	)
 
-
 	// ==========================================
 	// 2. 属性字段基础操作接口
 	// ==========================================
@@ -85,13 +85,13 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	// 查询属性列表
 	g.POST("/list", h.Define("属性列表", "view").
 		NoSync().
-		Bind(ginx.B[ListAttributeReq](h.ListAttributes)),
+		Bind(middleware.BTO[ListAttributeReq](h.ListAttributes)),
 	)
 
 	// 查询属性字段列表
 	g.POST("/list/field", h.Define("属性字段", "view_fields").
 		NoSync().
-		Bind(ginx.B[ListAttributeReq](h.ListAttributeField)),
+		Bind(middleware.BTO[ListAttributeReq](h.ListAttributeField)),
 	)
 
 	// 自定义属性列展示
@@ -115,9 +115,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 		Bind(ginx.B[SortAttributeReq](h.Sort)),
 	)
 }
-
-
-
 
 func (h *Handler) CreateAttribute(ctx *ginx.Context, req CreateAttributeReq) (ginx.Result, error) {
 	id, err := h.svc.CreateAttribute(ctx.Context, toDomain(req))
@@ -190,6 +187,9 @@ func (h *Handler) ListAttributes(ctx *ginx.Context, req ListAttributeReq) (ginx.
 			Fields: lo.Map(attrs, func(attr domain.Attribute, _ int) Attribute {
 				return toAttributeVo(attr)
 			}),
+			DisplayFields: lo.Map(domain.ResolveDisplayFields(attrs), func(attr domain.Attribute, _ int) Attribute {
+				return toAttributeVo(attr)
+			}),
 		},
 	}, nil
 }
@@ -203,10 +203,15 @@ func (h *Handler) ListAttributeField(ctx *ginx.Context, req ListAttributeReq) (g
 		return toAttributeVo(src)
 	})
 
+	displayAtt := lo.Map(domain.ResolveDisplayFields(attrs), func(src domain.Attribute, _ int) Attribute {
+		return toAttributeVo(src)
+	})
+
 	return ginx.Result{
 		Data: RetrieveAttributeFieldList{
-			Total:      total,
-			Attributes: att,
+			Total:         total,
+			Attributes:    att,
+			DisplayFields: displayAtt,
 		},
 	}, nil
 }
@@ -284,7 +289,6 @@ func (h *Handler) ListAttributeGroupByIds(ctx *ginx.Context, req ListAttributeGr
 	}, nil
 }
 
-
 func (h *Handler) toAttrGroupVo(src domain.AttributeGroup) AttributeGroup {
 	return AttributeGroup{
 		GroupName: src.Name,
@@ -336,4 +340,3 @@ func (h *Handler) SortAttributeGroup(ctx *ginx.Context, req SortAttributeGroupRe
 		Msg: "排序成功",
 	}, nil
 }
-

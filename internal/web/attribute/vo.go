@@ -129,14 +129,16 @@ type AttributeModel struct {
 }
 
 type RetrieveAttributeList struct {
-	Model  AttributeModel   `json:"model"`
-	Groups []AttributeGroup `json:"groups"`
-	Fields []Attribute      `json:"fields"`
+	Model         AttributeModel   `json:"model"`
+	Groups        []AttributeGroup `json:"groups"`
+	Fields        []Attribute      `json:"fields"`
+	DisplayFields []Attribute      `json:"display_fields,omitempty"`
 }
 
 type RetrieveAttributeFieldList struct {
-	Attributes []Attribute `json:"attribute_fields,omitempty"`
-	Total      int64       `json:"total,omitempty"`
+	Attributes    []Attribute `json:"attribute_fields,omitempty"`
+	DisplayFields []Attribute `json:"display_fields,omitempty"`
+	Total         int64       `json:"total,omitempty"`
 }
 
 func toDomain(req CreateAttributeReq) domain.Attribute {

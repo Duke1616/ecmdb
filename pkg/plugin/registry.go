@@ -1,38 +1,19 @@
 package plugin
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/Duke1616/ecmdb/pkg/plugin/codec"
-	"github.com/Duke1616/ecmdb/pkg/plugin/dsl"
-	"github.com/Duke1616/ecmdb/pkg/plugin/graph"
 	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 )
 
+// Definition 插件自描述元数据规范
 type Definition struct {
 	Plugin   types.Plugin    `json:"plugin"`
 	Schema   types.Schema    `json:"schema"`
 	Bindings []types.Binding `json:"bindings"`
 }
 
-type Store interface {
-	UpsertPlugin(ctx context.Context, p types.Plugin) error
-	UpsertBinding(ctx context.Context, b types.Binding) error
-}
-
-func (d Definition) Save(ctx context.Context, store Store) error {
-	if err := store.UpsertPlugin(ctx, d.Plugin); err != nil {
-		return err
-	}
-	for _, binding := range d.Bindings {
-		if err := store.UpsertBinding(ctx, binding); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
+// Registry 插件注册中心顶层建造者
 type Registry struct {
 	plugin   types.Plugin
 	schema   types.Schema
@@ -40,6 +21,7 @@ type Registry struct {
 	err      error
 }
 
+// NewRegistry 创建插件注册表
 func NewRegistry(uid string, name string, opts ...Option) *Registry {
 	r := &Registry{
 		plugin: types.Plugin{
@@ -55,6 +37,7 @@ func NewRegistry(uid string, name string, opts ...Option) *Registry {
 	return r
 }
 
+// Action 注册无资产绑定的普通独立动作（如纯操作按钮、快捷动作等）
 func (r *Registry) Action(action string, name string, opts ...ActionOption) *Registry {
 	spec := types.ActionSpec{
 		Action:    action,
@@ -68,31 +51,7 @@ func (r *Registry) Action(action string, name string, opts ...ActionOption) *Reg
 	return r
 }
 
-func (r *Registry) Setup(items ...dsl.SetupItem) *Registry {
-	for _, item := range items {
-		if item != nil {
-			item.ApplyToSchema(&r.schema)
-		}
-	}
-	return r
-}
-
-func (r *Registry) Bind(factory BindingFactory) *Registry {
-	if r.err != nil {
-		return r
-	}
-	binding, err := factory(r.plugin.UID)
-	if err != nil {
-		r.err = err
-		return r
-	}
-	if binding.PluginID == "" {
-		binding.PluginID = r.plugin.UID
-	}
-	r.bindings = append(r.bindings, binding)
-	return r
-}
-
+// Definition 编译并产出最终的插件自描述元数据
 func (r *Registry) Definition() (Definition, error) {
 	if r.err != nil {
 		return Definition{}, r.err
@@ -111,6 +70,7 @@ func (r *Registry) Definition() (Definition, error) {
 	}, nil
 }
 
+// MustDefinition 编译并产出最终元数据，遇错 panic（常用于单元测试或常量定义）
 func (r *Registry) MustDefinition() Definition {
 	def, err := r.Definition()
 	if err != nil {
@@ -119,6 +79,7 @@ func (r *Registry) MustDefinition() Definition {
 	return def
 }
 
+// Option 插件基础属性修饰选项
 type Option func(*types.Plugin)
 
 func Type(value string) Option {
@@ -133,6 +94,7 @@ func Version(value string) Option {
 	}
 }
 
+// ActionOption 动作修饰选项
 type ActionOption func(*types.ActionSpec)
 
 func Icon(value string) ActionOption {
@@ -153,12 +115,6 @@ func Permission(value string) ActionOption {
 	}
 }
 
-func UseBinding(uid string) ActionOption {
-	return func(a *types.ActionSpec) {
-		a.BindingUID = uid
-	}
-}
-
 func ActionRuntime(value types.ActionRuntimeSpec) ActionOption {
 	return func(a *types.ActionSpec) {
 		runtime := value
@@ -173,54 +129,4 @@ func Meta(key string, value any) ActionOption {
 		}
 		a.Meta[key] = value
 	}
-}
-
-type BindingOption func(*types.Binding)
-
-type BindingFactory func(pluginUID string) (types.Binding, error)
-
-func BindingEnabled(value bool) BindingOption {
-	return func(b *types.Binding) {
-		b.Enabled = value
-	}
-}
-
-func Center[T any](modelUID string, opts ...BindingOption) BindingFactory {
-	return CenterNamed[T]("target", modelUID, opts...)
-}
-
-func CenterNamed[T any](name string, modelUID string, opts ...BindingOption) BindingFactory {
-	return func(pluginUID string) (types.Binding, error) {
-		uid := CenterBindingUID(pluginUID, modelUID)
-		return bindingForCenter[T](uid, name, modelUID, opts...)
-	}
-}
-
-func CenterBindingUID(pluginUID string, modelUID string) string {
-	return fmt.Sprintf("%s.%s", pluginUID, modelUID)
-}
-
-func bindingForCenter[T any](uid string, name string, modelUID string, opts ...BindingOption) (types.Binding, error) {
-	spec, err := codec.BuildCenterSpec[T](name, modelUID)
-	if err != nil {
-		return types.Binding{}, err
-	}
-	g, err := graph.GraphFromBindingSpecs(modelUID, []types.ResourceSpec{spec})
-	if err != nil {
-		return types.Binding{}, err
-	}
-
-	binding := types.Binding{
-		UID:      uid,
-		ModelUID: modelUID,
-		Enabled:  true,
-		Graph:    g,
-	}
-	for _, opt := range opts {
-		opt(&binding)
-	}
-	if _, err = graph.CompileBindingGraph(binding.Graph); err != nil {
-		return types.Binding{}, err
-	}
-	return binding, nil
 }

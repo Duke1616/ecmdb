@@ -111,27 +111,27 @@ func decodeField(field reflect.Value, fieldType reflect.StructField, resource ty
 	}
 
 	// 1. 如果该字段被标识为子级关联资源，则按子级解析
-	if child, ok := resource.Children[tag.name]; ok {
+	if child, ok := resource.Children[tag.key]; ok {
 		if err := setChildValue(field, child); err != nil {
-			return fmt.Errorf("decode child %s: %w", tag.name, err)
+			return fmt.Errorf("decode child %s: %w", tag.key, err)
 		}
 		return nil
 	}
 
 	// 2. 普通属性字段解析
-	val, ok := resource.Fields[tag.name]
+	val, ok := resource.Fields[tag.key]
 	if !ok || val == nil {
 		if tag.defaultValue != "" {
 			val = tag.defaultValue
 		} else if tag.required {
-			return fmt.Errorf("plugin field %s is required", tag.name)
+			return fmt.Errorf("plugin field %s is required", tag.key)
 		} else {
 			return nil
 		}
 	}
 
 	if err := setFieldValue(field, val); err != nil {
-		return fmt.Errorf("decode field %s: %w", tag.name, err)
+		return fmt.Errorf("decode field %s: %w", tag.key, err)
 	}
 
 	return nil

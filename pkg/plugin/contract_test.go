@@ -7,52 +7,99 @@ import (
 	"testing"
 
 	"github.com/Duke1616/ecmdb/pkg/plugin/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExternalServiceRuntime(t *testing.T) {
-	def := NewRegistry(
-		"ssh",
-		"SSH",
-		ExternalServiceRuntime("http://ssh-plugin:8080/", RuntimeHealthPath("/healthz")),
-	).
-		Action("terminal", "SSH 终端").
-		MustDefinition()
+	testCases := []struct {
+		name       string
+		upstream   string
+		opts       []RuntimeOption
+		wantMode   string
+		wantURL    string
+		wantHealth string
+	}{
+		{
+			name:       "标准上游地址与健康检查路径",
+			upstream:   "http://ssh-plugin:8080/",
+			opts:       []RuntimeOption{RuntimeHealthPath("/healthz")},
+			wantMode:   types.RuntimeModeExternalService,
+			wantURL:    "http://ssh-plugin:8080",
+			wantHealth: "/healthz",
+		},
+		{
+			name:       "缺省健康检查路径",
+			upstream:   "https://gateway.example.com",
+			opts:       nil,
+			wantMode:   types.RuntimeModeExternalService,
+			wantURL:    "https://gateway.example.com",
+			wantHealth: "",
+		},
+	}
 
-	runtime, ok := def.Plugin.Runtime()
-	if !ok {
-		t.Fatal("runtime not found")
-	}
-	if runtime.Mode != types.RuntimeModeExternalService {
-		t.Fatalf("mode = %s", runtime.Mode)
-	}
-	if runtime.Upstream != "http://ssh-plugin:8080" {
-		t.Fatalf("upstream = %s", runtime.Upstream)
-	}
-	if runtime.HealthPath != "/healthz" {
-		t.Fatalf("health path = %s", runtime.HealthPath)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			def := NewRegistry("ssh", "SSH", ExternalServiceRuntime(tc.upstream, tc.opts...)).
+				Action("terminal", "SSH 终端").
+				MustDefinition()
+
+			runtime, ok := def.Plugin.Runtime()
+			require.True(t, ok)
+			assert.Equal(t, tc.wantMode, runtime.Mode)
+			assert.Equal(t, tc.wantURL, runtime.Upstream)
+			assert.Equal(t, tc.wantHealth, runtime.HealthPath)
+		})
 	}
 }
 
 func TestDefinitionHandler(t *testing.T) {
-	provider := ProviderFunc(func() (Definition, error) {
-		return NewRegistry("ssh", "SSH").
-			Action("terminal", "SSH 终端").
-			Definition()
-	})
-
-	req := httptest.NewRequest(http.MethodGet, types.WellKnownPath, nil)
-	rec := httptest.NewRecorder()
-	DefinitionHandler(provider).ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	testCases := []struct {
+		name       string
+		method     string
+		provider   Provider
+		wantCode   int
+		assertBody func(t *testing.T, body []byte)
+	}{
+		{
+			name:   "GET 请求正常响应自描述 JSON",
+			method: http.MethodGet,
+			provider: ProviderFunc(func() (Definition, error) {
+				return NewRegistry("ssh", "SSH").
+					Action("terminal", "SSH 终端").
+					Definition()
+			}),
+			wantCode: http.StatusOK,
+			assertBody: func(t *testing.T, body []byte) {
+				var def Definition
+				err := json.Unmarshal(body, &def)
+				require.NoError(t, err)
+				assert.Equal(t, "ssh", def.Plugin.UID)
+				require.Len(t, def.Plugin.Actions, 1)
+				assert.Equal(t, "terminal", def.Plugin.Actions[0].Action)
+			},
+		},
+		{
+			name:   "非 GET 请求返回 405 Method Not Allowed",
+			method: http.MethodPost,
+			provider: ProviderFunc(func() (Definition, error) {
+				return Definition{}, nil
+			}),
+			wantCode: http.StatusMethodNotAllowed,
+			assertBody: func(t *testing.T, body []byte) {
+				assert.Contains(t, string(body), "method not allowed")
+			},
+		},
 	}
 
-	var def Definition
-	if err := json.Unmarshal(rec.Body.Bytes(), &def); err != nil {
-		t.Fatalf("decode definition: %v", err)
-	}
-	if def.Plugin.UID != "ssh" || len(def.Plugin.Actions) != 1 {
-		t.Fatalf("definition = %#v", def)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, types.WellKnownPath, nil)
+			rec := httptest.NewRecorder()
+			DefinitionHandler(tc.provider).ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.wantCode, rec.Code)
+			tc.assertBody(t, rec.Body.Bytes())
+		})
 	}
 }

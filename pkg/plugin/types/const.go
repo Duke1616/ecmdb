@@ -59,3 +59,34 @@ var validRelationTypes = []string{
 func ValidRelationType(relationType string) bool {
 	return lo.Contains(validRelationTypes, relationType)
 }
+
+// BasicRelationTypes 返回 ECMDB 内置预设的基础关联类型定义
+func BasicRelationTypes() []RelationType {
+	return []RelationType{
+		{
+			UID:            RelationTypeDefault,
+			Name:           "默认关联",
+			SourceDescribe: "关联",
+			TargetDescribe: "关联",
+		},
+		{
+			UID:            RelationTypeRun,
+			Name:           "运行",
+			SourceDescribe: "运行于",
+			TargetDescribe: "运行",
+		},
+		{
+			UID:            RelationTypeGroup,
+			Name:           "组成",
+			SourceDescribe: "组成",
+			TargetDescribe: "组成于",
+		},
+		{
+			UID:            RelationTypeBelong,
+			Name:           "属于",
+			SourceDescribe: "属于",
+			TargetDescribe: "包含",
+		},
+	}
+}
+

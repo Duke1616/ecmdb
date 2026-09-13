@@ -207,6 +207,71 @@ type Schema struct {
 	ModelRelations []ModelRelation  `json:"model_relations,omitempty"`
 }
 
+// Merge 将另一个 Schema 的分组、模型、关系类型与模型关联无重复地合并至当前 Schema
+func (s *Schema) Merge(other Schema) {
+	existingGroups := lo.SliceToMap(s.ModelGroups, func(g ModelGroupSpec) (string, struct{}) {
+		return g.Name, struct{}{}
+	})
+	for _, g := range other.ModelGroups {
+		if _, ok := existingGroups[g.Name]; !ok {
+			s.ModelGroups = append(s.ModelGroups, g)
+		}
+	}
+
+	existingModels := lo.SliceToMap(s.Models, func(m ModelSpec) (string, struct{}) {
+		return m.UID, struct{}{}
+	})
+	for _, m := range other.Models {
+		if _, ok := existingModels[m.UID]; !ok {
+			s.Models = append(s.Models, m)
+		}
+	}
+
+	existingRelTypes := lo.SliceToMap(s.RelationTypes, func(r RelationType) (string, struct{}) {
+		return r.UID, struct{}{}
+	})
+	for _, r := range other.RelationTypes {
+		if _, ok := existingRelTypes[r.UID]; !ok {
+			s.RelationTypes = append(s.RelationTypes, r)
+		}
+	}
+
+	for _, rel := range other.ModelRelations {
+		exists := lo.SomeBy(s.ModelRelations, func(existing ModelRelation) bool {
+			return existing.SourceModelUID == rel.SourceModelUID &&
+				existing.TargetModelUID == rel.TargetModelUID &&
+				existing.RelationTypeUID == rel.RelationTypeUID
+		})
+		if !exists {
+			s.ModelRelations = append(s.ModelRelations, rel)
+		}
+	}
+}
+
+// UpdateModelMeta 更新指定模型的中文展示名称与所属模型分组，并重新收敛分组列表
+func (s *Schema) UpdateModelMeta(modelUID, name, group string) {
+	name = strings.TrimSpace(name)
+	group = strings.TrimSpace(group)
+
+	if _, idx, ok := lo.FindIndexOf(s.Models, func(m ModelSpec) bool { return m.UID == modelUID }); ok {
+		m := &s.Models[idx]
+		m.Name = lo.CoalesceOrEmpty(name, m.Name)
+		m.GroupName = lo.CoalesceOrEmpty(group, m.GroupName)
+	}
+
+	s.SyncModelGroups()
+}
+
+// SyncModelGroups 重新根据当前所有模型引用的非空 GroupName 收敛 ModelGroups，避免孤儿分组残留
+func (s *Schema) SyncModelGroups() {
+	groups := lo.Uniq(lo.FilterMap(s.Models, func(m ModelSpec, _ int) (string, bool) {
+		return m.GroupName, m.GroupName != ""
+	}))
+	s.ModelGroups = lo.Map(groups, func(name string, _ int) ModelGroupSpec {
+		return ModelGroupSpec{Name: name}
+	})
+}
+
 type ModelGroupSpec struct {
 	Name string `json:"name"`
 }
@@ -257,6 +322,8 @@ type ModelRelation struct {
 type ResourceSpec struct {
 	Name           string            `json:"name"`                      // 资源名称 (Go struct 中的字段名)
 	ModelUID       string            `json:"model_uid"`                 // CMDB 模型 UID
+	ModelName      string            `json:"model_name,omitempty"`      // CMDB 模型中文展示名称
+	GroupName      string            `json:"group_name,omitempty"`      // 所属模型分组名称
 	RelationType   string            `json:"relation_type,omitempty"`   // 关联类型 UID
 	Direction      string            `json:"direction,omitempty"`       // 关联查询方向：auto / source / target
 	Cardinality    string            `json:"cardinality"`               // 数量基数：one / many

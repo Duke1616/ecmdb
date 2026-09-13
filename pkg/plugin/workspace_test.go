@@ -2,52 +2,89 @@ package plugin
 
 import (
 	"testing"
+
+	"github.com/Duke1616/ecmdb/pkg/plugin/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestWorkspacePresetBuilder(t *testing.T) {
-	reg := NewRegistry("builtin.ssh", "SSH").
-		Action("terminal", "SSH 终端",
-			Icon("terminal"),
-			Workspace("Web Shell", "host",
+func TestWorkspace(t *testing.T) {
+	testCases := []struct {
+		name       string
+		title      string
+		modelUID   string
+		opts       []WorkspaceOption
+		assertSpec func(t *testing.T, action types.ActionSpec)
+	}{
+		{
+			name:     "默认工作台预设配置",
+			title:    "Web Shell",
+			modelUID: "host",
+			opts: []WorkspaceOption{
 				CardFields("name", "ip"),
-				Prop("connectionType", "Web Shell"),
 				Prop("autoConnect", true),
-			),
-		)
+			},
+			assertSpec: func(t *testing.T, action types.ActionSpec) {
+				require.NotNil(t, action.Runtime)
+				assert.Equal(t, "workspace", action.Runtime.Layout)
+				assert.Equal(t, "Web Shell", action.Runtime.Title)
+				assert.Equal(t, true, action.Runtime.Props["autoConnect"])
 
-	def := reg.MustDefinition()
-	if len(def.Plugin.Actions) != 1 {
-		t.Fatalf("expected 1 action, got %d", len(def.Plugin.Actions))
+				sidebar := action.Runtime.Sidebar
+				require.NotNil(t, sidebar)
+				assert.True(t, *sidebar.Enabled)
+				assert.Equal(t, "Web Shell", sidebar.Title)
+				require.NotNil(t, sidebar.Resource)
+				assert.Equal(t, "host", sidebar.Resource.ModelUID)
+				assert.Equal(t, "name", sidebar.Resource.TitleField)
+				assert.Equal(t, "ip", sidebar.Resource.SubtitleField)
+				assert.Equal(t, 20, sidebar.Resource.Limit)
+			},
+		},
+		{
+			name:     "自定义侧边栏标题与单页限制",
+			title:    "文件管理器",
+			modelUID: "host",
+			opts: []WorkspaceOption{
+				SidebarTitle("资产导航"),
+				SidebarLimit(50),
+				SearchFields("name", "ip", "hostname"),
+			},
+			assertSpec: func(t *testing.T, action types.ActionSpec) {
+				sidebar := action.Runtime.Sidebar
+				require.NotNil(t, sidebar)
+				assert.Equal(t, "资产导航", sidebar.Title)
+				assert.Equal(t, 50, sidebar.Resource.Limit)
+				assert.Equal(t, []string{"name", "ip", "hostname"}, sidebar.Resource.SearchFields)
+			},
+		},
+		{
+			name:     "禁用侧边栏资产导航",
+			title:    "独立看板",
+			modelUID: "host",
+			opts: []WorkspaceOption{
+				SidebarDisabled(),
+				Props(map[string]any{"theme": "dark", "zoom": 1.2}),
+			},
+			assertSpec: func(t *testing.T, action types.ActionSpec) {
+				sidebar := action.Runtime.Sidebar
+				require.NotNil(t, sidebar)
+				assert.False(t, *sidebar.Enabled)
+				assert.Equal(t, "dark", action.Runtime.Props["theme"])
+				assert.Equal(t, 1.2, action.Runtime.Props["zoom"])
+			},
+		},
 	}
 
-	action := def.Plugin.Actions[0]
-	if action.Runtime == nil {
-		t.Fatal("expected action runtime to be set")
-	}
-	if action.Runtime.Layout != "workspace" {
-		t.Errorf("expected layout 'workspace', got '%s'", action.Runtime.Layout)
-	}
-	if action.Runtime.Title != "Web Shell" {
-		t.Errorf("expected title 'Web Shell', got '%s'", action.Runtime.Title)
-	}
-	if action.Runtime.Props["connectionType"] != "Web Shell" || action.Runtime.Props["autoConnect"] != true {
-		t.Errorf("unexpected props: %#v", action.Runtime.Props)
-	}
-
-	sidebar := action.Runtime.Sidebar
-	if sidebar == nil || sidebar.Enabled == nil || !*sidebar.Enabled {
-		t.Fatal("expected sidebar to be enabled")
-	}
-	if sidebar.Title != "Web Shell" {
-		t.Errorf("expected sidebar title 'Web Shell', got '%s'", sidebar.Title)
-	}
-	if sidebar.Resource == nil || sidebar.Resource.ModelUID != "host" {
-		t.Fatalf("unexpected sidebar resource: %#v", sidebar.Resource)
-	}
-	if sidebar.Resource.TitleField != "name" || sidebar.Resource.SubtitleField != "ip" {
-		t.Errorf("unexpected card fields: title=%s, sub=%s", sidebar.Resource.TitleField, sidebar.Resource.SubtitleField)
-	}
-	if sidebar.Resource.Limit != 20 {
-		t.Errorf("expected default limit 20, got %d", sidebar.Resource.Limit)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := types.ActionSpec{
+				Action: "test_action",
+				Name:   tc.title,
+			}
+			opt := Workspace(tc.title, tc.modelUID, tc.opts...)
+			opt(&spec)
+			tc.assertSpec(t, spec)
+		})
 	}
 }

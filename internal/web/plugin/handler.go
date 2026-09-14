@@ -37,7 +37,10 @@ func (h *Handler) PublicRoutes(server *gin.Engine) {
 	server.Any("/api/plugin-runtime/:plugin_id/*any", h.ProxyToPlugin)
 }
 
-func (h *Handler) IdentifyRoutes(_ *gin.Engine) {}
+func (h *Handler) IdentifyRoutes(server *gin.Engine) {
+	g := server.Group("/api/plugin")
+	g.GET("/runtime/view", ginx.W(h.GetRuntimeView))
+}
 
 func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g := server.Group("/api/plugin")
@@ -74,10 +77,6 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 	g.POST("/action/resolve", h.Define("解析插件动作", "resolve").
 		NoSync().
 		Bind(ginx.B[pluginx.ResolveRequest](h.ResolveAction)),
-	)
-	g.GET("/runtime/view", h.Define("插件运行时视图", "runtime_view").
-		Needs(permission.Plugin.Resolve).
-		Bind(ginx.W(h.GetRuntimeView)),
 	)
 }
 

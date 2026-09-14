@@ -131,7 +131,6 @@ ECMDB 采用模块化多仓库设计，各子系统独立演进：
 | **ECMDB Plugins** | 资产操作扩展插件（含 WebSSH 在线终端、SFTP 文件管理等） | `v0.1.2` | [Duke1616/ecmdb-plugins](https://github.com/Duke1616/ecmdb-plugins) |
 | **EFlow** | 企业级低代码工作流与工单审批引擎 | `v0.0.2` | [Duke1616/eflow](https://github.com/Duke1616/eflow) |
 | **ETask** | 分布式自动化运维作业执行引擎 | `v1.14.1` | [Duke1616/etask](https://github.com/Duke1616/etask) |
-| **EAlert** | 智能监控告警收敛与 On-Call 排班响应系统 | `v0.0.1` | [Duke1616/ealert](https://github.com/Duke1616/ealert) |
 | **EIAM** | 企业级统一身份凭证与细粒度权限管理中心 | `v0.0.24` | [Duke1616/eiam](https://github.com/Duke1616/eiam) |
 
 ---

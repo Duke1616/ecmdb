@@ -21,12 +21,21 @@ func main() {
 		log.Fatalf("❌ 获取当前工作目录失败: %v", err)
 	}
 
-	diagramsDir := filepath.Join(cwd, "docs", "diagrams")
-	outputDir := filepath.Join(cwd, "docs", "img")
-
-	if _, err := os.Stat(diagramsDir); os.IsNotExist(err) {
-		log.Fatalf("❌ 图表源文件目录不存在: %s", diagramsDir)
+	// 自底向上查找项目根目录（寻找包含 docs/diagrams 的根路径）
+	projectRoot := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(projectRoot, "docs", "diagrams")); err == nil {
+			break
+		}
+		parent := filepath.Dir(projectRoot)
+		if parent == projectRoot {
+			log.Fatalf("❌ 未能定位到包含 docs/diagrams 的项目根目录 (起始路径: %s)", cwd)
+		}
+		projectRoot = parent
 	}
+
+	diagramsDir := filepath.Join(projectRoot, "docs", "diagrams")
+	outputDir := filepath.Join(projectRoot, "docs", "img")
 
 	// 扫描 docs/diagrams 目录下的所有 HTML 模板
 	entries, err := os.ReadDir(diagramsDir)

@@ -56,7 +56,7 @@ tasks:
   arch:
     desc: 批量渲染所有图表模板
     cmds:
-      - go run ./cmd/tools/render-arch/main.go
+      - (cd cmd/tools/render-arch && go run main.go)
 
   # --- 工具链安装 ---
   install:tools:

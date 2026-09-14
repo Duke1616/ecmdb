@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>ECMDB Platform Architecture</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: #0d1117;
+      color: #e6edf3;
+      width: 1120px;
+      height: 610px;
+      padding: 24px 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* 顶部标题栏 */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #21262d;
+    }
+    .title-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f0f6fc;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .subtitle {
+      font-size: 11.5px;
+      color: #8b949e;
+      white-space: nowrap;
+    }
+    .header-tag {
+      font-size: 11.5px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      color: #79c0ff;
+      background: rgba(56, 139, 253, 0.1);
+      border: 1px solid rgba(56, 139, 253, 0.25);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* 架构主容器 */
+    .arch-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      justify-content: space-between;
+      margin: 10px 0;
+    }
+
+    /* 面板基础 */
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .panel-title {
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #58a6ff;
+    }
+    .panel-sub {
+      font-size: 11.5px;
+      color: #8b949e;
+    }
+
+    /* 1. 接入与鉴权层 */
+    .access-row {
+      display: grid;
+      grid-template-columns: 280px 32px 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+    .web-box {
+      background: #0d1117;
+      border: 1px solid #388bfd;
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+    .box-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    .box-desc {
+      font-size: 11.5px;
+      color: #8b949e;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+    .arrow-col {
+      text-align: center;
+      color: #58a6ff;
+      font-size: 15px;
+      font-weight: bold;
+    }
+    .iam-box {
+      background: #0d1117;
+      border: 1px dashed #a371f7;
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .iam-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .iam-tags {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .tag {
+      font-size: 11.5px;
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 3px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* 流转提示条 */
+    .flow-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      height: 8px;
+    }
+    .flow-bar-line {
+      width: 100%;
+      height: 1px;
+      background: #21262d;
+    }
+    .flow-bar-text {
+      position: absolute;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 0 12px;
+      font-size: 10.5px;
+      color: #8b949e;
+      line-height: 16px;
+    }
+
+    /* 2. 业务服务矩阵 */
+    .services-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .svc-card {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .svc-card.cmdb { border-top: 3px solid #1f6feb; }
+    .svc-card.flow { border-top: 3px solid #238636; }
+    .svc-card.task { border-top: 3px solid #d29922; }
+    .svc-card.alert { border-top: 3px solid #da3633; }
+
+    .svc-head {
+      margin-bottom: 7px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .svc-title {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    .svc-sub {
+      font-size: 11.5px;
+      color: #8b949e;
+    }
+    .svc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .svc-item {
+      font-size: 12px;
+      color: #c9d1d9;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #58a6ff;
+      flex-shrink: 0;
+    }
+    .svc-card.flow .dot { background: #3fb950; }
+    .svc-card.task .dot { background: #d29922; }
+    .svc-card.alert .dot { background: #f85149; }
+
+    /* 3. 插件体系 */
+    .plugin-bar {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .plugin-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .plugin-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    .plugin-subinfo {
+      font-size: 11px;
+      color: #8b949e;
+      white-space: nowrap;
+    }
+    .plugin-items {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .p-item {
+      font-size: 11.5px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 3px 9px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* 4. 基础设施底座 */
+    .infra-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 7px 14px;
+    }
+    .infra-title {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .infra-chips {
+      display: flex;
+      gap: 12px;
+    }
+    .chip {
+      font-size: 11.5px;
+      color: #8b949e;
+    }
+    .chip b {
+      color: #c9d1d9;
+      font-weight: 500;
+    }
+
+    /* 底部说明 */
+    .footer-note {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid #21262d;
+      font-size: 11.5px;
+      color: #8b949e;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶栏标题 -->
+  <div class="header">
+    <div class="title-left">
+      <div class="title">ECMDB 平台系统全景架构与调用流转</div>
+      <div class="subtitle">覆盖资产拓扑、工单流程、自动化作业与监控告警的一站式运维管理套件</div>
+    </div>
+    <div class="header-tag">企业级一站式运维底座 · Microservices</div>
+  </div>
+
+  <div class="arch-container">
+    <!-- 1. 接入层与统一身份鉴权 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">1. 接入层与安全控制面 (Access & Security Gateway)</span>
+        <span class="panel-sub">用户统一访问 Web 控制台，由 EIAM 执行全局单点登录与权限守门</span>
+      </div>
+
+      <div class="access-row">
+        <div class="web-box">
+          <div class="box-name">ECMDB-Web 控制台</div>
+          <div class="box-desc">Vue 3 + TS 响应式统一工作台 / 模块化聚合入口</div>
+        </div>
+
+        <div class="arrow-col">➔</div>
+
+        <div class="iam-box">
+          <div class="iam-left">
+            <div class="box-name" style="color: #d2a8ff;">EIAM 统一身份与权限基座</div>
+            <div class="box-desc">组织架构 · PBAC 动态策略引擎 · API 契约自发现</div>
+          </div>
+          <div class="iam-tags">
+            <span class="tag">SSO 统一认证</span>
+            <span class="tag">策略权限拦截</span>
+            <span class="tag">API 契约守门</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 流转分隔线 -->
+    <div class="flow-bar">
+      <div class="flow-bar-line"></div>
+      <span class="flow-bar-text">鉴权通过后，由网关按路由反代分发至各业务服务接口</span>
+    </div>
+
+    <!-- 2. 各业务服务解耦矩阵 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">2. 核心业务能力矩阵 (Core Platform Services)</span>
+        <span class="panel-sub">各子系统独立部署、松耦合设计，既可独立运作也可在统一门户一体化管理</span>
+      </div>
+
+      <div class="services-row">
+        <!-- ECMDB -->
+        <div class="svc-card cmdb">
+          <div class="svc-head">
+            <span class="svc-title">ECMDB</span>
+            <span class="svc-sub">配置与资产拓扑</span>
+          </div>
+          <div class="svc-list">
+            <div class="svc-item"><span class="dot"></span>Schema-less 动态模型引擎</div>
+            <div class="svc-item"><span class="dot"></span>自定义属性、分组与格式校验</div>
+            <div class="svc-item"><span class="dot"></span>多维资产关系拓扑与影响分析</div>
+            <div class="svc-item"><span class="dot"></span>敏感凭据 AES 内存透明加解密</div>
+            <div class="svc-item"><span class="dot"></span>资产数据 Excel 高性能导入导出</div>
+          </div>
+        </div>
+
+        <!-- EFlow -->
+        <div class="svc-card flow">
+          <div class="svc-head">
+            <span class="svc-title">EFlow</span>
+            <span class="svc-sub">工单与审批流程</span>
+          </div>
+          <div class="svc-list">
+            <div class="svc-item"><span class="dot"></span>低代码可视化拖拽表单设计</div>
+            <div class="svc-item"><span class="dot"></span>多级条件分支与审批流转矩阵</div>
+            <div class="svc-item"><span class="dot"></span>支持会签、或签与撤回重申</div>
+            <div class="svc-item"><span class="dot"></span>节点流转全过程留痕与合规审计</div>
+            <div class="svc-item"><span class="dot"></span>工单发起、待办提醒与状态闭环</div>
+          </div>
+        </div>
+
+        <!-- ETask -->
+        <div class="svc-card task">
+          <div class="svc-head">
+            <span class="svc-title">ETask</span>
+            <span class="svc-sub">自动化作业引擎</span>
+          </div>
+          <div class="svc-list">
+            <div class="svc-item"><span class="dot"></span>内置 Shell / Python / Ansible 调用</div>
+            <div class="svc-item"><span class="dot"></span>支持按需实现自定义执行器</div>
+            <div class="svc-item"><span class="dot"></span>跨主机多节点高并发批量执行</div>
+            <div class="svc-item"><span class="dot"></span>定时调度与场景化任务编排</div>
+            <div class="svc-item"><span class="dot"></span>SSE 流式终端日志实时逐帧回显</div>
+          </div>
+        </div>
+
+        <!-- EAlert -->
+        <div class="svc-card alert">
+          <div class="svc-head">
+            <span class="svc-title">EAlert</span>
+            <span class="svc-sub">智能告警与排班</span>
+          </div>
+          <div class="svc-list">
+            <div class="svc-item"><span class="dot"></span>支持告警分组、关联抑制与静默</div>
+            <div class="svc-item"><span class="dot"></span>支持告警消息超时多级自动升级</div>
+            <div class="svc-item"><span class="dot"></span>多渠道告警模版与动态变量渲染</div>
+            <div class="svc-item"><span class="dot"></span>支持 On-Call 可视化轮值排班</div>
+            <div class="svc-item"><span class="dot"></span>飞书卡片与邮件多通道消息通知</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 插件体系 -->
+    <div class="plugin-bar">
+      <div class="plugin-info">
+        <span class="plugin-name">ECMDB Plugins · 资产操作扩展插件体系</span>
+        <span class="plugin-subinfo">面向资产模型扩展运维动作能力 · 独立容器化运行 · 标准契约规范接入</span>
+      </div>
+      <div class="plugin-items">
+        <div class="p-item">内置 WebSSH 在线终端</div>
+        <div class="p-item">内置 SFTP 文件管理</div>
+        <div class="p-item" style="border-color: #388bfd; color: #58a6ff; background: rgba(56,139,253,0.1);">支持按需自定义实现</div>
+      </div>
+    </div>
+
+    <!-- 4. 基础设施底座 -->
+    <div class="infra-strip">
+      <span class="infra-title">基础设施底座 (Storage & Middleware)</span>
+      <div class="infra-chips">
+        <span class="chip">MongoDB <b>(资产分表)</b></span>
+        <span class="chip">MySQL <b>(业务关系数据)</b></span>
+        <span class="chip">Redis <b>(分布式锁/缓存)</b></span>
+        <span class="chip">Kafka <b>(异步事件总线)</b></span>
+        <span class="chip">Etcd <b>(注册与服务发现)</b></span>
+        <span class="chip">MinIO <b>(制品与文件存储)</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部说明：求真务实的架构与工程设计原则 -->
+  <div class="footer-note">
+    <div>• 架构设计原则：微服务松耦合独立演进 · 业务子系统按需插拔装配 · 避免隐式跨服务强耦合</div>
+    <div>• 生产安全与交付：敏感凭据字段 AES 加密存储 · 关键操作审计留痕 · 容器化开箱即用交付</div>
+  </div>
+</body>
+</html>

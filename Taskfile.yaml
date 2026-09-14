@@ -20,11 +20,6 @@ tasks:
     cmds:
       - go run main.go server
 
-  endpoint:
-    desc: 注入端点
-    cmds:
-      - go run main.go endpoint
-
   # --- 代码与契约生成 ---
   gen:
     desc: 全量代码生成 (Wire + Proto + Perm)
@@ -57,6 +52,11 @@ tasks:
     desc: 生成 Mock 代码
     cmds:
       - go generate ./...
+
+  arch:
+    desc: 批量渲染所有图表模板
+    cmds:
+      - go run ./cmd/tools/render-arch/main.go
 
   # --- 工具链安装 ---
   install:tools:

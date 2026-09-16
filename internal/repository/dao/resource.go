@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -158,6 +159,9 @@ func (dao *resourceDAO) UpdateAttribute(ctx context.Context, resource Resource) 
 	filter := bson.M{"id": resource.ID}
 	count, err := dao.coll.UpdateOne(ctx, filter, updateCommand)
 	if err != nil {
+		if mongox.IsUniqueConstraintError(err) {
+			return 0, fmt.Errorf("修改文档操作唯一冲突: %w", errs.ErrUniqueDuplicate)
+		}
 		return 0, fmt.Errorf("修改文档操作: %w", err)
 	}
 
@@ -192,6 +196,9 @@ func (dao *resourceDAO) CreateResource(ctx context.Context, r Resource) (int64, 
 	// 依靠 mongox 的 AutoIDPlugin 插件自动分配并注入 ID，不需要再手动管理 id_generator
 	_, err := dao.coll.InsertOne(ctx, &r)
 	if err != nil {
+		if mongox.IsUniqueConstraintError(err) {
+			return 0, fmt.Errorf("创建资产唯一冲突: %w", errs.ErrUniqueDuplicate)
+		}
 		return 0, fmt.Errorf("插入数据错误: %w", err)
 	}
 
@@ -297,7 +304,6 @@ func (dao *resourceDAO) CountByModelUids(ctx context.Context, modelUids []string
 
 	return modelCountMap, nil
 }
-
 
 // SearchStructure 单租户检索模型 Tabs 统计
 // NOTE: 纯数值聚合，不搬运资产实体数据（零 $push），天然结合当前租户隔离上下文，10ms 内极速返回
@@ -557,7 +563,6 @@ type Pipeline struct {
 	ModelUid string `bson:"_id"`
 	Total    int    `bson:"total"`
 }
-
 
 type AdminSearchGroupID struct {
 	TenantID int64  `bson:"tenant_id"`

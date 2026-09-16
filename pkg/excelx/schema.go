@@ -31,7 +31,7 @@ const (
 type Column struct {
 	Key      string   // 字段唯一标识（供机器读写精准对齐，如 field_uid）
 	Title    string   // 字段中文展示名称（供人类阅读，如 field_name）
-	Type     string   // 数据类型：string / int / float / bool / select / list
+	Type     string   // 数据类型：string / int / float / number / bool / select / list / datetime
 	Required bool     // 是否必填约束
 	Unique   bool     // 是否唯一约束（如资产名称 name）
 	Secure   bool     // 是否敏感加密标记

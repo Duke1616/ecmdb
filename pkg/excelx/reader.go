@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/xuri/excelize/v2"
@@ -31,6 +32,41 @@ var coercerRegistry = map[string]coercer{
 
 	"select": coerceEnum,
 	"list":   coerceEnum,
+
+	"datetime": coerceDateTime,
+	"date":     coerceDateTime,
+}
+
+var dateTimeFormats = []string{
+	"2006-01-02 15:04:05",
+	"2006-01-02 15:04",
+	"2006-01-02",
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	"2006/01/02 15:04:05",
+	"2006/01/02 15:04",
+	"2006/01/02",
+}
+
+func coerceDateTime(raw, val string, col Column, lineNum int) (interface{}, error) {
+	// 1. 先尝试是否为 Excel 内部日期浮点序列号
+	if f, err := strconv.ParseFloat(val, 64); err == nil && f > 0 && f < 2958465 {
+		if t, err := excelize.ExcelDateToTime(f, false); err == nil {
+			return t.Format("2006-01-02 15:04:05"), nil
+		}
+	}
+
+	// 2. 依次尝试常见日期时间格式解析并标准化输出
+	for _, layout := range dateTimeFormats {
+		if t, err := time.ParseInLocation(layout, val, time.Local); err == nil {
+			if len(val) <= 10 && (layout == "2006-01-02" || layout == "2006/01/02") && strings.ToLower(col.Type) == "date" {
+				return t.Format("2006-01-02"), nil
+			}
+			return t.Format("2006-01-02 15:04:05"), nil
+		}
+	}
+
+	return nil, fmt.Errorf("第 %d 行: 字段【%s(%s)】值 '%s' 不是合法的日期时间格式(建议格式: YYYY-MM-DD HH:mm:ss)", lineNum, col.Title, col.Key, raw)
 }
 
 func coerceInt(raw, val string, col Column, lineNum int) (interface{}, error) {

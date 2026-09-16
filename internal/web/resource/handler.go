@@ -2,15 +2,18 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/Duke1616/ecmdb/internal/domain"
+	"github.com/Duke1616/ecmdb/internal/errs"
 	attributeservice "github.com/Duke1616/ecmdb/internal/service/attribute"
 	modelservice "github.com/Duke1616/ecmdb/internal/service/model"
 	relationservice "github.com/Duke1616/ecmdb/internal/service/relation"
 	service "github.com/Duke1616/ecmdb/internal/service/resource"
 	"github.com/Duke1616/ecmdb/pkg/contract/permission"
+	"github.com/Duke1616/ecmdb/pkg/mongox"
 	"github.com/Duke1616/eiam/pkg/web/capability"
 	"github.com/Duke1616/eiam/pkg/web/middleware"
 	"github.com/ecodeclub/ginx"
@@ -166,6 +169,10 @@ func (h *Handler) PrivateRoutes(server *gin.Engine) {
 func (h *Handler) CreateResource(ctx *ginx.Context, req CreateResourceReq) (ginx.Result, error) {
 	id, err := h.svc.CreateResource(ctx.Context, h.toCreateDomain(req))
 
+	if errors.Is(err, errs.ErrUniqueDuplicate) || mongox.IsUniqueConstraintError(err) {
+		return duplicateResourceResult, fmt.Errorf("资产名称冲突: %w", err)
+	}
+
 	if err != nil {
 		return systemErrorResult, err
 	}
@@ -213,6 +220,10 @@ func (h *Handler) ListResource(ctx *ginx.Context, req ListResourceReq) (ginx.Res
 func (h *Handler) UpdateResource(ctx *ginx.Context, req UpdateResourceReq) (ginx.Result, error) {
 	resource := h.toUpdateDomain(req)
 	t, err := h.svc.UpdateResource(ctx.Context, resource)
+
+	if errors.Is(err, errs.ErrUniqueDuplicate) || mongox.IsUniqueConstraintError(err) {
+		return duplicateResourceResult, fmt.Errorf("资产名称冲突: %w", err)
+	}
 
 	if err != nil {
 		return systemErrorResult, err

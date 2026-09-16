@@ -12,7 +12,9 @@ func Test_TableWriter_And_Reader_Flow(t *testing.T) {
 		{Key: "name", Title: "资产名称", Type: "string", Required: true, Unique: true},
 		{Key: "cpu", Title: "CPU核心数", Type: "int", Required: true},
 		{Key: "ratio", Title: "利用率", Type: "float"},
+		{Key: "memory", Title: "内存大小", Type: "number"},
 		{Key: "is_prod", Title: "是否生产环境", Type: "bool"},
+		{Key: "expire_at", Title: "维保截止日", Type: "datetime"},
 		{Key: "os", Title: "操作系统", Type: "select", Options: []string{"Linux", "Windows"}},
 	}
 
@@ -25,11 +27,13 @@ func Test_TableWriter_And_Reader_Flow(t *testing.T) {
 			name: "正常数据读写闭环_强类型转换成功",
 			records: []map[string]interface{}{
 				{
-					"name":    "srv-01",
-					"cpu":     32,
-					"ratio":   0.85,
-					"is_prod": "是",
-					"os":      "Linux",
+					"name":      "srv-01",
+					"cpu":       32,
+					"ratio":     0.85,
+					"memory":    64,
+					"is_prod":   "是",
+					"expire_at": "2026-12-31 23:59:59",
+					"os":        "Linux",
 				},
 			},
 			assertFn: func(t *testing.T, res []map[string]interface{}, err error) {
@@ -38,7 +42,9 @@ func Test_TableWriter_And_Reader_Flow(t *testing.T) {
 				assert.Equal(t, "srv-01", res[0]["name"])
 				assert.Equal(t, int64(32), res[0]["cpu"])
 				assert.Equal(t, 0.85, res[0]["ratio"])
+				assert.Equal(t, 64.0, res[0]["memory"])
 				assert.Equal(t, true, res[0]["is_prod"])
+				assert.Equal(t, "2026-12-31 23:59:59", res[0]["expire_at"])
 				assert.Equal(t, "Linux", res[0]["os"])
 			},
 		},
@@ -81,6 +87,20 @@ func Test_TableWriter_And_Reader_Flow(t *testing.T) {
 			assertFn: func(t *testing.T, res []map[string]interface{}, err error) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "不是合法的整数")
+			},
+		},
+		{
+			name: "日期时间格式非法_触发校验拦截",
+			records: []map[string]interface{}{
+				{
+					"name":      "srv-05",
+					"cpu":       8,
+					"expire_at": "invalid_date_format",
+				},
+			},
+			assertFn: func(t *testing.T, res []map[string]interface{}, err error) {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "不是合法的日期时间格式")
 			},
 		},
 	}

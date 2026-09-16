@@ -2,13 +2,11 @@ package rule
 
 import (
 	"fmt"
-	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/Duke1616/ecmdb/internal/pkg/wechat"
-	"github.com/ecodeclub/ekit/slice"
-	"github.com/xen0n/go-workwx"
+	"github.com/samber/lo"
 )
 
 type Field struct {
@@ -17,207 +15,165 @@ type Field struct {
 	Content string `json:"content"`
 }
 
-type FieldProcessor struct {
-	rules      []Rule
-	provide    uint8
-	data       map[string]interface{}
-	ruleMap    map[string]Rule
-	optionsMap map[string]map[interface{}]string
-}
-
+// GetFields 根据表单规则格式化消息通知卡片字段（只读无副作用）
 func GetFields(rules []Rule, provide uint8, data map[string]interface{}) []Field {
-	fp := &FieldProcessor{
-		rules:   rules,
-		provide: provide,
-		data:    data,
+	if len(data) == 0 {
+		return nil
 	}
-
-	fp.initialize()
-	fp.filterHiddenFields()
 
 	switch provide {
 	case SystemProvide:
-		return fp.processSystemFields()
+		return processSystemFields(rules, data)
 	case WechatProvide:
-		return fp.processWechatFields()
+		return processWechatFields(data)
 	default:
 		return nil
 	}
 }
 
-func (fp *FieldProcessor) initialize() {
-	fp.ruleMap = slice.ToMap(fp.rules, func(element Rule) string {
-		return element.Field
-	})
-
-	fp.optionsMap = make(map[string]map[interface{}]string)
-	for _, r := range fp.rules {
-		if len(r.Options) > 0 {
-			fp.optionsMap[r.Field] = slice.ToMapV(r.Options, func(opt Options) (interface{}, string) {
-				return opt.Value, opt.Label
-			})
-		}
-	}
-}
-
-func (fp *FieldProcessor) filterHiddenFields() {
-	for _, rule := range fp.rules {
-		if _, ok := rule.Style["notify_display"]; ok {
-			delete(fp.data, rule.Field)
-		}
-	}
-}
-
-func (fp *FieldProcessor) processSystemFields() []Field {
+// processSystemFields 按规则预设顺序流式生成卡片字段（单次遍历保序，零多余中转）
+func processSystemFields(rules []Rule, data map[string]interface{}) []Field {
 	var fields []Field
-	keys := fp.getSortedKeys()
+	handled := make(map[string]struct{}, len(data))
 
-	for _, field := range keys {
-		value := fp.data[field]
-		title := fp.getFieldTitle(field)
-		displayValue := fp.getDisplayValue(field, value)
+	// 1. 优先按 Rules 声明顺序生成已登记的字段
+	for _, r := range rules {
+		if r.Field == "" {
+			continue
+		}
+		if r.IsHidden() {
+			handled[r.Field] = struct{}{} // 标记隐藏字段已处理，避免被末尾兜底误加
+			continue
+		}
+		val, exists := data[r.Field]
+		if !exists {
+			continue
+		}
 
-		fields = append(fields, Field{
-			IsShort: true,
-			Tag:     "lark_md",
-			Content: fmt.Sprintf(`**%s:**\n%v`, title, displayValue),
-		})
+		handled[r.Field] = struct{}{}
+		title := lo.Ternary(r.Title != "", r.Title, r.Field)
+		fields = append(fields, newLarkField(title, formatValue(val, r.Options)))
+	}
+
+	// 2. 兜底追加未在 Rules 中定义的额外数据字段（按字母序排在末尾）
+	extraKeys := lo.Filter(lo.Keys(data), func(k string, _ int) bool {
+		_, seen := handled[k]
+		return !seen
+	})
+	slices.Sort(extraKeys)
+	for _, k := range extraKeys {
+		fields = append(fields, newLarkField(k, formatValue(data[k], nil)))
 	}
 
 	return AddRowSpacers(fields)
 }
 
-func (fp *FieldProcessor) processWechatFields() []Field {
-	oaData, err := wechat.Unmarshal(fp.data)
+// formatValue 格式化单值或切片，若命中 Options 则自动映射为友好 Label
+func formatValue(val any, options []Options) string {
+	if val == nil {
+		return ""
+	}
+
+	// 无选项映射时，直接转为字符串（支持切片展开）
+	if len(options) == 0 {
+		if items, ok := toStringSlice(val); ok {
+			return strings.Join(items, ", ")
+		}
+		return fmt.Sprint(val)
+	}
+
+	// 有选项映射：统一按字符串映射 Label
+	optMap := lo.SliceToMap(options, func(o Options) (string, string) {
+		return fmt.Sprint(o.Value), o.Label
+	})
+	mapLabel := func(v any) string {
+		str := fmt.Sprint(v)
+		if label, ok := optMap[str]; ok {
+			return label
+		}
+		return str
+	}
+
+	if items, ok := toAnySlice(val); ok {
+		return strings.Join(lo.Map(items, func(item any, _ int) string {
+			return mapLabel(item)
+		}), ", ")
+	}
+	return mapLabel(val)
+}
+
+func toStringSlice(val any) ([]string, bool) {
+	switch v := val.(type) {
+	case []string:
+		return v, true
+	case []any:
+		return lo.Map(v, func(item any, _ int) string { return fmt.Sprint(item) }), true
+	default:
+		return nil, false
+	}
+}
+
+func toAnySlice(val any) ([]any, bool) {
+	switch v := val.(type) {
+	case []any:
+		return v, true
+	case []string:
+		return lo.ToAnySlice(v), true
+	default:
+		return nil, false
+	}
+}
+
+func newLarkField(title, content string) Field {
+	return Field{
+		IsShort: true,
+		Tag:     "lark_md",
+		Content: fmt.Sprintf("**%s:**\n%s", title, content),
+	}
+}
+
+// processWechatFields 处理企业微信 OA 审批流数据字段
+func processWechatFields(data map[string]interface{}) []Field {
+	oaData, err := wechat.Unmarshal(data)
 	if err != nil {
 		return nil
 	}
 
 	var fields []Field
-
-	for _, contents := range oaData.ApplyData.Contents {
-		key := contents.Title[0].Text
-		content := fp.processWechatContent(contents)
+	for _, c := range oaData.ApplyData.Contents {
+		if len(c.Title) == 0 {
+			continue
+		}
+		var content string
+		switch c.Control {
+		case "Selector":
+			var vals []string
+			for _, opt := range c.Value.Selector.Options {
+				for _, v := range opt.Value {
+					if v.Text != "" {
+						vals = append(vals, v.Text)
+					}
+				}
+			}
+			content = strings.Join(vals, ", ")
+		case "Textarea", "Text":
+			content = c.Value.Text
+		}
 
 		if content != "" {
-			fields = append(fields, Field{
-				IsShort: true,
-				Tag:     "lark_md",
-				Content: fmt.Sprintf(`**%s:**\n%v`, key, content),
-			})
+			fields = append(fields, newLarkField(c.Title[0].Text, content))
 		}
 	}
-
 	return fields
 }
 
-func (fp *FieldProcessor) processWechatContent(contents workwx.OAContent) string {
-	switch contents.Control {
-	case "Selector":
-		switch contents.Value.Selector.Type {
-		case "single":
-			return contents.Value.Selector.Options[0].Value[0].Text
-		case "multi":
-			values := slice.Map(contents.Value.Selector.Options, func(_ int, opt workwx.OAContentSelectorOption) string {
-				return opt.Value[0].Text
-			})
-			return strings.Join(values, ", ")
-		}
-	case "Textarea":
-		return contents.Value.Text
-	default:
-		return ""
-	}
-	return ""
-}
-
-func (fp *FieldProcessor) getSortedKeys() []string {
-	keys := make([]string, 0, len(fp.data))
-	for key := range fp.data {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func (fp *FieldProcessor) getFieldTitle(field string) string {
-	if rule, ok := fp.ruleMap[field]; ok {
-		return rule.Title
-	}
-	return field
-}
-
-func (fp *FieldProcessor) getDisplayValue(field string, value interface{}) string {
-	if value == nil {
-		return ""
-	}
-
-	if reflect.TypeOf(value).Kind() == reflect.Slice {
-		return fp.processSliceValue(field, value)
-	}
-	return fp.processSingleValue(field, value)
-}
-
-func (fp *FieldProcessor) processSliceValue(field string, value interface{}) string {
-	sli := reflect.ValueOf(value)
-	results := make([]string, 0, sli.Len())
-
-	for i := 0; i < sli.Len(); i++ {
-		results = append(results, fp.getOptionLabel(field, sli.Index(i).Interface()))
-	}
-
-	return strings.Join(results, ", ")
-}
-
-func (fp *FieldProcessor) processSingleValue(field string, value interface{}) string {
-	if label := fp.getOptionLabel(field, value); label != "" {
-		return label
-	}
-	return fmt.Sprintf("%v", value)
-}
-
-func (fp *FieldProcessor) getOptionLabel(field string, value interface{}) string {
-	options, ok := fp.optionsMap[field]
-	if !ok {
-		return ""
-	}
-
-	// 1. 直接通过原始值匹配（针对 interface{} 的 key）
-	if label, exists := options[value]; exists {
-		return label
-	}
-
-	// 2. 尝试数字转换匹配
-	if num, err := convertToNumber(value); err == nil {
-		if label, exists := options[num]; exists {
-			return label
-		}
-	}
-
-	// 3. 最后退避到字符串匹配
-	valueStr := fmt.Sprintf("%v", value)
-	if label, exists := options[valueStr]; exists {
-		return label
-	}
-
-	return ""
-}
-
-func convertToNumber(value interface{}) (float64, error) {
-	switch v := value.(type) {
-	case int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64,
-		float32, float64:
-		return reflect.ValueOf(v).Convert(reflect.TypeOf(float64(0))).Float(), nil
-	default:
-		return 0, fmt.Errorf("not a number")
-	}
-}
-
-// AddRowSpacers 专门为 rule.Field 提供的排列空行补位函数
-// 确保每个飞书短字段在达到双列满排后，插入占位使其下一项换行
+// AddRowSpacers 为飞书双列排版自适应换行占位（每两个短元素插入一个空 spacer）
 func AddRowSpacers(fields []Field) []Field {
-	var results []Field
+	if len(fields) <= 1 {
+		return fields
+	}
+
+	results := make([]Field, 0, len(fields)+len(fields)/2)
 	for i, f := range fields {
 		results = append(results, f)
 		if (i+1)%2 == 0 {

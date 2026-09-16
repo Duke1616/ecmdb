@@ -5,3 +5,5 @@ logs/
 .idea/
 .gocache
 internal/test/config.yaml
+
+docs/article/*

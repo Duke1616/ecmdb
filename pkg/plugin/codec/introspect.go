@@ -223,7 +223,7 @@ func (n *structNode) addField(tag pluginTag, t reflect.Type) {
 		Type:        fieldType,
 		Options:     options,
 		Required:    tag.required,
-		Secure:      isSecureField(cmdbUID, tag.key),
+		Secure:      isSecureField(tag, cmdbUID),
 	})
 }
 
@@ -421,8 +421,12 @@ func inferAttributeType(t reflect.Type) string {
 }
 
 // isSecureField 判定字段是否属于需异步加密的安全敏感字段
-func isSecureField(fieldName, tagName string) bool {
-	lower := strings.ToLower(fieldName + " " + tagName)
+// 优先遵循 Tag 中显式声明的 secure/encrypt，未显式声明时回退到敏感关键字智能推导
+func isSecureField(tag pluginTag, cmdbUID string) bool {
+	if tag.secure != nil {
+		return *tag.secure
+	}
+	lower := strings.ToLower(cmdbUID + " " + tag.key)
 	secureKeywords := []string{"password", "private_key", "secret", "token"}
 	return lo.SomeBy(secureKeywords, func(kw string) bool {
 		return strings.Contains(lower, kw)

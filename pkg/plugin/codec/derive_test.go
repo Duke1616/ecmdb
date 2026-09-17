@@ -63,6 +63,13 @@ type testEntityWithEnum struct {
 	Port         int          `plugin:"port,label=端口号"`
 }
 
+type testSecureExplicitEntity struct {
+	NormalField     string `plugin:"normal,label=普通字段"`
+	ExplicitSecure  string `plugin:"custom_key,secure,label=自定义敏感字段"`
+	ExplicitEncrypt string `plugin:"cipher_text,encrypt=true,label=加密字段"`
+	KeywordOverride string `plugin:"token_status,secure=false,label=令牌状态"`
+}
+
 func TestDeriveSchema(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -168,6 +175,40 @@ func TestDeriveSchema(t *testing.T) {
 				numField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "port" })
 				require.True(t, ok)
 				assert.Equal(t, "number", numField.Type)
+			},
+		},
+		{
+			name: "显式 secure 与 encrypt 标记及关键字覆盖",
+			derive: func() (types.Schema, error) {
+				return DeriveSchema[testSecureExplicitEntity]("secure_entity")
+			},
+			assertSchema: func(t *testing.T, s types.Schema) {
+				require.Len(t, s.Models, 1)
+				fields := s.Models[0].AttributeGroups[0].Fields
+				require.Len(t, fields, 4)
+
+				normal, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "normal" })
+				require.True(t, ok)
+				assert.False(t, normal.Secure)
+				assert.True(t, normal.Display)
+
+				// 1. 显式 secure 修饰符
+				sec, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "custom_key" })
+				require.True(t, ok)
+				assert.True(t, sec.Secure)
+				assert.False(t, sec.Display)
+
+				// 2. 显式 encrypt=true 修饰符
+				enc, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "cipher_text" })
+				require.True(t, ok)
+				assert.True(t, enc.Secure)
+				assert.False(t, enc.Display)
+
+				// 3. 显式 secure=false 覆盖关键字推导（token 关键字被显式关闭）
+				override, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "token_status" })
+				require.True(t, ok)
+				assert.False(t, override.Secure)
+				assert.True(t, override.Display)
 			},
 		},
 		{

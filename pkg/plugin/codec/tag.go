@@ -20,6 +20,7 @@ type pluginTag struct {
 	direction    string   // 关联方向（auto, source, target）
 	cardinality  string   // 数量基数（one, many）
 	required     bool     // 是否必填
+	secure       *bool    // 是否敏感加密存储（nil 表示未显式声明，遵循关键字自动推导）
 	defaultValue string   // 默认值
 	skip         bool     // 是否忽略该字段
 }
@@ -69,6 +70,11 @@ func parsePluginTag(field reflect.StructField) pluginTag {
 			continue
 		}
 
+		if part == "secure" || part == "encrypt" {
+			tag.secure = lo.ToPtr(true)
+			continue
+		}
+
 		kv := strings.SplitN(part, "=", 2)
 		if len(kv) != 2 {
 			continue
@@ -76,6 +82,8 @@ func parsePluginTag(field reflect.StructField) pluginTag {
 
 		k, v := strings.TrimSpace(kv[0]), strings.TrimSpace(kv[1])
 		switch k {
+		case "secure", "encrypt":
+			tag.secure = lo.ToPtr(v == "true" || v == "1")
 		case "name", "label", "title", "model_name", "model_title":
 			tag.name = v
 		case "field":
@@ -122,7 +130,7 @@ func parsePluginTag(field reflect.StructField) pluginTag {
 // isReservedTagKeyword 判定是否属于独立的 Tag 布尔修饰关键字
 func isReservedTagKeyword(word string) bool {
 	switch word {
-	case "required", "skip", "-":
+	case "required", "skip", "-", "secure", "encrypt":
 		return true
 	default:
 		return false

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/samber/lo"
@@ -183,7 +184,30 @@ func setFieldValue(dst reflect.Value, value any) error {
 	}
 
 	strVal := fmt.Sprint(value)
+
+	// 处理 time.Time 特殊日期时间反序列化
+	if isTimeType(dst.Type()) {
+		t, err := parseTime(strVal)
+		if err != nil {
+			return err
+		}
+		dst.Set(reflect.ValueOf(t))
+		return nil
+	}
+
+	// 处理 []byte 多行长文本/二进制切片赋值
+	if isByteSlice(dst.Type()) {
+		if b, ok := value.([]byte); ok {
+			dst.SetBytes(b)
+			return nil
+		}
+		dst.SetBytes([]byte(strVal))
+		return nil
+	}
+
 	switch dst.Kind() {
+	case reflect.Slice:
+		return fmt.Errorf("unsupported target slice kind %s", dst.Type().Elem().Kind())
 	case reflect.String:
 		dst.SetString(strVal)
 	case reflect.Bool:
@@ -235,13 +259,33 @@ func peelValue(v reflect.Value) reflect.Value {
 	return v
 }
 
+func parseTime(val string) (time.Time, error) {
+	layouts := []string{
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		if t, err := time.Parse(layout, val); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("cannot parse %q as time.Time", val)
+}
+
 func isStructOrStructSlice(t reflect.Type) (bool, reflect.Type) {
 	unwrapped := peelType(t)
+	if unwrapped.PkgPath() == "time" && unwrapped.Name() == "Time" {
+		return false, nil
+	}
 	switch unwrapped.Kind() {
 	case reflect.Struct:
 		return true, unwrapped
 	case reflect.Slice, reflect.Array:
 		elemType := peelType(unwrapped.Elem())
+		if elemType.PkgPath() == "time" && elemType.Name() == "Time" {
+			return false, nil
+		}
 		if elemType.Kind() == reflect.Struct {
 			return true, elemType
 		}

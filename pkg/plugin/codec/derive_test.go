@@ -2,6 +2,7 @@ package codec
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/samber/lo"
@@ -45,6 +46,21 @@ type testCompactEntity struct {
 
 func (testCompactEntity) DescribeModel() (string, string) {
 	return "紧凑自描述模型", "核心凭据组"
+}
+
+type testAuthType string
+
+func (testAuthType) EnumOptions() []string {
+	return []string{"passwd", "publickey", "passphrase"}
+}
+
+type testEntityWithEnum struct {
+	AuthType     testAuthType `plugin:"auth_type,label=认证方式"`
+	ExplicitList string       `plugin:"explicit_list,type=list,options=opt1|opt2"`
+	PrivateKey   []byte       `plugin:"private_key,label=私钥凭证"`
+	CreatedAt    time.Time    `plugin:"created_at,label=创建时间"`
+	Enabled      bool         `plugin:"enabled,label=是否启用"`
+	Port         int          `plugin:"port,label=端口号"`
 }
 
 func TestDeriveSchema(t *testing.T) {
@@ -108,6 +124,50 @@ func TestDeriveSchema(t *testing.T) {
 				assert.Equal(t, "核心凭据组", s.Models[0].GroupName)
 				require.Len(t, s.ModelGroups, 1)
 				assert.Equal(t, "核心凭据组", s.ModelGroups[0].Name)
+			},
+		},
+		{
+			name: "枚举自描述接口推导与 Tag options 支持",
+			derive: func() (types.Schema, error) {
+				return DeriveSchema[testEntityWithEnum]("enum_entity")
+			},
+			assertSchema: func(t *testing.T, s types.Schema) {
+				require.Len(t, s.Models, 1)
+				fields := s.Models[0].AttributeGroups[0].Fields
+				require.Len(t, fields, 6)
+
+				// 1. 验证 IEnum 接口自动推导出 list 与 options
+				authField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "auth_type" })
+				require.True(t, ok)
+				assert.Equal(t, "list", authField.Type)
+				assert.Equal(t, []string{"passwd", "publickey", "passphrase"}, authField.Option)
+
+				// 2. 验证通过 Tag 的 type=list,options= 声明
+				listField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "explicit_list" })
+				require.True(t, ok)
+				assert.Equal(t, "list", listField.Type)
+				assert.Equal(t, []string{"opt1", "opt2"}, listField.Option)
+
+				// 3. 验证 []byte 自动推导为 multiline，且敏感字段 secure=true
+				pkField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "private_key" })
+				require.True(t, ok)
+				assert.Equal(t, "multiline", pkField.Type)
+				assert.True(t, pkField.Secure)
+
+				// 4. 验证 time.Time 自动推导为 datetime
+				timeField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "created_at" })
+				require.True(t, ok)
+				assert.Equal(t, "datetime", timeField.Type)
+
+				// 5. 验证 bool 自动推导为 boolean
+				boolField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "enabled" })
+				require.True(t, ok)
+				assert.Equal(t, "boolean", boolField.Type)
+
+				// 6. 验证 int 自动推导为 number
+				numField, ok := lo.Find(fields, func(a types.Attribute) bool { return a.UID == "port" })
+				require.True(t, ok)
+				assert.Equal(t, "number", numField.Type)
 			},
 		},
 		{

@@ -2,6 +2,7 @@ package codec
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Duke1616/ecmdb/pkg/plugin/types"
 	"github.com/stretchr/testify/assert"
@@ -154,4 +155,31 @@ func TestDecodeResource(t *testing.T) {
 			assert.Equal(t, tc.wantValue.username, got.Username)
 		})
 	}
+}
+
+type testRichResource struct {
+	PrivateKey []byte    `plugin:"private_key"`
+	CreatedAt  time.Time `plugin:"created_at"`
+	Enabled    bool      `plugin:"enabled"`
+	Score      float64   `plugin:"score"`
+}
+
+func TestDecodeResource_RichTypes(t *testing.T) {
+	res := types.ResolvedResource{
+		Fields: map[string]any{
+			"private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0...",
+			"created_at":  "2026-09-17 12:30:00",
+			"enabled":     "true",
+			"score":       "98.5",
+		},
+	}
+
+	got, err := DecodeResource[testRichResource](res)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0..."), got.PrivateKey)
+	assert.Equal(t, 2026, got.CreatedAt.Year())
+	assert.Equal(t, time.September, got.CreatedAt.Month())
+	assert.Equal(t, 17, got.CreatedAt.Day())
+	assert.True(t, got.Enabled)
+	assert.Equal(t, 98.5, got.Score)
 }

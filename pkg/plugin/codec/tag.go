@@ -9,17 +9,19 @@ import (
 )
 
 type pluginTag struct {
-	key          string // 字段程序标识键（如 host, gateways，取自首项或 Go 字段名）
-	name         string // 人类可读展示名称（统一由 name= 或 label= 显式声明，如 "主机地址"、"跳板机网关"）
-	field        string // CMDB 属性 UID 映射（如 field=ip，缺省回退到 key）
-	model        string // CMDB 子模型 UID（如 model=AuthGateway）
-	group        string // 所属 CMDB 模型分组名称（如 group=安全凭据）
-	relationType string // 关联类型 UID（如 default, run）
-	direction    string // 关联方向（auto, source, target）
-	cardinality  string // 数量基数（one, many）
-	required     bool   // 是否必填
-	defaultValue string // 默认值
-	skip         bool   // 是否忽略该字段
+	key          string   // 字段程序标识键（如 host, gateways，取自首项或 Go 字段名）
+	name         string   // 人类可读展示名称（统一由 name= 或 label= 显式声明，如 "主机地址"、"跳板机网关"）
+	field        string   // CMDB 属性 UID 映射（如 field=ip，缺省回退到 key）
+	model        string   // CMDB 子模型 UID（如 model=AuthGateway）
+	group        string   // 所属 CMDB 模型分组名称（如 group=安全凭据）
+	fieldType    string   // 显式声明的 CMDB 属性数据类型（如 list, string, number 等）
+	options      []string // 枚举下拉选项列表（由 options= 或 enums= 声明，支持 | 分隔）
+	relationType string   // 关联类型 UID（如 default, run）
+	direction    string   // 关联方向（auto, source, target）
+	cardinality  string   // 数量基数（one, many）
+	required     bool     // 是否必填
+	defaultValue string   // 默认值
+	skip         bool     // 是否忽略该字段
 }
 
 // CMDBUID 返回该属性在 CMDB 中的字段 UID（优先取 field，缺省回退取 key）
@@ -88,8 +90,20 @@ func parsePluginTag(field reflect.StructField) pluginTag {
 		case "out":
 			tag.relationType = v
 			tag.direction = types.DirectionToTarget
-		case "type", "relation_type":
+		case "rel", "relation", "relation_type":
 			tag.relationType = v
+		case "field_type":
+			tag.fieldType = v
+		case "type":
+			// 兼顾关联关系类型与普通属性字段类型
+			tag.relationType = v
+			tag.fieldType = v
+		case "options", "option", "enums":
+			rawOpts := strings.Split(v, "|")
+			tag.options = lo.FilterMap(rawOpts, func(opt string, _ int) (string, bool) {
+				trimmed := strings.TrimSpace(opt)
+				return trimmed, trimmed != ""
+			})
 		case "direction":
 			tag.direction = v
 		case "cardinality":

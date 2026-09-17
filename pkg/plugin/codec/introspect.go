@@ -9,6 +9,11 @@ import (
 	"github.com/samber/lo"
 )
 
+// IEnum 允许属性字段类型通过实现该接口自描述其合法枚举选项列表
+type IEnum interface {
+	EnumOptions() []string
+}
+
 // CompactModelDescriptor 允许模型结构体通过单方法自描述中文名称与所属模型分组
 type CompactModelDescriptor interface {
 	DescribeModel() (name string, group string)
@@ -55,12 +60,13 @@ func InspectTarget[T any](name string, modelUID string) (TargetMeta, error) {
 
 // structField 保存模型中解析出的普通属性字段元数据
 type structField struct {
-	Key         string // Go struct 字段标识（用于 Spec.Fields 映射键）
-	CMDBUID     string // CMDB 属性字段 UID（用于 Spec.Fields 映射值与 Attribute.UID）
-	DisplayName string // 前端展示名称（name 优先，回退到 Key）
-	Type        string // CMDB 属性类型（string, int, float, bool 等）
-	Required    bool   // 是否必填
-	Secure      bool   // 是否属于敏感加密字段
+	Key         string   // Go struct 字段标识（用于 Spec.Fields 映射键）
+	CMDBUID     string   // CMDB 属性字段 UID（用于 Spec.Fields 映射值与 Attribute.UID）
+	DisplayName string   // 前端展示名称（name 优先，回退到 Key）
+	Type        string   // CMDB 属性类型（string, list, int, float, bool 等）
+	Options     []string // 枚举下拉选项列表
+	Required    bool     // 是否必填
+	Secure      bool     // 是否属于敏感加密字段
 }
 
 // structNode 代表经过一次内省反射分析后的结构体节点元数据树
@@ -173,13 +179,49 @@ func (n *structNode) addChild(elemType, rawType reflect.Type, fieldName string, 
 	return nil
 }
 
+// extractEnumOptions 从反射类型中探测 IEnum 接口，兼容值接收者与指针接收者
+func extractEnumOptions(t reflect.Type) ([]string, bool) {
+	if t.Kind() == reflect.Interface {
+		return nil, false
+	}
+	if enum, ok := reflect.Zero(t).Interface().(IEnum); ok {
+		return enum.EnumOptions(), true
+	}
+	if enum, ok := reflect.New(t).Interface().(IEnum); ok {
+		return enum.EnumOptions(), true
+	}
+	return nil, false
+}
+
+// resolveFieldTypeAndOptions 解析最终落库的 CMDB 字段类型与枚举选项
+func resolveFieldTypeAndOptions(tag pluginTag, rawType reflect.Type) (string, []string) {
+	// 优先策略 1：实现了 IEnum 自描述接口的强类型枚举，自动推导为 list
+	if opts, ok := extractEnumOptions(rawType); ok {
+		return "list", opts
+	}
+	// 优先策略 2：Tag 中通过 options= 显式声明了候选项
+	if len(tag.options) > 0 {
+		return lo.Ternary(tag.fieldType != "", tag.fieldType, "list"), tag.options
+	}
+	// 优先策略 3：Tag 中显式指定了 field_type/type（如 multiline）
+	if tag.fieldType != "" {
+		return tag.fieldType, nil
+	}
+	// 兜底策略 4：基于 Go 原生类型智能推断 (datetime, multiline, boolean, number, string)
+	return inferAttributeType(rawType), nil
+}
+
 func (n *structNode) addField(tag pluginTag, t reflect.Type) {
 	cmdbUID := tag.CMDBUID()
+	rawType := peelType(t)
+	fieldType, options := resolveFieldTypeAndOptions(tag, rawType)
+
 	n.fields = append(n.fields, structField{
 		Key:         tag.key,
 		CMDBUID:     cmdbUID,
 		DisplayName: tag.DisplayName(),
-		Type:        inferAttributeType(t),
+		Type:        fieldType,
+		Options:     options,
 		Required:    tag.required,
 		Secure:      isSecureField(cmdbUID, tag.key),
 	})
@@ -259,6 +301,7 @@ func (n *structNode) toModelSpec() types.ModelSpec {
 			UID:      f.CMDBUID,
 			Name:     f.DisplayName,
 			Type:     f.Type,
+			Option:   f.Options,
 			Required: f.Required,
 			Display:  !f.Secure,
 			Secure:   f.Secure,
@@ -344,17 +387,34 @@ func extractFromDescriptor[D any](t reflect.Type, getter func(D) string) string 
 	return ""
 }
 
-// inferAttributeType 将 Go 反射类型映射为 CMDB 属性字段数据类型
+// isTimeType 判定反射类型是否为 time.Time
+func isTimeType(t reflect.Type) bool {
+	return t.PkgPath() == "time" && t.Name() == "Time"
+}
+
+// isByteSlice 判定反射类型是否为 []byte
+func isByteSlice(t reflect.Type) bool {
+	return t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8
+}
+
+// inferAttributeType 将 Go 反射类型智能映射为 CMDB 标准属性字段数据类型
 func inferAttributeType(t reflect.Type) string {
 	t = peelType(t)
+
+	if isTimeType(t) {
+		return "datetime"
+	}
+	if isByteSlice(t) {
+		return "multiline"
+	}
+
 	switch t.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return "int"
-	case reflect.Float32, reflect.Float64:
-		return "float"
 	case reflect.Bool:
-		return "bool"
+		return "boolean"
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return "number"
 	default:
 		return "string"
 	}

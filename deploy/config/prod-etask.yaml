@@ -43,10 +43,6 @@ grpc:
     ealert:
       name: ealert
       auth_token: "1234567890"
-    # Scheduler 访问 Executor
-    # 服务名称由任务对应的执行资源池动态决定，因此不需要 name
-    executor:
-      auth_token: "1234567890"
 
 # 制品仓库：发布后的不可变代码包存储在 MinIO，由 MinIO 数据卷负责持久化。
 artifact:
@@ -134,7 +130,7 @@ executor:
   # 任务执行模式：
   # - PUSH: (默认) 调度中心检测到节点在线后，主动向节点推送任务请求，适用于公网可达的环境。
   # - PULL: 边缘节点模式。节点主动向中心发起长轮询拉取任务，适用于防火墙内或无固定公网 IP 的环境。
-  mode: "PULL"
+  mode: "PUSH"
   # 执行器集群功能描述。
   desc: "通用计算节点：提供 Shell 与 Python 脚本等系统级基础执行能力的默认执行器集群"
   # 资源池隔离级别：SHARED(共享) 或 DEDICATED(专有)

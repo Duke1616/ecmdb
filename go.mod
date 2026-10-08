@@ -3,7 +3,7 @@ module github.com/Duke1616/ecmdb
 go 1.25.0
 
 require (
-	github.com/Duke1616/eiam v0.0.23
+	github.com/Duke1616/eiam v0.0.25
 	github.com/Duke1616/etask v1.14.1
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.3-0.20250724125208-2ec06fc61450

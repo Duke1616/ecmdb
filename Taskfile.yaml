@@ -58,6 +58,11 @@ tasks:
     cmds:
       - (cd cmd/tools/render-arch && go run main.go)
 
+  article-arch:
+    desc: 渲染文章专属架构图 (直接通过 D2 生成高清 PNG)
+    cmds:
+      - /opt/homebrew/bin/d2 --layout=tala --theme 0 --pad 24 docs/article/remote-ssh-arch.d2 docs/article/images/remote-ssh-arch.png
+
   # --- 工具链安装 ---
   install:tools:
     desc: 安装生态通用工具链 (wire, permgen, swaggergen, buf)

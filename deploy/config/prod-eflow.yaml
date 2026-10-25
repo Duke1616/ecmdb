@@ -6,6 +6,11 @@ web:
   port: 8000
 
 grpc:
+  server:
+    eflow:
+      name: "eflow"
+      listen_addr: "0.0.0.0:8006"
+      auth_token: "1234567890"
   client:
     eiam:
       name: "eiam"
